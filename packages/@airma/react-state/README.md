@@ -114,7 +114,7 @@ function App(){
         return state + 1;
       },
       decrease(){
-        return 'state - 1';
+        return state - 1;
       }
     };
   },0);
