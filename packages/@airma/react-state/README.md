@@ -136,3 +136,11 @@ render(<App/>, document.getElementById('root'));
 
 As we can see it is very easy to describe assistant states for usage.
 
+## typescript check
+
+`@airma/react-state` is a typescript support library, you can use it with `typescript` for a better experience. It checks the input `state` type is same with param `state` type, the returning `object.state` type is same with the param `state` type, the method returning type is same with param `state` type, and so on.
+
+## End
+
+We hope you can enjoy this tool, and help us to enhance it in future.
+
