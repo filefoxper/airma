@@ -1,0 +1,80 @@
+[![npm][npm-image]][npm-url]
+[![NPM downloads][npm-downloads-image]][npm-url]
+[![standard][standard-image]][standard-url]
+
+[npm-image]: https://img.shields.io/npm/v/%40airma/react-state.svg?style=flat-square
+[npm-url]: https://www.npmjs.com/package/%40airma/react-state
+[standard-image]: https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat-square
+[standard-url]: http://npm.im/standard
+[npm-downloads-image]: https://img.shields.io/npm/dm/%40airma/react-state.svg?style=flat-square
+
+
+# @airma/react-state
+
+`@airma/react-state` is a simple reducer tool, you can use it to replace `useReducer`, if you want more functions like state synchronization and asynchronous request manage, you can try [use-agent-reducer](https://www.npmjs.com/package/use-agent-reducer).
+
+`@airma/react-state` works like that:
+
+```tsx
+import React from 'react';
+import {render} from 'react-dom'
+import {useModel} from '@airma/react-state';
+
+function App(){
+    const {state, increase, decrease} = useModel((state:number)=>{
+        const baseState = state >= 0? state : 0;
+        return {
+            state: baseState,
+            increase(){
+                return baseState + 1;
+            },
+            decrease(){
+                return baseState - 1;
+            }
+        };
+    },0);
+    return (
+        <div>
+            <button onClick={increase}>-</button>
+            <span>{state}</span>
+            <button onClick={decrease}>+</button>
+        </div>
+    );
+}
+
+render(<App/>, document.getElementById('root'));
+```
+
+It calls the model generate function when component is mounting or the model method has been called everytime.
+
+The example about shows how to use API to manage a step counting model with state. We call `increase` method to generate a next state, then useAir update this state by recall model generator again.
+
+So, the state change flow of `increase` is like this:
+
+```
+// model function
+const model = (state:number)=>{...};
+
+// increase returns
+const state = baseState + 1;
+// recall model with what increase returns
+return model(state);
+```
+
+Yes, it is close with `useReducer`, but more free for usage. It looks like `agent-reducer` too, but it support dynamic closure function style, and it is simple enough.
+
+Try not use async methods, `@airma/react-state` will not support that, the target of `@airma/react-state` is supporting react local model, but not eating all codes for platform change. We will support transform state from side effect like async request in other ways.
+
+## API
+
+### useModel
+
+* model - model generate function, it accepts a state param, and returns a model object, which contains a state, and some methods for generating next state.
+* state - this is the default state for model initialization.
+
+```
+function useModel<S, T extends AirModelInstance<S>>(
+    model: AirReducer<S, T>,
+    state: ReturnType<typeof model>['state']
+): T
+```

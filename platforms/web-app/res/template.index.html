@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta name="renderer" content="webkit" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+    />
+    <script>
+      window.ondragover = function (e) {
+        e.preventDefault();
+      };
+
+      window.ondrop = function (e) {
+        e.preventDefault();
+      };
+    </script>
+    <base href="/" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue',
+          Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+          'Segoe UI Symbol' !important;
+      }
+      html ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      /*定义滚动条的轨道，内阴影及圆角*/
+      html ::-webkit-scrollbar-track {
+        border-radius: 10px;
+      }
+
+      /*定义滑块，内阴影及圆角*/
+      html ::-webkit-scrollbar-thumb {
+        height: 8px;
+        border-radius: 10px;
+        background-color: #aaa;
+      }
+    </style>
+  </head>
+  <body
+    class="body"
+    style="overflow-y: hidden; background: none"
+    draggable="false"
+  >
+    <div id="root" draggable="false"></div>
+  </body>
+</html>

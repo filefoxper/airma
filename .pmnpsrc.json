@@ -1,0 +1,14 @@
+{
+  "workspace": "airma",
+  "publishable": true,
+  "buildByDependencies": false,
+  "private": false,
+  "createWithReadme": true,
+  "git": true,
+  "useOldDefineName": false,
+  "plugins": [
+    "@pmnps/plugin-typescript",
+    "@pmnps/plugin-dependencies",
+    "@pmnps/plugin-vscode-workspace"
+  ]
+}

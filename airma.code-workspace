@@ -1,0 +1,12 @@
+{
+  "folders": [
+    { "name": "root", "path": "." },
+    { "name": "packages/@airma/core", "path": "packages/@airma/core" },
+    {
+      "name": "packages/@airma/react-state",
+      "path": "packages/@airma/react-state"
+    },
+    { "name": "platforms/web-app", "path": "platforms/web-app" }
+  ],
+  "settings": {}
+}

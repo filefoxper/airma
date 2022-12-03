@@ -1,0 +1,35 @@
+{
+  "scripts": {
+    "build": "esbuild ./src/index.ts --outfile=./dist/index.js --bundle --format=esm"
+  },
+  "private": false,
+  "name": "@airma/core",
+  "version": "15.0.2",
+  "description": "This is the core for agent-reducer and airma",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filefoxper/airma"
+  },
+  "keywords": [
+    "typescript",
+    "simple-reducer",
+    "state",
+    "agent",
+    "proxy",
+    "object",
+    "browser",
+    "js"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "2.3.2",
+    "typescript": "4.2.2",
+    "esbuild": "^0.15.16"
+  },
+  "module": "dist/index.js",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "typings": "index.d.ts"
+}
