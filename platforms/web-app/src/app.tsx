@@ -1,5 +1,4 @@
 import React, { memo, useLayoutEffect, useState } from 'react';
-import { useEffect, useReducer, useRef } from 'react';
 import {useModel, useTupleModel} from "@airma/react-state";
 
 const re = (state: number) => {
@@ -19,29 +18,26 @@ const re = (state: number) => {
 };
 
 const ReactStateEx = memo(() => {
-  const [count,{ increase, decrease }] = useTupleModel((state: number) => {
-    const baseState = state >= 0 ? state : 0;
+  const {count, isNegative, increase, decrease} = useModel((state:number)=>{
     return {
-      state: baseState,
-      increase() {
-        return baseState + 1;
+      state,
+      count: state,
+      isNegative: state<0,
+      increase(){
+        return state + 1;
       },
-      decrease() {
-        return baseState - 1;
+      decrease(){
+        return state - 1;
       }
     };
-  }, 0);
-
-  useEffect(()=>{
-    console.log('change increase')
-  },[increase])
+  },0);
 
   return (
     <div>
       <div>react state ex 1</div>
       <div>
         <button onClick={decrease}>-</button>
-        <span>{count}</span>
+          <span style={isNegative?{color:'red'}:undefined}>{count}</span>
         <button onClick={increase}>+</button>
       </div>
     </div>

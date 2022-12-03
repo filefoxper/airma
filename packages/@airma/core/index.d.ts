@@ -14,12 +14,16 @@ export declare type AirModel<S> = {
 
 export declare interface AirModelInstance<S> {
     state: S;
-    [key: string]: ((...args: unknown[]) => S)|S;
+    [key: string]: unknown;
 }
+
+declare type ValidInstance<S,T extends (AirModelInstance<S>)>={
+    [K in keyof T]:T[K] extends ((...args: unknown[]) => S)?T[K]:T[K] extends ((...args: unknown[]) => unknown)?never:T[K]
+};
 
 export declare type AirReducer<S, T extends AirModelInstance<S>> = (
     state: S
-) => T;
+) => ValidInstance<S,T>;
 
 export declare type Reducer<S, A> = (state: S, action: A) => S;
 

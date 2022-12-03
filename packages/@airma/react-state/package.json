@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "15.0.4",
+  "version": "15.0.7",
   "module": "dist/index.js",
   "typings": "index.d.ts",
   "author": "Jimmy.Harding",
@@ -35,7 +35,7 @@
   "dependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
-    "@airma/core": "^15.0.2"
+    "@airma/core": "^15.0.5"
   },
   "devDependencies": {
     "prettier": "2.3.2",

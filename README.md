@@ -48,9 +48,9 @@ function App(){
     },0);
     return (
         <div>
-            <button onClick={increase}>-</button>
+            <button onClick={decrease}>-</button>
             <span>{state}</span>
-            <button onClick={decrease}>+</button>
+            <button onClick={increase}>+</button>
         </div>
     );
 }
@@ -93,9 +93,9 @@ function App(){
     },0);
     return (
         <div>
-            <button onClick={()=>add(1)}>-</button>
+            <button onClick={decrease}>-</button>
             <span>{state}</span>
-            <button onClick={decrease}>+</button>
+            <button onClick={()=>add(1)}>+</button>
         </div>
     );
 }
@@ -103,4 +103,4 @@ function App(){
 render(<App/>, document.getElementById('root'));
 ```
 
-It is simple now, but we will add some more useful features in future.
+It is simple now, but we will add some more useful features in future. If you want to know more about this tool, please take this [document](https://github.com/filefoxper/airma/tree/master/packages/%40airma/react-state).
