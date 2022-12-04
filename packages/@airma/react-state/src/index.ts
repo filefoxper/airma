@@ -6,16 +6,16 @@ import {
 } from '@airma/core';
 import { useEffect, useRef, useState } from 'react';
 
-export function useModel<S, T extends AirModelInstance<S>>(
+export function useTupleModel<S, T extends AirModelInstance,D extends S>(
   model: AirReducer<S, T>,
-  state: ReturnType<typeof model>['state']
-): T {
+  state: D
+): [T, S] {
   const modelRef = useRef<AirReducer<S, T>>(model);
-  const ref = useRef<ActualReducer<S, T>>(createModel<S, T>(model, state));
-  const [s, setS] = useState<S>(ref.current.agent.state);
+  const ref = useRef<ActualReducer<S, T>>(createModel<S, T, D>(model, state));
+  const [s, setS] = useState<S>(state);
   if (modelRef.current !== model) {
     modelRef.current = model;
-    ref.current.update(model, s);
+    ref.current.update(model);
   }
 
   ref.current.connect(({ state: actionState }) => {
@@ -27,13 +27,13 @@ export function useModel<S, T extends AirModelInstance<S>>(
     },
     []
   );
-  return ref.current.agent;
+  return [ref.current.agent, s];
 }
 
-export function useTupleModel<S, T extends AirModelInstance<S>>(
+export function useModel<S, T extends AirModelInstance,D extends S>(
   model: AirReducer<S, T>,
-  state: ReturnType<typeof model>['state']
-): [T['state'], T] {
-  const modelInstance = useModel(model, state);
-  return [modelInstance.state, modelInstance];
+  state: D
+): T {
+  const [agent] = useTupleModel(model, state);
+  return agent;
 }

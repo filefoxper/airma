@@ -12,37 +12,36 @@ export declare type AirModel<S> = {
     [key: string]: unknown;
 };
 
-export declare interface AirModelInstance<S> {
-    state: S;
+export declare interface AirModelInstance {
     [key: string]: unknown;
 }
 
-declare type ValidInstance<S,T extends (AirModelInstance<S>)>={
+declare type ValidInstance<S,T extends AirModelInstance>={
     [K in keyof T]:T[K] extends ((...args: unknown[]) => S)?T[K]:T[K] extends ((...args: unknown[]) => unknown)?never:T[K]
 };
 
-export declare type AirReducer<S, T extends AirModelInstance<S>> = (
+export declare type AirReducer<S, T extends AirModelInstance> = (
     state: S
 ) => ValidInstance<S,T>;
 
 export declare type Reducer<S, A> = (state: S, action: A) => S;
 
-export declare interface ReducerPadding<S = any, T extends AirModelInstance<S> = AirModelInstance<S>> {
+export declare interface ReducerPadding<S = any, T extends AirModelInstance = AirModelInstance> {
     agent: T;
-    update:(reducer:AirReducer<S, T>,state:S)=>void;
+    update:(reducer:AirReducer<S, T>)=>void;
     connect: (dispatch?: Dispatch) => void;
     disconnect: () => void;
 }
 
-export declare type ActualReducer<S = any, T extends AirModelInstance<S> = any> = Reducer<
+export declare type ActualReducer<S = any, T extends AirModelInstance = any> = Reducer<
     S,
     Action
     > &
     ReducerPadding<S, T>;
 
-export declare function createModel<S, T extends AirModelInstance<S>>(
+export declare function createModel<S, T extends AirModelInstance, D extends S>(
     reducer: AirReducer<S, T>,
-    defaultState:ReturnType<typeof reducer>['state']
+    defaultState:D
 ): ActualReducer<S, T>;
 
 

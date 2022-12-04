@@ -18,7 +18,7 @@
     "react-dom": "18.2.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
-    "@airma/react-state": "15.0.8"
+    "@airma/react-state": "15.1.0"
   },
   "devDependencies": {
     "prettier": "^2.7.1",

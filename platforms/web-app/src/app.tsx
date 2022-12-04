@@ -19,15 +19,15 @@ const re = (state: number) => {
 
 const ReactStateEx = memo(() => {
   const {count, isNegative, increase, decrease} = useModel((state:number)=>{
+    const count = state>=0?state:0;
     return {
-      state,
-      count: state,
-      isNegative: state<0,
+      count,
+      isNegative: count<0,
       increase(){
-        return state + 1;
+        return count + 1;
       },
       decrease(){
-        return state - 1;
+        return count - 1;
       }
     };
   },0);
