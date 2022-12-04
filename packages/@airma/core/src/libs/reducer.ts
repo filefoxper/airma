@@ -11,11 +11,11 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   connection: Connection<S, T>,
   type: string
 ) {
-  if(connection.cacheMethods[type]){
+  if (connection.cacheMethods[type]) {
     return connection.cacheMethods[type];
   }
   const newMethod = function newMethod(...args: unknown[]) {
-    const method = connection.current[type] as (...args:unknown[])=>S;
+    const method = connection.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
     const { dispatch, reducer } = connection;
     connection.current = reducer(result);
@@ -30,7 +30,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   return newMethod;
 }
 
-export default function createModel<S, T extends AirModelInstance,D extends S>(
+export default function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   defaultState: D
 ): ActualReducer<S, T> {
@@ -39,14 +39,17 @@ export default function createModel<S, T extends AirModelInstance,D extends S>(
     current: defaultModel,
     reducer,
     dispatch: null,
-    cacheMethods:{},
-    cacheState:defaultState
+    cacheMethods: {},
+    cacheState: defaultState
   };
   const actualReducer: ActualReducer<S, T> = function actualReducer(
     state: S,
     action: Action
   ) {
-    if (typeof connection.current[action.type] === 'function'||action.type==='@@AIR_STATE_UPDATE') {
+    if (
+      typeof connection.current[action.type] === 'function' ||
+      action.type === '@@AIR_STATE_UPDATE'
+    ) {
       return action.state;
     }
     return state;
@@ -55,18 +58,19 @@ export default function createModel<S, T extends AirModelInstance,D extends S>(
     get(target: T, p: string): unknown {
       const value = connection.current[p];
       if (typeof value === 'function') {
-        return rebuildDispatchMethod<S, T>(
-          connection,
-          p
-        );
+        return rebuildDispatchMethod<S, T>(connection, p);
       }
       return value;
     }
   });
-  actualReducer.update = function update(updateReducer:AirReducer<S, T>){
-    const {cacheState} = connection;
+  actualReducer.update = function update(
+    updateReducer: AirReducer<S, T>,
+    uncontrolled?: { state: S }
+  ) {
+    const { cacheState } = connection;
     connection.reducer = updateReducer;
-    connection.current = updateReducer(cacheState);
+    const nextState = uncontrolled ? uncontrolled.state : cacheState;
+    connection.current = updateReducer(nextState);
   };
   actualReducer.connect = function connect(dispatchCall) {
     connection.dispatch = null;

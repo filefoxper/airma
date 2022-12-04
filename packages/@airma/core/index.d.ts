@@ -28,7 +28,7 @@ export declare type Reducer<S, A> = (state: S, action: A) => S;
 
 export declare interface ReducerPadding<S = any, T extends AirModelInstance = AirModelInstance> {
     agent: T;
-    update:(reducer:AirReducer<S, T>)=>void;
+    update:(reducer:AirReducer<S, T>,uncontrolled?:{state:S})=>void;
     connect: (dispatch?: Dispatch) => void;
     disconnect: () => void;
 }

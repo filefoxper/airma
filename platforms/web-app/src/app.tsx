@@ -1,5 +1,5 @@
 import React, { memo, useLayoutEffect, useState } from 'react';
-import {useModel, useTupleModel} from "@airma/react-state";
+import {useModel, useTupleModel, useUncontrolledModel} from "@airma/react-state";
 
 const re = (state: number) => {
   console.log('arg...', state);
@@ -18,7 +18,8 @@ const re = (state: number) => {
 };
 
 const ReactStateEx = memo(() => {
-  const {count, isNegative, increase, decrease} = useModel((state:number)=>{
+  const [value,setValue] = useState(0);
+  const {count, isNegative, increase, decrease} = useUncontrolledModel((state:number)=>{
     const count = state>=0?state:0;
     return {
       count,
@@ -30,7 +31,7 @@ const ReactStateEx = memo(() => {
         return count - 1;
       }
     };
-  },0);
+  },value,setValue);
 
   return (
     <div>

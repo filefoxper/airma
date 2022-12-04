@@ -79,11 +79,9 @@ type AirModelInstance = Record<string, any>;
 
 type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
 
-type FirstParam<A extends ((p:any)=>any)> = A extends (p:infer P)=>any? P : never;
-
-function useModel<S, T extends AirModelInstance>(
+function useModel<S, T extends AirModelInstance, D extends S>(
     model: AirReducer<S, T>,
-    state: FirstParam<typeof model>
+    state: D
 ): T
 ```
 
@@ -91,20 +89,102 @@ function useModel<S, T extends AirModelInstance>(
 
 * model - model generate function, it accepts a state param, and returns a model object, which contains methods for generating next state and any other properties for describing state.
 * state - this is the default state for model initialization.
+* onChange - this is an optional callback, which can drive `useTupleModel` to a uncontrolled mode, and make state update by the param state change, you can see how to use it in `useUncontrolledModel` API.
 
-returns modelInstance and the current param state.
+returns the current param state and modelInstance, like `[state, instance]`.
 
 ```ts
 type AirModelInstance = Record<string, any>;
 
 type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
 
-type FirstParam<A extends ((p:any)=>any)> = A extends (p:infer P)=>any? P : never;
-
-function useTupleModel<S, T extends AirModelInstance>(
+function useTupleModel<S, T extends AirModelInstance, D extends S>(
     model: AirReducer<S, T>,
-    state: FirstParam<typeof model>
-): [T, S]
+    state: D,
+    onChange?:(s:S)=>any
+): [S, T]
+```
+
+With this api, you can split state and methods like:
+
+```tsx
+const [count, {increase, decrease}] = useTupleModel((state:number)=>{
+    return {
+        increase(){
+            return state + 1;
+        },
+        decrease(){
+            return state - 1;
+        }
+    };
+},0);
+```
+
+### useUncontrolledModel
+
+* model - model generate function, it accepts a state param, and returns a model object, which contains methods for generating next state and any other properties for describing state.
+* state - this is the state for model, model can only update this state by `onChange` callback.
+* onChange - this is a callback for updating state to an outside state management, like `useState` API.
+
+```ts
+type AirModelInstance = Record<string, any>;
+
+type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
+
+function useUncontrolledModel<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S, T>, state: D, onChange: (s: S) => any): T
+```
+
+With this API, you can use your model function more free, and more reusable.
+
+```tsx
+// model.ts
+export const counter = (count:number)=>{
+    return {
+        count,
+        increase(){
+            return count + 1;
+        },
+        decrease(){
+            return count - 1;
+        }
+    };
+};
+
+//......
+
+// component.ts
+import {useUncontrolledModel} from '@airma/react-state';
+import {counter} from './model';
+
+const MyComp = ({
+  value, 
+  onChange
+  }:{
+    value:number, 
+    onChange:(v:number)=>void
+  })=>{
+  const {
+    count, 
+    increase, 
+    decrease
+  } = useUncontrolledModel(counter, value, onChange);
+  return ...... 
+}
+
+function App(){
+  const [value, setValue] = useState<number>(0);
+
+  return (
+    <div>
+      <MyComp value={value} onChange={setValue}/>
+      <div>{value}</div>
+    </div>
+  );
+}
 ```
 
 ## Tips
