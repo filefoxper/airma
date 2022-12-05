@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "15.2.0",
+  "version": "15.2.1",
   "module": "dist/index.js",
   "typings": "index.d.ts",
   "author": "Jimmy.Harding",
@@ -25,17 +25,19 @@
     "react",
     "hook",
     "useReducer",
-    "class",
+    "state-management",
+    "closures",
     "state",
     "agent",
     "typescript",
-    "browser"
+    "browser",
+    "method-dispatch"
   ],
   "license": "MIT",
   "dependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
-    "@airma/core": "^15.2.0"
+    "@airma/core": "^15.2.1"
   },
   "devDependencies": {
     "prettier": "2.3.2",

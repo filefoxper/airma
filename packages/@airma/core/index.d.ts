@@ -5,19 +5,19 @@ export declare type Action = {
     params?: any[];
 };
 
-export declare type Dispatch = (action: Action) => unknown;
+export declare type Dispatch = (action: Action) => any;
 
 export declare type AirModel<S> = {
     state: S;
-    [key: string]: unknown;
+    [key: string]: any;
 };
 
 export declare interface AirModelInstance {
-    [key: string]: unknown;
+    [key: string]: any;
 }
 
 declare type ValidInstance<S,T extends AirModelInstance>={
-    [K in keyof T]:T[K] extends ((...args: unknown[]) => S)?T[K]:T[K] extends ((...args: unknown[]) => unknown)?never:T[K]
+    [K in keyof T]:T[K] extends ((...args: any[]) => S)?T[K]:T[K] extends ((...args: any[]) => any)?never:T[K]
 };
 
 export declare type AirReducer<S, T extends AirModelInstance> = (

@@ -6,6 +6,10 @@
       "name": "packages/@airma/react-state",
       "path": "packages/@airma/react-state"
     },
+    {
+      "name": "packages/@airma/react-task",
+      "path": "packages/@airma/react-task"
+    },
     { "name": "platforms/web-app", "path": "platforms/web-app" }
   ],
   "settings": {}

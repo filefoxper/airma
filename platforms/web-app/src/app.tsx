@@ -2,19 +2,17 @@ import React, { memo, useLayoutEffect, useState } from 'react';
 import {useModel, useTupleModel, useUncontrolledModel} from "@airma/react-state";
 
 const re = (state: number) => {
-  console.log('arg...', state);
-  const baseState = state >= 0 ? state : 0;
+  const count = state>=0?state:0;
   return {
-    state: baseState,
+    count,
+    isNegative: count < 0,
     increase() {
-      console.log('base...', baseState);
-      return baseState + 1;
+      return count + 1;
     },
     decrease() {
-      console.log('base...', baseState);
-      return baseState - 1;
+      return count - 1;
     }
-  };
+  }
 };
 
 const ReactStateEx = memo(() => {
