@@ -1,18 +1,28 @@
 import { AirModelInstance, AirReducer } from '@airma/core';
 
+export declare type Option = {
+  refresh?: boolean;
+};
+
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
-  state: D
+  state: D,
+  option?: Option
 ): T;
 
 export declare function useTupleModel<
   S,
   T extends AirModelInstance,
   D extends S
->(model: AirReducer<S, T>, state: D): [S, T];
+>(model: AirReducer<S, T>, state: D, option?: ((s: S) => any) | Option): [S, T];
 
-export function useControlledModel<
-  S,
-  T extends AirModelInstance,
-  D extends S
->(model: AirReducer<S, T>, state: D, onChange: (s: S) => any): T;
+export function useControlledModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  state: D,
+  onChange: (s: S) => any
+): T;
+
+export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  state: D
+): T;

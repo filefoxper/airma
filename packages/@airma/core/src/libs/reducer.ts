@@ -69,8 +69,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   ) {
     const { cacheState } = connection;
     connection.reducer = updateReducer;
-    const nextState = uncontrolled ? uncontrolled.state : cacheState;
-    connection.current = updateReducer(nextState);
+    connection.cacheState = uncontrolled ? uncontrolled.state : cacheState;
+    connection.current = updateReducer(connection.cacheState);
   };
   actualReducer.connect = function connect(dispatchCall) {
     connection.dispatch = null;
