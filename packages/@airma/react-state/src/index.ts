@@ -46,7 +46,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   return agent;
 }
 
-export function useUncontrolledModel<
+export function useControlledModel<
   S,
   T extends AirModelInstance,
   D extends S

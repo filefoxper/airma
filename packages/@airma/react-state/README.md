@@ -21,10 +21,10 @@ import {render} from 'react-dom'
 import {useModel} from '@airma/react-state';
 
 function App(){
-    const {state, increase, decrease} = useModel((state:number)=>{
+    const {count, increase, decrease} = useModel((state:number)=>{
         const baseState = state >= 0? state : 0;
         return {
-            state: baseState,
+            count: baseState,
             increase(){
                 return baseState + 1;
             },
@@ -36,7 +36,7 @@ function App(){
     return (
         <div>
             <button onClick={decrease}>-</button>
-            <span>{state}</span>
+            <span>{count}</span>
             <button onClick={increase}>+</button>
         </div>
     );
@@ -47,7 +47,7 @@ render(<App/>, document.getElementById('root'));
 
 It calls the model generate function when component is mounting or the model method has been called everytime.
 
-The example about shows how to use API to manage a step counting model with state. We call `increase` method to generate a next state, then `useModel` update this state by recall model generator again.
+The example above shows how to use API to manage a step counting model. We call `increase` method to generate a next state, then `useModel` update this state by recall model generator again.
 
 So, the state change flow of `increase` is like this:
 
@@ -63,7 +63,7 @@ return model(state);
 
 Yes, it is close with `useReducer`, but more free for usage. It looks like `agent-reducer` too, but it support dynamic closure function style, and it is simple enough.
 
-Try not use async methods, `@airma/react-state` will not support that, the target of `@airma/react-state` is supporting react local state manage, not all. We will support transform state from side effect like async request in other ways.
+Try not use async methods, `@airma/react-state` will not support that, the target of `@airma/react-state` is supporting react local state manage. We will support transform state from side effect like async request in other ways.
 
 ## API
 
@@ -120,7 +120,7 @@ const [count, {increase, decrease}] = useTupleModel((state:number)=>{
 },0);
 ```
 
-### useUncontrolledModel
+### useControlledModel
 
 * model - model generate function, it accepts a state param, and returns a model object, which contains methods for generating next state and any other properties for describing state.
 * state - this is the state for model, model can only update this state by `onChange` callback.
@@ -131,14 +131,14 @@ type AirModelInstance = Record<string, any>;
 
 type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
 
-function useUncontrolledModel<
+function useControlledModel<
   S,
   T extends AirModelInstance,
   D extends S
 >(model: AirReducer<S, T>, state: D, onChange: (s: S) => any): T
 ```
 
-With this API, you can use your model function more free, and more reusable.
+With this API, you can use your model function more free, and more reusable. This API is against `useModel`, `useModel` maintains state inside a model system, `useControlledModel` is always controlled by input `value, onChange` interfaces.
 
 ```tsx
 // model.ts
@@ -157,7 +157,7 @@ export const counter = (count:number)=>{
 //......
 
 // component.ts
-import {useUncontrolledModel} from '@airma/react-state';
+import {useControlledModel} from '@airma/react-state';
 import {counter} from './model';
 
 const MyComp = ({
@@ -171,7 +171,7 @@ const MyComp = ({
     count, 
     increase, 
     decrease
-  } = useUncontrolledModel(counter, value, onChange);
+  } = useControlledModel(counter, value, onChange);
   return ...... 
 }
 
@@ -226,6 +226,18 @@ render(<App/>, document.getElementById('root'));
 ```
 
 As we can see it is very easy to describe state properties for usage.
+
+## Persistent methods
+
+The methods from `useModel` returns is persistent, so, you can pass it to a memo component directly, it can improve your app performance.
+
+## Update data out of model function
+
+Yes, the methods are persistent, but the model function still can work with the data out of model when the model function is triggered by methods. They can be updated into model in time.
+
+## Safe reduce state
+
+The `useModel` and `useTupleModel`(without onChange) APIs are safing for usage. The state is outside of react system, so every update from methods is a safe reducing process. If you want to use `useState` to replace its job, you have to call it like: `setState((s)=>s+1)`.
 
 ## typescript check
 

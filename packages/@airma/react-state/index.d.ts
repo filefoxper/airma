@@ -11,7 +11,7 @@ export declare function useTupleModel<
   D extends S
 >(model: AirReducer<S, T>, state: D): [S, T];
 
-export function useUncontrolledModel<
+export function useControlledModel<
   S,
   T extends AirModelInstance,
   D extends S
