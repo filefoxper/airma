@@ -35,7 +35,7 @@ export interface ReducerPadding<
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
-  update: (reducer: AirReducer<S, T>) => void;
+  update: (reducer: AirReducer<S, T>,outState?:{state:S}) => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: () => void;
 }
