@@ -34,22 +34,22 @@ import {render} from 'react-dom'
 import {useModel} from '@airma/react-state';
 
 function App(){
-    const {state, increase, decrease} = useModel((state:number)=>{
-        const baseState = state >= 0? state : 0;
+    const {count, increase, decrease} = useModel((state:number)=>{
+        const count = state >= 0? state : 0;
         return {
-            state: baseState,
+            count,
             increase(){
-                return baseState + 1;
+                return count + 1;
             },
             decrease(){
-                return baseState - 1;
+                return count - 1;
             }
         };
     },0);
     return (
         <div>
             <button onClick={decrease}>-</button>
-            <span>{state}</span>
+            <span>{count}</span>
             <button onClick={increase}>+</button>
         </div>
     );
@@ -58,7 +58,7 @@ function App(){
 render(<App/>, document.getElementById('root'));
 ```
 
-We defines a model function like `(state:Type)=>({state:Type,method:(...args:unknow[])=>Type})`, this function accepts a state param, and returns an object, which contains as state property, and methods for generating new state. `useModel` can transform it to be a maintainable object.
+We defines a model function like `(state:Type)=>({...properties,method:(...args:unknow[])=>Type})`, this function accepts a state param, and returns an object, which contains any properties for describing states, and methods for generating new state param. `useModel` can transform it to be a maintainable object.
 
 You can compose or reuse your model function easy, and make something more useful for you.
 
@@ -103,4 +103,79 @@ function App(){
 render(<App/>, document.getElementById('root'));
 ```
 
+If you want to reuse your model function in a controlled component to process the out controlled state, like link to a `{value, onChange}` props, you can try `useControlledModel`.
+
+```tsx
+import React, {memo, useState} from 'react';
+import {render} from 'react-dom'
+import {useModel, useControlledModel} from '@airma/react-state';
+
+function count(state:number){
+    const baseState = state >= 0? state : 0;
+    return {
+        state: baseState,
+        increase(){
+            return baseState + 1;
+        },
+        decrease(){
+            return baseState - 1;
+        }
+    }; 
+}
+
+const Counter = memo(()=>{
+    const {state,increase,decrease} = useModel(count,0);
+
+    return (
+        <div>
+            <button onClick={decrease}>-</button>
+            <span>{state}</span>
+            <button onClick={increase}>+</button>
+        </div>
+    );
+});
+
+// reuse to a controlled component.
+const ControlledCounter = memo(({
+    value, 
+    onChange
+}:{
+    value:number, 
+    onChange:(v:number)=>void
+})=>{
+    const {
+        state,
+        increase,
+        decrease
+    } = useControlledModel(count,value,onChange);
+
+    return (
+        <div>
+            <button onClick={decrease}>-</button>
+            <span>{state}</span>
+            <button onClick={increase}>+</button>
+        </div>
+    );
+});
+
+function App(){
+    const [value, setValue] = useState(0);
+    return (
+        <div>
+            <Counter/>
+            <div>{value}</div>
+            <ControlledCounter value={value} onChange={setValue}/>
+        </div>
+    );
+}
+
+render(<App/>, document.getElementById('root'));
+```
+
 It is simple now, but we will add some more useful features in future. If you want to know more about this tool, please take this [document](https://github.com/filefoxper/airma/tree/master/packages/%40airma/react-state).
+
+## Support
+
+1. It is a typescript project, so you can use it with typescript.
+2. react-refresh, we have support react-refresh plugin, you can modify a model function and check the differences easily.
+3. react-strictMode, you can use `<React.StrictMode><App/></React.StrictMode>` to check if your model function has some bad effects.
