@@ -241,6 +241,30 @@ function App(){
 render(<App/>, document.getElementById('root'));
 ```
 
+The model function can return almost every model extends `Record<string|number, any>`. Yes, you can write a tuple model if you wish.
+
+```tsx
+import React from 'react';
+import {render} from 'react-dom'
+import {useModel} from '@airma/react-state';
+
+const toggleModel = (v:boolean):[boolean, ()=>boolean] =>[ v, ()=>!v ];
+
+function App(){
+    const [visible, toggle] = useModel(toggleModel,false);
+    return (
+        <div>
+            <button onClick={toggle}>toggle</button>
+            <span style={!visible?{display:'none'}:undefined}>
+              hellow world
+            </span>
+        </div>
+    );
+}
+
+render(<App/>, document.getElementById('root'));
+```
+
 As we can see it is very easy to describe state properties for usage.
 
 ## Persistent methods

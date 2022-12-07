@@ -14,6 +14,7 @@ export type AirModel<S> = {
 
 export interface AirModelInstance {
   [key: string]: unknown;
+  [key: number]: unknown;
 }
 
 type ValidInstance<S, T extends AirModelInstance> = {
@@ -35,7 +36,7 @@ export interface ReducerPadding<
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
-  update: (reducer: AirReducer<S, T>,outState?:{state:S}) => void;
+  update: (reducer: AirReducer<S, T>, outState?: { state: S }) => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: () => void;
 }

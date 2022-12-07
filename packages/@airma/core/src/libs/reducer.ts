@@ -57,7 +57,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   actualReducer.agent = createProxy(defaultModel, {
     get(target: T, p: string): unknown {
       const value = connection.current[p];
-      if (typeof value === 'function') {
+      if (connection.current.hasOwnProperty(p) && typeof value === 'function') {
         return rebuildDispatchMethod<S, T>(connection, p);
       }
       return value;
