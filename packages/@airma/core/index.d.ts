@@ -14,6 +14,7 @@ export declare type AirModel<S> = {
 
 export declare interface AirModelInstance {
     [key: string]: any;
+    [key: number]: any;
 }
 
 declare type ValidInstance<S,T extends AirModelInstance>={
