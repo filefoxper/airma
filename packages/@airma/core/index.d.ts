@@ -56,6 +56,8 @@ export declare function createProxy<T extends Record<string, any>>(
     handler: ProxyHandler<T>,
 ): T;
 
-export function isFunctionModel<S, T extends AirModel<S>>(
+export declare function isFunctionModel<S, T extends AirModel<S>>(
     model: T | { new (): T } | ((state: S) => T)
 ): model is (state: S) => T;
+
+export declare function shallowEqual<R>(prev: R, current: R): boolean;
