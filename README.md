@@ -15,6 +15,9 @@ This target of @airma is provide a more simple model function to replace react A
 1. [@airma/core](https://github.com/filefoxper/airma/tree/master/packages/%40airma/core)
 2. [@airma/react-state](https://github.com/filefoxper/airma/tree/master/packages/%40airma/react-state)
 
+## explain
+
+all the libraries in `@airma` are started from version `15.0.0`, so, they is really fresh libraries.
 
 ## install
 
