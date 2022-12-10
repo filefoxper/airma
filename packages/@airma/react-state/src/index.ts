@@ -1,12 +1,36 @@
 import type {
-  ActualReducer,
   AirModelInstance,
   AirReducer,
-  Action
+  Action,
+  Connection
 } from '@airma/core';
 import type { Option } from './type';
-import { createModel } from '@airma/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FC, ReactNode } from 'react';
+
+import {
+  activeRequiredModels,
+  createModel,
+  createRequiredModels,
+  HoldCallback
+} from '@airma/core';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  createContext,
+  createElement,
+  useContext
+} from 'react';
+
+function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
+  const dispatchRef = useRef<T>(callback);
+  dispatchRef.current = callback;
+  const persistRef = useRef((...args: any[]): any => {
+    return dispatchRef.current(...args);
+  });
+  return persistRef.current as T;
+}
 
 export function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
@@ -18,10 +42,7 @@ export function useTupleModel<S, T extends AirModelInstance, D extends S>(
     typeof option !== 'function' && option ? option : defaultOpt;
 
   const modelRef = useRef<AirReducer<S, T>>(model);
-  const current = useMemo<ActualReducer<S, T>>(
-    () => createModel<S, T, D>(model, state),
-    []
-  );
+  const current = useMemo(() => createModel<S, T, D>(model, state), []);
   const [s, setS] = useState<S>(state);
   if (modelRef.current !== model && typeof option !== 'function') {
     modelRef.current = model;
@@ -39,7 +60,8 @@ export function useTupleModel<S, T extends AirModelInstance, D extends S>(
     }
     setS(actionState);
   };
-  current.connect(dispatch);
+  const persistDispatch = usePersistFn(dispatch);
+  current.connect(persistDispatch);
 
   useEffect(() => {
     if (refresh) {
@@ -51,7 +73,7 @@ export function useTupleModel<S, T extends AirModelInstance, D extends S>(
   useEffect(() => {
     const updateSource = typeof option === 'function' || refresh ? state : s;
     current.update(model, { state: updateSource });
-    current.connect(dispatch);
+    current.connect(persistDispatch);
     return () => {
       current.disconnect();
     };
@@ -104,4 +126,76 @@ export function useRefresh<T extends (...args: any[]) => any>(
   useEffect(() => {
     method(...params);
   }, [method, ...params]);
+}
+
+type Selector = {
+  get(reducer: AirReducer<any, any>): Connection | undefined;
+  parent: Selector | null;
+};
+
+const ReactStateContext = createContext<Selector | null>(null);
+
+export const RequiredModelProvider: FC<{
+  value: Array<any> | ((...args: any) => any) | Record<string, any>;
+  children: ReactNode;
+}> = ({ value, children }) => {
+  const context = useContext(ReactStateContext);
+  const paddingRef = useRef(activeRequiredModels(value));
+  const selector = useMemo(() => {
+    return { ...paddingRef.current, parent: context };
+  }, [context]);
+  return createElement(
+    ReactStateContext.Provider,
+    { value: selector },
+    children
+  );
+};
+
+export function useRequiredModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  state?: D
+): T {
+  function find(
+    c: Selector,
+    m: typeof model
+  ): Connection<S | undefined, T> | undefined {
+    const d = c.get(m);
+    if (!d && c.parent) {
+      return find(c.parent, m);
+    }
+    return d as Connection<S | undefined, T> | undefined;
+  }
+  const context = useContext(ReactStateContext);
+  const connection = context ? find(context, model) : undefined;
+  const current = useMemo(
+    () =>
+      connection || createModel<S | undefined, T, D | undefined>(model, state),
+    [model, connection]
+  );
+  const [s, setS] = useState<S | undefined>(
+    connection ? connection.getCacheState() : state
+  );
+
+  const dispatch = ({ state }: Action) => {
+    setS(state);
+  };
+  const persistDispatch = usePersistFn(dispatch);
+  current.connect(persistDispatch);
+
+  useEffect(() => {
+    if (!connection) {
+      current.update(model, { state: s });
+    }
+    current.connect(persistDispatch);
+    return () => {
+      current.disconnect(persistDispatch);
+    };
+  }, []);
+  return current.agent as T;
+}
+
+export function requireModels<
+  T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(requireFn: (hold: HoldCallback) => T): T {
+  return createRequiredModels<T>(requireFn);
 }

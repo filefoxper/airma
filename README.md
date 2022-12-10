@@ -172,10 +172,103 @@ function App(){
 render(<App/>, document.getElementById('root'));
 ```
 
+We have support state sharing now. You can try `requireModels`, `RequiredModelProvider`, `useRequiredModel` API to share your model function and model states by creating a store factory.
+
+The store factory can be a model function or a object contains model function. You can fetch your model by accessing the store factory or its property as a model id. And pass it to `useRequiredModel` for model instance usage.
+
+```tsx
+import React, {memo, useState} from 'react';
+import {render} from 'react-dom'
+import {
+    requireModels, 
+    RequiredModelProvider, 
+    useRequiredModel
+} from '@airma/react-state';
+
+function count(state:number = 0){
+    const baseState = state >= 0? state : 0;
+    return {
+        state: baseState,
+        increase(){
+            return baseState + 1;
+        },
+        decrease(){
+            return baseState - 1;
+        }
+    }; 
+}
+
+function selector(selection:number[]){
+    const selectionSet = new Set(selection);
+    return {
+        select(value:number){
+            if(selectionSet.has(value)){
+                return selection.filter((v)=>v!==value);
+            }
+            return [...selection,value];
+        }
+    }
+}
+
+// create a store factory
+const storeFactory = requireModels((hold)=>{
+    // use hold to make sure the model function is linked into store
+    return {
+        count: hold(count),
+        // the hold callback can accept a default state too, `[]`
+        selector: hold(selector, [])
+    };
+});
+
+const Counter = memo(()=>{
+    // use the store factory to find the model,
+    // the state is persisted in the store created by  
+    // 'RequiredModelProvider'
+    const {state,increase,decrease} = useRequiredModel(storeFactory.count);
+
+    return (
+        <div>
+            <button onClick={decrease}>-</button>
+            <span>{state}</span>
+            <button onClick={increase}>+</button>
+        </div>
+    );
+});
+
+const Counter2 = memo(()=>{
+    // use the store factory to find the model,
+    // the state is persisted in the store created by  
+    // 'RequiredModelProvider',
+    // and it equals with `storeFactory.count` state in Counter
+    const {state,increase} = useRequiredModel(storeFactory.count);
+
+    return (
+        <div>
+            <span>{state}</span>
+            <button onClick={increase}>+</button>
+        </div>
+    );
+});
+
+function App(){
+    // use RequiredModelProvider to create a sharing store
+    return (
+        <RequiredModelProvider value = {storeFactory}>
+            <Counter/>
+            <Counter2/>
+        </RequiredModelProvider>
+    );
+}
+
+render(<App/>, document.getElementById('root'));
+```
+
+Why not global state? We have found all states in global is terrible for reusing. For example, some times we need a component with different instances appears twice at a same time with its own state. So, use a store factory which can be used to create a true store with Provider is much better.  
+
 It is simple now, but we will add some more useful features in future. If you want to know more about this tool, please take this [document](https://github.com/filefoxper/airma/tree/master/packages/%40airma/react-state).
 
 ## Support
 
 1. It is a typescript project, so you can use it with typescript.
-2. react-refresh, we have support react-refresh plugin, you can modify a model function and check the differences easily.
+2. react-refresh, we have support react-refresh plugin, you can modify a model function and check the differences easily, The global store is not support react-refresh well.
 3. react-strictMode, you can use `<React.StrictMode><App/></React.StrictMode>` to check if your model function has some bad effects.

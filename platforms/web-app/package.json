@@ -14,7 +14,7 @@
     "react-dom": ">=16.8.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
-    "@airma/react-state": "15.2.5"
+    "@airma/react-state": "15.3.0"
   },
   "devDependencies": {
     "@types/react": "16.9.56",

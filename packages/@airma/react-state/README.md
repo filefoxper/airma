@@ -203,6 +203,218 @@ export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
 ): T;
 ```
 
+When the param state changes, model instance is refreshed by the new state param.
+
+### useRefresh
+
+* method - the method from model instance.
+* params - the params of the method, it is an array for method parameters.
+
+
+```ts
+export declare function useRefresh<T extends (...args: any[]) => any>(
+  method: T,
+  params: Parameters<T>
+):void;
+```
+When the some of the params change, the method is called with these params.
+
+### requireModels
+
+* requireFn - It is a model store generator callback, you can return an object or a model function as model store. The requireFn param callback `hold` is important to make sure the end model function can be accessed as a persistent model. You can pass your model function and `defaultState` into `hold`.
+
+```ts
+export declare function requireModels<
+  T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(requireFn: (hold: HoldCallback) => T): T;
+```
+
+This API is for create a model store, it can be used with `RequiredModelProvider`, and make the state global possible.
+
+ex:
+
+```tsx
+import {
+  requireModels,
+  RequiredModelProvider,
+  useRequiredModel
+} from '@airma/react-state';
+
+const model = (state:number) => 
+({count: state,increase: ()=>state+1});
+
+// persist model and default state with hold
+const factory = requireModels((hold)=>hold(model, 0));
+
+......
+
+const Child1 = ()=>{
+  // use the holded factory to access the model function
+  const {count, increase} = useRequiredModel(factory);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const Child2 = ()=>{
+  const {count, increase} = useRequiredModel(factory);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const App = ()=>{
+  // pass factory to Provider as a context
+  return (
+    <RequiredModelProvider value={factory}>
+      <Child1/>
+      <Child2/>
+    </RequiredModelProvider>
+  );
+}
+```
+
+or 
+
+```tsx
+import {
+  requireModels,
+  RequiredModelProvider,
+  useRequiredModel
+} from '@airma/react-state';
+
+const model = (state:number) => 
+({count: state,increase: ()=>state+1});
+
+// persist model and default state with hold
+// you can create an object to organize your model store
+const factory = requireModels((hold)=>({
+  increase: hold(model, 0),
+  addition: hold(model, 0)
+  }));
+
+......
+
+const Child1 = ()=>{
+  // use the holded value to access your model function
+  const {count, increase} = useRequiredModel(factory.increase);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const Child2 = ()=>{
+
+  const {count, increase} = useRequiredModel(factory.increase);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const Child3 = ()=>{
+  // The hold always generates a new model function,
+  // so, the addition is a different model function with increase
+  const {count, increase} = useRequiredModel(factory.addition);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const App = ()=>{
+  return (
+    <RequiredModelProvider value={factory}>
+      <Child1/>
+      <Child2/>
+      <Child3/>
+    </RequiredModelProvider>
+  );
+}
+```
+
+### RequiredModelProvider
+
+* value - model store created by `requireModels` API.
+* children - react nodes.
+
+return react nodes.
+
+```tsx
+export declare const RequiredModelProvider: FC<{
+  value: Array<any> | ((...args: any) => any) | Record<string, any>;
+  children: ReactNode;
+}>;
+```
+
+This provider creates a React Context to link with model store, and you can use model from this store to share `state` and `model` in different child components without props flow help.
+
+### useRequiredModel
+
+* model - a model generate function from store.
+* state - a default state for a local model, if the store is not link into a parent `RequiredModelProvider`.
+
+return a model instance from model store, if the store is not used in any parent `RequiredModelProvider`, it creates a local one with the param state.
+
+```tsx
+import {
+  requireModels,
+  RequiredModelProvider,
+  useRequiredModel
+} from '@airma/react-state';
+
+const model = (state:number) => 
+({count: state,increase: ()=>state+1});
+
+// persist model and default state with hold
+// you can create an object to organize your model store
+const factory = requireModels((hold)=>({
+  increase: hold(model, 0)
+}));
+
+const factory2 = requireModels((hold)=>({
+  increase: hold(model, 0)
+}));
+
+......
+
+const Child1 = ()=>{
+  // use the holded value to access your model function
+  const {count, increase} = useRequiredModel(factory.increase);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const Child2 = ()=>{
+  // useRequiredModel find model function from a tree built by 
+  // `RequiredModelProvider`s.
+  const {count, increase} = useRequiredModel(factory.increase);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const Child3 = ()=>{
+  // factory2 is not linked into a parent RequiredModelProvider,
+  // it create a local model function by factory2.increase.
+  const {count, increase} = useRequiredModel(factory2.increase,0);
+  return (
+    <div> ...... </div>
+  );
+}
+
+const App = ()=>{
+  return (
+    <RequiredModelProvider value={factory}>
+      <Child1/>
+      <RequiredModelProvider value={factory}>
+        <Child2/>
+      </RequiredModelProvider>
+      <Child3/>
+    </RequiredModelProvider>
+  );
+}
+```
+
 ## Tips
 
 The `state` property of model object is not necessary, it can be ignored, you can have some properties as you wish.

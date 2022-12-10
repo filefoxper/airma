@@ -31,27 +31,32 @@ export type AirReducer<S, T extends AirModelInstance> = (
 
 export type Reducer<S, A> = (state: S, action: A) => S;
 
-export interface ReducerPadding<
+export interface Connection<
   S = any,
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
+  getCacheState():S;
   update: (reducer: AirReducer<S, T>, outState?: { state: S }) => void;
   connect: (dispatch?: Dispatch) => void;
-  disconnect: () => void;
+  disconnect: (dispatch?: Dispatch) => void;
 }
 
 // inner interface
-export type ActualReducer<S = any, T extends AirModelInstance = any> = Reducer<
-  S,
-  Action
-> &
-  ReducerPadding<S, T>;
-
-export type Connection<S, T extends AirModelInstance> = {
+export type Updater<S, T extends AirModelInstance> = {
   current: T;
   reducer: AirReducer<S, T>;
   dispatch: Dispatch | null;
+  dispatches:Dispatch[];
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: S;
 };
+
+export type Creation<T> = {
+  creation():Connection
+}
+
+export type HoldCallback = <S=any, T extends AirModelInstance=any, D extends S=any>(
+  reducer: AirReducer<S, T>,
+  defaultState?: D
+) => typeof reducer & Creation<T>;

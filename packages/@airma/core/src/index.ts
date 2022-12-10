@@ -1,3 +1,8 @@
-export { default as createModel } from './libs/reducer';
+export { default as createModel, createRequiredModels,activeRequiredModels } from './libs/reducer';
 
-export { useSimpleProxy, createProxy, isFunctionModel,shallowEqual } from './libs/tools';
+export {
+  useSimpleProxy,
+  createProxy,
+  isFunctionModel,
+  shallowEqual
+} from './libs/tools';
