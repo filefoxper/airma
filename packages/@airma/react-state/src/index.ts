@@ -196,6 +196,6 @@ export function useRequiredModel<S, T extends AirModelInstance, D extends S>(
 
 export function requireModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (hold: HoldCallback) => T): T {
+>(requireFn: (factory: HoldCallback) => T): T {
   return createRequiredModels<T>(requireFn);
 }
