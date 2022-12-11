@@ -55,4 +55,4 @@ export declare function useRequiredModel<
 
 export declare function requireModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (hold: HoldCallback) => T): T;
+>(requireFn: (factory: HoldCallback) => T): T;

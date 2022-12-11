@@ -1,114 +1,64 @@
-import React, { memo, useState } from 'react';
+import React,{memo} from 'react';
+import {render} from 'react-dom'
 import {
     requireModels,
-    useRequiredModel,
-    RequiredModelProvider, useRefreshModel, useRefresh
+    RequiredModelProvider,
+    useRequiredModel
 } from '@airma/react-state';
 
-const re = (state: number = 0) => {
-  const count = state >= 0 ? state : 0;
-  return {
-    count,
-    isNegative: count < 0,
-    increase() {
-      return count + 1;
-    },
-    decrease() {
-      return count - 1;
-    },
-    update(next: number,desc:string) {
-      return next;
-    }
-  };
+const counter = (count:number = 0) =>{
+    return {
+        count,
+        isNegative: count<0,
+        increase:()=>count+1,
+        decrease:()=>count-1
+    };
 };
 
-const factory = requireModels(hold => hold(re));
+const modelFactory =  requireModels((factory)=>({
+    counter:factory(counter)
+}));
 
-const factory2 = requireModels(hold => hold(re));
-
-const ReactStateEx = memo(() => {
-  const [value, setValue] = useState(0);
-  const { count, isNegative, increase, decrease } = useRequiredModel(
-    factory,
-    value
-  );
-
-  return (
-    <div>
-      <div>react state ex 1</div>
-      <div>{value}</div>
-      <div>
-        <button onClick={() => setValue(v => v + 1)}>rest</button>
-      </div>
-      <div>
-        <button onClick={decrease}>-</button>
-        <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
+const Increase = memo(()=>{
+    const {increase} = useRequiredModel(modelFactory.counter);
+    return (
         <button onClick={increase}>+</button>
-      </div>
-    </div>
-  );
-});
-
-const Link1 = memo(() => {
-  const [value, setValue] = useState(0);
-  const { count, isNegative, increase, decrease,update } = useRequiredModel(
-    factory2,
-    value
-  );
-
-  useRefresh(update,[value,'1']);
-
-  return (
-    <div>
-      <div>react state ex 2</div>
-      <div>{value}</div>
-      <div>
-        <button onClick={() => setValue(v => v + 1)}>rest</button>
-      </div>
-      <div>
-        <button onClick={decrease}>-</button>
-        <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
-        <button onClick={increase}>+</button>
-      </div>
-    </div>
-  );
-});
-
-const Link2 = memo(() => {
-    const [value, setValue] = useState(0);
-    const { count, isNegative, increase, decrease,update } = useRequiredModel(
-        factory2,
-        value
     );
+});
 
-    useRefresh(update,[value,'1']);
+const Decrease = memo(()=>{
+    const {decrease} = useRequiredModel(modelFactory.counter);
+    return (
+        <button onClick={decrease}>-</button>
+    );
+});
 
+const CountValue = memo(()=>{
+    const {count,isNegative} = useRequiredModel(modelFactory.counter);
+    return (
+        <span style={isNegative?{color:'red'}:undefined}>{count}</span>
+    );
+});
+
+function Counter({index}:{index:number}){
     return (
         <div>
-            <div>react state ex 2</div>
-            <div>{value}</div>
-            <div>
-                <button onClick={() => setValue(v => v + 1)}>rest</button>
-            </div>
-            <div>
-                <button onClick={decrease}>-</button>
-                <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
-                <button onClick={increase}>+</button>
-            </div>
+            counter:{index}
+            <RequiredModelProvider value={modelFactory}>
+                <div>
+                    <Decrease/>
+                    <CountValue/>
+                    <Increase/>
+                </div>
+            </RequiredModelProvider>
         </div>
     );
-});
+}
 
-export default function App() {
-  return (
-    <RequiredModelProvider value={factory}>
-        App
-        <RequiredModelProvider value={factory2}>
-            <Link1 />
-            <Link2 />
-        </RequiredModelProvider>
-
-        <ReactStateEx />
-    </RequiredModelProvider>
-  );
+export default function App(){
+    return (
+        <div>
+            <Counter index={1}/>
+        </div>
+    );
 }
