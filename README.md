@@ -17,7 +17,7 @@ This target of @airma is provide a more simple model function to replace react A
 
 ## explain
 
-all the libraries in `@airma` are started from version `15.0.0`, so, they is really fresh libraries.
+all the libraries in `@airma` are started from version `15.0.0`, so, they are really fresh libraries.
 
 ## install
 
