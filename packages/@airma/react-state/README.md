@@ -317,6 +317,8 @@ export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
 
 When the param state changes, model instance is refreshed by the new state param.
 
+Suggest using this API with async state mangement library like [react-query](https://tanstack.com/query/v4).
+
 ### useRefresh
 
 It is used to watch the dependencies change, and call instance method to refresh a model instance with dependencies.
@@ -331,6 +333,8 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
 ):void;
 ```
 When some of the params change, the method is called with these params.
+
+Suggest using this API with async state mangement library like [react-query](https://tanstack.com/query/v4).
 
 ### requireModels
 

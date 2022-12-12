@@ -61,14 +61,17 @@ export declare function createRequiredModels<
   requireFn: (hold: HoldCallback) => T
 ): T;
 
+declare type ModelFactoryStore<T> = {
+  update(updateFactory: T): ModelFactoryStore<T>;
+  get(reducer: AirReducer<any, any>): Connection | undefined;
+  destroy(): void;
+};
+
 export declare function activeRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
 >(
   models: T
-): {
-  get(reducer: AirReducer<any, any>): Connection | undefined;
-  destroy(): void;
-};
+): ModelFactoryStore<T>;
 
 export declare function useSimpleProxy<T extends Record<string, unknown>>(
   target: T,

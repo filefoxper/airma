@@ -12,11 +12,7 @@ module.exports = function config() {
       splitChunks: core.optimization.splitChunks
     },
     resolve: {
-      ...core.resolve,
-      alias: {
-        "@airma/core":"@airma/core/src/index.ts",
-        "@airma/react-state":"@airma/react-state/src/index.ts"
-      }
+      ...core.resolve
     },
     plugins: [
       new ReactRefreshPlugin(),

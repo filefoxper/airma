@@ -7,7 +7,7 @@ import type {
   Connection
 } from './type';
 import { createProxy } from './tools';
-import { Collection, Creation, ModelFactoryStore } from './type';
+import {Collection, Creation, ModelFactoryStore} from './type';
 
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
@@ -90,6 +90,17 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
+const requiredModelKey = '@airma/core/requiredModels';
+
+function record<
+  T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(factory: T) {
+  if (typeof factory === 'function') {
+    return [factory, undefined];
+  }
+  const keys = Object.keys(factory);
+}
+
 export function createRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
 >(requireFn: (hold: HoldCallback) => T): T {
@@ -142,7 +153,9 @@ function collectConnections<
 
 export function activeRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(fact: T): ModelFactoryStore<T> {
+>(
+  fact: T
+): ModelFactoryStore<T> {
   function extractFactory(collections: Collection[]) {
     const connections = collections.map(({ connection }) => connection);
     const instances = new Map(
@@ -154,18 +167,13 @@ export function activeRequiredModels<
       instances
     };
   }
-  function update(collections: Collection[], updated: Collection[]) {
-    const map = new Map(
-      updated.map(({ key, connection, factory }) => [
-        key,
-        { connection, factory }
-      ])
-    );
-    collections.forEach(({ key, connection }) => {
+  function update(collections:Collection[],updated:Collection[]){
+    const map = new Map(updated.map(({key,connection,factory})=>[key, {connection,factory}]));
+    collections.forEach(({key,connection})=>{
       const c = map.get(key);
-      if (c) {
-        c.connection.update(c.factory, { state: connection.getCacheState() });
-      } else {
+      if(c){
+        c.connection.update(c.factory,{state:connection.getCacheState()});
+      }else{
         connection.disconnect();
       }
     });
@@ -173,15 +181,15 @@ export function activeRequiredModels<
   const holder = extractFactory(collectConnections(fact));
 
   const store = {
-    update(updateFactory: T): ModelFactoryStore<T> {
-      if (updateFactory === fact) {
-        return { ...store };
+    update(updateFactory:T):ModelFactoryStore<T>{
+      if(updateFactory===fact){
+        return {...store};
       }
       const collections = collectConnections(updateFactory);
-      update(holder.collections, collections);
+      update(holder.collections,collections);
       const newHolder = extractFactory(collections);
-      Object.assign(holder, { ...newHolder });
-      return { ...store };
+      Object.assign(holder,{...newHolder});
+      return {...store};
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {
       return holder.instances.get(reducer);
@@ -190,5 +198,5 @@ export function activeRequiredModels<
       holder.connections.forEach(connection => connection.disconnect());
     }
   };
-  return { ...store };
+  return {...store};
 }

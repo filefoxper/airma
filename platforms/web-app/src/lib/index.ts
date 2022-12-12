@@ -2,7 +2,8 @@ import type {
   AirModelInstance,
   AirReducer,
   Action,
-  Connection
+  Connection,
+  HoldCallback
 } from '@airma/core';
 import type { Option } from './type';
 import type { FC, ReactNode } from 'react';
@@ -10,9 +11,8 @@ import type { FC, ReactNode } from 'react';
 import {
   activeRequiredModels,
   createModel,
-  createRequiredModels,
-  HoldCallback
-} from '@airma/core';
+  createRequiredModels
+} from './core';
 import {
   useEffect,
   useMemo,
@@ -146,9 +146,9 @@ export const RequiredModelProvider: FC<{
     return { ...store, parent: context };
   }, [context, value]);
   return createElement(
-      ReactStateContext.Provider,
-      { value: selector },
-      children
+    ReactStateContext.Provider,
+    { value: selector },
+    children
   );
 };
 
