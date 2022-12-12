@@ -4,10 +4,10 @@ import type {
   AirReducer,
   Updater,
   HoldCallback,
-  Connection,
+  Connection
 } from './type';
 import { createProxy } from './tools';
-import { Creation } from './type';
+import { Collection, Creation, ModelFactoryStore } from './type';
 
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
@@ -90,16 +90,9 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
-const requiredModelKey = '@airma/core/requiredModels';
-
 export function createRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(
-  requireFn: (
-    hold: HoldCallback
-  ) => T & { [requiredModelKey]: () => [AirReducer<any, any>, Connection][] }
-): T & { [requiredModelKey]: () => [AirReducer<any, any>, Connection][] } {
-  const modelList: (AirReducer<any, any> & Creation<any>)[] = [];
+>(requireFn: (hold: HoldCallback) => T): T {
   const hold: HoldCallback = function hold(
     reducer: AirReducer<any, any>,
     defaultState: any
@@ -113,43 +106,89 @@ export function createRequiredModels<
         ...model
       };
     };
-    modelList.push(replaceModel);
     return replaceModel;
   };
-  const models = requireFn(hold);
-  models[requiredModelKey] = function active(): [
-    AirReducer<any, any>,
-    Connection
-  ][] {
-    return modelList.map(model => {
-      return [model, model.creation()];
-    });
-  };
-  return models;
+  return requireFn(hold);
+}
+
+function collectConnections<
+  T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(factory: T, collectionKeys: string[] = []): Collection[] {
+  if (
+    typeof factory === 'function' &&
+    typeof (factory as typeof factory & Creation<any>).creation === 'function'
+  ) {
+    return [
+      {
+        key: collectionKeys.join('.'),
+        factory: factory as (...args: any[]) => any,
+        connection: (factory as typeof factory & Creation<any>).creation()
+      } as Collection
+    ];
+  }
+  if (!factory || typeof factory !== 'object') {
+    return [];
+  }
+  const collection: Collection[] = [];
+  const fact = factory as Exclude<T, (...args: any) => any>;
+  const keys = Object.keys(fact);
+  keys.forEach((key: string) => {
+    const k = key as keyof T;
+    const result = collectConnections(fact[k], [...collectionKeys, key]);
+    collection.push(...result);
+  });
+  return collection;
 }
 
 export function activeRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(
-  factory: T & {
-    [requiredModelKey]: () => [AirReducer<any, any>, Connection][];
+>(fact: T): ModelFactoryStore<T> {
+  function extractFactory(collections: Collection[]) {
+    const connections = collections.map(({ connection }) => connection);
+    const instances = new Map(
+      collections.map(({ factory, connection }) => [factory, connection])
+    );
+    return {
+      collections,
+      connections,
+      instances
+    };
   }
-): {
-  get(reducer: AirReducer<any, any>): Connection | undefined;
-  destroy(): void;
-} {
-  const active = factory[requiredModelKey];
-  if (typeof active !== 'function') {
-    throw new Error('This is a invalid model collection or function');
+  function update(collections: Collection[], updated: Collection[]) {
+    const map = new Map(
+      updated.map(({ key, connection, factory }) => [
+        key,
+        { connection, factory }
+      ])
+    );
+    collections.forEach(({ key, connection }) => {
+      const c = map.get(key);
+      if (c) {
+        c.connection.update(c.factory, { state: connection.getCacheState() });
+      } else {
+        connection.disconnect();
+      }
+    });
   }
-  const pairs = active();
-  const instances = new Map(pairs);
-  return {
+  const holder = extractFactory(collectConnections(fact));
+
+  const store = {
+    update(updateFactory: T): ModelFactoryStore<T> {
+      if (updateFactory === fact) {
+        return { ...store };
+      }
+      const collections = collectConnections(updateFactory);
+      update(holder.collections, collections);
+      const newHolder = extractFactory(collections);
+      Object.assign(holder, { ...newHolder });
+      return { ...store };
+    },
     get(reducer: AirReducer<any, any>): Connection | undefined {
-      return instances.get(reducer);
+      return holder.instances.get(reducer);
     },
     destroy() {
-      pairs.forEach(([, padding]) => padding.disconnect());
+      holder.connections.forEach(connection => connection.disconnect());
     }
   };
+  return { ...store };
 }

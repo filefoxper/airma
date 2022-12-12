@@ -273,5 +273,5 @@ It is simple now, but we will add some more useful features in future. If you wa
 ## Support
 
 1. It is a typescript project, so you can use it with typescript.
-2. react-refresh, we have support react-refresh plugin, you can modify a model function and check the differences easily, The global store is not support react-refresh well.
+2. react-refresh, we have support react-refresh plugin, you can modify a model function and check the differences easily.
 3. react-strictMode, you can use `<React.StrictMode><App/></React.StrictMode>` to check if your model function has some bad effects.

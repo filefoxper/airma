@@ -140,14 +140,15 @@ export const RequiredModelProvider: FC<{
   children: ReactNode;
 }> = ({ value, children }) => {
   const context = useContext(ReactStateContext);
-  const paddingRef = useRef(activeRequiredModels(value));
+  const storeRef = useRef(activeRequiredModels(value));
   const selector = useMemo(() => {
-    return { ...paddingRef.current, parent: context };
-  }, [context]);
+    const store = storeRef.current.update(value);
+    return { ...store, parent: context };
+  }, [context, value]);
   return createElement(
-    ReactStateContext.Provider,
-    { value: selector },
-    children
+      ReactStateContext.Provider,
+      { value: selector },
+      children
   );
 };
 
