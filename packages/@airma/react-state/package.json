@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "15.4.0",
+  "version": "15.4.1",
   "module": "dist/index.js",
   "typings": "index.d.ts",
   "author": "Jimmy.Harding",
@@ -26,6 +26,7 @@
     "hook",
     "useReducer",
     "state-management",
+    "react-query support",
     "closures",
     "state",
     "agent",
@@ -37,7 +38,7 @@
   "dependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
-    "@airma/core": "^15.4.0"
+    "@airma/core": "^15.4.1"
   },
   "devDependencies": {
     "prettier": "2.3.2",

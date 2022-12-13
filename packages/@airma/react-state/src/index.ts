@@ -11,7 +11,7 @@ import {
   activeRequiredModels,
   createModel,
   createRequiredModels,
-  HoldCallback
+  FactoryHolder
 } from '@airma/core';
 import {
   useEffect,
@@ -197,6 +197,6 @@ export function useRequiredModel<S, T extends AirModelInstance, D extends S>(
 
 export function requireModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (factory: HoldCallback) => T): T {
+>(requireFn: (factory: FactoryHolder) => T): T {
   return createRequiredModels<T>(requireFn);
 }

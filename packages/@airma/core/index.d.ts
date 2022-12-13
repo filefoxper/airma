@@ -46,19 +46,17 @@ export declare function createModel<S, T extends AirModelInstance, D extends S>(
   defaultState: D
 ): Connection<S, T>;
 
-declare type HoldCallback = <
-  S = any,
-  T extends AirModelInstance = any,
-  D extends S = any
+declare type FactoryHolder = <
+  T extends AirReducer<any, any>,
 >(
-  reducer: AirReducer<S, T>,
-  defaultState?: D
-) => typeof reducer;
+  reducer: T,
+  defaultState?: T extends AirReducer<infer S, any>?S:never
+) => T;
 
 export declare function createRequiredModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
 >(
-  requireFn: (hold: HoldCallback) => T
+  requireFn: (factory: FactoryHolder) => T
 ): T;
 
 declare type ModelFactoryStore<T> = {

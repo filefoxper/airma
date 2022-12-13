@@ -1,4 +1,4 @@
-import { AirModelInstance, AirReducer, HoldCallback } from '@airma/core';
+import { AirModelInstance, AirReducer, FactoryHolder } from '@airma/core';
 import { FC, ReactNode } from 'react';
 
 export declare type Option = {
@@ -55,4 +55,4 @@ export declare function useRequiredModel<
 
 export declare function requireModels<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (factory: HoldCallback) => T): T;
+>(requireFn: (factory: FactoryHolder) => T): T;

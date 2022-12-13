@@ -12,10 +12,16 @@ module.exports = function config() {
       splitChunks: core.optimization.splitChunks
     },
     resolve: {
-      ...core.resolve
+      ...core.resolve,
+      alias: {
+        "@airma/core":"@airma/core/src/index.ts",
+        "@airma/react-state":"@airma/react-state/src/index.ts"
+      }
     },
     plugins: [
-      new ReactRefreshPlugin(),
+      new ReactRefreshPlugin({
+        esModule:true
+      }),
       new HtmlWebpackPlugin({
         plugin: 'html',
         filename: path.join(__dirname, 'dist', 'index.html'),

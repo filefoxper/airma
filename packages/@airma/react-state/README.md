@@ -443,23 +443,27 @@ As we can see it is very easy to describe state properties for usage.
 
 ## Persistent methods
 
-The methods from `useModel` returns is persistent, so, you can pass it to a memo component directly, it can improve your app performance.
+The methods from `useModel` instance is persistent, so, you can pass it to a memo component directly, it can improve your app performance.
 
-## Update data out of model function
+## Work with closure data
 
-Yes, the methods are persistent, but the model function can work with closure data too, when instance method is called, the result will be passed into the newest model function immediately to refresh instance.
+Yes, the methods are persistent, but you still can use closure data in the model function, it updates everytime, when the instance is refreshing.
 
 ## Security for reducing state
 
-The API from `useTupleModel`(without onChange) like `useModel`, `useRefreshModel` are secure for state update. The state is outside of react system, so every update from methods is a secure reducing process. If you want to use `useState` to replace its job, you have to call it like: `setState((s)=>s+1)`.
+The API from `useTupleModel`(without onChange) like `useModel`, `useRefreshModel`, `useRequiredModel` are secure for state update. The state is outside of react system, so every update from methods is a secure reducing process. If you want to use `useState` to replace its job, you have to call it like: `setState((s)=>s+1)`.
 
-## typescript check
+## Typescript check
 
 `@airma/react-state` is a typescript support library, you can use it with `typescript` for a better experience. 
 
 It checks if the input `state` type is same with the param default `state` type. 
 
 If the method returning type is same with param default `state` type, and so on.
+
+## Async state management
+
+You can not use async method with `@airma/react-state`, and we will not support async method in future, we suggest you works the async state with [react-query](https://tanstack.com/query/v4), you can use `useRefresh` or `useRefreshModel` to adapt the async state management.
 
 ## End
 
