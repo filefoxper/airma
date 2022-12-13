@@ -10,11 +10,11 @@
   "dependencies": {
     "classnames": "^2.3.2",
     "history": "^5.3.0",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
-    "@airma/react-state": "15.3.1"
+    "@airma/react-state": "15.4.1"
   },
   "devDependencies": {
     "@types/react": "16.9.56",
@@ -68,7 +68,6 @@
     "webpackbar": "^5.0.2"
   },
   "pmnps": {
-    "ownRoot": true,
     "publishable": false
   },
   "typings": "index.d.ts"

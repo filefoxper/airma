@@ -6,7 +6,8 @@ import {
     useRequiredModel
 } from '@airma/react-state';
 
-const counter = (count:number = 0) =>{
+const counter = (count:number=0) =>{
+    console.log(count)
     return {
         count,
         isNegative: count<0,
