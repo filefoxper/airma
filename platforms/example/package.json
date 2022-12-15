@@ -4,14 +4,14 @@
     "build": "echo edit build script"
   },
   "private": false,
-  "name": "web-app",
+  "name": "example",
   "version": "15.0.0",
   "description": "This is a package",
   "dependencies": {
     "classnames": "^2.3.2",
     "history": "^5.3.0",
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
     "@airma/react-state": "15.5.0"
@@ -68,6 +68,7 @@
     "webpackbar": "^5.0.2"
   },
   "pmnps": {
+    "ownRoot": true,
     "publishable": false
   },
   "typings": "index.d.ts"

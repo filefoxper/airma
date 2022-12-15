@@ -183,7 +183,7 @@ The store factory can be a model function or a object contains model function. Y
 import React, {memo, useState} from 'react';
 import {render} from 'react-dom'
 import {
-    requireModels, 
+    factory, 
     RequiredModelProvider, 
     useRequiredModel
 } from '@airma/react-state';
@@ -214,14 +214,10 @@ function selector(selection:number[]){
 }
 
 // create a store factory
-const storeFactory = requireModels((hold)=>{
-    // use hold to make sure the model function is linked into store
-    return {
-        count: hold(count),
-        // the hold callback can accept a default state too, `[]`
-        selector: hold(selector, [])
-    };
-});
+const storeFactory = {
+  count: factory(count),
+  selector: factory(selector, [])
+};
 
 const Counter = memo(()=>{
     // use the store factory to find the model,

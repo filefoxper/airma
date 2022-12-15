@@ -1,14 +1,14 @@
 {
   "name": "@airma/react-state",
-  "version": "15.4.1",
-  "module": "dist/index.js",
+  "version": "15.5.0",
+  "main": "dist/index.js",
   "typings": "index.d.ts",
   "author": "Jimmy.Harding",
   "description": "the purpose of this project is make useReducer more simplify",
   "scripts": {
     "lint": "eslint src --fix --ext .ts,.tsx ",
     "lint-init": "eslint --init",
-    "build": "esbuild ./src/index.ts --outfile=./dist/index.js --bundle '--external:react' '--external:@airma/*' --format=esm",
+    "build": "webpack",
     "test": "jest --coverage",
     "docs": "docsify serve ./docs"
   },
@@ -38,12 +38,12 @@
   "dependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
-    "@airma/core": "^15.4.1"
+    "@airma/core": "^15.5.0"
   },
   "devDependencies": {
     "prettier": "2.3.2",
     "typescript": "4.2.2",
-    "esbuild": "^0.15.16",
+    "esbuild": "^0.16.6",
     "eslint": "^8.27.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^8.5.0",

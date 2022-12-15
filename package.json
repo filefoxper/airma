@@ -1,5 +1,5 @@
 {
-  "name": "agent-reducer-workspace",
+  "name": "airma",
   "version": "15.0.0",
   "author": "Jimmy.Harding",
   "description": "the purpose of this project is simplify a reducer",
@@ -75,7 +75,7 @@
     "webpack-cli": "^4.10.0",
     "webpack-dev-server": "^4.11.1",
     "webpackbar": "^5.0.2",
-    "esbuild": "^0.15.16",
+    "esbuild": "^0.16.6",
     "husky": "^7.0.1",
     "jest": "29.3.1",
     "pre-commit": "^1.2.2",

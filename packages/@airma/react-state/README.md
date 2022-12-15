@@ -57,9 +57,9 @@ Use `requireModels` API can create a global model `factory`. Pass the `factory` 
 import React,{memo} from 'react';
 import {render} from 'react-dom'
 import {
-  requireModels,
   RequiredModelProvider,
-  useRequiredModel
+  useRequiredModel,
+  factory
 } from '@airma/react-state';
 
 const counter = (count:number = 0) =>{
@@ -71,9 +71,9 @@ const counter = (count:number = 0) =>{
   };
 };
 
-const modelFactory =  requireModels((factory)=>({
+const modelFactory =  {
   counter:factory(counter)
-}));
+};
 
 const Increase = memo(()=>{
   const {count,increase} = useRequiredModel(modelFactory.counter);
@@ -179,11 +179,15 @@ As we can see, the components works with their own local state. So, `useRequired
 
 ### useModel
 
-It is used to create a model instance, which persist a local state, and you can call the instance method to change state, and refresh the instance for next render.
+It is used to create a local model instance. Call the instance method can refresh instance by recalling model function again. 
+
+Open option config `required` can make `useModel` retrieving a model instance from the most closest model store in `RequiredModelProvider` which contains a same model. If it has found no model instance, it creates a local one. You can use `useRequiredModel` API for a no config usage.
+
+Open option config `refresh` can make `useModel` follow the state parameter. When the state parameter changes, it refresh model instance too. You can use `useRefreshModel` for a no config usage.
 
 * model - A callback accepts newest state, and generate a model instance. Call the method from this instance can refresh instance.
 * state - A default state for model refresh. It is optional, and default with `undefined`.
-* option - An optional config, you can set `{refresh: true}`, and the instance will be refreshed by the param state change.
+* option - An optional config contains `refresh` and `required` config
 
 ```ts
 type AirModelInstance = Record<string, any>;
@@ -193,43 +197,8 @@ type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
 function useModel<S, T extends AirModelInstance, D extends S>(
     model: AirReducer<S, T>,
     state?: D,
-    option?: {refresh:boolean}
+    option?: {refresh?:boolean, required?:boolean}
 ): T
-```
-
-### useTupleModel
-
-It is used to create a tuple array `[state, instance]`, you can call the instance method to change state, and refresh `[state, instance]` for next render.
-
-* model - A callback accepts newest state, and generate a model instance. Call the method from this instance can refresh instance.
-* state - A default state for model refresh.
-* onChangeOrOption - An optional param. If it is a callback, `useTupleModel` goes to a controlled mode, it only accepts state change, and uses this callback to change state outside, you can use `useControlledModel` to do this too. If it is an option config, you can set `{refresh: true}`, and the instance will be refreshed by the param state change.
-
-```ts
-type AirModelInstance = Record<string, any>;
-
-type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
-
-function useTupleModel<S, T extends AirModelInstance, D extends S>(
-    model: AirReducer<S, T>,
-    state: D,
-    onChangeOrOption?: ((s:S)=>any)|{refresh:boolean}
-): [S, T]
-```
-
-With this api, you can split state and methods like:
-
-```tsx
-const [count, {increase, decrease}] = useTupleModel((state:number)=>{
-    return {
-        increase(){
-            return state + 1;
-        },
-        decrease(){
-            return state - 1;
-        }
-    };
-},0);
 ```
 
 ### useControlledModel
@@ -303,15 +272,19 @@ function App(){
 
 ### useRefreshModel
 
-It is used to create a model instance, which persist a local state and response to a outside state, you can call the instance method to change state, and refresh the instance for next render.
+It is a simplify API for `useModel(model,state,{refresh:true})`. It follows the parameter state change, and refresh instance with the newest state. It also response the method call change, just like `useModel`.
+
+Open option config `required` can make `useRefreshModel` links to a closest model store in `RequiredModelProvider` which contains a same model. You can use `useModel(model,state,{refresh:true,required:true})` or `useRequiredModel(model, state, {refresh:true})` to replace this config.
 
 * model - A callback accepts newest state, and generate a model instance. Call the method from this instance can refresh instance.
 * state - A outside state to refresh instance.
+* option - An optional config, contains `required` config.
 
 ```ts
 export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
-  state: D
+  state: D,
+  option?: {required?:boolean}
 ): T;
 ```
 
@@ -319,9 +292,29 @@ When the param state changes, model instance is refreshed by the new state param
 
 Suggest using this API with async state mangement library like [react-query](https://tanstack.com/query/v4).
 
+### useRequiredModel
+
+This API is from `useModel` API. It is used to retrieve model instance from the closest model store in `RequiredModelProvider` which contains a same model. If the instance can not be found, it trys to create a local instance for working.
+
+Open option config `refresh` can help you listen to the parameter state change, and refresh model instance in store with this state. You can use `useModel(model,state,{refresh:true,required:true})` or `useRefreshModel(model, state, {required:true})` to replace this config.
+
+* model - A callback accepts a state, and generate a model instance.
+* state - A default state for a local model.
+* option - An optional config, contains `required` property.
+
+```ts
+export declare function useRequiredModel<S, T extends AirModelInstance, D extends S>(
+    model: AirReducer<S | undefined, T>,
+    state?: D,
+    option?:{refresh?:boolean}
+): T;
+```
+
+Refer to introduce for details.
+
 ### useRefresh
 
-It is used to watch the dependencies change, and call instance method to refresh a model instance with dependencies.
+It is used to listen the params change, and call instance method to refresh a model instance with params.
 
 * method - A method from model instance.
 * params - Params for the method, it is an array for method parameters.
@@ -336,21 +329,108 @@ When some of the params change, the method is called with these params.
 
 Suggest using this API with async state mangement library like [react-query](https://tanstack.com/query/v4).
 
-### requireModels
+### factory
 
-It is used to create a model factory. You can pass a callback returns a model callback or an object with model callback properties. The callback can accept a factory hold function as param, you should use it to hold your model.
-1. `requireModels((factory)=>factory(model,?state))`  
-2. `requireModels((factory)=>({key:factory(model,?state)}))`
+It is used to create a model factory, it generates a new function from model function, and take a default state for creating model instance. Create a factory with this API in a global or module scope is helpful. You can pass the factory object to `RequiredModelProvider` for a store. The `useRequiredModel` or `useModel(..., {required:true})` can use factory as a key to find a instance from store. It finds the matched instance in a `RequiredModelProvider` tree, from a closer one to a further one. If it find nothing, don't worry, the factory key is a wrap function for the origin model function, so it creates a local model instance.
 
-* requireFn - A callback accepts a factory function as param, and generate a model factory.
+* reducer - model function
+* defaultState - it is optional, default state for model
 
 ```ts
-export declare function requireModels<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (factory: HoldCallback) => T): T;
+export declare function factory<T extends AirReducer<any, any>>(
+  reducer: T,
+  defaultState?: T extends AirReducer<infer S, any> ? S : never
+): T;
 ```
 
-This API is for create a model factory, it can be used with `RequiredModelProvider`, and make state sharing possible. You can refer to the introduction before for a detail.
+ex:
+
+```tsx
+import React, {memo} from "react";
+import {factory, RequiredModelProvider} from "@airma/react-state";
+
+const count = (state:number)=>({
+  count: state,
+  increase: ()=> state + 1,
+  decrease: ()=> state - 1
+})
+
+const countFactory = factory(count);
+
+const myFactory = {
+  count: factory(count)
+};
+
+const Counter = memo(()=>{
+  return (
+    <RequiredModelProvider value={myFactory}>
+      ......
+    </RequiredModelProvider>
+  );
+});
+
+// For the countFactory is different with myFactory,
+// the instance for model count is different too
+const InitialCounter = memo(()=>{
+  return (
+    <RequiredModelProvider value={countFactory}>
+      ......
+    </RequiredModelProvider>
+  );
+});
+```
+
+### useFactory
+
+It is used to generate a new factory from the origin one in `render`. So, you can modify your model factories, and generate model stores with different structures.
+
+* factory - model factory.
+* mapCallback - a function to generate a new factory for current `RequiredModelProvider`.
+
+return [modifiedFactory, mutateCallback].
+
+```ts
+export declare function useFactory<
+    T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(factory: T, mapCallback?: (f: T) => any): [T, (m: (f: T) => T) => any]
+```
+
+ex:
+
+```tsx
+import {countModel} from "./model";
+import {factory, useFactory, RequiredModelProvider} from "@airma/react-state";
+
+const counter = {
+  count:factory(count)
+};
+
+const MyComponent = ()=>{
+  const [countFactory,mutate] = useFactory(counter,s=>({count:factory(count,10)}));
+  return (
+    <RequiredModelProvider value={countFactory}>
+      ......
+    </RequiredModelProvider>
+  );
+}
+
+const MyAnotherComponent = ()=>{
+  // generates a structure like factory with different default state
+  const [countFactory,mutate] = useFactory(counter,s=>({count:factory(count,10)}));
+
+  useEffect(()=>{
+    // generate again
+    // If the state for count instance is changed by calling methods,
+    // the default state can not change state.
+    mutate(s=>({count:factory(count,5)}));
+  },[]);
+  return (
+    <RequiredModelProvider value={countFactory}>
+      ......
+    </RequiredModelProvider>
+  );
+}
+```
 
 ### RequiredModelProvider
 
@@ -366,16 +446,62 @@ export declare const RequiredModelProvider: FC<{
 }>;
 ```
 
-This provider is a `Provider` from `React Context`, it generates model instances from model factory, and persists them inside the `Provider` instance.
+This provider is a `Provider` from `React Context`, it generates a model store from model factory, and persists it in this `Provider` instance. When the factory is changed, it updates the store with continuous states.
 
-### useRequiredModel
+### ~~useTupleModel~~
 
-It is used to retrieve a model instance from model instances which are created in a closest `RequiredModelProvider` with the same seeking factory. If the instance can not be found, it trys to create a local instance for working.
+Use `useModel` to replace it.
 
-* model - A callback accepts a state, and generate a model instance.
-* state - a default state for a local model, when the model instance can not be found.
+It is used to create a tuple array `[state, instance]`, you can call the instance method to change state, and refresh `[state, instance]` for next render.
 
-Refer to introduce for details.
+* model - A callback accepts newest state, and generate a model instance. Call the method from this instance can refresh instance.
+* state - A default state for model refresh.
+* onChangeOrOption - An optional param. If it is a callback, `useTupleModel` goes to a controlled mode, it only accepts state change, and uses this callback to change state outside, you can use `useControlledModel` to do this too. If it is an option config, you can set `{refresh: true}`, and the instance will be refreshed by the param state change.
+
+```ts
+type AirModelInstance = Record<string, any>;
+
+type AirReducer<S, T extends AirModelInstance> = (state:S)=>T;
+
+function useTupleModel<S, T extends AirModelInstance, D extends S>(
+    model: AirReducer<S, T>,
+    state: D,
+    onChangeOrOption?: ((s:S)=>any)|{refresh:boolean}
+): [S, T]
+```
+
+With this api, you can split state and methods like:
+
+```tsx
+const [count, {increase, decrease}] = useTupleModel((state:number)=>{
+    return {
+        increase(){
+            return state + 1;
+        },
+        decrease(){
+            return state - 1;
+        }
+    };
+},0);
+```
+
+### ~~requireModels~~
+
+use `factory` API can create factory more easier.
+
+It is used to create a model factory. You can pass a callback returns a model callback or an object with model callback properties. The callback can accept a factory hold function as param, you should use it to hold your model.
+1. `requireModels((factory)=>factory(model,?state))`  
+2. `requireModels((factory)=>({key:factory(model,?state)}))`
+
+* requireFn - A callback accepts a factory function as param, and generate a model factory.
+
+```ts
+export declare function requireModels<
+  T extends Array<any> | ((...args: any) => any) | Record<string, any>
+>(requireFn: (factory: HoldCallback) => T): T;
+```
+
+This API is for create a model factory, it can be used with `RequiredModelProvider`, and make state sharing possible. You can refer to the introduction before for a detail.
 
 ## Tips
 
@@ -453,6 +579,10 @@ Yes, the methods are persistent, but you still can use closure data in the model
 
 The API from `useTupleModel`(without onChange) like `useModel`, `useRefreshModel`, `useRequiredModel` are secure for state update. The state is outside of react system, so every update from methods is a secure reducing process. If you want to use `useState` to replace its job, you have to call it like: `setState((s)=>s+1)`.
 
+### Less change context
+
+When the state in `RequiredModelProvider` model store changes, it don't rerender the whole `RequiredModelProvider` component, but only notify the context end `useModel`, then the `useModel` works by `setState`. So, when the API `useSelector` comes out, the render of using component will be less.
+
 ## Typescript check
 
 `@airma/react-state` is a typescript support library, you can use it with `typescript` for a better experience. 
@@ -464,6 +594,19 @@ If the method returning type is same with param default `state` type, and so on.
 ## Async state management
 
 You can not use async method with `@airma/react-state`, and we will not support async method in future, we suggest you works the async state with [react-query](https://tanstack.com/query/v4), you can use `useRefresh` or `useRefreshModel` to adapt the async state management.
+
+## Browser Support 
+
+We support the browsers:
+
+```
+chrome: '>=58',
+edge: '>=16',
+firefox: '=>57',
+safari: '>=11'
+```
+
+If you want to support less version browsers, you'd better have your own polyfills.
 
 ## End
 

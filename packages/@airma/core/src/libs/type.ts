@@ -36,8 +36,9 @@ export interface Connection<
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
-  getCacheState(): S;
-  update: (reducer: AirReducer<S, T>, outState?: { state: S }) => void;
+  getCacheState(): { state:S }|null;
+  getState():S;
+  update: (reducer: AirReducer<S, T>, outState?: { state: S,cache?:boolean }) => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -49,7 +50,8 @@ export type Updater<S, T extends AirModelInstance> = {
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
-  cacheState: S;
+  cacheState: {state:S}|null;
+  state:S;
 };
 
 export type Creation<T> = {
@@ -68,11 +70,13 @@ export type HoldCallback = <
 export type Collection = {
   key: string;
   factory: (...args: any[]) => any;
+  sourceFactory?:(...args: any[]) => any;
   connection: Connection;
 };
 
 export type ModelFactoryStore<T> = {
   update(updateFactory: T): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
+  equal(factory:T):boolean;
   destroy(): void;
 };

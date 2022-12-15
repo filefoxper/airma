@@ -1,4 +1,9 @@
-export { default as createModel, createRequiredModels,activeRequiredModels } from './libs/reducer';
+export {
+  default as createModel,
+  createRequiredModels,
+  createStore,
+  factory
+} from './libs/reducer';
 
 export {
   useSimpleProxy,
