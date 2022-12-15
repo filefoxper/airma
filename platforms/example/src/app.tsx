@@ -1,4 +1,4 @@
-import React, {memo, useEffect} from 'react';
+import React, {memo, useEffect, useState} from 'react';
 import { render } from 'react-dom';
 import {
   requireModels,
@@ -8,7 +8,7 @@ import {
 } from '@airma/react-state';
 
 const counter = (count: number = 0) => {
-  console.log(count);
+  console.log(1)
   return {
     count,
     isNegative: count < 0,
@@ -18,7 +18,7 @@ const counter = (count: number = 0) => {
 };
 
 const modelFactory = {
-  counter: factory(counter,0),
+  counter: factory(counter)
 };
 
 const Increase = memo(() => {
@@ -32,8 +32,9 @@ const Decrease = memo(() => {
 });
 
 const CountValue = memo(() => {
+  const [s,setS] = useState(0);
   const { count, isNegative } = useRequiredModel(modelFactory.counter);
-  return <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>;
+  return <span style={isNegative ? { color: 'red' } : undefined} onClick={()=>setS(s=>s+1)}>{count}</span>;
 });
 
 function Counting(){
@@ -57,7 +58,7 @@ function Counter({ index }: { index: number }) {
   }));
 
   useEffect(()=>{
-    setFac(s=>({counter:factory(counter,5)}));
+    // setFac(s=>({counter:factory(counter,5)}));
   },[]);
 
   return (
@@ -70,7 +71,6 @@ function Counter({ index }: { index: number }) {
           <Increase />
         </div>
       </RequiredModelProvider>
-      <Counting/>
     </div>
   );
 }

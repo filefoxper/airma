@@ -28,7 +28,8 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     const result = method(...args);
     const { reducer } = updater;
     updater.current = reducer(result);
-    updater.cacheState = result;
+    updater.state = result;
+    updater.cacheState = { state: result };
     dispatch({ type, state: result });
     return result;
   };
@@ -47,7 +48,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     dispatch: null,
     dispatches: [],
     cacheMethods: {},
-    cacheState: defaultState
+    state: defaultState,
+    cacheState: null
   };
   return {
     agent: createProxy(defaultModel, {
@@ -59,14 +61,25 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         return value;
       }
     }),
-    getCacheState(): S {
+    getCacheState(): { state: S } | null {
       return updater.cacheState;
     },
-    update(updateReducer: AirReducer<S, T>, outState?: { state: S }) {
-      const { cacheState } = updater;
+    getState(): S {
+      return updater.state;
+    },
+    update(
+      updateReducer: AirReducer<S, T>,
+      outState?: { state: S; cache?: boolean }
+    ) {
+      const { state } = updater;
+      const nextState = outState ? outState.state : state;
       updater.reducer = updateReducer;
-      updater.cacheState = outState ? outState.state : cacheState;
-      updater.current = updateReducer(updater.cacheState);
+      updater.state = nextState;
+      updater.cacheState =
+        outState && outState.cache
+          ? { state: outState.state }
+          : updater.cacheState;
+      updater.current = updateReducer(updater.state);
     },
     connect(dispatchCall) {
       const { dispatches } = updater;
@@ -88,6 +101,42 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       dispatches.splice(index, 1);
     }
   };
+}
+
+export function factory<T extends AirReducer<any, any>>(
+  reducer: T,
+  defaultState?: T extends AirReducer<infer S, any> ? S : never
+): T & { creation: () => Connection } {
+  const replaceModel = function replaceModel(state: any) {
+    return reducer(state);
+  };
+  replaceModel.creation = function creation(): Connection {
+    const model = createModel(replaceModel, defaultState);
+    return {
+      ...model
+    };
+  };
+  return replaceModel as T & { creation: () => Connection };
+}
+
+const mutationSourceKey = '@@airma/react-state/factory/mutation/source';
+
+factory.mutate = function mutate<
+  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
+>(target: T, callback: (f: T) => any): ReturnType<typeof callback> {
+  const data = callback(target);
+  data[mutationSourceKey] = target;
+  return data;
+};
+
+function fetchMutationSource<
+  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
+>(target: T & { [mutationSourceKey]?: T }, deep?: boolean): T | null {
+  const source = target[mutationSourceKey];
+  if (source == null) {
+    return deep ? target : null;
+  }
+  return fetchMutationSource(source, true);
 }
 
 export function createRequiredModels<
@@ -133,6 +182,9 @@ function collectConnections<
   const fact = factory as Exclude<T, (...args: any) => any>;
   const keys = Object.keys(fact);
   keys.forEach((key: string) => {
+    if (key === mutationSourceKey) {
+      return;
+    }
     const k = key as keyof T;
     const result = collectConnections(fact[k], [...collectionKeys, key]);
     collection.push(...result);
@@ -140,13 +192,25 @@ function collectConnections<
   return collection;
 }
 
-export function activeRequiredModels<
+export function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(fact: T): ModelFactoryStore<T> {
+>(
+  fact: T & {
+    [mutationSourceKey]?:
+      | Array<any>
+      | ((...args: any) => any)
+      | Record<string, any>;
+  }
+): ModelFactoryStore<T> {
+  const source = fetchMutationSource(fact);
+  const handler = source || fact;
   function extractFactory(collections: Collection[]) {
     const connections = collections.map(({ connection }) => connection);
     const instances = new Map(
-      collections.map(({ factory, connection }) => [factory, connection])
+      collections.flatMap(({ factory, sourceFactory, connection }) => [
+        [factory, connection],
+        [sourceFactory, connection]
+      ])
     );
     return {
       collections,
@@ -154,37 +218,76 @@ export function activeRequiredModels<
       instances
     };
   }
-  function update(collections: Collection[], updated: Collection[]) {
-    const map = new Map(
+  function updateCollections(
+    collections: Collection[],
+    updated: Collection[]
+  ): Collection[] {
+    const updatedMap = new Map(
       updated.map(({ key, connection, factory }) => [
         key,
         { connection, factory }
       ])
     );
-    collections.forEach(({ key, connection }) => {
-      const c = map.get(key);
-      if (c) {
-        c.connection.update(c.factory, { state: connection.getCacheState() });
-      } else {
-        connection.disconnect();
-      }
-    });
+    const map = new Map(
+      collections.map(({ key, connection, factory }) => [
+        key,
+        { connection, factory }
+      ])
+    );
+    const additions = updated.filter(({ key }) => !map.has(key));
+    const deletions = collections.filter(({ key }) => !updatedMap.has(key));
+    const updates = collections
+      .map(collection => {
+        const { key, connection } = collection;
+        const c = updatedMap.get(key);
+        if (!c) {
+          return undefined;
+        }
+        connection.update(
+          c.factory,
+          connection.getCacheState() || { state: c.connection.getState() }
+        );
+        return {
+          ...collection,
+          factory: c.factory,
+          sourceFactory: collection.factory
+        } as Collection;
+      })
+      .filter((d): d is Collection => !!d);
+    deletions.forEach(({ connection }) => connection.disconnect());
+    return [...additions, ...updates];
   }
-  const holder = extractFactory(collectConnections(fact));
+  const currentCollections = collectConnections(fact);
+  const sourceCollections = source
+    ? collectConnections(source)
+    : currentCollections;
+  const holder = source
+    ? extractFactory(updateCollections(sourceCollections, currentCollections))
+    : extractFactory(sourceCollections);
 
   const store = {
     update(updateFactory: T): ModelFactoryStore<T> {
       if (updateFactory === fact) {
         return { ...store };
       }
+      const newSource = fetchMutationSource(updateFactory);
+      const newSourceCollections = newSource
+        ? updateCollections(sourceCollections, collectConnections(newSource))
+        : sourceCollections;
       const collections = collectConnections(updateFactory);
-      update(holder.collections, collections);
-      const newHolder = extractFactory(collections);
+      const newHolder = extractFactory(
+        updateCollections(newSourceCollections, collections)
+      );
       Object.assign(holder, { ...newHolder });
       return { ...store };
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {
       return holder.instances.get(reducer);
+    },
+    equal(
+      factory: Record<string, any> | Array<any> | ((...args: any[]) => any)
+    ): boolean {
+      return factory === handler;
     },
     destroy() {
       holder.connections.forEach(connection => connection.disconnect());
