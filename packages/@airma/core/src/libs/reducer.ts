@@ -3,8 +3,9 @@ import type {
   AirModelInstance,
   AirReducer,
   Updater,
-  HoldCallback,
-  Connection
+  Connection,
+  StateSetMode,
+  FactoryInstance
 } from './type';
 import { createProxy } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
@@ -103,31 +104,66 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
+export const StateSetModes = {
+  default<S = any>(state: S): StateSetMode<S> {
+    return persist => {
+      if (!persist) {
+        return state;
+      }
+      return !persist.isDefault ? persist.state : state;
+    };
+  },
+  extend<S = any>(state: S): StateSetMode<S> {
+    return persist => {
+      if (!persist) {
+        return state;
+      }
+      return persist.state;
+    };
+  },
+  force<S = any>(state: S): StateSetMode<S> {
+    return () => state;
+  }
+};
+
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  defaultState?: T extends AirReducer<infer S, any> ? S : never
-): T & { creation: () => Connection } {
+  state?:
+    | (T extends AirReducer<infer S, any> ? S : never)
+    | StateSetMode<T extends AirReducer<infer S, any> ? S : never>
+): FactoryInstance<T> {
   const replaceModel = function replaceModel(state: any) {
     return reducer(state);
   };
   replaceModel.creation = function creation(): Connection {
-    const model = createModel(replaceModel, defaultState);
+    const stateSetMode =
+      typeof state === 'function'
+        ? (state as StateSetMode<
+            T extends AirReducer<infer S, any> ? S : never
+          >)
+        : undefined;
+    const currentState = stateSetMode ? stateSetMode(undefined) : state;
+    const model = createModel(replaceModel, currentState);
     return {
-      ...model
+      ...model,
+      stateSetMode: stateSetMode || StateSetModes.default(currentState)
     };
   };
-  return replaceModel as T & { creation: () => Connection };
+  replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
+    target: P
+  ): P & { getSourceFrom: () => FactoryInstance<T> } {
+    const pipeModel = function pipeModel(s: any) {
+      return target(s);
+    };
+    pipeModel.getSourceFrom = function getSourceFrom() {
+      return replaceModel;
+    };
+    return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
+  };
+  return replaceModel as FactoryInstance<T>;
 }
 
 const mutationSourceKey = '@@airma/react-state/factory/mutation/source';
-
-factory.mutate = function mutate<
-  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
->(target: T, callback: (f: T) => any): ReturnType<typeof callback> {
-  const data = callback(target);
-  data[mutationSourceKey] = target;
-  return data;
-};
 
 function fetchMutationSource<
   T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
@@ -139,26 +175,13 @@ function fetchMutationSource<
   return fetchMutationSource(source, true);
 }
 
-export function createRequiredModels<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (hold: HoldCallback) => T): T {
-  const hold: HoldCallback = function hold(
-    reducer: AirReducer<any, any>,
-    defaultState: any
-  ) {
-    const replaceModel = function replaceModel(state: any) {
-      return reducer(state);
-    };
-    replaceModel.creation = function creation(): Connection {
-      const model = createModel(replaceModel, defaultState);
-      return {
-        ...model
-      };
-    };
-    return replaceModel;
-  };
-  return requireFn(hold);
-}
+factory.mutate = function mutate<
+  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
+>(target: T, callback: (f: T) => any): ReturnType<typeof callback> {
+  const data = callback(target);
+  data[mutationSourceKey] = fetchMutationSource(target) || target;
+  return data;
+};
 
 function collectConnections<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
@@ -243,10 +266,21 @@ export function createStore<
         if (!c) {
           return undefined;
         }
-        connection.update(
-          c.factory,
-          connection.getCacheState() || { state: c.connection.getState() }
-        );
+        const updatingConnection = c.connection;
+        const { stateSetMode } = updatingConnection;
+        const state = (function computeState() {
+          const isDefault = connection.getCacheState() == null;
+          const state = connection.getState();
+          if (typeof stateSetMode === 'function') {
+            return stateSetMode({ isDefault, state });
+          }
+          return StateSetModes.default(updatingConnection.getState())({
+            isDefault,
+            state
+          });
+        })();
+        console.log('state', state);
+        connection.update(c.factory, { state });
         return {
           ...collection,
           factory: c.factory,
