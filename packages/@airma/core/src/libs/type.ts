@@ -43,6 +43,7 @@ export interface Connection<
     reducer: AirReducer<S, T>,
     outState?: { state: S; cache?: boolean }
   ) => void;
+  updateState:(state:S)=>void
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -64,6 +65,7 @@ export type Creation<T> = {
 
 export type Collection = {
   key: string;
+  keys:(string|number)[]
   factory: (...args: any[]) => any;
   sourceFactory?: (...args: any[]) => any;
   connection: Connection;

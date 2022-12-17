@@ -59,10 +59,10 @@ export declare function useRequiredModel<S, T extends AirModelInstance, D extend
 
 declare type StateSetMode<S> = (persist?:{state:S,isDefault:boolean})=>S;
 
+declare type PipeCallback=<P extends (AirReducer<any,any>)>(reducer:P)=>P;
+
 declare type FactoryInstance<T extends AirReducer<any, any>> = T & {
-  pipe<P extends AirReducer<any, any>>(
-      reducer: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> };
+  pipe:PipeCallback;
 };
 
 declare type FactoryCall = (<T extends AirReducer<any, any>>(

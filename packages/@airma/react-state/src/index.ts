@@ -99,30 +99,24 @@ function findConnection<S, T extends AirModelInstance>(
   return d as Connection<S | undefined, T> | undefined;
 }
 
-type AirReducerLike = AirReducer<any, any>&{getSourceFrom?:()=>AirReducer<any, any>};
+type AirReducerLike = AirReducer<any, any> & {
+  getSourceFrom?: () => AirReducer<any, any>;
+};
 
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
-    model: AirReducer<S | undefined, T>
-): [S|undefined,T];
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
-    model: AirReducer<S, T>,
-    state: D,
-    option?: { refresh?: boolean; required?: boolean }
-): [S,T];
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
-    model: AirReducer<S | undefined, T>,
-    state?: D,
-    option?: { refresh?: boolean; required?: boolean }
-): [S|undefined,T]{
+function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  state?: D,
+  option?: { refresh?: boolean; required?: boolean }
+): [S | undefined, T, (s: S | undefined) => void] {
   const defaultOpt = { refresh: false, required: false };
   const { refresh, required } = option ? option : defaultOpt;
   const context = useContext(ReactStateContext);
   const connection =
-      context && required ? findConnection(context, model) : undefined;
+    context && required ? findConnection(context, model) : undefined;
   const modelRef = useRef<AirReducer<S, T>>(model);
   const instance = useMemo(
-      () => createModel<S | undefined, T, D | undefined>(model, state),
-      []
+    () => createModel<S | undefined, T, D | undefined>(model, state),
+    []
   );
   const current = connection || instance;
   const refreshStateRef = useRef<{ state: S | undefined } | null>(null);
@@ -139,11 +133,10 @@ export function useTupleModel<S, T extends AirModelInstance, D extends S>(
   current.connect(persistDispatch);
 
   if (
-      (!refreshStateRef.current || refreshStateRef.current.state !== state) &&
-      refresh
+    (!refreshStateRef.current || refreshStateRef.current.state !== state) &&
+    refresh
   ) {
     current.update(model, { state, cache: true });
-    setS(state);
   }
   refreshStateRef.current = { state };
 
@@ -156,7 +149,29 @@ export function useTupleModel<S, T extends AirModelInstance, D extends S>(
       current.disconnect(persistDispatch);
     };
   }, []);
-  return [current.getState(),current.agent];
+  return [current.getState(), current.agent, current.updateState];
+}
+
+export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>
+): [S | undefined, T];
+export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  state: D,
+  option?: { refresh?: boolean; required?: boolean }
+): [S, T];
+export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  state?: D,
+  option?: { refresh?: boolean; required?: boolean }
+): [S | undefined, T] {
+  const getSourceFrom = (model as AirReducerLike).getSourceFrom;
+  const sourceFrom =
+    typeof getSourceFrom === 'function' ? getSourceFrom() : undefined;
+  const result = useSourceTupleModel(sourceFrom || model, state, option);
+  const [s, agent, updateState] = result;
+  const controlledAgent = useControlledModel(model, s, updateState);
+  return [s, sourceFrom ? controlledAgent : agent];
 }
 
 export function useModel<S, T extends AirModelInstance, D extends S>(
@@ -172,7 +187,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   state?: D,
   option?: { refresh?: boolean; required?: boolean }
 ): T {
-  const [,agent] = useTupleModel(model,state,option);
+  const [, agent] = useTupleModel(model, state, option);
   return agent;
 }
 

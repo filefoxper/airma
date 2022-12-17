@@ -1,14 +1,15 @@
-import React, {memo, useEffect} from 'react';
-import { render } from 'react-dom';
+import React, { memo, useEffect, useState } from 'react';
 import {
-  requireModels,
   RequiredModelProvider,
   useRequiredModel,
-  factory, useFactory, useModel
+  factory,
+  useFactory,
+  useModel,
+  useControlledModel
 } from '@airma/react-state';
 
 const counter = (count: number = 0) => {
-  console.log(count);
+  console.log('count:', count);
   return {
     count,
     isNegative: count < 0,
@@ -18,7 +19,7 @@ const counter = (count: number = 0) => {
 };
 
 const modelFactory = {
-  counter: factory(counter,0),
+  counter: factory(counter, 0)
 };
 
 const Increase = memo(() => {
@@ -35,30 +36,71 @@ const CountValue = memo(() => {
   const { count, isNegative } = useRequiredModel(modelFactory.counter);
   return <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>;
 });
-
-function Counting(){
-  const {count,isNegative,increase,decrease} = useModel(modelFactory.counter);
+const dm = (d: number = 0) => ({
+  count: d,
+  ddecrease() {
+    return d - 2;
+  },
+  iincrease() {
+    return d + 2;
+  }
+});
+const PipeCount = memo(() => {
+  const { count, ddecrease, iincrease } = useRequiredModel(
+    modelFactory.counter.pipe(dm)
+  );
   return (
+    <div>
+      pipe counting:
       <div>
-        counting:
-        <div>
-          <button onClick={decrease}>-</button>
-          <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
-          <button onClick={increase}>+</button>
-        </div>
+        <button onClick={ddecrease}>-</button>
+        <span>{count}</span>
+        <button onClick={iincrease}>+</button>
       </div>
+    </div>
+  );
+});
+
+function Counting() {
+  const { count, isNegative, increase, decrease } = useModel(
+    modelFactory.counter
+  );
+  return (
+    <div>
+      counting:
+      <div>
+        <button onClick={decrease}>-</button>
+        <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
+        <button onClick={increase}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function ControlledCounting() {
+  const [c, setC] = useState<number | undefined>(1);
+  const { count, isNegative, increase, decrease } = useControlledModel(
+    modelFactory.counter,
+    c,
+    setC
+  );
+  return (
+    <div>
+      controlled counting:
+      <div>
+        <button onClick={decrease}>-</button>
+        <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>
+        <button onClick={increase}>+</button>
+      </div>
+    </div>
   );
 }
 
 function Counter({ index }: { index: number }) {
-  const [fac,setFac] = useFactory(modelFactory,s => ({
+  const [fac] = useFactory(modelFactory, s => ({
     ...s,
     counter: factory(counter, 10)
   }));
-
-  useEffect(()=>{
-    setFac(s=>({counter:factory(counter,5)}));
-  },[]);
 
   return (
     <div>
@@ -69,8 +111,10 @@ function Counter({ index }: { index: number }) {
           <CountValue />
           <Increase />
         </div>
+        <PipeCount />
       </RequiredModelProvider>
-      <Counting/>
+      <Counting />
+      <ControlledCounting />
     </div>
   );
 }

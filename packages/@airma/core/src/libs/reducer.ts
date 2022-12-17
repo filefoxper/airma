@@ -10,6 +10,18 @@ import type {
 import { createProxy } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
 
+function generateDispatch<S, T extends AirModelInstance>(
+  updater: Updater<S, T>
+) {
+  return function dispatch(action: Action): void {
+    const { dispatches } = updater;
+    const dispatchCallbacks = [...dispatches];
+    dispatchCallbacks.forEach(callback => {
+      callback(action);
+    });
+  };
+}
+
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string
@@ -19,11 +31,8 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   }
   const newMethod = function newMethod(...args: unknown[]) {
     function dispatch(action: Action): void {
-      const { dispatches } = updater;
-      const dispatchCallbacks = [...dispatches];
-      dispatchCallbacks.forEach(callback => {
-        callback(action);
-      });
+      const dispatchAll = generateDispatch(updater);
+      dispatchAll(action);
     }
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
@@ -52,6 +61,25 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     state: defaultState,
     cacheState: null
   };
+
+  function update(
+    updateReducer: AirReducer<S, T>,
+    outState?: { state: S; cache?: boolean }
+  ): void {
+    const { state } = updater;
+    const nextState = outState ? outState.state : state;
+    updater.reducer = updateReducer;
+    updater.state = nextState;
+    updater.cacheState =
+      outState && outState.cache
+        ? { state: outState.state }
+        : updater.cacheState;
+    updater.current = updateReducer(updater.state);
+    if (state === updater.state) {
+      return;
+    }
+    generateDispatch(updater)({ state: updater.state, type: '' });
+  }
   return {
     agent: createProxy(defaultModel, {
       get(target: T, p: string): unknown {
@@ -68,19 +96,9 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     getState(): S {
       return updater.state;
     },
-    update(
-      updateReducer: AirReducer<S, T>,
-      outState?: { state: S; cache?: boolean }
-    ) {
-      const { state } = updater;
-      const nextState = outState ? outState.state : state;
-      updater.reducer = updateReducer;
-      updater.state = nextState;
-      updater.cacheState =
-        outState && outState.cache
-          ? { state: outState.state }
-          : updater.cacheState;
-      updater.current = updateReducer(updater.state);
+    update,
+    updateState(state: S): void {
+      update(updater.reducer, { state, cache: true });
     },
     connect(dispatchCall) {
       const { dispatches } = updater;
@@ -193,6 +211,7 @@ function collectConnections<
     return [
       {
         key: collectionKeys.join('.'),
+        keys: collectionKeys,
         factory: factory as (...args: any[]) => any,
         connection: (factory as typeof factory & Creation<any>).creation()
       } as Collection
@@ -279,7 +298,6 @@ export function createStore<
             state
           });
         })();
-        console.log('state', state);
         connection.update(c.factory, { state });
         return {
           ...collection,
