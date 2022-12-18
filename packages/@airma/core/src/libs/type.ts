@@ -29,16 +29,18 @@ export type AirReducer<S, T extends AirModelInstance> = (
   state: S
 ) => ValidInstance<S, T>;
 
-export type Reducer<S, A> = (state: S, action: A) => S;
-
 export interface Connection<
   S = any,
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
-  getCacheState(): { state:S }|null;
-  getState():S;
-  update: (reducer: AirReducer<S, T>, outState?: { state: S,cache?:boolean }) => void;
+  getCacheState(): { state: S } | null;
+  getState(): S;
+  update: (
+    reducer: AirReducer<S, T>,
+    outState?: { state: S; cache?: boolean }
+  ) => void;
+  updateState:(state:S)=>void
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -50,33 +52,32 @@ export type Updater<S, T extends AirModelInstance> = {
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
-  cacheState: {state:S}|null;
-  state:S;
+  cacheState: { state: S } | null;
+  state: S;
 };
 
 export type Creation<T> = {
   creation(): Connection;
 };
 
-export type HoldCallback = <
-  S = any,
-  T extends AirModelInstance = any,
-  D extends S = any
->(
-  reducer: AirReducer<S, T>,
-  defaultState?: D
-) => typeof reducer & Creation<T>;
-
 export type Collection = {
   key: string;
+  keys:(string|number)[]
   factory: (...args: any[]) => any;
-  sourceFactory?:(...args: any[]) => any;
+  sourceFactory?: (...args: any[]) => any;
   connection: Connection;
 };
 
 export type ModelFactoryStore<T> = {
   update(updateFactory: T): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
-  equal(factory:T):boolean;
+  equal(factory: T): boolean;
   destroy(): void;
+};
+
+export type FactoryInstance<T extends AirReducer<any, any>> = T & {
+  creation(): Connection;
+  pipe<P extends AirReducer<any, any>>(
+    reducer: P
+  ): P & { getSourceFrom: ()=>FactoryInstance<T> };
 };

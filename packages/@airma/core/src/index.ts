@@ -1,8 +1,7 @@
 export {
   default as createModel,
-  createRequiredModels,
   createStore,
-  factory
+  factory,
 } from './libs/reducer';
 
 export {

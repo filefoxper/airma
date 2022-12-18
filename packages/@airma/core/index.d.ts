@@ -36,7 +36,11 @@ export declare interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
-  update: (reducer: AirReducer<S, T>, outState?: { state: S,cache?:boolean }) => void;
+  update: (
+    reducer: AirReducer<S, T>,
+    outState?: { state: S; cache?: boolean }
+  ) => void;
+  updateState:(state:S)=>void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -46,34 +50,23 @@ export declare function createModel<S, T extends AirModelInstance, D extends S>(
   defaultState: D
 ): Connection<S, T>;
 
-declare type FactoryHolder = <T extends AirReducer<any, any>>(
-  reducer: T,
-  defaultState?: T extends AirReducer<infer S, any> ? S : never
-) => T;
-
-export declare function createRequiredModels<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (factory: FactoryHolder) => T): T;
-
-declare type ModelFactoryStore<T> = {
+export declare type ModelFactoryStore<T> = {
   update(updateFactory: T): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
+  equal(factory: T): boolean;
   destroy(): void;
 };
 
-declare type FactoryCall = (<T extends AirReducer<any, any>>(
-  reducer: T,
-  defaultState?: T extends AirReducer<infer S, any> ? S : never
-) => T) & {
-  mutate<
-    M extends Record<string, any> | Array<any> | ((...args: any[]) => any)
-  >(
-    target: M,
-    callback: (f: M) => any
-  ): ReturnType<typeof callback>;
+declare type FactoryInstance<T extends AirReducer<any, any>> = T & {
+  pipe<P extends AirReducer<any, any>>(
+    reducer: P
+  ): P & { getSourceFrom: () => FactoryInstance<T> };
 };
 
-export declare const factory: FactoryCall;
+export declare function factory<T extends AirReducer<any, any>>(
+    reducer: T,
+    defaultState?: (T extends AirReducer<infer S, any> ? S : never)
+):FactoryInstance<T>;
 
 export declare function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>

@@ -3,11 +3,23 @@ import type {
   AirModelInstance,
   AirReducer,
   Updater,
-  HoldCallback,
-  Connection
+  Connection,
+  FactoryInstance
 } from './type';
 import { createProxy } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
+
+function generateDispatch<S, T extends AirModelInstance>(
+  updater: Updater<S, T>
+) {
+  return function dispatch(action: Action): void {
+    const { dispatches } = updater;
+    const dispatchCallbacks = [...dispatches];
+    dispatchCallbacks.forEach(callback => {
+      callback(action);
+    });
+  };
+}
 
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
@@ -18,11 +30,8 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   }
   const newMethod = function newMethod(...args: unknown[]) {
     function dispatch(action: Action): void {
-      const { dispatches } = updater;
-      const dispatchCallbacks = [...dispatches];
-      dispatchCallbacks.forEach(callback => {
-        callback(action);
-      });
+      const dispatchAll = generateDispatch(updater);
+      dispatchAll(action);
     }
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
@@ -51,6 +60,25 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     state: defaultState,
     cacheState: null
   };
+
+  function update(
+    updateReducer: AirReducer<S, T>,
+    outState?: { state: S; cache?: boolean }
+  ): void {
+    const { state } = updater;
+    const nextState = outState ? outState.state : state;
+    updater.reducer = updateReducer;
+    updater.state = nextState;
+    updater.cacheState =
+      outState && outState.cache
+        ? { state: outState.state }
+        : updater.cacheState;
+    updater.current = updateReducer(updater.state);
+    if (state === updater.state) {
+      return;
+    }
+    generateDispatch(updater)({ state: updater.state, type: '' });
+  }
   return {
     agent: createProxy(defaultModel, {
       get(target: T, p: string): unknown {
@@ -67,19 +95,9 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     getState(): S {
       return updater.state;
     },
-    update(
-      updateReducer: AirReducer<S, T>,
-      outState?: { state: S; cache?: boolean }
-    ) {
-      const { state } = updater;
-      const nextState = outState ? outState.state : state;
-      updater.reducer = updateReducer;
-      updater.state = nextState;
-      updater.cacheState =
-        outState && outState.cache
-          ? { state: outState.state }
-          : updater.cacheState;
-      updater.current = updateReducer(updater.state);
+    update,
+    updateState(state: S): void {
+      update(updater.reducer, { state, cache: true });
     },
     connect(dispatchCall) {
       const { dispatches } = updater;
@@ -105,29 +123,29 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
 
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  defaultState?: T extends AirReducer<infer S, any> ? S : never
-): T & { creation: () => Connection } {
+  state?: (T extends AirReducer<infer S, any> ? S : never)
+): FactoryInstance<T> {
   const replaceModel = function replaceModel(state: any) {
     return reducer(state);
   };
   replaceModel.creation = function creation(): Connection {
-    const model = createModel(replaceModel, defaultState);
-    return {
-      ...model
-    };
+    return  createModel(replaceModel, state);
   };
-  return replaceModel as T & { creation: () => Connection };
+  replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
+    target: P
+  ): P & { getSourceFrom: () => FactoryInstance<T> } {
+    const pipeModel = function pipeModel(s: any) {
+      return target(s);
+    };
+    pipeModel.getSourceFrom = function getSourceFrom() {
+      return replaceModel;
+    };
+    return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
+  };
+  return replaceModel as FactoryInstance<T>;
 }
 
 const mutationSourceKey = '@@airma/react-state/factory/mutation/source';
-
-factory.mutate = function mutate<
-  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
->(target: T, callback: (f: T) => any): ReturnType<typeof callback> {
-  const data = callback(target);
-  data[mutationSourceKey] = target;
-  return data;
-};
 
 function fetchMutationSource<
   T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
@@ -137,27 +155,6 @@ function fetchMutationSource<
     return deep ? target : null;
   }
   return fetchMutationSource(source, true);
-}
-
-export function createRequiredModels<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(requireFn: (hold: HoldCallback) => T): T {
-  const hold: HoldCallback = function hold(
-    reducer: AirReducer<any, any>,
-    defaultState: any
-  ) {
-    const replaceModel = function replaceModel(state: any) {
-      return reducer(state);
-    };
-    replaceModel.creation = function creation(): Connection {
-      const model = createModel(replaceModel, defaultState);
-      return {
-        ...model
-      };
-    };
-    return replaceModel;
-  };
-  return requireFn(hold);
 }
 
 function collectConnections<
@@ -170,6 +167,7 @@ function collectConnections<
     return [
       {
         key: collectionKeys.join('.'),
+        keys: collectionKeys,
         factory: factory as (...args: any[]) => any,
         connection: (factory as typeof factory & Creation<any>).creation()
       } as Collection
@@ -243,10 +241,15 @@ export function createStore<
         if (!c) {
           return undefined;
         }
-        connection.update(
-          c.factory,
-          connection.getCacheState() || { state: c.connection.getState() }
-        );
+        const updatingConnection = c.connection;
+        const state = (function computeState() {
+          const isDefault = connection.getCacheState() == null;
+          if(isDefault){
+            return updatingConnection.getState()
+          }
+          return connection.getState();
+        })();
+        connection.update(c.factory, { state });
         return {
           ...collection,
           factory: c.factory,
