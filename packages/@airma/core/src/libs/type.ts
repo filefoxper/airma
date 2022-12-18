@@ -29,15 +29,12 @@ export type AirReducer<S, T extends AirModelInstance> = (
   state: S
 ) => ValidInstance<S, T>;
 
-export type StateSetMode<S> = (persist?: { state: S; isDefault: boolean }) => S;
-
 export interface Connection<
   S = any,
   T extends AirModelInstance = AirModelInstance
 > {
   agent: T;
   getCacheState(): { state: S } | null;
-  stateSetMode?: StateSetMode<S>;
   getState(): S;
   update: (
     reducer: AirReducer<S, T>,

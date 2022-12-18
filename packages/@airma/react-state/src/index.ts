@@ -11,7 +11,7 @@ import {
   factory as createFactory,
   createModel,
   ModelFactoryStore,
-  StateSetModes as StateSets
+  shallowEqual as shallowEq
 } from '@airma/core';
 import {
   useEffect,
@@ -106,13 +106,16 @@ type AirReducerLike = AirReducer<any, any> & {
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; required?: boolean }
+  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): [S | undefined, T, (s: S | undefined) => void] {
-  const defaultOpt = { refresh: false, required: false };
-  const { refresh, required } = option ? option : defaultOpt;
+  const defaultOpt = { refresh: false, required: false, autoRequired: false };
+  const { refresh, required, autoRequired } = option ? option : defaultOpt;
   const context = useContext(ReactStateContext);
   const connection =
     context && required ? findConnection(context, model) : undefined;
+  if (required && !autoRequired && !connection) {
+    throw new Error('Can not find a right model in store.');
+  }
   const modelRef = useRef<AirReducer<S, T>>(model);
   const instance = useMemo(
     () => createModel<S | undefined, T, D | undefined>(model, state),
@@ -152,18 +155,18 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   return [current.getState(), current.agent, current.updateState];
 }
 
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>
 ): [S | undefined, T];
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; required?: boolean }
+  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): [S, T];
-export function useTupleModel<S, T extends AirModelInstance, D extends S>(
+function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; required?: boolean }
+  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): [S | undefined, T] {
   const getSourceFrom = (model as AirReducerLike).getSourceFrom;
   const sourceFrom =
@@ -180,12 +183,12 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; required?: boolean }
+  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; required?: boolean }
+  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): T {
   const [, agent] = useTupleModel(model, state, option);
   return agent;
@@ -194,7 +197,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { required?: boolean }
+  option?: { required?: boolean; autoRequired?: boolean }
 ): T {
   return useModel(model, state, { ...option, refresh: true });
 }
@@ -202,45 +205,128 @@ export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
 export function useRequiredModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean }
+  option?: { refresh?: boolean; autoRequired?: boolean }
 ): T {
   return useModel(model, state, { ...option, required: true });
 }
 
-export function useFactory<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(factory: T, mapCallback?: (f: T) => any): [T, (m: (f: T) => T) => any] {
-  const sourceFactoryRef = useRef<T>(factory);
-  const factoryRef = useRef<T | null>(null);
-  if (sourceFactoryRef.current !== factory || factoryRef.current == null) {
-    factoryRef.current = mapCallback
-      ? createFactory.mutate(factory, mapCallback)
-      : factory;
-    sourceFactoryRef.current = factory;
+const requiredError = (api: string): string => {
+  return `API "${api}" can only work in a RequiredModelProvider which contains the right seeking factory model`;
+};
+
+export function useRequiredModelState<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(
+  model: AirReducer<S | undefined, T>,
+  defaultState?: D
+): [S | undefined, (s: S | undefined) => void] {
+  const context = useContext(ReactStateContext);
+  const connection = context ? findConnection(context, model) : undefined;
+  if (!connection) {
+    throw new Error(requiredError('useRequiredModelState'));
   }
-  const [, setVersion] = useState<number>(0);
-  const mapFactory = usePersistFn((callback: (f: T) => T) => {
-    factoryRef.current = createFactory.mutate(
-      factoryRef.current || factory,
-      callback
-    );
-    setVersion(v => v + 1);
+  const [, setState] = useState(0);
+
+  if (
+    connection.getCacheState() == null &&
+    connection.getState() !== defaultState
+  ) {
+    connection.update(model, { state: defaultState });
+  }
+
+  const dispatch = usePersistFn(() => {
+    setState(s => s + 1);
   });
-  return [factoryRef.current as T, mapFactory];
+  connection.connect(dispatch);
+
+  useEffect(() => {
+    connection.connect(dispatch);
+    return () => {
+      connection.disconnect(dispatch);
+    };
+  }, []);
+
+  const updateState = usePersistFn((s: S | undefined) => {
+    connection.updateState(s);
+  });
+  return [connection.getState(), updateState];
 }
 
-function findStore<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(factory: T, selector?: Selector | null): Selector | null {
-  if (!selector) {
-    return null;
+export function useSelector<
+  S,
+  T extends AirModelInstance,
+  C extends (instance: T) => any
+>(
+  factoryModel: AirReducer<S | undefined, T>,
+  callback: C,
+  equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+): ReturnType<C> {
+  const context = useContext(ReactStateContext);
+  const connection = context ? findConnection(context, factoryModel) : null;
+  if (!connection) {
+    throw new Error(requiredError('useSelector'));
   }
-  if (selector.equal(factory)) {
-    return selector;
-  }
-  return findStore(factory, selector.parent);
+  const agent = connection.agent;
+  const [s, setS] = useState(callback(agent));
+  const dispatch = usePersistFn(() => {
+    const next = callback(connection.agent);
+    if (equalFn ? equalFn(s, next) : Object.is(s, next)) {
+      return;
+    }
+    setS(next);
+  });
+  connection.connect(dispatch);
+
+  useEffect(() => {
+    connection.connect(dispatch);
+    return () => {
+      connection.disconnect(dispatch);
+    };
+  }, []);
+  return s;
 }
+
+export function useLocalSelector<
+    S,
+    T extends AirModelInstance,
+    C extends (instance: T) => any,
+    D extends S
+>(
+    model: AirReducer<S | undefined, T>,
+    callback: C,
+    defaultState?:D
+): ReturnType<C> {
+  const modelRef = useRef<AirReducer<S, T>>(model);
+  const current = useMemo(
+      () => createModel<S | undefined, T, D|undefined>(model,defaultState),
+      []
+  );
+  const agent = current.agent;
+  const [a, setA] = useState(callback(agent));
+
+  if(modelRef.current!==model){
+    current.update(model);
+  }
+  modelRef.current = model;
+
+  const dispatch = usePersistFn(() => {
+    const next = callback(current.agent);
+    setA(next);
+  });
+  current.connect(dispatch);
+
+  useEffect(() => {
+    current.update(model, { state: current.getState() });
+    current.connect(dispatch);
+    return () => {
+      current.disconnect(dispatch);
+    };
+  }, []);
+  return a;
+}
+
+export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
-
-export const State = StateSets;

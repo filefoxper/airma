@@ -2,7 +2,6 @@ export {
   default as createModel,
   createStore,
   factory,
-  StateSetModes
 } from './libs/reducer';
 
 export {

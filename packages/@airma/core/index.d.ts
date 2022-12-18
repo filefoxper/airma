@@ -57,38 +57,16 @@ export declare type ModelFactoryStore<T> = {
   destroy(): void;
 };
 
-declare type StateSetMode<S> = (persist?: {
-  state: S;
-  isDefault: boolean;
-}) => S;
-
 declare type FactoryInstance<T extends AirReducer<any, any>> = T & {
   pipe<P extends AirReducer<any, any>>(
     reducer: P
   ): P & { getSourceFrom: () => FactoryInstance<T> };
 };
 
-declare type FactoryCall = (<T extends AirReducer<any, any>>(
-  reducer: T,
-  defaultState?:
-    | (T extends AirReducer<infer S, any> ? S : never)
-    | StateSetMode<T extends AirReducer<infer S, any> ? S : never>
-) => FactoryInstance<T>) & {
-  mutate<
-    M extends Record<string, any> | Array<any> | ((...args: any[]) => any)
-  >(
-    target: M,
-    callback: (f: M) => any
-  ): ReturnType<typeof callback>;
-};
-
-export declare const StateSetModes: {
-  default<S>(state: S): StateSetMode<S>;
-  extend<S>(state: S): StateSetMode<S>;
-  force<S>(state: S): StateSetMode<S>;
-};
-
-export declare const factory: FactoryCall;
+export declare function factory<T extends AirReducer<any, any>>(
+    reducer: T,
+    defaultState?: (T extends AirReducer<infer S, any> ? S : never)
+):FactoryInstance<T>;
 
 export declare function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>

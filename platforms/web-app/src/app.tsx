@@ -1,15 +1,16 @@
 import React, { memo, useEffect, useState } from 'react';
 import {
-  RequiredModelProvider,
-  useRequiredModel,
-  factory,
-  useFactory,
-  useModel,
-  useControlledModel
+    RequiredModelProvider,
+    useRequiredModel,
+    factory,
+    useModel,
+    useControlledModel,
+    useSelector,
+    shallowEqual,
+    useRequiredModelState, useLocalSelector
 } from '@airma/react-state';
 
 const counter = (count: number = 0) => {
-  console.log('count:', count);
   return {
     count,
     isNegative: count < 0,
@@ -33,6 +34,7 @@ const Decrease = memo(() => {
 });
 
 const CountValue = memo(() => {
+  useRequiredModelState(modelFactory.counter, 10);
   const { count, isNegative } = useRequiredModel(modelFactory.counter);
   return <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>;
 });
@@ -56,6 +58,45 @@ const PipeCount = memo(() => {
         <button onClick={ddecrease}>-</button>
         <span>{count}</span>
         <button onClick={iincrease}>+</button>
+      </div>
+    </div>
+  );
+});
+
+const SelectCount = memo(() => {
+  const isNegative = useSelector(modelFactory.counter, counter => {
+    return counter.isNegative;
+  });
+  console.log('render...');
+  return (
+    <div>
+      select counting:
+      <div>
+        <span>{isNegative ? '-' : '+'}</span>
+      </div>
+    </div>
+  );
+});
+
+const LocalSelectCount = memo(() => {
+  const { count, decrease, increase, test } = useLocalSelector(
+    counter,
+    (instance) => ({
+      ...instance,
+      async test() {
+        await new Promise(r => setTimeout(r, 1000));
+        instance.increase();
+      }
+    })
+  );
+  return (
+    <div>
+      local select counting:
+      <div>
+        <button onClick={decrease}>-</button>
+        <span>{count}</span>
+        <button onClick={increase}>+</button>
+        <button onClick={test}>test</button>
       </div>
     </div>
   );
@@ -97,24 +138,21 @@ function ControlledCounting() {
 }
 
 function Counter({ index }: { index: number }) {
-  const [fac] = useFactory(modelFactory, s => ({
-    ...s,
-    counter: factory(counter, 10)
-  }));
-
   return (
     <div>
       counter:{index}
-      <RequiredModelProvider value={fac}>
+      <RequiredModelProvider value={modelFactory}>
         <div>
           <Decrease />
           <CountValue />
           <Increase />
         </div>
         <PipeCount />
+        <SelectCount />
       </RequiredModelProvider>
       <Counting />
       <ControlledCounting />
+      <LocalSelectCount />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import type {
   AirReducer,
   Updater,
   Connection,
-  StateSetMode,
   FactoryInstance
 } from './type';
 import { createProxy } from './tools';
@@ -122,50 +121,15 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
-export const StateSetModes = {
-  default<S = any>(state: S): StateSetMode<S> {
-    return persist => {
-      if (!persist) {
-        return state;
-      }
-      return !persist.isDefault ? persist.state : state;
-    };
-  },
-  extend<S = any>(state: S): StateSetMode<S> {
-    return persist => {
-      if (!persist) {
-        return state;
-      }
-      return persist.state;
-    };
-  },
-  force<S = any>(state: S): StateSetMode<S> {
-    return () => state;
-  }
-};
-
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  state?:
-    | (T extends AirReducer<infer S, any> ? S : never)
-    | StateSetMode<T extends AirReducer<infer S, any> ? S : never>
+  state?: (T extends AirReducer<infer S, any> ? S : never)
 ): FactoryInstance<T> {
   const replaceModel = function replaceModel(state: any) {
     return reducer(state);
   };
   replaceModel.creation = function creation(): Connection {
-    const stateSetMode =
-      typeof state === 'function'
-        ? (state as StateSetMode<
-            T extends AirReducer<infer S, any> ? S : never
-          >)
-        : undefined;
-    const currentState = stateSetMode ? stateSetMode(undefined) : state;
-    const model = createModel(replaceModel, currentState);
-    return {
-      ...model,
-      stateSetMode: stateSetMode || StateSetModes.default(currentState)
-    };
+    return  createModel(replaceModel, state);
   };
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
     target: P
@@ -192,14 +156,6 @@ function fetchMutationSource<
   }
   return fetchMutationSource(source, true);
 }
-
-factory.mutate = function mutate<
-  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
->(target: T, callback: (f: T) => any): ReturnType<typeof callback> {
-  const data = callback(target);
-  data[mutationSourceKey] = fetchMutationSource(target) || target;
-  return data;
-};
 
 function collectConnections<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
@@ -286,17 +242,12 @@ export function createStore<
           return undefined;
         }
         const updatingConnection = c.connection;
-        const { stateSetMode } = updatingConnection;
         const state = (function computeState() {
           const isDefault = connection.getCacheState() == null;
-          const state = connection.getState();
-          if (typeof stateSetMode === 'function') {
-            return stateSetMode({ isDefault, state });
+          if(isDefault){
+            return updatingConnection.getState()
           }
-          return StateSetModes.default(updatingConnection.getState())({
-            isDefault,
-            state
-          });
+          return connection.getState();
         })();
         connection.update(c.factory, { state });
         return {

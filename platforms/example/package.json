@@ -5,7 +5,7 @@
   },
   "private": false,
   "name": "example",
-  "version": "15.0.0",
+  "version": "16.0.0",
   "description": "This is a package",
   "dependencies": {
     "classnames": "^2.3.2",
@@ -14,7 +14,7 @@
     "react-dom": "18.2.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
-    "@airma/react-state": "15.5.0"
+    "@airma/react-state": "16.0.0"
   },
   "devDependencies": {
     "@types/react": "16.9.56",
