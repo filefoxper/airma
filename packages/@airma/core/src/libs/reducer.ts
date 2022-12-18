@@ -63,9 +63,13 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
 
   function update(
     updateReducer: AirReducer<S, T>,
-    outState?: { state: S; cache?: boolean }
+    outState?: { state: S; cache?: boolean, isDefault?:boolean }
   ): void {
     const { state } = updater;
+    const isDefaultUpdate = !!(outState&&outState.isDefault);
+    if(isDefaultUpdate&&updater.cacheState){
+      return;
+    }
     const nextState = outState ? outState.state : state;
     updater.reducer = updateReducer;
     updater.state = nextState;
@@ -74,7 +78,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         ? { state: outState.state }
         : updater.cacheState;
     updater.current = updateReducer(updater.state);
-    if (state === updater.state) {
+    if (state === updater.state||isDefaultUpdate) {
       return;
     }
     generateDispatch(updater)({ state: updater.state, type: '' });

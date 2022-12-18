@@ -2,6 +2,7 @@ import type {
   AirModelInstance,
   AirReducer,
   Action,
+  ModelFactoryStore,
   Connection
 } from '@airma/core';
 import type { FC, ReactNode } from 'react';
@@ -10,7 +11,6 @@ import {
   createStore,
   factory as createFactory,
   createModel,
-  ModelFactoryStore,
   shallowEqual as shallowEq
 } from '@airma/core';
 import {
@@ -122,7 +122,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     []
   );
   const current = connection || instance;
-  const refreshStateRef = useRef<{ state: S | undefined } | null>(null);
   const [s, setS] = useState<S | undefined>(current.getState());
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
@@ -135,13 +134,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const persistDispatch = usePersistFn(dispatch);
   current.connect(persistDispatch);
 
-  if (
-    (!refreshStateRef.current || refreshStateRef.current.state !== state) &&
-    refresh
-  ) {
-    current.update(model, { state, cache: true });
-  }
-  refreshStateRef.current = { state };
+  useEffect(() => {
+    if (refresh && state !== current.getState()) {
+      current.update(model, { state, cache: true });
+    }
+  }, [state]);
 
   useEffect(() => {
     if (!connection) {
@@ -233,7 +230,7 @@ export function useRequiredModelState<
     connection.getCacheState() == null &&
     connection.getState() !== defaultState
   ) {
-    connection.update(model, { state: defaultState });
+    connection.update(model, { state: defaultState, isDefault: true });
   }
 
   const dispatch = usePersistFn(() => {
@@ -289,36 +286,38 @@ export function useSelector<
 }
 
 export function useLocalSelector<
-    S,
-    T extends AirModelInstance,
-    C extends (instance: T) => any,
-    D extends S
+  S,
+  T extends AirModelInstance,
+  C extends (instance: T) => any,
+  D extends S
 >(
-    model: AirReducer<S | undefined, T>,
-    callback: C,
-    defaultState?:D
+  model: AirReducer<S | undefined, T>,
+  callback: C,
+  defaultState?: D
 ): ReturnType<C> {
   const modelRef = useRef<AirReducer<S, T>>(model);
   const current = useMemo(
-      () => createModel<S | undefined, T, D|undefined>(model,defaultState),
-      []
+    () => createModel<S | undefined, T, D | undefined>(model, defaultState),
+    []
   );
   const agent = current.agent;
+  const [s, setS] = useState(current.getState());
   const [a, setA] = useState(callback(agent));
 
-  if(modelRef.current!==model){
+  if (modelRef.current !== model) {
     current.update(model);
   }
   modelRef.current = model;
 
-  const dispatch = usePersistFn(() => {
+  const dispatch = usePersistFn(({ state }: Action) => {
     const next = callback(current.agent);
     setA(next);
+    setS(state);
   });
   current.connect(dispatch);
 
   useEffect(() => {
-    current.update(model, { state: current.getState() });
+    current.update(model, { state: s });
     current.connect(dispatch);
     return () => {
       current.disconnect(dispatch);

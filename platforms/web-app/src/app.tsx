@@ -38,6 +38,13 @@ const CountValue = memo(() => {
   const { count, isNegative } = useRequiredModel(modelFactory.counter);
   return <span style={isNegative ? { color: 'red' } : undefined}>{count}</span>;
 });
+
+const Refresh = memo(()=>{
+    const [v,setV] = useState(12);
+    const { count } = useRequiredModel(modelFactory.counter,v,{refresh:true});
+    return <div>{count}<button onClick={()=>setV(d=>d+1)}>refresh</button></div>
+});
+
 const dm = (d: number = 0) => ({
   count: d,
   ddecrease() {
@@ -149,6 +156,7 @@ function Counter({ index }: { index: number }) {
         </div>
         <PipeCount />
         <SelectCount />
+          <Refresh/>
       </RequiredModelProvider>
       <Counting />
       <ControlledCounting />
