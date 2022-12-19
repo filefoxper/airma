@@ -38,7 +38,7 @@ export declare interface Connection<
   getState(): S;
   update: (
     reducer: AirReducer<S, T>,
-    outState?: { state: S; cache?: boolean,isDefault?:boolean }
+    outState?: { state: S; cache?: boolean,isDefault?:boolean,ignoreDispatch?:boolean }
   ) => void;
   updateState:(state:S)=>void;
   connect: (dispatch?: Dispatch) => void;
