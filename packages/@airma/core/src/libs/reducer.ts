@@ -63,11 +63,17 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
 
   function update(
     updateReducer: AirReducer<S, T>,
-    outState?: { state: S; cache?: boolean, isDefault?:boolean }
+    outState?: {
+      state: S;
+      cache?: boolean;
+      isDefault?: boolean;
+      ignoreDispatch?: boolean;
+    }
   ): void {
     const { state } = updater;
-    const isDefaultUpdate = !!(outState&&outState.isDefault);
-    if(isDefaultUpdate&&updater.cacheState){
+    const isDefaultUpdate = !!(outState && outState.isDefault);
+    const ignoreDispatch = !!(outState && outState.ignoreDispatch);
+    if (isDefaultUpdate && updater.cacheState) {
       return;
     }
     const nextState = outState ? outState.state : state;
@@ -78,7 +84,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         ? { state: outState.state }
         : updater.cacheState;
     updater.current = updateReducer(updater.state);
-    if (state === updater.state||isDefaultUpdate) {
+    if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
     generateDispatch(updater)({ state: updater.state, type: '' });
@@ -127,13 +133,13 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
 
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  state?: (T extends AirReducer<infer S, any> ? S : never)
+  state?: T extends AirReducer<infer S, any> ? S : never
 ): FactoryInstance<T> {
   const replaceModel = function replaceModel(state: any) {
     return reducer(state);
   };
   replaceModel.creation = function creation(): Connection {
-    return  createModel(replaceModel, state);
+    return createModel(replaceModel, state);
   };
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
     target: P
@@ -248,8 +254,8 @@ export function createStore<
         const updatingConnection = c.connection;
         const state = (function computeState() {
           const isDefault = connection.getCacheState() == null;
-          if(isDefault){
-            return updatingConnection.getState()
+          if (isDefault) {
+            return updatingConnection.getState();
           }
           return connection.getState();
         })();

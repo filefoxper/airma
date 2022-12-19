@@ -38,7 +38,7 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
   onChange: (s: S) => any
 ): T {
   const current = useMemo(() => createModel<S, T, D>(model, state), []);
-  current.update(model, { state });
+  current.update(model, { state, ignoreDispatch: true });
 
   const dispatch = ({ state: actionState }: Action) => {
     onChange(actionState);
