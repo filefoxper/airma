@@ -6,7 +6,7 @@ import type {
   Connection,
   FactoryInstance
 } from './type';
-import { createProxy } from './tools';
+import { createProxy, toMapObject } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
 
 function generateDispatch<S, T extends AirModelInstance>(
@@ -93,7 +93,10 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     agent: createProxy(defaultModel, {
       get(target: T, p: string): unknown {
         const value = updater.current[p];
-        if (updater.current.hasOwnProperty(p) && typeof value === 'function') {
+        if (
+          Object.prototype.hasOwnProperty.call(updater.current, p) &&
+          typeof value === 'function'
+        ) {
           return rebuildDispatchMethod<S, T>(updater, p);
         }
         return value;
@@ -111,7 +114,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     },
     connect(dispatchCall) {
       const { dispatches } = updater;
-      if (dispatches.some(d => d === dispatchCall) || !dispatchCall) {
+      if (!dispatchCall || dispatches.indexOf(dispatchCall) >= 0) {
         return;
       }
       dispatches.push(dispatchCall);
@@ -135,8 +138,8 @@ export function factory<T extends AirReducer<any, any>>(
   reducer: T,
   state?: T extends AirReducer<infer S, any> ? S : never
 ): FactoryInstance<T> {
-  const replaceModel = function replaceModel(state: any) {
-    return reducer(state);
+  const replaceModel = function replaceModel(s: any) {
+    return reducer(s);
   };
   replaceModel.creation = function creation(): Connection {
     return createModel(replaceModel, state);
@@ -155,71 +158,60 @@ export function factory<T extends AirReducer<any, any>>(
   return replaceModel as FactoryInstance<T>;
 }
 
-const mutationSourceKey = '@@airma/react-state/factory/mutation/source';
-
-function fetchMutationSource<
-  T extends Record<string, any> | Array<any> | ((...args: any[]) => any)
->(target: T & { [mutationSourceKey]?: T }, deep?: boolean): T | null {
-  const source = target[mutationSourceKey];
-  if (source == null) {
-    return deep ? target : null;
-  }
-  return fetchMutationSource(source, true);
-}
-
 function collectConnections<
-  T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(factory: T, collectionKeys: string[] = []): Collection[] {
+  T extends Array<any> | ((...args: any[]) => any) | Record<string, any>
+>(factoryCollections: T, collectionKeys: string[] = []): Collection[] {
   if (
-    typeof factory === 'function' &&
-    typeof (factory as typeof factory & Creation<any>).creation === 'function'
+    typeof factoryCollections === 'function' &&
+    typeof (factoryCollections as typeof factoryCollections & Creation)
+      .creation === 'function'
   ) {
     return [
       {
         key: collectionKeys.join('.'),
         keys: collectionKeys,
-        factory: factory as (...args: any[]) => any,
-        connection: (factory as typeof factory & Creation<any>).creation()
+        factory: factoryCollections as (...args: any[]) => any,
+        connection: (
+          factoryCollections as typeof factoryCollections & Creation
+        ).creation()
       } as Collection
     ];
   }
-  if (!factory || typeof factory !== 'object') {
+  if (!factoryCollections || typeof factoryCollections !== 'object') {
     return [];
   }
   const collection: Collection[] = [];
-  const fact = factory as Exclude<T, (...args: any) => any>;
+  const fact = factoryCollections as Exclude<T, (...args: any[]) => any>;
   const keys = Object.keys(fact);
   keys.forEach((key: string) => {
-    if (key === mutationSourceKey) {
-      return;
-    }
     const k = key as keyof T;
-    const result = collectConnections(fact[k], [...collectionKeys, key]);
+    const result = collectConnections(
+      fact[k] as Record<string, any>,
+      collectionKeys.concat(key)
+    );
     collection.push(...result);
   });
   return collection;
 }
 
+function toInstances(collections: Collection[]) {
+  return {
+    get(key: (...args: any[]) => any): Connection | undefined {
+      const found = collections.find(
+        c => c.factory === key || c.sourceFactory === key
+      );
+      return found ? found.connection : undefined;
+    }
+  };
+}
+
 export function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(
-  fact: T & {
-    [mutationSourceKey]?:
-      | Array<any>
-      | ((...args: any) => any)
-      | Record<string, any>;
-  }
-): ModelFactoryStore<T> {
-  const source = fetchMutationSource(fact);
-  const handler = source || fact;
+>(fact: T): ModelFactoryStore<T> {
+  const handler = fact;
   function extractFactory(collections: Collection[]) {
     const connections = collections.map(({ connection }) => connection);
-    const instances = new Map(
-      collections.flatMap(({ factory, sourceFactory, connection }) => [
-        [factory, connection],
-        [sourceFactory, connection]
-      ])
-    );
+    const instances = toInstances(collections);
     return {
       collections,
       connections,
@@ -230,20 +222,20 @@ export function createStore<
     collections: Collection[],
     updated: Collection[]
   ): Collection[] {
-    const updatedMap = new Map(
-      updated.map(({ key, connection, factory }) => [
+    const updatedMap = toMapObject(
+      updated.map(({ key, connection, factory: fac }) => [
         key,
-        { connection, factory }
+        { connection, factory: fac }
       ])
     );
-    const map = new Map(
-      collections.map(({ key, connection, factory }) => [
+    const map = toMapObject(
+      collections.map(({ key, connection, factory: fac }) => [
         key,
-        { connection, factory }
+        { connection, factory: fac }
       ])
     );
-    const additions = updated.filter(({ key }) => !map.has(key));
-    const deletions = collections.filter(({ key }) => !updatedMap.has(key));
+    const additions = updated.filter(({ key }) => !map.get(key));
+    const deletions = collections.filter(({ key }) => !updatedMap.get(key));
     const updates = collections
       .map(collection => {
         const { key, connection } = collection;
@@ -271,36 +263,34 @@ export function createStore<
     return [...additions, ...updates];
   }
   const currentCollections = collectConnections(fact);
-  const sourceCollections = source
-    ? collectConnections(source)
-    : currentCollections;
-  const holder = source
-    ? extractFactory(updateCollections(sourceCollections, currentCollections))
-    : extractFactory(sourceCollections);
+  const holder = extractFactory(currentCollections);
 
   const store = {
     update(updateFactory: T): ModelFactoryStore<T> {
       if (updateFactory === fact) {
         return { ...store };
       }
-      const newSource = fetchMutationSource(updateFactory);
-      const newSourceCollections = newSource
-        ? updateCollections(sourceCollections, collectConnections(newSource))
-        : sourceCollections;
       const collections = collectConnections(updateFactory);
-      const newHolder = extractFactory(
-        updateCollections(newSourceCollections, collections)
-      );
-      Object.assign(holder, { ...newHolder });
+      const {
+        instances,
+        connections,
+        collections: newCollections
+      } = extractFactory(updateCollections(currentCollections, collections));
+      holder.instances = instances;
+      holder.connections = connections;
+      holder.collections = newCollections;
       return { ...store };
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {
       return holder.instances.get(reducer);
     },
     equal(
-      factory: Record<string, any> | Array<any> | ((...args: any[]) => any)
+      factoryCollections:
+        | Record<string, any>
+        | Array<any>
+        | ((...args: any[]) => any)
     ): boolean {
-      return factory === handler;
+      return factoryCollections === handler;
     },
     destroy() {
       holder.connections.forEach(connection => connection.disconnect());

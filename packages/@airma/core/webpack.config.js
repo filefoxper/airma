@@ -14,7 +14,6 @@ module.exports = function config() {
       libraryTarget: 'umd'
     },
     optimization: {
-      noEmitOnErrors: true,
       usedExports: true,
       minimize: true,
       minimizer: [
@@ -24,20 +23,15 @@ module.exports = function config() {
       ]
     },
     resolve: {
-      extensions: ['.js', '.ts', '.tsx', '.json', 'txt'],
-      plugins: [new TsconfigPathsPlugin({ configFile: './tsconfig.json' })]
+      extensions: ['.js', '.ts', '.tsx'],
     },
     mode: "production",
+    target: ['web', 'es5'],
     module: {
-      // 文件编译规则
       rules: [
         {
-          // 匹配文件名
           test: /\.js$|\.ts$|\.tsx$/,
-          // 排除匹配目录
           exclude: /(node_modules|bower_components)/,
-          // 使用编译接驳器 babel-loader，
-          // babel-loader 会自动寻找 .babelrc，babel.config.js等文件，将配置信息merge成 babel 解析配置信息
           use: [
             {
               loader: 'babel-loader',

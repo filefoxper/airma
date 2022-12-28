@@ -1,7 +1,6 @@
 module.exports = {
   plugins: [
-    ['@babel/plugin-transform-runtime'],
-    ['@babel/plugin-proposal-decorators', { legacy: true }]
+    ['@babel/plugin-transform-runtime']
   ],
   presets: [
     [
@@ -14,6 +13,7 @@ module.exports = {
           firefox:'57',
           safari:'11'
         },
+        forceAllTransforms:true,
         useBuiltIns: 'usage',
         corejs: { version: 3, proposals: true }
       }
