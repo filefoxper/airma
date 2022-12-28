@@ -35,7 +35,11 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     }
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
-    const { reducer } = updater;
+    const { reducer, controlled } = updater;
+    if (controlled) {
+      dispatch({ type, state: result });
+      return result;
+    }
     updater.current = reducer(result);
     updater.state = result;
     updater.cacheState = { state: result };
@@ -48,7 +52,8 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
 
 export default function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
-  defaultState: D
+  defaultState: D,
+  controlled?: boolean
 ): Connection<S, T> {
   const defaultModel = reducer(defaultState);
   const updater: Updater<S, T> = {
@@ -58,7 +63,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     dispatches: [],
     cacheMethods: {},
     state: defaultState,
-    cacheState: null
+    cacheState: null,
+    controlled: !!controlled
   };
 
   function update(

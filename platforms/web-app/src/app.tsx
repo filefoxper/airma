@@ -130,7 +130,12 @@ function ControlledCounting() {
   const { count, isNegative, increase, decrease } = useControlledModel(
     modelFactory.counter,
     c,
-    setC
+      (s)=>{
+        if((s||0)<0){
+            return;
+        }
+        setC(s)
+    }
   );
   return (
     <div>

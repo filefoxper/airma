@@ -37,7 +37,7 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
   state: D,
   onChange: (s: S) => any
 ): T {
-  const current = useMemo(() => createModel<S, T, D>(model, state), []);
+  const current = useMemo(() => createModel<S, T, D>(model, state, true), []);
   current.update(model, { state, ignoreDispatch: true });
 
   const dispatch = ({ state: actionState }: Action) => {
@@ -116,6 +116,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   if (required && !autoRequired && !connection) {
     throw new Error('Can not find a right model in store.');
   }
+  const prevStateRef = useRef<null | { state: D | undefined }>(null);
   const modelRef = useRef<AirReducer<S, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -138,14 +139,16 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   current.connect(persistDispatch);
 
   useEffect(() => {
-    if (refresh && state !== current.getState()) {
+    const prevState = prevStateRef.current;
+    prevStateRef.current = { state };
+    if (refresh && (!prevState || prevState.state !== state)) {
       current.connect(persistDispatch);
       current.update(model, { state, cache: true });
     }
   }, [state]);
 
   useEffect(() => {
-    if (!connection) {
+    if (!connection && !refresh) {
       current.update(model, { state: s });
     }
     current.connect(persistDispatch);

@@ -5,7 +5,7 @@
   },
   "private": false,
   "name": "@airma/core",
-  "version": "16.1.0",
+  "version": "16.1.1",
   "description": "This is the core for agent-reducer and airma",
   "repository": {
     "type": "git",

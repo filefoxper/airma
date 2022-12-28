@@ -47,7 +47,8 @@ export declare interface Connection<
 
 export declare function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
-  defaultState: D
+  defaultState: D,
+  controlled?:boolean
 ): Connection<S, T>;
 
 export declare type ModelFactoryStore<T> = {
