@@ -43,6 +43,7 @@ export interface Connection<
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
   current: T;
+  controlled:boolean;
   reducer: AirReducer<S, T>;
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
