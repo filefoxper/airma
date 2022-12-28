@@ -54,7 +54,7 @@ module.exports = {
         'jsx-a11y/no-noninteractive-element-interactions': 'off',
         'no-bitwise': 'off',
         '@typescript-eslint/no-shadow': 'warn',
-        'jsx-a11y/media-has-caption': 'off',
         '@typescript-eslint/no-explicit-any':'off',
+        'jsx-a11y/media-has-caption': 'off'
     }
 }

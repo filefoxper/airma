@@ -7,11 +7,6 @@ export type Action = {
 
 export type Dispatch = (action: Action) => unknown;
 
-export type AirModel<S> = {
-  state: S;
-  [key: string]: unknown;
-};
-
 export interface AirModelInstance {
   [key: string]: unknown;
   [key: number]: unknown;
@@ -56,7 +51,7 @@ export type Updater<S, T extends AirModelInstance> = {
   state: S;
 };
 
-export type Creation<T> = {
+export type Creation = {
   creation(): Connection;
 };
 

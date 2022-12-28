@@ -26,9 +26,9 @@ import {
 function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   const dispatchRef = useRef<T>(callback);
   dispatchRef.current = callback;
-  const persistRef = useRef((...args: any[]): any => {
-    return dispatchRef.current(...args);
-  });
+  const persistRef = useRef((...args: any[]): any =>
+    dispatchRef.current(...args)
+  );
   return persistRef.current as T;
 }
 
@@ -74,7 +74,7 @@ const ReactStateContext = createContext<Selector | null>(null);
 export const RequiredModelProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
   children: ReactNode;
-}> = ({ value, children }) => {
+}> = function RequiredModelProvider({ value, children }) {
   const context = useContext(ReactStateContext);
   const storeRef = useRef(createStore(value));
   const selector = useMemo(() => {
@@ -109,7 +109,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): [S | undefined, T, (s: S | undefined) => void] {
   const defaultOpt = { refresh: false, required: false, autoRequired: false };
-  const { refresh, required, autoRequired } = option ? option : defaultOpt;
+  const { refresh, required, autoRequired } = option || defaultOpt;
   const context = useContext(ReactStateContext);
   const connection =
     context && required ? findConnection(context, model) : undefined;
@@ -117,10 +117,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     throw new Error('Can not find a right model in store.');
   }
   const modelRef = useRef<AirReducer<S, T>>(model);
-  const instance = useMemo(
-    () => createModel<S | undefined, T, D | undefined>(model, state),
-    []
+  const instanceRef = useRef(
+    useMemo(
+      () => createModel<S | undefined, T, D | undefined>(model, state),
+      []
+    )
   );
+  const instance = instanceRef.current;
   const current = connection || instance;
   const [s, setS] = useState<S | undefined>(current.getState());
   if (modelRef.current !== model && !connection) {
@@ -136,6 +139,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   useEffect(() => {
     if (refresh && state !== current.getState()) {
+      current.connect(persistDispatch);
       current.update(model, { state, cache: true });
     }
   }, [state]);
@@ -165,7 +169,7 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
   state?: D,
   option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
 ): [S | undefined, T] {
-  const getSourceFrom = (model as AirReducerLike).getSourceFrom;
+  const { getSourceFrom } = model as AirReducerLike;
   const sourceFrom =
     typeof getSourceFrom === 'function' ? getSourceFrom() : undefined;
   const result = useSourceTupleModel(sourceFrom || model, state, option);
@@ -207,9 +211,8 @@ export function useRequiredModel<S, T extends AirModelInstance, D extends S>(
   return useModel(model, state, { ...option, required: true });
 }
 
-const requiredError = (api: string): string => {
-  return `API "${api}" can only work in a RequiredModelProvider which contains the right seeking factory model`;
-};
+const requiredError = (api: string): string =>
+  `API "${api}" can only work in a RequiredModelProvider which contains the right seeking factory model`;
 
 export function useRequiredModelState<
   S,
@@ -265,7 +268,7 @@ export function useSelector<
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
-  const agent = connection.agent;
+  const { agent } = connection;
   const [s, setS] = useState(callback(agent));
   const dispatch = usePersistFn(() => {
     const next = callback(connection.agent);
@@ -296,13 +299,17 @@ export function useLocalSelector<
   defaultState?: D
 ): ReturnType<C> {
   const modelRef = useRef<AirReducer<S, T>>(model);
-  const current = useMemo(
-    () => createModel<S | undefined, T, D | undefined>(model, defaultState),
-    []
+  const currentRef = useRef(
+    useMemo(
+      () => createModel<S | undefined, T, D | undefined>(model, defaultState),
+      []
+    )
   );
-  const agent = current.agent;
-  const [s, setS] = useState(current.getState());
-  const [a, setA] = useState(callback(agent));
+  const { current } = currentRef;
+  const { agent } = current;
+  const [s, setS] = useState({ state: current.getState() });
+  const selectedRef = useRef(callback(agent));
+  const initialedRef = useRef(false);
 
   if (modelRef.current !== model) {
     current.update(model);
@@ -310,20 +317,24 @@ export function useLocalSelector<
   modelRef.current = model;
 
   const dispatch = usePersistFn(({ state }: Action) => {
-    const next = callback(current.agent);
-    setA(next);
-    setS(state);
+    selectedRef.current = callback(current.agent);
+    setS({ state });
   });
   current.connect(dispatch);
 
   useEffect(() => {
-    current.update(model, { state: s });
+    current.update(model, s);
     current.connect(dispatch);
+    selectedRef.current = callback(current.agent);
+    if (initialedRef.current) {
+      setS({ state: s.state });
+    }
+    initialedRef.current = true;
     return () => {
       current.disconnect(dispatch);
     };
   }, []);
-  return a;
+  return selectedRef.current;
 }
 
 export const shallowEqual = shallowEq;
