@@ -23,6 +23,7 @@ import {
   createElement,
   useContext
 } from 'react';
+import type { AirReducerLike, Selector } from './type';
 
 function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   const dispatchRef = useRef<T>(callback);
@@ -66,10 +67,6 @@ export function useRefresh<T extends (...args: any[]) => any>(
   }, [method, ...params]);
 }
 
-type Selector = {
-  parent: Selector | null;
-} & ModelFactoryStore<any>;
-
 const ReactStateContext = createContext<Selector | null>(null);
 
 export const ModelProvider: FC<{
@@ -99,10 +96,6 @@ function findConnection<S, T extends AirModelInstance>(
   }
   return d as Connection<S | undefined, T> | undefined;
 }
-
-type AirReducerLike = AirReducer<any, any> & {
-  getSourceFrom?: () => AirReducer<any, any>;
-};
 
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
