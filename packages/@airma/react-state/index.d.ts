@@ -2,17 +2,17 @@ import { AirModelInstance, AirReducer } from '@airma/core';
 import { FC, ReactNode } from 'react';
 
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>
+  model: AirReducer<S, T>
 ): T;
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
+  option?: { refresh?: boolean; autoLink?: boolean }
 ): T;
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; required?: boolean; autoRequired?: boolean }
+  option?: { refresh?: boolean; autoLink?: boolean }
 ): T;
 
 export declare function useControlledModel<
@@ -28,7 +28,7 @@ export declare function useRefreshModel<
 >(
   model: AirReducer<S, T>,
   state: D,
-  option?: { required?: boolean; autoRequired?: boolean }
+  option?: { autoLink?: boolean }
 ): T;
 
 export declare function useRefresh<T extends (...args: any[]) => any>(
@@ -41,50 +41,20 @@ declare type FactoryObject =
     | ((...args: any) => any)
     | Record<string, any>;
 
-export declare const RequiredModelProvider: FC<{
+export declare const ModelProvider: FC<{
   value: FactoryObject;
   children: ReactNode;
 }>;
-
-export declare function useRequiredModel<
-  S,
-  T extends AirModelInstance,
-  D extends S
->(
-  model: AirReducer<S | undefined, T>,
-  state?: D,
-  option?: { refresh?: boolean; autoRequired?: boolean }
-): T;
 
 export declare function useSelector<
   S,
   T extends AirModelInstance,
   C extends (instance: T) => any
 >(
-  factoryModel: AirReducer<S | undefined, T>,
+  factoryModel: AirReducer<S, T>,
   callback: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
-
-export declare function useLocalSelector<
-    S,
-    T extends AirModelInstance,
-    C extends (instance: T) => any,
-    D extends S
->(
-    model: AirReducer<S | undefined, T>,
-    callback: C,
-    defaultState?:D
-): ReturnType<C>
-
-export declare function useRequiredModelState<
-    S,
-    T extends AirModelInstance,
-    D extends S
->(
-    model: AirReducer<S | undefined, T>,
-    defaultState?: D
-): [S | undefined, (s: S | undefined) => void]
 
 declare type PipeCallback = <P extends AirReducer<any, any>>(reducer: P) => P;
 

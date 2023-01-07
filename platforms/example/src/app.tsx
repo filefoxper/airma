@@ -11,7 +11,7 @@ import {
   useLocalSelector
 } from '@airma/react-state';
 
-const counter = (count = 0) => {
+const counter = (count=0) => {
     console.log('count',11)
     return {
         count,
@@ -101,7 +101,9 @@ const LocalSelectCount = memo(() => {
     instance => ({
       ...instance,
       async test() {
-        await new Promise<undefined>(r => window.setTimeout(()=>{r(undefined)}, 1000));
+        await new Promise<undefined>(r => {
+            window.setTimeout(()=>r(undefined),1000)
+        });
         instance.increase();
       }
     })

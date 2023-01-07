@@ -4,15 +4,16 @@
   "author": "Jimmy.Harding",
   "description": "the purpose of this project is simplify a reducer",
   "scripts": {
+    "docs": "docsify serve ./docs",
     "lint": "eslint . --fix --ext .ts ",
     "lint-d": "eslint . --fix --ext .d.ts ",
     "lint-init": "eslint --init"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/filefoxper/agent-reducer"
+    "url": "https://github.com/filefoxper/airma"
   },
-  "homepage": "https://filefoxper.github.io/agent-reducer/#/",
+  "homepage": "https://github.com/filefoxper/airma/#/",
   "keywords": [
     "typescript",
     "reducer",
