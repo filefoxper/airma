@@ -11,7 +11,7 @@
 
 # @airma/react-state
 
-`@airma/react-state` is a simple state management tool for react app.
+`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index) for details.
 
 It works like that:
 
@@ -178,7 +178,7 @@ const toggleModel = (visible:boolean):[boolean, ()=>boolean]=>[
 const [visible, toggle] = useModel(toggleModel, false);
 ```
 
-If you want to know more about `@airma/react-state`, take the [document detail]() now.
+If you want to know more about `@airma/react-state`, take the [document detail](https://filefoxper.github.io/airma/#/react-state/index) now.
 
 ## Browser Support 
 

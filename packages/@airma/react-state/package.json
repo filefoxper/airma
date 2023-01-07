@@ -17,7 +17,7 @@
     "type": "git",
     "url": "https://github.com/filefoxper/airma"
   },
-  "homepage": "https://github.com/filefoxper/airma",
+  "homepage": "https://filefoxper.github.io/airma/#/react-state/index",
   "files": [
     "dist",
     "index.d.ts"
