@@ -1,8 +1,22 @@
 import { AirModelInstance, AirReducer } from '@airma/core';
 import { FC, ReactNode } from 'react';
 
-export declare function useModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>
+declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
+  reducer: P
+) => P & { getSourceFrom: () => any };
+
+declare type FactoryModel<T extends AirReducer<any, any>> = T & {
+  pipe: PipeCallback<T extends AirReducer<infer S, any> ? S : never>;
+};
+
+export declare function useModel<S, T extends AirModelInstance>(
+  model: AirReducer<S, T> & { getSourceFrom: () => any }
+): T;
+export declare function useModel<S, T extends AirModelInstance>(
+  model: FactoryModel<AirReducer<S, T>>
+): T;
+export declare function useModel<S, T extends AirModelInstance>(
+  model: AirReducer<S | undefined, T>
 ): T;
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
@@ -25,24 +39,20 @@ export declare function useRefreshModel<
   S,
   T extends AirModelInstance,
   D extends S
->(
-  model: AirReducer<S, T>,
-  state: D,
-  option?: { autoLink?: boolean }
-): T;
+>(model: AirReducer<S, T>, state: D, option?: { autoLink?: boolean }): T;
 
 export declare function useRefresh<T extends (...args: any[]) => any>(
   method: T,
   params: Parameters<T>
 ): void;
 
-declare type FactoryObject =
-    | Array<any>
-    | ((...args: any) => any)
-    | Record<string, any>;
+declare type FactoryCollection =
+  | FactoryModel<(s:any)=>any>
+  | Array<FactoryModel<(s:any)=>any>>
+  | Record<string, FactoryModel<(s:any)=>any>>;
 
 export declare const ModelProvider: FC<{
-  value: FactoryObject;
+  value: FactoryCollection;
   children: ReactNode;
 }>;
 
@@ -52,19 +62,20 @@ export declare function useSelector<
   C extends (instance: T) => any
 >(
   factoryModel: AirReducer<S, T>,
-  callback: C,
+  selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
-declare type PipeCallback = <P extends AirReducer<any, any>>(reducer: P) => P;
-
-declare type FactoryInstance<T extends AirReducer<any, any>> = T & {
-  pipe: PipeCallback;
-};
-
-export declare function factory<T extends AirReducer<any, any>>(
-    reducer: T,
-    defaultState?: (T extends AirReducer<infer S, any> ? S : never)
-):FactoryInstance<T>;
+export declare function factory<S, T extends AirModelInstance>(
+  model: AirReducer<S | undefined, T>
+): FactoryModel<typeof model>;
+export declare function factory<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  defaultState: D
+): FactoryModel<typeof model>;
+export declare function factory<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  defaultState?: D
+): FactoryModel<typeof model>;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;

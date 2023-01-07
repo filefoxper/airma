@@ -7,7 +7,7 @@ import {
     shallowEqual, ModelProvider,
 } from '@airma/react-state';
 
-const counter = (count=0) => {
+const counter = (count:number) => {
     console.log('count',11)
     return {
         count,
@@ -49,7 +49,7 @@ const Refresh = memo(() => {
     );
 });
 
-const dm = (d = 0) => ({
+const dm = (d:number) => ({
     count: d,
     ddecrease() {
         return d - 2;
@@ -92,7 +92,7 @@ const SelectCount = memo(() => {
 
 function Counting() {
     const { count, isNegative, increase, decrease } = useModel(
-        counter
+        counter,0
     );
     return (
         <div>
@@ -107,7 +107,7 @@ function Counting() {
 }
 
 function ControlledCounting() {
-    const [c, setC] = useState<number | undefined>(1);
+    const [c, setC] = useState<number>(1);
     const { count, isNegative, increase, decrease } = useControlledModel(
         counter,
         c,

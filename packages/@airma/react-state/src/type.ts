@@ -1,10 +1,9 @@
-export type Option = {
-    refresh?:boolean
-}
+import type { AirReducer, ModelFactoryStore } from '@airma/core';
 
-export type Optional ={
-    refresh?:boolean,
-    required?:boolean
-}
+export type AirReducerLike = AirReducer<any, any> & {
+  getSourceFrom?: () => AirReducer<any, any>;
+};
 
-export type Callback = (...args:any[])=>any;
+export type Selector = {
+  parent: Selector | null;
+} & ModelFactoryStore<any>;
