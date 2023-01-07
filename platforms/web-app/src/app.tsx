@@ -1,17 +1,14 @@
 import React, { memo, useEffect, useState } from 'react';
 import {
-    RequiredModelProvider,
-    useRequiredModel,
     factory,
     useModel,
     useControlledModel,
     useSelector,
-    shallowEqual,
-    useRequiredModelState,
-    useLocalSelector
+    shallowEqual, ModelProvider,
 } from '@airma/react-state';
 
-const counter = (count:number) => {
+const counter = (count=0) => {
+    console.log('count',11)
     return {
         count,
         isNegative: count < 0,
@@ -25,12 +22,12 @@ const modelFactory = {
 };
 
 const Increase = memo(() => {
-    const { increase } = useRequiredModel(modelFactory.counter);
+    const { increase } = useModel(modelFactory.counter);
     return <button type="button" onClick={increase}>+</button>;
 });
 
 const Decrease = memo(() => {
-    const { decrease } = useRequiredModel(modelFactory.counter);
+    const { decrease } = useModel(modelFactory.counter);
     return <button type="button" onClick={decrease}>-</button>;
 });
 
@@ -41,7 +38,9 @@ const CountValue = memo(() => {
 
 const Refresh = memo(() => {
     const [v, setV] = useState(12);
-    const { count } = useModel(modelFactory.counter, 5);
+    const { count } = useModel(modelFactory.counter, v, {
+        refresh: true
+    });
     return (
         <div>
             {count}
@@ -60,7 +59,7 @@ const dm = (d = 0) => ({
     }
 });
 const PipeCount = memo(() => {
-    const { count, ddecrease, iincrease } = useRequiredModel(
+    const { count, ddecrease, iincrease } = useModel(
         modelFactory.counter.pipe(dm)
     );
     return (
@@ -91,36 +90,9 @@ const SelectCount = memo(() => {
     );
 });
 
-const LocalSelectCount = memo(() => {
-    const { count, decrease, increase, test } = useLocalSelector(
-        counter,
-        instance => ({
-            ...instance,
-            async test() {
-                await new Promise<undefined>(r => {
-                    window.setTimeout(()=>r(undefined),1000)
-                });
-                instance.increase();
-            }
-        }),
-        0
-    );
-    return (
-        <div>
-            local select counting:
-            <div>
-                <button type="button" onClick={decrease}>-</button>
-                <span>{count}</span>
-                <button type="button" onClick={increase}>+</button>
-                <button type="button" onClick={test}>test</button>
-            </div>
-        </div>
-    );
-});
-
 function Counting() {
     const { count, isNegative, increase, decrease } = useModel(
-        modelFactory.counter,0,{autoRequired:true}
+        counter
     );
     return (
         <div>
@@ -135,9 +107,9 @@ function Counting() {
 }
 
 function ControlledCounting() {
-    const [c, setC] = useState<number>(1);
+    const [c, setC] = useState<number | undefined>(1);
     const { count, isNegative, increase, decrease } = useControlledModel(
-        modelFactory.counter,
+        counter,
         c,
         setC
     );
@@ -157,7 +129,7 @@ function Counter({ index }: { index: number }) {
     return (
         <div>
             counter:{index}
-            <RequiredModelProvider value={modelFactory}>
+            <ModelProvider value={modelFactory}>
                 <div>
                     <Decrease />
                     <CountValue />
@@ -166,10 +138,9 @@ function Counter({ index }: { index: number }) {
                 <PipeCount />
                 <SelectCount />
                 <Refresh />
-            </RequiredModelProvider>
+            </ModelProvider>
             <Counting />
             <ControlledCounting />
-            <LocalSelectCount />
         </div>
     );
 }

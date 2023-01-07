@@ -160,7 +160,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!connection && !refresh) {
       current.update(model, { state: s });
     }
-    if (connection && connection.getCacheState() == null && hasState && !autoLink) {
+    if (
+      !refresh &&
+      connection &&
+      connection.getCacheState() == null &&
+      hasState &&
+      !autoLink
+    ) {
       current.updateState(state);
     }
     current.connect(persistDispatch);
@@ -187,7 +193,12 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; required?: boolean; autoLink?: boolean; hasState?: boolean; }
+  option?: {
+    refresh?: boolean;
+    required?: boolean;
+    autoLink?: boolean;
+    hasState?: boolean;
+  }
 ): [S | undefined, T] {
   const { getSourceFrom } = model as AirReducerLike;
   const sourceFrom =
@@ -204,15 +215,17 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; autoLink?: boolean; hasState?:boolean }
+  option?: { refresh?: boolean; autoLink?: boolean; hasState?: boolean }
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; autoLink?: boolean; hasState?:boolean }
+  option?: { refresh?: boolean; autoLink?: boolean; hasState?: boolean }
 ): T {
   const { pipe } = model as FactoryInstance<any>;
-  const required = typeof pipe === 'function';
+  const { getSourceFrom } = model as AirReducerLike;
+  const required =
+    typeof pipe === 'function' || typeof getSourceFrom === 'function';
   const hasState = arguments.length > 1;
   const [, agent] = useTupleModel(model, state, {
     required,
