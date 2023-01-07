@@ -8,7 +8,7 @@ import {
 } from '@airma/react-state';
 
 const counter = (count=0) => {
-    console.log('count',11)
+    console.log('count',1)
     return {
         count,
         isNegative: count < 0,
