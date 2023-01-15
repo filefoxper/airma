@@ -14,3 +14,7 @@
 ## v 17.0.2 2023-01-07
 
 * update index.d.ts to provide a more exacter typescript check. 
+
+## v 17.0.3 2023-01-15
+
+* fix bug about connect a sharing factory with undefined state when default state has been set in factory. 

@@ -122,7 +122,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const modelRef = useRef<AirReducer<S, T>>(model);
   const instanceRef = useRef(
     useMemo(
-      () => createModel<S | undefined, T, D | undefined>(model, state),
+      () =>
+        connection ||
+        createModel<S | undefined, T, D | undefined>(model, state),
       []
     )
   );
