@@ -8,7 +8,7 @@ import {
 } from '@airma/react-state';
 
 const counter = (count:number) => {
-    console.log('count',11)
+    console.log(count)
     return {
         count,
         isNegative: count < 0,
@@ -18,7 +18,7 @@ const counter = (count:number) => {
 };
 
 const modelFactory = {
-    counter: factory(counter, 0)
+    counter: factory(counter, 5)
 };
 
 const Increase = memo(() => {
@@ -38,9 +38,7 @@ const CountValue = memo(() => {
 
 const Refresh = memo(() => {
     const [v, setV] = useState(12);
-    const { count } = useModel(modelFactory.counter, v, {
-        refresh: true
-    });
+    const { count } = useModel(modelFactory.counter);
     return (
         <div>
             {count}
@@ -79,7 +77,6 @@ const SelectCount = memo(() => {
         modelFactory.counter,
         counter => counter.isNegative
     );
-    console.log('render...');
     return (
         <div>
             select counting:
