@@ -22,7 +22,7 @@ const modelFactory = {
 };
 
 const Increase = memo(() => {
-    const { increase } = useModel(modelFactory.counter);
+    const increase = useSelector(modelFactory.counter,s=>s.increase);
     return <button type="button" onClick={increase}>+</button>;
 });
 

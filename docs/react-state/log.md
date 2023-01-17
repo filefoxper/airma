@@ -18,3 +18,7 @@
 ## v 17.0.3 2023-01-15
 
 * fix bug about connect a sharing factory with undefined state when default state has been set in factory. 
+
+## v 17.0.4 2023-01-17
+
+* fix bug about `useSelector` can not select a method.
