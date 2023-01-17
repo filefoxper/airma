@@ -256,14 +256,17 @@ export function useSelector<
     throw new Error(requiredError('useSelector'));
   }
   const { agent } = connection;
-  const [s, setS] = useState(callback(agent));
+  const current = callback(agent);
+  const [s, setS] = useState({});
+
   const dispatch = usePersistFn(() => {
     const next = callback(connection.agent);
-    if (equalFn ? equalFn(s, next) : Object.is(s, next)) {
+    if (equalFn ? equalFn(current, next) : Object.is(current, next)) {
       return;
     }
-    setS(next);
+    setS({});
   });
+
   connection.connect(dispatch);
 
   useEffect(() => {
@@ -272,7 +275,8 @@ export function useSelector<
       connection.disconnect(dispatch);
     };
   }, []);
-  return s;
+
+  return current;
 }
 
 export const shallowEqual = shallowEq;

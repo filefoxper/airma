@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "17.0.3",
+  "version": "17.0.4",
   "main": "dist/index.js",
   "typings": "index.d.ts",
   "author": "Jimmy.Harding",
