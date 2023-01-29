@@ -243,12 +243,11 @@ Returns
 ## useSelector
 
 ```ts
-function useSelector<
-  S,
-  T extends Record<string|number, any>,
-  C extends (instance: T) => any
+export declare function useSelector<
+  R extends AirReducer<any, any>,
+  C extends (instance: ReturnType<R>) => any
 >(
-  factoryModel: (state:S)=>T,
+  factoryModel: R,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
