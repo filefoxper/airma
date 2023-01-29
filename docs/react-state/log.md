@@ -22,3 +22,7 @@
 ## v 17.0.4 2023-01-17
 
 * fix bug about `useSelector` can not select a method.
+
+## v 17.0.5 2023-01-29
+
+* optmize the typescript of `useSelector`.

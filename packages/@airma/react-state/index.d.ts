@@ -47,9 +47,9 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
 ): void;
 
 declare type FactoryCollection =
-  | FactoryModel<(s:any)=>any>
-  | Array<FactoryModel<(s:any)=>any>>
-  | Record<string, FactoryModel<(s:any)=>any>>;
+  | FactoryModel<(s: any) => any>
+  | Array<FactoryModel<(s: any) => any>>
+  | Record<string, FactoryModel<(s: any) => any>>;
 
 export declare const ModelProvider: FC<{
   value: FactoryCollection;
@@ -57,11 +57,10 @@ export declare const ModelProvider: FC<{
 }>;
 
 export declare function useSelector<
-  S,
-  T extends AirModelInstance,
-  C extends (instance: T) => any
+  R extends AirReducer<any, any>,
+  C extends (instance: ReturnType<R>) => any
 >(
-  factoryModel: AirReducer<S, T>,
+  factoryModel: R,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;

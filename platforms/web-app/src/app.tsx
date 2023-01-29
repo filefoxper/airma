@@ -75,7 +75,7 @@ const PipeCount = memo(() => {
 const SelectCount = memo(() => {
     const isNegative = useSelector(
         modelFactory.counter,
-        counter => counter.isNegative
+        c => c.isNegative
     );
     return (
         <div>

@@ -242,11 +242,10 @@ const requiredError = (api: string): string =>
   `API "${api}" can only work in a RequiredModelProvider which contains the right seeking factory model`;
 
 export function useSelector<
-  S,
-  T extends AirModelInstance,
-  C extends (instance: T) => any
+  R extends AirReducer<any, any>,
+  C extends (instance: ReturnType<R>) => any
 >(
-  factoryModel: AirReducer<S | undefined, T>,
+  factoryModel: R,
   callback: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {
