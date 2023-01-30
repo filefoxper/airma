@@ -208,7 +208,7 @@ export function useSortNavigation<T>(source:T[]):Navigation<T>{
     const {
         updateSource,
         ...rest
-    } = useModel(navigation, defaultSortState(source));
+    } = useModel(sortNavigation, defaultSortState(source));
 
     // if the source is not changed, 
     // the sort action can not lead `setPage to 1` happening.
