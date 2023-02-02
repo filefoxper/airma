@@ -6,5 +6,8 @@ dist/
 coverage/
 jest.config.js
 babel.config.js
+babel.es.config.js
+babel.esm.config.js
 index.js
-webpack.*.js
+webpack.config.js
+webpack.es.config.js
