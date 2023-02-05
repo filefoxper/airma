@@ -9,6 +9,7 @@ declare type ResponseType =
 
 export declare type SuccessResponse<T = any> = {
   status: number;
+  headers?: Record<string, any>;
   data: T;
   isError: false;
 };
@@ -16,7 +17,9 @@ export declare type SuccessResponse<T = any> = {
 export declare type ErrorResponse = {
   status: number | null;
   error: any;
-  networkError: boolean;
+  data: any;
+  headers?: Record<string, any>;
+  networkError?: boolean;
   isError: true;
 };
 
@@ -25,6 +28,7 @@ export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
 declare type BaseRestConfig = {
   headers?: Record<string, any>;
   responseType?: ResponseType;
+  responseInterceptor?: (data: ResponseData) => ResponseData | undefined;
   defaultParams?: Record<string, any>;
 };
 
@@ -42,19 +46,17 @@ export declare type Request = (
 export declare type RestConfig = BaseRestConfig & { request?: Request };
 
 declare type PromiseValue<T = any> = Promise<T> & {
-  response: Promise<ResponseData<T>>;
+  response: () => Promise<ResponseData<T>>;
 };
 
 declare class Http {
   path(url: string): Http;
 
-  setRestConfig(restConfig: RestConfig): Http;
+  setConfig(restConfig: RestConfig): Http;
 
-  mergeRestConfig(restConfig: RestConfig): Http;
+  setBody<B extends Record<string, any>>(requestBody: B): Http;
 
-  setRequestBody<B extends Record<string, any>>(requestBody: B): Http;
-
-  setRequestParams<P extends Record<string, unknown>>(requestParams: P): Http;
+  setParams<P extends Record<string, unknown>>(requestParams: P): Http;
 
   get<T>(config?: RestConfig): PromiseValue<T>;
 
@@ -65,4 +67,9 @@ declare class Http {
   delete<T>(config?: RestConfig): PromiseValue<T>;
 }
 
-export declare function client(config?: RestConfig): (basePath: string) => Http;
+export declare type Client = {
+  rest(basePath: string): Http;
+  config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
+};
+
+export declare function client(config?: RestConfig): Client;

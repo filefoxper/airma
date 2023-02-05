@@ -1,3 +1,5 @@
+import { Http } from './index';
+
 export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export type ResponseType =
@@ -10,12 +12,15 @@ export type ResponseType =
 export type SuccessResponse<T = any> = {
   status: number;
   data: T;
+  headers?: Record<string, any>;
   isError: false;
 };
 
 export type ErrorResponse = {
   status: number | null;
   error: any;
+  data: any;
+  headers?: Record<string, any>;
   networkError: boolean;
   isError: true;
 };
@@ -42,6 +47,7 @@ export type Request = (
 export type BaseRestConfig = {
   headers?: Record<string, any>;
   responseType?: ResponseType;
+  responseInterceptor?: (data: ResponseData) => ResponseData | undefined;
   defaultParams?: Record<string, any>;
 };
 
@@ -54,5 +60,10 @@ export type RequestConfig = BaseRestConfig & {
 export type RestConfig = BaseRestConfig & { request?: Request };
 
 export type PromiseValue<T = any> = Promise<T> & {
-  response: Promise<ResponseData<T>>;
+  response: () => Promise<ResponseData<T>>;
+};
+
+export type Client = {
+  rest(basePath: string): Http;
+  config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
 };

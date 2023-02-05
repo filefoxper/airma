@@ -12,7 +12,7 @@
 
 ## Basic usage
 
-We have provided a nice way to describe a restful http requests like: 
+We have provided a nice way to describe a restful http requests like:
 
 ```ts
 import { client } from '@airma/restful';

@@ -7,9 +7,10 @@ import {
   shallowEqual,
   ModelProvider
 } from '@airma/react-state';
+import { client } from '@airma/restful';
 
-const counter = (count = 0) => {
-  console.log('count', 1);
+const counter = (count: number) => {
+  console.log(count);
   return {
     count,
     isNegative: count < 0,
@@ -19,11 +20,11 @@ const counter = (count = 0) => {
 };
 
 const modelFactory = {
-  counter: factory(counter, 0)
+  counter: factory(counter, 5)
 };
 
 const Increase = memo(() => {
-  const { increase } = useModel(modelFactory.counter);
+  const increase = useSelector(modelFactory.counter, s => s.increase);
   return (
     <button type="button" onClick={increase}>
       +
@@ -47,9 +48,7 @@ const CountValue = memo(() => {
 
 const Refresh = memo(() => {
   const [v, setV] = useState(12);
-  const { count } = useModel(modelFactory.counter, v, {
-    refresh: true
-  });
+  const { count } = useModel(modelFactory.counter);
   return (
     <div>
       {count}
@@ -60,7 +59,7 @@ const Refresh = memo(() => {
   );
 });
 
-const dm = (d = 0) => ({
+const dm = (d: number) => ({
   count: d,
   ddecrease() {
     return d - 2;
@@ -90,11 +89,7 @@ const PipeCount = memo(() => {
 });
 
 const SelectCount = memo(() => {
-  const isNegative = useSelector(
-    modelFactory.counter,
-    counter => counter.isNegative
-  );
-  console.log('render...');
+  const isNegative = useSelector(modelFactory.counter, c => c.isNegative);
   return (
     <div>
       select counting:
@@ -106,7 +101,7 @@ const SelectCount = memo(() => {
 });
 
 function Counting() {
-  const { count, isNegative, increase, decrease } = useModel(counter);
+  const { count, isNegative, increase, decrease } = useModel(counter, 0);
   return (
     <div>
       counting:
@@ -124,7 +119,7 @@ function Counting() {
 }
 
 function ControlledCounting() {
-  const [c, setC] = useState<number | undefined>(1);
+  const [c, setC] = useState<number>(1);
   const { count, isNegative, increase, decrease } = useControlledModel(
     counter,
     c,
@@ -166,9 +161,36 @@ function Counter({ index }: { index: number }) {
   );
 }
 
+const { rest } = client();
+
+type User = {
+  id: string;
+  name: string;
+  username: string;
+  age: number;
+};
+
 export default function App() {
+  useEffect(() => {
+    (async function fetch() {
+      const promise = rest('/api/user/list').get<User[]>().response();
+      const data = await promise;
+      console.log(data);
+    })();
+  }, []);
+
+  const handleClick = async () => {
+    const data = await rest('/api/user')
+      .setBody({ name: 'test', username: 'test', age: 11 })
+      .post();
+    console.log('post', data);
+  };
+
   return (
     <div>
+      <button type="button" onClick={handleClick}>
+        save
+      </button>
       <Counter index={1} />
     </div>
   );

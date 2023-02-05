@@ -4,9 +4,4 @@ import App from '@/app';
 
 const root = document.getElementById('root');
 
-render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  root
-);
+render(<App />, root);

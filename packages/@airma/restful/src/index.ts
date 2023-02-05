@@ -5,7 +5,9 @@ import type {
   RequestConfig,
   ResponseData,
   RestConfig,
-  HttpProperties
+  HttpProperties,
+  Client,
+  ErrorResponse
 } from './type';
 
 const defaultHeaders = {
@@ -37,17 +39,32 @@ async function request<T>(
   }
 
   function getResponseData(c: RequestConfig) {
-    const { responseType = 'json' } = c;
+    const { responseType } = c;
+
+    async function autoProcessResponse(response: Response) {
+      const cloned = response.clone();
+      try {
+        return await response.json();
+      } catch (e) {
+        return cloned.text();
+      }
+    }
+
     return async function processResponse(
       response: Response
     ): Promise<ResponseData> {
-      const { ok, status } = response;
-      const data = await response[responseType]();
+      const { ok, status, headers } = response;
+      const dataPromise: Promise<any> = responseType
+        ? response[responseType]()
+        : autoProcessResponse(response);
+      const data = await dataPromise;
       if (ok) {
-        return { data, status, isError: false };
+        return { data, status, headers, isError: false };
       }
       return {
         error: data,
+        data,
+        headers,
         status,
         networkError: false,
         isError: true
@@ -55,6 +72,18 @@ async function request<T>(
     };
   }
 
+  function intercept(
+    d: ResponseData,
+    responseInterceptor: (d: ResponseData) => ResponseData | undefined
+  ) {
+    const result = responseInterceptor(d);
+    if (result == null) {
+      return d;
+    }
+    return result;
+  }
+
+  const { responseInterceptor = (d: ResponseData) => undefined } = config;
   try {
     const queryFix = input.indexOf('?');
     const pathname = queryFix > -1 ? input.slice(0, queryFix) : input;
@@ -64,14 +93,17 @@ async function request<T>(
     const queryParams = { ...defaultParams, ...urlParams, ...params };
     const search = stringify(queryParams, { addQueryPrefix: true });
     const response = await window.fetch(pathname + search, parseConfig(config));
-    return getResponseData(config)(response);
+    const data = await getResponseData(config)(response);
+    return intercept(data, responseInterceptor);
   } catch (error: any) {
-    return {
+    const networkErrorRes = {
       status: null,
+      data: error,
       error,
       networkError: true,
       isError: true
-    };
+    } as ErrorResponse;
+    return intercept(networkErrorRes, responseInterceptor);
   }
 }
 
@@ -98,19 +130,26 @@ export class Http {
   }
 
   private run<T>(requestConfig: RequestConfig): PromiseValue<T> {
+    let ignoreDataPromise = false;
     const { restConfig } = this;
     const responsePromise: Promise<ResponseData<T>> = (
       restConfig.request || request
     )(this.getPath(), requestConfig);
-    const promise: Promise<T> & { response?: Promise<ResponseData<T>> } =
+    const promise: Promise<T> & { response?: () => Promise<ResponseData<T>> } =
       Promise.resolve(responsePromise).then(res => {
+        if (ignoreDataPromise) {
+          return null as T;
+        }
         const { isError } = res;
         if (isError) {
           return Promise.reject(res.error);
         }
         return res.data as T;
       });
-    promise.response = responsePromise;
+    promise.response = () => {
+      ignoreDataPromise = true;
+      return responsePromise;
+    };
     return promise as PromiseValue<T>;
   }
 
@@ -138,27 +177,17 @@ export class Http {
     return this.clone();
   }
 
-  setRestConfig(restConfig: RestConfig): Http {
+  setConfig(restConfig: RestConfig): Http {
     this.restConfig = { ...defaultRestConfig, ...restConfig };
     return this.clone();
   }
 
-  mergeRestConfig(restConfig: RestConfig): Http {
-    const { headers, ...m } = this.restConfig;
-    this.restConfig = {
-      ...m,
-      ...restConfig,
-      headers: { ...headers, ...restConfig.headers }
-    };
-    return this.clone();
-  }
-
-  setRequestBody<B extends Record<string, any>>(requestBody: B): Http {
+  setBody<B extends Record<string, any>>(requestBody: B): Http {
     this.requestBody = requestBody;
     return this.clone();
   }
 
-  setRequestParams<P extends Record<string, unknown>>(requestParams: P): Http {
+  setParams<P extends Record<string, unknown>>(requestParams: P): Http {
     this.requestParams = requestParams;
     return this.clone();
   }
@@ -199,10 +228,18 @@ function rest(path: string): Http {
   return new Http(path);
 }
 
-export function client(
-  config: RestConfig = defaultRestConfig
-): (basePath: string) => Http {
-  return function baseRest(basePath: string) {
-    return rest(basePath).setRestConfig(config);
+export function client(config: RestConfig = defaultRestConfig): Client {
+  const restConfig = config;
+  return {
+    rest(basePath: string): Http {
+      return rest(basePath).setConfig(restConfig);
+    },
+    config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void {
+      if (typeof cg === 'function') {
+        Object.assign(restConfig, cg(restConfig));
+        return;
+      }
+      Object.assign(restConfig, cg);
+    }
   };
 }

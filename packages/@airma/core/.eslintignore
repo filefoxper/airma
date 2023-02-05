@@ -9,6 +9,5 @@ babel.config.js
 babel.es.config.js
 babel.esm.config.js
 index.js
-webpack.config.js
-webpack.analyze.js
+webpack.*.js
 build.config.js

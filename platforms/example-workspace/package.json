@@ -4,7 +4,7 @@
     "build": "echo edit build script"
   },
   "private": false,
-  "name": "web-app",
+  "name": "example-workspace",
   "version": "16.0.0",
   "description": "This is a package",
   "dependencies": {
@@ -14,7 +14,9 @@
     "react-dom": ">=16.8.0",
     "react-router": "^6.4.3",
     "react-router-dom": "^6.4.3",
-    "@airma/react-state": "17.0.5"
+    "@airma/react-state": "17.0.5",
+    "@airma/restful": "15.0.0",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@types/react": "16.9.56",

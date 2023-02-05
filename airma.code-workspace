@@ -8,7 +8,11 @@
     },
     { "name": "packages/@airma/restful", "path": "packages/@airma/restful" },
     { "name": "platforms/example", "path": "platforms/example" },
-    { "name": "platforms/web-app", "path": "platforms/web-app" }
+    { "name": "platforms/example-server", "path": "platforms/example-server" },
+    {
+      "name": "platforms/example-workspace",
+      "path": "platforms/example-workspace"
+    }
   ],
   "settings": {}
 }
