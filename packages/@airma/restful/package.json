@@ -1,0 +1,35 @@
+{
+  "private": false,
+  "name": "@airma/restful",
+  "version": "15.0.0",
+  "description": "A wrapper for asynchronous http requests with a restful style",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "webpack",
+    "analyze": "webpack --config webpack.analyze.js"
+  },
+  "typings": "index.d.ts",
+  "dependencies": {
+    "qs": "^6.11.0"
+  },
+  "devDependencies": {
+    "prettier": "2.3.2",
+    "typescript": "4.9.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filefoxper/airma"
+  },
+  "homepage": "https://filefoxper.github.io/airma/#/restful/index",
+  "keywords": [
+    "http",
+    "restful",
+    "xhr",
+    "ender",
+    "web2.0"
+  ]
+}

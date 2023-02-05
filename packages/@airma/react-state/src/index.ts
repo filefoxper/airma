@@ -2,7 +2,6 @@ import type {
   AirModelInstance,
   AirReducer,
   Action,
-  ModelFactoryStore,
   Connection,
   FactoryInstance
 } from '@airma/core';

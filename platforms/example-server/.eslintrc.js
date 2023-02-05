@@ -1,4 +1,4 @@
-const config = require('../../../.eslintrc.js');
+const config = require('../../.eslintrc.js');
 const path = require('path');
 
 const tsConfigPath = path.resolve(__dirname, 'tsconfig.json');

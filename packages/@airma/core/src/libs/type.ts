@@ -33,9 +33,9 @@ export interface Connection<
   getState(): S;
   update: (
     reducer: AirReducer<S, T>,
-    outState?: { state: S; cache?: boolean, isDefault?:boolean }
+    outState?: { state: S; cache?: boolean; isDefault?: boolean }
   ) => void;
-  updateState:(state:S)=>void
+  updateState: (state: S) => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -43,7 +43,7 @@ export interface Connection<
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
   current: T;
-  controlled:boolean;
+  controlled: boolean;
   reducer: AirReducer<S, T>;
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
@@ -58,7 +58,7 @@ export type Creation = {
 
 export type Collection = {
   key: string;
-  keys:(string|number)[]
+  keys: (string | number)[];
   factory: (...args: any[]) => any;
   sourceFactory?: (...args: any[]) => any;
   connection: Connection;
@@ -75,5 +75,5 @@ export type FactoryInstance<T extends AirReducer<any, any>> = T & {
   creation(): Connection;
   pipe<P extends AirReducer<any, any>>(
     reducer: P
-  ): P & { getSourceFrom: ()=>FactoryInstance<T> };
+  ): P & { getSourceFrom: () => FactoryInstance<T> };
 };

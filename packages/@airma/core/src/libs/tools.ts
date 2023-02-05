@@ -87,14 +87,14 @@ export function shallowEqual<R>(prev: R, current: R): boolean {
   return !hasDiffValue;
 }
 
-export function toMapObject<K extends string,V>(entries:[K,V][]){
-  const data={} as Record<K, V>;
-  entries.forEach(([key,value])=>{
+export function toMapObject<K extends string, V>(entries: [K, V][]) {
+  const data = {} as Record<K, V>;
+  entries.forEach(([key, value]) => {
     data[key] = value;
   });
   return {
-    get(k:K):V|undefined{
+    get(k: K): V | undefined {
       return data[k];
     }
-  }
+  };
 }

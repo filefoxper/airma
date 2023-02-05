@@ -15,7 +15,8 @@ module.exports = function config() {
       ...core.resolve,
       alias: {
         "@airma/core":"@airma/core/src/index.ts",
-        "@airma/react-state":"@airma/react-state/src/index.ts"
+        "@airma/react-state":"@airma/react-state/src/index.ts",
+        "@airma/restful":"@airma/restful/src/index.ts"
       }
     },
     plugins: [
@@ -43,7 +44,13 @@ module.exports = function config() {
       // 虚拟服务器IP
       host: '0.0.0.0',
       // 虚拟服务器端口
-      port: 8081
+      port: 8081,
+      proxy:{
+        '/api/*': {
+          target: `http://localhost:9090`,
+          secure: false
+        },
+      }
     }
   };
 };

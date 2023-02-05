@@ -38,9 +38,14 @@ export declare interface Connection<
   getState(): S;
   update: (
     reducer: AirReducer<S, T>,
-    outState?: { state: S; cache?: boolean,isDefault?:boolean,ignoreDispatch?:boolean }
+    outState?: {
+      state: S;
+      cache?: boolean;
+      isDefault?: boolean;
+      ignoreDispatch?: boolean;
+    }
   ) => void;
-  updateState:(state:S)=>void;
+  updateState: (state: S) => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -48,7 +53,7 @@ export declare interface Connection<
 export declare function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   defaultState: D,
-  controlled?:boolean
+  controlled?: boolean
 ): Connection<S, T>;
 
 export declare type ModelFactoryStore<T> = {
@@ -65,9 +70,9 @@ declare type FactoryInstance<T extends AirReducer<any, any>> = T & {
 };
 
 export declare function factory<T extends AirReducer<any, any>>(
-    reducer: T,
-    defaultState?: (T extends AirReducer<infer S, any> ? S : never)
-):FactoryInstance<T>;
+  reducer: T,
+  defaultState?: T extends AirReducer<infer S, any> ? S : never
+): FactoryInstance<T>;
 
 export declare function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
