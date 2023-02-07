@@ -1,5 +1,3 @@
-import { Http } from './index';
-
 export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export type ResponseType =
@@ -63,7 +61,25 @@ export type PromiseValue<T = any> = Promise<T> & {
   response: () => Promise<ResponseData<T>>;
 };
 
+export type HttpType = {
+  path(url: string): HttpType;
+
+  setConfig(restConfig: RestConfig): HttpType;
+
+  setBody<B extends Record<string, any>>(requestBody: B): HttpType;
+
+  setParams<P extends Record<string, unknown>>(requestParams: P): HttpType;
+
+  get<T>(config?: RestConfig): PromiseValue<T>;
+
+  post<T>(config?: RestConfig): PromiseValue<T>;
+
+  put<T>(config?: RestConfig): PromiseValue<T>;
+
+  delete<T>(config?: RestConfig): PromiseValue<T>;
+};
+
 export type Client = {
-  rest(basePath: string): Http;
+  rest(basePath: string): HttpType;
   config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
 };

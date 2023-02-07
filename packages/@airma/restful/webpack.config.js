@@ -34,7 +34,7 @@ module.exports = function config() {
     module: {
       rules: [
         {
-          test: /\.js$|\.ts$|\.tsx$/,
+          test: /\.js$|\.ts$/,
           exclude: /(node_modules|bower_components)/,
           use: [
             {

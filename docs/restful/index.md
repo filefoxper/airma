@@ -300,3 +300,9 @@ const {error, networkError, headers} = res;
 
 The response method is a parasitic method in the `get`, `post`, `put`, `delete` method returning promise. It returns a promise which result is a `ResponseData`.
 
+## Changes
+
+### v15.0.1 2023-02-07
+
+* change class `Http` to `rest` function, and use closure scope variables to replace keyword `this`.
+

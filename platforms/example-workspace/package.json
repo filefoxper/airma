@@ -1,29 +1,25 @@
 {
-  "scripts": {
-    "start": "webpack serve --config ./webpack.dev.js",
-    "build": "echo edit build script"
-  },
   "private": false,
   "name": "example-workspace",
   "version": "16.0.0",
   "description": "This is a package",
+  "scripts": {
+    "build": "echo edit build script",
+    "start": "webpack serve --config ./webpack.dev.js"
+  },
+  "typings": "index.d.ts",
   "dependencies": {
+    "@airma/react-state": "17.0.5",
+    "@airma/restful": "15.0.1",
     "classnames": "^2.3.2",
     "history": "^5.3.0",
+    "lodash": "^4.17.21",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
     "react-router": "^6.4.3",
-    "react-router-dom": "^6.4.3",
-    "@airma/react-state": "17.0.5",
-    "@airma/restful": "15.0.0",
-    "lodash": "^4.17.21"
+    "react-router-dom": "^6.4.3"
   },
   "devDependencies": {
-    "@types/react": "16.9.56",
-    "@types/react-dom": "16.9.17",
-    "@types/react-router": "^5.1.19",
-    "@types/react-router-dom": "^5.3.3",
-    "prettier": "2.3.2",
     "@babel/core": "^7.19.6",
     "@babel/plugin-proposal-class-properties": "7.18.6",
     "@babel/plugin-proposal-decorators": "7.19.6",
@@ -37,6 +33,10 @@
     "@pmnps/plugin-react": "3.1.2",
     "@pmnps/plugin-typescript": "3.1.2",
     "@pmnps/plugin-vscode-workspace": "3.1.4",
+    "@types/react": "16.9.56",
+    "@types/react-dom": "16.9.17",
+    "@types/react-router": "^5.1.19",
+    "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^5.44.0",
     "@typescript-eslint/parser": "^5.44.0",
     "babel-loader": "^8.2.2",
@@ -55,12 +55,13 @@
     "less": "^4.1.3",
     "less-loader": "^11.1.0",
     "pmnps": "3.3.0",
+    "prettier": "2.3.2",
     "prettier-eslint": "^12.0.0",
     "prettier-eslint-cli": "^5.0.1",
     "react-refresh": "^0.14.0",
     "style-loader": "^3.3.1",
-    "tsconfig-paths-webpack-plugin": "^4.0.0",
     "terser-webpack-plugin": "^5.3.6",
+    "tsconfig-paths-webpack-plugin": "^4.0.0",
     "typescript": "4.9.4",
     "url-loader": "^4.1.1",
     "webpack": "^5.75.0",
@@ -71,6 +72,5 @@
   },
   "pmnps": {
     "publishable": false
-  },
-  "typings": "index.d.ts"
+  }
 }
