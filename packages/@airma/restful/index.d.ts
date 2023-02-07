@@ -1,3 +1,15 @@
+declare type HttpProperties = {
+  parentUrl: string;
+
+  urls: Array<string>;
+
+  requestBody?: Record<string, unknown>;
+
+  requestParams?: Record<string, unknown>;
+
+  restConfig: RestConfig;
+};
+
 declare type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 declare type ResponseType =
@@ -49,14 +61,14 @@ declare type PromiseValue<T = any> = Promise<T> & {
   response: () => Promise<ResponseData<T>>;
 };
 
-declare class Http {
-  path(url: string): Http;
+declare type HttpType = {
+  path(url: string): HttpType;
 
-  setConfig(restConfig: RestConfig): Http;
+  setConfig(restConfig: RestConfig): HttpType;
 
-  setBody<B extends Record<string, any>>(requestBody: B): Http;
+  setBody<B extends Record<string, any>>(requestBody: B): HttpType;
 
-  setParams<P extends Record<string, unknown>>(requestParams: P): Http;
+  setParams<P extends Record<string, unknown>>(requestParams: P): HttpType;
 
   get<T>(config?: RestConfig): PromiseValue<T>;
 
@@ -65,11 +77,13 @@ declare class Http {
   put<T>(config?: RestConfig): PromiseValue<T>;
 
   delete<T>(config?: RestConfig): PromiseValue<T>;
-}
+};
 
 export declare type Client = {
-  rest(basePath: string): Http;
+  rest(basePath: string): HttpType;
   config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
 };
+
+export declare function rest(url: string | HttpProperties): HttpType;
 
 export declare function client(config?: RestConfig): Client;
