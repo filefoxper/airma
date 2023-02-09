@@ -161,7 +161,10 @@ function Counter({ index }: { index: number }) {
   );
 }
 
-const { rest } = client();
+const { rest } = client(c => ({
+  ...c,
+  headers: { ...c.headers, yige: 'yige' }
+}));
 
 type User = {
   id: string;
@@ -173,7 +176,10 @@ type User = {
 export default function App() {
   useEffect(() => {
     (async function fetch() {
-      const promise = rest('/api/user/list').get<User[]>().response();
+      const promise = rest('/api/user')
+        .path('list')
+        .setParams({ ids: [1, 2, 3] })
+        .get<User>();
       const data = await promise;
       console.log(data);
     })();
@@ -182,6 +188,7 @@ export default function App() {
   const handleClick = async () => {
     const data = await rest('/api/user')
       .setBody({ name: 'test', username: 'test', age: 11 })
+      .setParams({ item: { id: 1, data: { name: 'name' } } })
       .post();
     console.log('post', data);
   };

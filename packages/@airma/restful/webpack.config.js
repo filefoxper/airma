@@ -4,9 +4,6 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 module.exports = function config() {
   return {
-    externals: {
-      qs:'qs',
-    },
     entry: {
       bundle: path.join(__dirname, 'src', 'index.ts')
     },
