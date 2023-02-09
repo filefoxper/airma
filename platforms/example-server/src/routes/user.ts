@@ -20,10 +20,16 @@ export default class UserRoute {
   @get('/list')
   fetchUsers(req: Request, res: Response) {
     const { query } = req;
-    const { name, username } = query as { name?: string; username?: string };
+    const { name, username, ids } = query as {
+      name?: string;
+      username?: string;
+      ids?: string[];
+    };
+    const idSet = new Set<string>(ids || []);
     const result = users
       .filter(user => (name ? user.name.startsWith(name) : true))
-      .filter(user => (username ? user.username.startsWith(username) : true));
+      .filter(user => (username ? user.username.startsWith(username) : true))
+      .filter(user => (ids ? idSet.has(user.id.toString()) : true));
     res.status(200).send(result);
   }
 

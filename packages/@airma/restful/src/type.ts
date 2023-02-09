@@ -30,9 +30,9 @@ export type HttpProperties = {
 
   urls: Array<string>;
 
-  requestBody?: Record<string, unknown>;
+  requestBody?: Record<string | number, unknown>;
 
-  requestParams?: Record<string, unknown>;
+  requestParams?: Record<string | number, unknown>;
 
   restConfig: RestConfig;
 };
@@ -42,16 +42,46 @@ export type Request = (
   requestConfig: RequestConfig
 ) => Promise<ResponseData>;
 
+type ParamsProcessor = {
+  stringify: (params: Record<string | number, any>) => string;
+  parse: (query: string) => Record<string | number, any>;
+};
+
 export type BaseRestConfig = {
   headers?: Record<string, any>;
   responseType?: ResponseType;
   responseInterceptor?: (data: ResponseData) => ResponseData | undefined;
-  defaultParams?: Record<string, any>;
+  paramsProcessor?: () => ParamsProcessor;
+  defaultParams?: Record<string | number, any>;
+  credentials?: 'include' | 'omit' | 'same-origin';
+  cache?:
+    | 'default'
+    | 'force-cache'
+    | 'no-cache'
+    | 'no-store'
+    | 'only-if-cached'
+    | 'reload';
+  mode?: 'cors' | 'navigate' | 'no-cors' | 'same-origin';
+  redirect?: 'error' | 'follow' | 'manual';
+  integrity?: string;
+  keepalive?: boolean;
+  referrer?: string;
+  referrerPolicy?:
+    | ''
+    | 'no-referrer'
+    | 'no-referrer-when-downgrade'
+    | 'origin'
+    | 'origin-when-cross-origin'
+    | 'same-origin'
+    | 'strict-origin'
+    | 'strict-origin-when-cross-origin'
+    | 'unsafe-url';
+  window?: null;
 };
 
 export type RequestConfig = BaseRestConfig & {
-  params?: Record<string, any>;
-  body?: Record<string, any>;
+  params?: Record<string | number, any>;
+  body?: Record<string | number, any>;
   method?: Method;
 };
 
@@ -66,9 +96,11 @@ export type HttpType = {
 
   setConfig(restConfig: RestConfig): HttpType;
 
-  setBody<B extends Record<string, any>>(requestBody: B): HttpType;
+  setBody<B extends Record<string | number, any>>(requestBody: B): HttpType;
 
-  setParams<P extends Record<string, unknown>>(requestParams: P): HttpType;
+  setParams<P extends Record<string | number, unknown>>(
+    requestParams: P
+  ): HttpType;
 
   get<T>(config?: RestConfig): PromiseValue<T>;
 

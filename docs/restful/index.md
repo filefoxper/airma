@@ -154,14 +154,16 @@ type Request = (
 The `RequestConfig` type:
 
 ```ts
-type RequestConfig = {
-  // object style for ?param=xxx&more=xxx
-  params?: Record<string, any>;
-  // object style for post request payload
-  body?: Record<string, any>;
-  // GET, POST, PUT, DELETE
-  method?: Method;
-  // just headers you set to client({headers:...})
+type ResponseType =
+  | 'json'
+  | 'text'
+  | 'formData'
+  | 'blob'
+  | 'arrayBuffer';
+
+// the config you can set to `client`
+type RestConfig = {
+    // just headers you set to client({headers:...})
   headers?: Record<string, any>;
   // the response data format: json, text, formData, blob, arrayBuffer
   responseType?: ResponseType;
@@ -170,7 +172,48 @@ type RequestConfig = {
     data: ResponseData
   ) => ResponseData | undefined;
   // just defaultParams you set to client({defaultParams...})
-  defaultParams?: Record<string, any>;
+  defaultParams?: Record<string | number, any>;
+  // you can provide a param processor to stringify and parse
+  // params.
+  // type ParamsProcessor = { 
+  //   stringify(data:Record<string | number, any>): string,
+  //   parse(data: string): Record<string | number, any>
+  // }
+  paramsProcessor?: () => ParamsProcessor;
+  /** the rest config you can refer to window.fetch API **/
+  credentials?: 'include' | 'omit' | 'same-origin';
+  cache?:
+    | 'default'
+    | 'force-cache'
+    | 'no-cache'
+    | 'no-store'
+    | 'only-if-cached'
+    | 'reload';
+  mode?: 'cors' | 'navigate' | 'no-cors' | 'same-origin';
+  redirect?: 'error' | 'follow' | 'manual';
+  integrity?: string;
+  keepalive?: boolean;
+  referrer?: string;
+  referrerPolicy?:
+    | ''
+    | 'no-referrer'
+    | 'no-referrer-when-downgrade'
+    | 'origin'
+    | 'origin-when-cross-origin'
+    | 'same-origin'
+    | 'strict-origin'
+    | 'strict-origin-when-cross-origin'
+    | 'unsafe-url';
+  window?: null;
+}
+
+type RequestConfig = RestConfig & {
+  // object style for ?param=xxx&more=xxx
+  params?: Record<string, any>;
+  // object style for post request payload
+  body?: Record<string, any>;
+  // GET, POST, PUT, DELETE
+  method?: Method;
 };
 ```
 
@@ -202,7 +245,7 @@ export declare type ErrorResponse = {
 export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
 ```
 
-You can replace request with the most popular request tool [axios](https://www.npmjs.com/package/axios). And now you should know, that `@airma/restful` just provides a restful style for you. You can replace the core request work as you wish.
+You can replace request with the most popular request tool [axios](https://www.npmjs.com/package/axios) or other request API. And now you should know, that `@airma/restful` just provides a restful style for you.
 
 ### ResponseInterceptor
 
@@ -256,6 +299,28 @@ const { rest } = client({
 })
 ```
 
+### paramsProcessor
+
+If you want to keep the default request, but replace a better params processor like [qs](https://www.npmjs.com/package/qs), you can use this setting.
+
+```ts
+import { client } from '@airma/restful';
+import qs from 'qs';
+
+export default client({
+    paramsProcessor(){
+        return {
+            stringify(data: Record<string | number, any>): string{
+                return qs.stringify(data);
+            },
+            parse(query: string): Record<string | number, any>{
+                return qs.parse(query);
+            }
+        }
+    }
+})
+```
+
 ## Change config
 
 Sometimes you want to change rest config when the client has been built. You can use `config` method from client instance.
@@ -305,4 +370,9 @@ The response method is a parasitic method in the `get`, `post`, `put`, `delete` 
 ### v15.0.1 2023-02-07
 
 * change class `Http` to `rest` function, and use closure scope variables to replace keyword `this`.
+
+### v15.1.0 2023-02-09
+
+* use a simple inside `qs` to replace [qs](https://www.npmjs.com/package/qs), and you can replace it with [qs](https://www.npmjs.com/package/qs) by client config `paramsProcessor`.
+* add the config from `window.fetch` API.
 

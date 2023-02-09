@@ -1,4 +1,3 @@
-import { stringify, parse } from 'qs';
 import type {
   PromiseValue,
   Method,
@@ -7,114 +6,10 @@ import type {
   RestConfig,
   HttpProperties,
   Client,
-  ErrorResponse,
   HttpType
 } from './type';
-
-const defaultHeaders = {
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest'
-};
-
-function request<T>(
-  input: string,
-  config: RequestConfig
-): Promise<ResponseData<T>> {
-  function parseConfig(c: RequestConfig) {
-    const { body, headers = defaultHeaders, method = 'GET' } = c;
-    const { params, defaultParams, ...d } = c;
-    const fetchHeaders = new Headers(headers);
-    if (method === 'GET' || body == null) {
-      return { ...d, headers: fetchHeaders, body: null };
-    }
-    const { 'Content-type': contentType } = headers;
-    if (contentType === 'application/x-www-form-urlencoded') {
-      const formData = new FormData();
-      Object.keys(body).forEach(key => {
-        const value = body[key];
-        formData.append(key, value);
-      });
-      return { ...d, headers: fetchHeaders, body: formData };
-    }
-    return { ...d, headers: fetchHeaders, body: JSON.stringify(body) };
-  }
-
-  function getResponseData(c: RequestConfig) {
-    const { responseType } = c;
-
-    function autoProcessResponse(response: Response) {
-      const cloned = response.clone();
-      return response.json().then(
-        d => d,
-        () => cloned.text()
-      );
-    }
-
-    return function processResponse(response: Response): Promise<ResponseData> {
-      const { ok, status, headers } = response;
-      const dataPromise: Promise<any> = responseType
-        ? response[responseType]()
-        : autoProcessResponse(response);
-      if (ok) {
-        return dataPromise.then(data => ({
-          data,
-          status,
-          headers,
-          isError: false
-        }));
-      }
-      return dataPromise.then(data => ({
-        error: data,
-        data,
-        headers,
-        status,
-        networkError: false,
-        isError: true
-      }));
-    };
-  }
-
-  function intercept(
-    d: ResponseData,
-    responseInterceptor: (d: ResponseData) => ResponseData | undefined
-  ) {
-    const result = responseInterceptor(d);
-    if (result == null) {
-      return d;
-    }
-    return result;
-  }
-
-  const { responseInterceptor = (d: ResponseData) => undefined } = config;
-  const queryFix = input.indexOf('?');
-  const pathname = queryFix > -1 ? input.slice(0, queryFix) : input;
-  const urlParamString = queryFix > -1 ? input.slice(queryFix + 1) : '';
-  const urlParams = parse(urlParamString);
-  const { params = {}, defaultParams = {} } = config;
-  const queryParams = { ...defaultParams, ...urlParams, ...params };
-  const search = stringify(queryParams, { addQueryPrefix: true });
-  return window.fetch(pathname + search, parseConfig(config)).then(
-    response => {
-      return getResponseData(config)(response).then(data =>
-        intercept(data, responseInterceptor)
-      );
-    },
-    error => {
-      const networkErrorRes = {
-        status: null,
-        data: error,
-        error,
-        networkError: true,
-        isError: true
-      } as ErrorResponse;
-      return intercept(networkErrorRes, responseInterceptor);
-    }
-  );
-}
-
-const defaultRestConfig: RestConfig = {
-  headers: defaultHeaders
-};
+import { defaultRestConfig } from './constant';
+import { request } from './request';
 
 export function rest(url: string | HttpProperties): HttpType {
   const defaultHttpProperties = {
@@ -214,8 +109,11 @@ export function rest(url: string | HttpProperties): HttpType {
   };
 }
 
-export function client(config: RestConfig = defaultRestConfig): Client {
-  const restConfig = config;
+export function client(
+  config: RestConfig | ((c: RestConfig) => RestConfig) = defaultRestConfig
+): Client {
+  const restConfig =
+    typeof config === 'function' ? config(defaultRestConfig) : config;
   return {
     rest(basePath: string): HttpType {
       return rest(basePath).setConfig(restConfig);
