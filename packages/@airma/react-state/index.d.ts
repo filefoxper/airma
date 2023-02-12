@@ -43,7 +43,8 @@ export declare function useRefreshModel<
 
 export declare function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>
+  params: Parameters<T>,
+  options?: { refreshDeps?: any[] }
 ): void;
 
 declare type FactoryCollection =
@@ -73,6 +74,18 @@ export declare function factory<S, T extends AirModelInstance, D extends S>(
   defaultState: D
 ): FactoryModel<typeof model>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  defaultState?: D
+): FactoryModel<typeof model>;
+
+export declare function keyModel<S, T extends AirModelInstance>(
+  model: AirReducer<S | undefined, T>
+): FactoryModel<typeof model>;
+export declare function keyModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  defaultState: D
+): FactoryModel<typeof model>;
+export declare function keyModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
 ): FactoryModel<typeof model>;

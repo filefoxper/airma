@@ -1,49 +1,34 @@
 {
   "name": "@airma/react-state",
-  "version": "17.0.5",
-  "main": "dist/index.js",
-  "typings": "index.d.ts",
-  "author": "Jimmy.Harding",
+  "version": "17.0.6",
   "description": "the purpose of this project is make useReducer more simplify",
-  "scripts": {
-    "lint": "eslint src --fix --ext .ts,.tsx ",
-    "lint-init": "eslint --init",
-    "build": "webpack",
-    "analyze": "webpack --config webpack.analyze.js",
-    "test": "jest --coverage",
-    "docs": "docsify serve ./docs"
-  },
+  "license": "MIT",
+  "author": "Jimmy.Harding",
+  "homepage": "https://filefoxper.github.io/airma/#/react-state/index",
   "repository": {
     "type": "git",
     "url": "https://github.com/filefoxper/airma"
   },
-  "homepage": "https://filefoxper.github.io/airma/#/react-state/index",
+  "main": "dist/index.js",
   "files": [
     "dist",
     "index.d.ts"
   ],
-  "keywords": [
-    "react",
-    "hook",
-    "useReducer",
-    "state-management",
-    "react-query support",
-    "closures",
-    "state",
-    "agent",
-    "typescript",
-    "browser",
-    "method-dispatch"
-  ],
-  "license": "MIT",
+  "scripts": {
+    "analyze": "webpack --config webpack.analyze.js",
+    "build": "webpack",
+    "docs": "docsify serve ./docs",
+    "lint": "eslint src --fix --ext .ts,.tsx ",
+    "lint-init": "eslint --init",
+    "test": "jest --coverage"
+  },
+  "typings": "index.d.ts",
   "dependencies": {
+    "@airma/core": "^17.0.0",
     "react": ">=16.8.0",
-    "react-dom": ">=16.8.0",
-    "@airma/core": "^17.0.0"
+    "react-dom": ">=16.8.0"
   },
   "devDependencies": {
-    "prettier": "2.3.2",
-    "typescript": "4.9.4",
     "esbuild": "^0.16.6",
     "eslint": "^8.27.0",
     "eslint-config-airbnb": "^19.0.4",
@@ -53,9 +38,24 @@
     "husky": "^7.0.1",
     "jest": "29.3.1",
     "pre-commit": "^1.2.2",
+    "prettier": "2.3.2",
     "prettier-eslint": "^12.0.0",
     "prettier-eslint-cli": "^5.0.1",
     "regenerator-runtime": "0.13.5",
-    "rewire": "5.0.0"
-  }
+    "rewire": "5.0.0",
+    "typescript": "4.9.4"
+  },
+  "keywords": [
+    "agent",
+    "browser",
+    "closures",
+    "hook",
+    "method-dispatch",
+    "react",
+    "react-query support",
+    "state",
+    "state-management",
+    "typescript",
+    "useReducer"
+  ]
 }
