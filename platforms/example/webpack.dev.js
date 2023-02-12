@@ -36,7 +36,13 @@ module.exports = function config() {
       // 虚拟服务器IP
       host: '0.0.0.0',
       // 虚拟服务器端口
-      port: 8081
+      port: 8081,
+      proxy:{
+        '/api/*': {
+          target: `http://localhost:9090`,
+          secure: false
+        },
+      }
     }
   };
 };

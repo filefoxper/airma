@@ -211,7 +211,8 @@ const App = ()=>{
 ```ts
 function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>
+  params: Parameters<T>,
+  options?: { refreshDeps?: any[] }
 ): void;
 ```
 
@@ -219,6 +220,7 @@ Parameters
 
 * method - Any function callback.
 * params - The parameters for method, it is an array type object.
+* options - It is an optional config, you can provide a refresh dependencies to drive the refresh, in that case, the params will not affect when the refresh happens.
 
 Explain
 
@@ -226,13 +228,19 @@ This API is a supplement for `useRefreshModel`. Sometimes, we don't want to watc
 
 ```ts
 // you can consider this code as `useRefresh`
-function useRefresh<T extends (...args: any[]) => any>(
+export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>
+  params: Parameters<T>,
+  options?: { refreshDeps?: any[] }
 ) {
+  const { refreshDeps = [...params] } = options || {};
   useEffect(() => {
-    method(...params);
-  }, [method, ...params]);
+    const result = method(...params);
+    if (typeof result === 'function') {
+      return result;
+    }
+    return () => undefined;
+  }, [method, ...refreshDeps]);
 }
 ```
 
@@ -364,6 +372,10 @@ If you want to learn how to use `pipe`, please review the [guide detail](/react-
 Returns
 
 * A factory model, which can be provided to `ModelProvider` for generating a store, and be provided as key to link the store state for `useModel` or `useSelector`.
+
+## keyModel
+
+It is another name of [factory API](/react-state/api?id=factory).
 
 ## shallowEqual
 

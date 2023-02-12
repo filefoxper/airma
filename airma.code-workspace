@@ -3,6 +3,10 @@
     { "name": "root", "path": "." },
     { "name": "packages/@airma/core", "path": "packages/@airma/core" },
     {
+      "name": "packages/@airma/react-effect",
+      "path": "packages/@airma/react-effect"
+    },
+    {
       "name": "packages/@airma/react-state",
       "path": "packages/@airma/react-state"
     },

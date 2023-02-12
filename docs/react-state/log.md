@@ -26,3 +26,7 @@
 ## v 17.0.5 2023-01-29
 
 * optmize the typescript of `useSelector`.
+
+## v 17.0.6 2023-02-12
+
+* optmize `useRefresh` API, provide a refresh dependecies as an option config for this API.

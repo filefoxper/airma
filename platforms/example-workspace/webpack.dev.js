@@ -16,7 +16,8 @@ module.exports = function config() {
       alias: {
         "@airma/core":"@airma/core/src/index.ts",
         "@airma/react-state":"@airma/react-state/src/index.ts",
-        "@airma/restful":"@airma/restful/src/index.ts"
+        "@airma/restful":"@airma/restful/src/index.ts",
+        "@airma/react-effect":"@airma/react-effect/src/index.ts"
       }
     },
     plugins: [

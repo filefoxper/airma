@@ -59,11 +59,17 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
 
 export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>
+  params: Parameters<T>,
+  options?: { refreshDeps?: any[] }
 ) {
+  const { refreshDeps = [...params] } = options || {};
   useEffect(() => {
-    method(...params);
-  }, [method, ...params]);
+    const result = method(...params);
+    if (typeof result === 'function') {
+      return result;
+    }
+    return () => undefined;
+  }, [method, ...refreshDeps]);
 }
 
 const ReactStateContext = createContext<Selector | null>(null);
@@ -280,3 +286,5 @@ export function useSelector<
 export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
+
+export const keyModel = createFactory;
