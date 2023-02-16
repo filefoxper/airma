@@ -30,3 +30,7 @@
 ## v 17.0.6 2023-02-12
 
 * optmize `useRefresh` API, provide a refresh dependecies as an option config for this API.
+
+## v 17.0.7 2023-02-16
+
+* add `withModelProvider` API for a easy usage of `ModelProvider`. 

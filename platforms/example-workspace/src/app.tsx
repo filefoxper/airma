@@ -5,7 +5,8 @@ import {
   useControlledModel,
   useSelector,
   shallowEqual,
-  ModelProvider
+  ModelProvider,
+  withModelProvider
 } from '@airma/react-state';
 import { client } from '@airma/restful';
 import {
@@ -45,6 +46,18 @@ const defaultCondition: Condition = {
   age: undefined
 };
 
+const models = (userData: Omit<User, 'id'>) => {
+  return {
+    user: userData,
+    changeUsername(username: string) {
+      return { ...userData, username };
+    },
+    changeName(name: string) {
+      return { ...userData, name };
+    }
+  };
+};
+
 const Info = memo(
   ({ isFetching, error }: { isFetching: boolean; error: any }) => {
     if (isFetching) {
@@ -56,20 +69,11 @@ const Info = memo(
 
 const Creating = memo(
   ({ onSubmit, onCancel }: { onSubmit: () => any; onCancel: () => any }) => {
-    const { user, changeUsername, changeName } = useModel(
-      (userData: Omit<User, 'id'>) => {
-        return {
-          user: userData,
-          changeUsername(username: string) {
-            return { ...userData, username };
-          },
-          changeName(name: string) {
-            return { ...userData, name };
-          }
-        };
-      },
-      { name: '', username: '', age: 10 }
-    );
+    const { user, changeUsername, changeName } = useModel(models, {
+      name: '',
+      username: '',
+      age: 10
+    });
 
     const [r, save] = useMutation(
       (u: Omit<User, 'id'>) => rest('/api/user').setBody(u).post<null>(),

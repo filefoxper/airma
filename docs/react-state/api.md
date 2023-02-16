@@ -331,7 +331,7 @@ type Factory=((state:any)=>Record<number|string, any>)&{
 }
 
 const ModelProvider: FC<{
-  value:  Array<Factory> | Factory | Record<string, Factory>;;
+  value:  Array<Factory> | Factory | Record<string, Factory>;
   children: ReactNode;
 }>;
 ```
@@ -344,6 +344,53 @@ Props
 Returns
 
 * react nodes
+
+## withModelProvider
+
+```ts
+type Factory=((state:any)=>Record<number|string, any>)&{
+    pipe<S,T extends (Record<number|string, any>)>(
+        model:(s:S)=>T
+    ): typeof model
+}
+
+function withModelProvider(
+  models: Array<Factory> | Factory | Record<string, Factory>
+): <P extends object>(component: ComponentType<P>) => typeof component;
+```
+
+Parameters
+
+* models - Factorys, it can be a collection of factory models or just a factory model.
+
+Returns
+
+* A callback which accepts a React Component, and returns a `HOC` of the parameter Component with a out `ModelProvider` wrap.
+
+
+Explain
+
+It is a `HOC` usage for `ModelProvider`.
+
+Example
+
+```ts
+import React from 'react';
+import { 
+    withModelProvider, 
+    factory, 
+    useModel, 
+    useSelector 
+} from '@airma/react-state';
+import model from './model';
+
+const models = factory(model);
+
+const App = withModelProvider(models)(()=>{
+    const {...} = useModel(models);
+    const data = useSelector(models, s=>s.data);
+});
+```
 
 ## factory
 

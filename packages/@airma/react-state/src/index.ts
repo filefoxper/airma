@@ -5,7 +5,7 @@ import type {
   Connection,
   FactoryInstance
 } from '@airma/core';
-import type { FC, ReactNode } from 'react';
+import type { ComponentType, FC, ReactNode } from 'react';
 
 import {
   createStore,
@@ -20,7 +20,8 @@ import {
   useState,
   createContext,
   createElement,
-  useContext
+  useContext,
+  FunctionComponent
 } from 'react';
 import type { AirReducerLike, Selector } from './type';
 
@@ -76,7 +77,7 @@ const ReactStateContext = createContext<Selector | null>(null);
 
 export const ModelProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
-  children: ReactNode;
+  children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
   const context = useContext(ReactStateContext);
   const storeRef = useRef(createStore(value));
@@ -281,6 +282,23 @@ export function useSelector<
   }, []);
 
   return current;
+}
+
+export function withModelProvider(
+  models: Array<any> | ((...args: any) => any) | Record<string, any>
+) {
+  return function connect<
+    P extends Record<string, any>,
+    C extends ComponentType<P>
+  >(Comp: C): ComponentType<P> {
+    return function WithModelProviderComponent(props: P) {
+      return createElement(
+        ModelProvider,
+        { value: models },
+        createElement<P>(Comp as FunctionComponent<P>, props)
+      );
+    };
+  };
 }
 
 export const shallowEqual = shallowEq;

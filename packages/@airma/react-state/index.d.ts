@@ -1,5 +1,5 @@
 import { AirModelInstance, AirReducer } from '@airma/core';
-import { FC, ReactNode } from 'react';
+import { ComponentType, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P
@@ -54,8 +54,12 @@ declare type FactoryCollection =
 
 export declare const ModelProvider: FC<{
   value: FactoryCollection;
-  children: ReactNode;
+  children?: ReactNode;
 }>;
+
+export declare function withModelProvider(
+  models: FactoryCollection
+): <P extends object>(component: ComponentType<P>) => typeof component;
 
 export declare function useSelector<
   R extends AirReducer<any, any>,
