@@ -10,20 +10,107 @@
 
 # @airma/react-effect
 
-This tool is used for managing the side effect state of react app.
+`@airma/react-effect` is designed for managing the asynchronous effect state for react components.
 
-## async effect
+## Why effects
 
-There are two async effects currently, `useQuery` and `useMutation`. They can accept a Promise callback, and returns the execution result of the Promise.
+React hook system is designed for synchronous render usage. But asynchronous operations are often used in components, so, take the asynchronous code out of render is a good choice. That's why `useEffect` is useful in hook system, we can set the asynchronous in it, and run it out of the render time.
 
-### useQuery
+Good example:
 
-We can wrap a promise return callback to `useQuery`, when the dependecies changes, it querys data for you.
+```ts
+import {useEffect, useState} from 'react';
+import {query} from './service';
+
+const useQueryEffect = (variables)=>{
+    const [data, setData] = useState(undefined);
+    const [isFetching, setFetching] = useState(false);
+    const [error, setError] = useState(undefined);
+
+    useEffect(()=>{
+        setFetching(true);
+        // limit the asynchronous only in useEffect
+        query(variables).then((d)=>{
+            // set the query result into state
+            setData(d);
+            setError(undefined);
+            setFetching(false);
+        },(e)=>{
+            setError(e);
+            setFetching(false);
+        });
+    },[variables]); // when variables change, run query
+
+    // return state information out for render usage
+    return {data, isFetching, error};
+};
+
+const App = memo(()=>{
+    ......
+    const {data, isFetching, error} = useQueryEffect(variables);
+
+    return ......;
+});
+```
+
+Not so good example:
+
+```ts
+import {memo, useState} from 'react';
+import {query} from './service';
+
+const App = memo(()=>{
+    const [data, setData] = useState(undefined);
+    const [isFetching, setFetching] = useState(false);
+    const [error, setError] = useState(undefined);
+
+    // Use asynchronous callback directly
+    // may affect the other operation codes,
+    // and make asynchronous operations spread out in component
+    const handleQuery = async (variables)=>{
+        setFetching(true);
+        try {
+            const d = await query(variables);
+            setData(d);
+            setError(undefined);
+        } catch(e) {
+            setError(e);
+        } finally {
+            setFetching(false);
+        }
+    };
+    
+    // affected by asynchronous callback `handleQuery`
+    const handleReset = async ()=>{
+        await handleQuery(defaultVariables);
+        doSomething();
+    };
+
+    useEffect(()=>{
+        handleQuery();
+    },[]);
+
+    return ......;
+}) 
+```
+
+Use asynchronous callback all over in component is not a good idea, we need concentrative controllers for limit asynchronous operations in less effects. Then we can have a simple synchronously render component.
+
+Now, Let's take some simple, but more powerful API to replace the code of good example above.
+
+## useQuery
+
+We can wrap a promise return callback to `useQuery`, when the dependecy varaibles change, it fetches data for you.
 
 ```ts
 import React from 'react';
 import {useQuery} from '@airma/react-effect';
 import {client} from '@airma/restful';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
 
 const cli = client();
 
@@ -31,17 +118,16 @@ const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [result, execute] = useQuery(
         // query method
-        ()=>
+        (q: UserQuery)=>
         cli.rest('/api/user/list').
-        setParams(query).
+        setParams(q).
         get<User[]>(),
-        // when the elements of dependencies `[query]` changes,
-        // or the first time of the hook `useQuery` is loaded,
-        // it execute the query method.
+        // dependency vairables change,
+        // the query method runs with the newest variables.
         [query]
     );
     const {
-        // User[]
+        // User[] | undefined
         data,
         // boolean
         isFetching,
@@ -77,7 +163,7 @@ const App = ()=>{
         {manual: true}
     );
     const {
-        // User[]
+        // User[] | undefined
         data,
         // boolean
         isFetching,
@@ -89,7 +175,7 @@ const App = ()=>{
 
     const handleClick = async ()=>{
         const {
-          // User[]
+          // User[] | undefined
           data,
           // boolean
           isFetching,
@@ -108,7 +194,7 @@ const App = ()=>{
 }
 ```
 
-The manual execution is not recommend, you may accept an abandoned result, if the execution is not the newest one, in that case, you may have a different result with the hook `useQuery` result.
+The manual execution is not recommend, you may accept an abandoned result, if the execution is not the newest one, in that case, you may have a different result with the hook `useQuery` result. And we have talked the problem about asynchronous code spread out in component.
 
 ### useMutation
 
@@ -128,10 +214,12 @@ const App = ()=>{
         (u:User)=>
         cli.rest('/api/user').
         setBody(u).
-        post<User>()
+        post<User>(),
+        // set variables
+        [user]
     );
     const {
-        // User
+        // User | undefined
         data,
         // boolean
         isFetching,
@@ -141,19 +229,10 @@ const App = ()=>{
         isError
     } = result;
 
-    const handleClick = async ()=>{
-        const {
-          // User[]
-          data,
-          // boolean
-          isFetching,
-          // any
-          error,
-          // boolean
-          isError,
-          // boolean
-          abandon
-        } = await execute();
+    const handleClick = ()=>{
+        // it returns a promise result,
+        // but we recommoned you using it as a void returning callback
+        execute();
     }
 
     ......
@@ -162,11 +241,11 @@ const App = ()=>{
 
 The different with `useQuery` is that the `useMutation` can not be truly executed again if the last execution is not finished, it returns the last result for you.
 
-Sometimes we need an mutation to be inexecutable when the last execution is finished successly, we can use config `repeatable:false` to do this.
+Sometimes we need an mutation only can be executed once. We can take a `Strategy` like `Strategy.once`.
 
 ```ts
 import React from 'react';
-import {useMutation} from '@airma/react-effect';
+import {useMutation, Strategy} from '@airma/react-effect';
 import {client} from '@airma/restful';
 
 const cli = client();
@@ -179,14 +258,14 @@ const App = ()=>{
         cli.rest('/api/user').
         setBody(u).
         post<User>(),
-        // set repeatable false,
-        // makes the mutation only one shot
+        // set strategy
         {
-        repeatable:false
+        variables: [user],
+        strategy: Strategy.once()
         }
     );
     const {
-        // User
+        // User | undefined
         data,
         // boolean
         isFetching,
@@ -198,7 +277,7 @@ const App = ()=>{
 
     const handleClick = async ()=>{
         const {
-          // User[]
+          // User | undefined
           data,
           // boolean
           isFetching,
@@ -215,71 +294,108 @@ const App = ()=>{
 }
 ```
 
-We often execute a query after a mutation is finished, we can set `after` callback into the config, and after the mutation is finished, it will execute the query.
+## state sharing
+
+We have provides a `EffectProvider` for sharing the state changes of `useQuery` and `useMutation`.
 
 ```ts
-import React from 'react';
-import {useMutation, useQuery} from '@airma/react-effect';
-import {client} from '@airma/restful';
+import React, {memo} from 'react';
+import { client } from '@airma/restful';
+import { useModel, useSelector, factory } from '@airma/react-state';
+import { EffectProvider, asyncEffect, useAsyncEffect } from '@airma/react-effect';
+
+type UserQuery = {name: string, username: string};
 
 const cli = client();
 
-const App = ()=>{
-    ......
-
-    const [queryResult, executeQuery] = useQuery(()=>..., [...]);
-    const [user, setUser] = useState({name:'', username:''});
-    const [result, execute] = useMutation(
-        // mutation method
-        (u:User)=>
-        cli.rest('/api/user').
-        setBody(u).
-        post<User>(),
-        // set after callback,
-        // it accepts the async execution result of mutation,
-        // and runs after the mutation is finished.
-        {
-          repeatable:false,
-          after:({isError})=>{
-            if ( !isError ) {
-                executeQuery();
-            }
-          }
+const userQueryModel = (state: UserQuery)=>{
+    const {name, username} = state;
+    return {
+        name,
+        username,
+        state,
+        changeName(e: ChangeEvent){
+            return {username, name: e.target.value};
+        },
+        changeUsername(e: ChangeEvent){
+            return {name, username: e.target.value};
         }
-    );
-    const {
-        // User
-        data,
-        // boolean
-        isFetching,
-        // any
-        error,
-        // boolean
-        isError
-    } = result;
-
-    const handleClick = async ()=>{
-        const {
-          // User[]
-          data,
-          // boolean
-          isFetching,
-          // any
-          error,
-          // boolean
-          isError,
-          // boolean
-          abandon
-        } = await execute(user);
     }
-
-    ......
 }
+
+const queryUsers = (query:UserQuery)=> cli.rest('/api/user/list').
+        setParams(query).
+        get<User[]>();
+
+const models = {
+    userQuery: factory(userQueryModel), // make a customized model key
+    queryUsers: asyncEffect(queryUsers) // make an effect model key
+};
+
+const Condition = memo(()=>{
+    const {
+        name, 
+        username, 
+        changeName, 
+        changeUsername
+    } = useModel(models.userQuery);
+
+    // useAsyncEffect can accept the query state changes
+    // from `models.queryUsers`,
+    // it also can trigger it query again by `trigger`.
+    const [{isFetching}, trigger] = useAsyncEffect(models.queryUsers);
+
+    return (
+        <div>
+            <input type="text" value={name} onChange={changeName}/>
+            <input 
+              type="text" 
+              value={username} 
+              onChange={changeUsername}
+            />
+            {/* we disable query button, */}
+            {/* when the query is fetching */}
+            <button 
+              disabled={isFetching} 
+              onClick={trigger}
+            >
+              query
+            </button>
+        </div>
+    )
+});
+
+const Datasource = memo(()=>{
+    const q = useSelector(models.userQuery,s =>s.state);
+
+    const [
+        {
+            data,
+            isFetching,
+            error,
+            isError
+        }
+    ] = useQuery(models.queryUsers, [q]);
+    return ......;
+});
+
+const App = memo(()=>{
+    // yes, 
+    // EffectProvider is just the `ModelProvider` in 
+    // `@airma/react-state`,
+    // you can choose any of them as you wish.
+    return (
+        <EffectProvider value={models}>
+          <Condition/>
+          <Datasource/>
+        </EffectProvider>
+    );
+})
 ```
 
-The `after` callback can accepts a async execution result.
+Now, you can share the query or mutation state any where in a `EffectProvider`. Because the `EffectProvider` is `ModelProvider`, so, they have same features, for example, the useQuery or useAsynEffect find the key in parent Providers, the middle Provider will not block them. You can refer to [ModelProvider](https://filefoxper.github.io/airma/#/react-state/feature?id=scope-state) in [@airma/react-state](https://filefoxper.github.io/airma/#/react-state/index).
 
-### async execution result
+## async execution result
 
 The promise result is a unitary result format for both useQuery and useMutation.
 
@@ -300,82 +416,6 @@ export declare type PromiseResult<T> = {
   abandon: boolean;
 };
 ```
-
-## useSideEffect
-
-If you want to make a side effect state management without promise, you can use this API.
-
-```ts
-import React from 'react';
-import {useSideEffect} from '@airma/react-effect';
-
-const App = ()=>{
-    const [second, execute] = useSideEffect(response => {
-        const id = window.setInterval(() => {
-            response(s => s + 1);
-        }, 1000);
-        return () => clearInterval(id);
-    }, 0); // 0 is the default state
-}
-```
-
-As the proto hook of `useQuery`, you can also use the config and dependencies like `useQuery`.
-
-```ts
-import React from 'react';
-import {useSideEffect} from '@airma/react-effect';
-
-const App = ()=>{
-    const [state, setState] = useState(...);
-    const [second, execute] = useSideEffect(response => {
-        const id = window.setInterval(() => {
-            response(s => s + 1);
-        }, 1000);
-        return () => clearInterval(id);
-    }, 0, [state]);
-    // when state change, it will clear last interval,
-    // then setInterval again.
-}
-```
-
-You can start it manually.
-
-```ts
-import React from 'react';
-import {useSideEffect} from '@airma/react-effect';
-
-const App = ()=>{
-    const [state, setState] = useState(...);
-    const [second, execute] = useSideEffect(response => {
-        const id = window.setInterval(() => {
-            response(s => s + 1);
-        }, 1000);
-        return () => clearInterval(id);
-    }, 0, {manual:true});
-    // use manual execution
-}
-```
-
-You can destroy it manualy. Yes, the destroy function is not exist in `useQuery` result.
-
-```ts
-import React from 'react';
-import {useSideEffect} from '@airma/react-effect';
-
-const App = ()=>{
-    const [state, setState] = useState(...);
-    const [second, execute, destroy] = useSideEffect(response => {
-        const id = window.setInterval(() => {
-            response(s => s + 1);
-        }, 1000);
-        return () => clearInterval(id);
-    }, 0);
-    // destroy the side effect will clear interval forcely,
-    // if it has been created.
-    const handleDestroy=()=>destroy();
-}
-```
-
 ## API
 
 ### useQuery
@@ -383,88 +423,197 @@ const App = ()=>{
 To execute a query promise callback.
 
 ```ts
-export declare function useQuery<T>(
-    callback: () => Promise<T>,
-    config?: { deps?: any[]; manual?: boolean } | any[]
-): [PromiseResult<T>, () => Promise<PromiseResult<T>>];
+function useQuery<
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+>(
+  callback: D,
+  config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
+): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
 ```
 
 parameters:
 
-* callback - a callback returns a promise, and it should has no parameters.
-* config - it is optional, if you set nothing, the query will be executed once when the hook is mounted, if you set an array dependencies for it, it querys when the hook is mounted or the dependencies element changes. Set `{ manual:true }` allows you execute it manually.
+* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a EffectProvider.
+* config - it is optional. If you set nothing, it means you want to execute it manually. It can be an tuple array as parameters for callback. It can be a config object to set features of this query.
+
+config:
+
+* variables - you can set an array as parameters for query, when the elements change, the query callback runs.
+* deps - you can set an array as dependencies, sometimes you may want to drive query callback running by the different dependencies with variables.
+* manual - set manual `true`, means you want to execute the query manually, then the deps and variables change will not affect the query callback running.
+* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
 
 returns:
 
 ```ts
 [
-    result,
-    execute
+  result,
+  execute
 ]
 ```
 
 ### useMutation
 
-To execute a mutation promise callback.
+To execute a mutation promise callback, it can only be drived manually by calling the returning method `execute`.
 
 ```ts
-export declare function useMutation<
-    T,
-    C extends (...params: any[]) => Promise<T>
+function useMutation<
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
 >(
-    callback: C,
-    config?: { after?: () => any; repeatable?: boolean }
-): [
-    PromiseResult<T>,
-    (...params: Parameters<typeof callback>) => Promise<PromiseResult<T>>
-];
+  callback: D,
+  config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
+): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
 ```
 
 parameters:
 
-* callback - a callback returns a promise, it can accept parameters, when execute it, you need to pass paramters for it.
-* config - it is optional. Set `repeatable: true` limits the execution only can work once, if the execution is successed. the `after` callback will be called, when the execution is finished.
+* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a EffectProvider.
+* config - it is optional. It can be an tuple array as parameters for callback. It can be a config object to set features of this mutation.
+
+config:
+
+* variables - you can set an array as parameters for query, when the elements change, the mutation callback runs.
+* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
 
 returns:
 
 ```ts
 [
-    result,
-    execute
+  result,
+  execute
 ]
 ```
 
-### useSideEffect
+### asyncEffect
 
-To make a side effect state management.
+It is used to generate a `effect model` with effect( promise ) callback. We can provide it as a key to `EffectProvider` or [ModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=modelprovider) in `@airma/react-state` for state sharing. And use `useQuery` or `useMutation` to link it, and fetching the query state.
 
 ```ts
-export declare type ResponseParam<T> = T | ((d: T) => T);
-
-export declare type ResponseType<T> = (data: ResponseParam<T>) => void;
-
-export declare type SideEffectCallback<T> = (response: ResponseType<T>) => any;
-
-export declare function useSideEffect<T, C extends SideEffectCallback<T>>(
-    callback: C,
-    defaultState: T,
-    config?: { deps?: any[]; manual?: boolean } | any[]
-): [T, () => ReturnType<C>, { destroy: () => any }];
+function asyncEffect<
+  E extends (...params: any[]) => Promise<any>,
+  T = E extends (...params: any[]) => Promise<infer R> ? R : never
+>(effectCallback: E): ModelPromiseEffectCallback<E>;
 ```
 
 parameters:
 
-* callback - a callback accept a response callback as a parameter.
-* defaultState - you need to give it a defaultState.
-* config - it is optional, if you set nothing, the query will be executed once when the hook is mounted, if you set an array dependencies for it, it querys when the hook is mounted or the dependencies element changes. Set `{ manual:true }` allows you execute it manually.
+* effectCallback - a callback returns a promise.
 
-The response callback is like a setState from `useState`. You can use it to set the side effect state.
+returns
+
+A [react-state factory model](https://filefoxper.github.io/airma/#/react-state/api?id=factory) with effect( promise ) callback.
+
+### useAsyncEffect
+
+It is used to accept the state change from `useQuery` or `useMutation` with a same `effect model`.
+
+```ts
+function useAsyncEffect<
+  D extends ModelPromiseEffectCallback<any>
+>(effectModel: D): [PromiseResult<PCR<D>>, () => void];
+```
+
+parameters:
+
+* effectModel - an `effect model` created by `asyncEffect` API.
 
 returns:
 
 ```ts
 [
-    result,
-    execute
+  result,
+  trigger
 ]
+```
+
+The trigger method is different with `execute` method returned by `useQuery` and `useMutation`. It returns void, that means it can not be `await`.
+
+### EffectProvider
+
+You can refer it to [ModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=modelprovider) in `@airma/react-state`.
+
+### withEffectProvider
+
+You can refer it to [withModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=withmodelprovider) in `@airma/react-state`.
+
+### Strategy
+
+It provides some useful effect running `Strategy` for you.
+
+```ts
+const Strategy = {
+  debounce: (op: { time: number }) => StrategyType,
+  once: () => StrategyType
+};
+```
+
+You can use it to the config `strategy` in `useQuery` and `useMutation`. 
+
+#### debounce 
+
+you can set a debounce time to it. like:
+
+```ts
+useQuery(callback,{
+    variables:[...],
+    strategy: Strategy.debounce({time:300})
+})
+```
+
+Then the query callback runs with this debounce strategy.
+
+#### once
+
+It is used to force the query or mutation callback only runs once, if no error comes out.
+
+## Write Strategy
+
+You can write Strategy yourself, it is a simple work.
+
+```ts
+export type StrategyType<T = any> = (
+  getCurrentState: () => PromiseResult<T>,
+  runner: () => Promise<PromiseResult<T>>,
+  storeRef: { current: any }
+) => Promise<PromiseResult<T>>;
+```
+
+A Strategy function accepts 3 parameters:
+
+* getCurrentState - A function returns a current promise result.
+* runner - the wrapped effect callback, returns a promise.
+* storeRef - a store for your Strategy, you can store any thing which is helpful for your Strategy.
+
+For example:
+
+```ts
+function once(): StrategyType {
+  // this inner function is a Strategy
+  return function oc(getCurrentState, runner, storeRef) {
+    // It store a boolean value to tell 
+    // if the effect callback is started.
+    // If this value is true,
+    // it returns a current state promise,
+    // and mark it to abandoned.
+    if (storeRef.current) {
+      return new Promise(resolve => {
+        const currentState = getCurrentState();
+        resolve({ ...currentState, abandon: true });
+      });
+    }
+    // If the store value is false,
+    // it marks it as started,
+    // then truely start it.
+    storeRef.current = true;
+    return runner().then(d => {
+      if (d.isError) {
+        // if the promise is error,
+        // mark it to false again,
+        // the the effect callback can be started again.
+        storeRef.current = false;
+      }
+      return d;
+    });
+  };
+}
 ```

@@ -6,7 +6,8 @@ module.exports = function config() {
   return {
     externals: {
       react:'react',
-      'react-dom': 'react-dom'
+      'react-dom': 'react-dom',
+      '@airma/react-state':'@airma/react-state'
     },
     entry: {
       bundle: path.join(__dirname, 'src', 'index.ts')
