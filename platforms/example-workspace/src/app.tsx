@@ -10,10 +10,12 @@ import {
 } from '@airma/react-state';
 import { client } from '@airma/restful';
 import {
-  ResponseType,
+  asyncEffect,
+  Strategy,
+  useAsyncEffect,
   useMutation,
   useQuery,
-  useSideEffect
+  withEffectProvider
 } from '@airma/react-effect';
 
 const { rest } = client(c => ({
@@ -46,6 +48,11 @@ const defaultCondition: Condition = {
   age: undefined
 };
 
+const userQuery = (validQuery: Condition) =>
+  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
+
+const fetchFactory = asyncEffect(userQuery);
+
 const models = (userData: Omit<User, 'id'>) => {
   return {
     user: userData,
@@ -75,13 +82,28 @@ const Creating = memo(
       age: 10
     });
 
+    const [{ data }, launch] = useAsyncEffect(fetchFactory);
+    console.log('data...', data);
+
     const [r, save] = useMutation(
-      (u: Omit<User, 'id'>) => rest('/api/user').setBody(u).post<null>(),
+      (u: Omit<User, 'id'>) =>
+        rest('/api/user')
+          .setBody(u)
+          .post<null>()
+          .then(() => true),
       {
-        repeatable: false,
-        after: onSubmit
+        variables: [user],
+        strategy: Strategy.once()
       }
     );
+
+    useEffect(() => {
+      if (!r.data) {
+        return;
+      }
+      launch();
+      onSubmit();
+    }, [r]);
 
     return (
       <div>
@@ -102,11 +124,7 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            style={{ marginLeft: 12 }}
-            onClick={() => save(user)}
-          >
+          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
@@ -118,7 +136,7 @@ const Creating = memo(
   }
 );
 
-export default function App() {
+export default withEffectProvider(fetchFactory)(function App() {
   const {
     displayQuery,
     validQuery,
@@ -155,17 +173,9 @@ export default function App() {
     { valid: defaultCondition, display: defaultCondition, creating: false }
   );
 
-  const [{ data = [], isFetching, error }, fetch] = useQuery(
-    () => rest('/api/user').path('list').setParams(validQuery).get<User[]>(),
-    { deps: [validQuery] }
-  );
-
-  const [second, execute] = useSideEffect(response => {
-    const id = window.setInterval(() => {
-      response(s => s + 1);
-    }, 1000);
-    return () => clearInterval(id);
-  }, 0);
+  const [{ data = [], isFetching, error }, fetch] = useQuery(fetchFactory, [
+    validQuery
+  ]);
 
   return (
     <div style={{ padding: '12px 24px' }}>
@@ -197,7 +207,7 @@ export default function App() {
       </div>
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
         {creating ? (
-          <Creating onSubmit={submit} onCancel={cancel} />
+          <Creating onSubmit={cancel} onCancel={cancel} />
         ) : (
           <Info isFetching={isFetching} error={error} />
         )}
@@ -211,7 +221,6 @@ export default function App() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 24 }}>used time: {second || 0}</div>
     </div>
   );
-}
+});

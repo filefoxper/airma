@@ -1,200 +1,274 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PromiseResult, SideEffectCallback, ResponseType } from './type';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  ModelProvider,
+  useModel,
+  useSelector,
+  withModelProvider
+} from '@airma/react-state';
+import {
+  PromiseResult,
+  PromiseEffectCallback,
+  QueryConfig,
+  MutationConfig,
+  ModelPromiseEffectCallback
+} from './type';
+import { defaultPromiseResult, effectModel } from './model';
 
-function useSafeState<T>(defaultState: T): [T, (s: T | ((d: T) => T)) => void] {
-  const [state, setState] = useState(defaultState);
-  const mountingRef = useRef(true);
-  const set = useCallback(
-    (s: T | ((d: T) => T)) => {
-      if (!mountingRef.current) {
-        return;
-      }
-      setState(s);
-    },
-    [setState]
-  );
-  useEffect(() => {
-    return () => {
-      mountingRef.current = false;
-    };
-  }, []);
-  return [state, set];
+function parseEffect<
+  E extends (...p: any[]) => any,
+  C extends Record<string, any> = Record<string, any>
+>(
+  callback: E | ModelPromiseEffectCallback<E>,
+  config?: C
+): [ModelPromiseEffectCallback<E>, E, C?] {
+  const { pipe } = callback as ModelPromiseEffectCallback<E>;
+  const isModel = typeof pipe === 'function';
+  if (!isModel) {
+    return [
+      effectModel as ModelPromiseEffectCallback<E>,
+      callback as E,
+      config
+    ];
+  }
+  const { effect } = callback as ModelPromiseEffectCallback<E>;
+  const [effectCallback, cg] = effect;
+  return [
+    callback as ModelPromiseEffectCallback<E>,
+    effectCallback,
+    (cg || config) as C | undefined
+  ];
 }
 
-export function useSideEffect<T, C extends SideEffectCallback<T>>(
-  callback: C,
-  defaultState: T,
-  config?: { deps?: any[]; manual?: boolean } | any[]
-): [T, () => ReturnType<C>, { destroy: () => any }] {
-  const c = config || {};
-  const isArrayConfig = Array.isArray(c);
-  const effectDeps = isArrayConfig ? c : c.deps || [];
-  const manual = isArrayConfig ? false : c.manual;
-  const [state, setState] = useSafeState<T>(defaultState);
-  const caller = () => callback(setState);
-  const destroyRef = useRef<null | (() => any)>(null);
-  const callbackRef = useRef(caller);
-  callbackRef.current = caller;
-
-  const destroy = useCallback(() => {
-    if (destroyRef.current != null) {
-      destroyRef.current();
-    }
-  }, []);
-
-  const sideEffectCallback = useCallback<typeof caller>(() => {
-    if (destroyRef.current != null) {
-      destroyRef.current();
-    }
-    const result = callbackRef.current();
-    if (typeof result === 'function') {
-      destroyRef.current = result;
-    } else {
-      destroyRef.current = null;
-    }
-    return result;
-  }, []);
-
-  useEffect(() => {
-    if (manual) {
-      return;
-    }
-    sideEffectCallback();
-  }, effectDeps);
-
-  useEffect(() => {
-    return () => {
-      const des = destroyRef.current;
-      if (des == null) {
-        return;
-      }
-      des();
-    };
-  }, []);
-
-  return [state, sideEffectCallback, { destroy }];
-}
-
-export function useQuery<T>(
-  callback: () => Promise<T>,
-  config?: { deps?: any[]; manual?: boolean } | any[]
-): [PromiseResult<T>, () => Promise<PromiseResult<T>>] {
-  const defaultState: PromiseResult<T> = useMemo(
-    () => ({
-      data: undefined,
-      isError: false,
-      isFetching: false,
-      abandon: false
-    }),
-    []
-  );
-
-  const versionRef = useRef(0);
-
-  const resolver = (
-    response: ResponseType<PromiseResult<T>>
+function usePromise<T, C extends () => Promise<T>>(
+  callback: C
+): (
+  feedback: (r: PromiseResult<T>) => PromiseResult<T>
+) => Promise<PromiseResult<T>> {
+  return (
+    feedback: (r: PromiseResult<T>) => PromiseResult<T>
   ): Promise<PromiseResult<T>> => {
-    response(d => ({ ...(d || defaultState), isFetching: true }));
     const result = callback();
     if (!result || typeof result.then !== 'function') {
       throw new Error('The callback have to return a promise object.');
     }
-    const nextVersion = versionRef.current + 1;
-    versionRef.current = nextVersion;
+    feedback({ ...defaultPromiseResult(), isFetching: true });
     return result.then(
       d => {
         const r = {
           data: d,
           isError: false,
           isFetching: false,
-          abandon: nextVersion !== versionRef.current
+          abandon: false
         };
-        if (!r.abandon) {
-          response(r);
-        }
-        return r;
+        return feedback(r);
       },
       e => {
         const r = {
+          data: undefined,
           error: e,
           isError: true,
           isFetching: false,
-          abandon: nextVersion !== versionRef.current
+          abandon: false
         };
-        if (!r.abandon) {
-          response(d => ({
-            ...(d || defaultState),
-            ...r
-          }));
-        }
-        return { ...r, data: undefined };
+        return feedback(r);
       }
     );
   };
-
-  const [state, call] = useSideEffect(resolver, defaultState, config);
-  return [state, call];
 }
 
-export function useMutation<T, C extends (...params: any[]) => Promise<T>>(
-  callback: C,
-  config?: { after?: (r: PromiseResult<T>) => any; repeatable?: boolean }
-): [
-  PromiseResult<T>,
-  (...params: Parameters<typeof callback>) => Promise<PromiseResult<T>>
-] {
-  const defaultState: PromiseResult<T> = useMemo(
-    () => ({
-      data: undefined,
-      isError: false,
-      isFetching: false,
-      abandon: false
-    }),
-    []
+export function useQuery<T, C extends PromiseEffectCallback<T>>(
+  callback: C | ModelPromiseEffectCallback<C>,
+  config?: QueryConfig<T, C> | Parameters<C>
+): [PromiseResult<T>, () => Promise<PromiseResult<T>>] {
+  const cg = Array.isArray(config) ? { variables: config } : config;
+  const [model, effectCallback, con] = parseEffect<C, QueryConfig<T, C>>(
+    callback,
+    cg
   );
-  const { after = () => undefined, repeatable = true } = config || {};
+  const params: [typeof model, PromiseResult<T>?] =
+    model === effectModel ? [model, defaultPromiseResult()] : [model];
+  const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
+  const { variables, deps, manual: man, strategy } = con || {};
+  const manual = !deps && !variables ? true : man;
+  const runner = usePromise<T, () => Promise<T>>(() =>
+    effectCallback(...(variables || []))
+  );
+  const keyRef = useRef({});
+  const strategyStoreRef = useRef<any>();
+
+  const versionRef = useRef(0);
+  const caller = function caller(): Promise<PromiseResult<T>> {
+    const version = versionRef.current + 1;
+    versionRef.current = version;
+    const feedback = function feedback(
+      res: PromiseResult<T>
+    ): PromiseResult<T> {
+      const { state: current, setState } = instance;
+      const abandon = version !== versionRef.current;
+      const response = (data: PromiseResult<T>): PromiseResult<T> => {
+        if (!abandon) {
+          setState(data);
+        }
+        return data;
+      };
+      if (res.isFetching) {
+        return response({
+          ...res,
+          data: current.data,
+          abandon,
+          fetchingKey: keyRef.current
+        });
+      }
+      if (res.isError) {
+        return response({
+          ...current,
+          ...res,
+          data: current.data,
+          abandon,
+          fetchingKey: undefined
+        });
+      }
+      return response({ ...res, abandon, fetchingKey: undefined });
+    };
+    return runner(feedback);
+  };
+
+  const callWithStrategy = function callWithStrategy(
+    call: () => Promise<PromiseResult<T>>
+  ) {
+    if (!strategy) {
+      return call();
+    }
+    const getCurrentState = () => instance.state;
+    return strategy(getCurrentState, call, strategyStoreRef);
+  };
+
+  const effectQuery = function effectQuery() {
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
+    callWithStrategy(caller);
+  };
+
+  const query = function query() {
+    return callWithStrategy(caller);
+  };
+
+  useLayoutEffect(() => {
+    if (manual) {
+      return;
+    }
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
+    effectQuery();
+  }, deps || variables || []);
+
+  const triggerVersionRef = useRef(instance.version);
+  useEffect(() => {
+    if (triggerVersionRef.current === instance.version) {
+      return;
+    }
+    triggerVersionRef.current = instance.version;
+    query();
+  }, [instance.version]);
+
+  return [instance.state, query];
+}
+
+export function useMutation<T, C extends PromiseEffectCallback<T>>(
+  callback: C | ModelPromiseEffectCallback<C>,
+  config?: MutationConfig<T, C> | Parameters<C>
+): [PromiseResult<T>, () => Promise<PromiseResult<T>>] {
+  const cg = Array.isArray(config) ? { variables: config } : config;
+  const [model, effectCallback, con] = parseEffect<C, MutationConfig<T, C>>(
+    callback,
+    cg
+  );
+  const params: [typeof model, PromiseResult<T>?] =
+    model === effectModel ? [model, defaultPromiseResult()] : [model];
+  const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
+  const { variables, strategy } = con || {};
+  const runner = usePromise<T, () => Promise<T>>(() =>
+    effectCallback(...(variables || []))
+  );
+
+  const strategyStoreRef = useRef<any>();
+  const keyRef = useRef({});
   const savingRef = useRef(false);
-  const [state, setState] = useSafeState<PromiseResult<T>>(defaultState);
-  const mutate = useCallback((...params: Parameters<typeof callback>) => {
+  const caller = function caller(): Promise<PromiseResult<T>> {
     if (savingRef.current) {
-      return Promise.resolve({ ...state, abandon: true });
+      return new Promise<PromiseResult<T>>(resolve => {
+        resolve(instance.state);
+      });
     }
     savingRef.current = true;
-    setState(d => ({ ...d, isFetching: true }));
-    const result = callback(...params).then();
-    return result.then(
-      d => {
-        const r = {
-          data: d,
-          isError: false,
-          isFetching: false,
-          abandon: false
-        };
-        if (!r.abandon) {
-          setState(r);
-          after(r);
-        }
-        savingRef.current = !repeatable;
-        return r;
-      },
-      e => {
-        const r = {
-          error: e,
-          isError: true,
-          isFetching: false,
-          abandon: false
-        };
-        if (!r.abandon) {
-          setState(d => ({
-            ...(d || defaultState),
-            ...r
-          }));
-          after({ ...r, data: undefined });
-        }
-        savingRef.current = false;
-        return { ...r, data: undefined };
+    const feedback = function feedback(
+      res: PromiseResult<T>
+    ): PromiseResult<T> {
+      const { state: current, setState } = instance;
+      if (res.isFetching) {
+        return setState({
+          ...res,
+          data: current.data,
+          fetchingKey: keyRef.current
+        });
       }
-    );
-  }, []);
-  return [state, mutate];
+      savingRef.current = false;
+      if (res.isError) {
+        return setState({
+          ...current,
+          ...res,
+          data: current.data,
+          fetchingKey: undefined
+        });
+      }
+      return setState({ ...res, fetchingKey: undefined });
+    };
+    return runner(feedback);
+  };
+
+  const callWithStrategy = function callWithStrategy(
+    call: () => Promise<PromiseResult<T>>
+  ) {
+    if (!strategy) {
+      return call();
+    }
+    const getCurrentState = () => instance.state;
+    return strategy(getCurrentState, call, strategyStoreRef);
+  };
+
+  const mutate = function mutate() {
+    return callWithStrategy(caller);
+  };
+
+  const triggerVersionRef = useRef(instance.version);
+  useEffect(() => {
+    if (triggerVersionRef.current === instance.version) {
+      return;
+    }
+    triggerVersionRef.current = instance.version;
+    mutate();
+  }, [instance.version]);
+
+  return [instance.state, mutate];
 }
+
+export function useAsyncEffect<T, C extends PromiseEffectCallback<T>>(
+  factory: ModelPromiseEffectCallback<C>
+): [PromiseResult<T>, () => void] {
+  return useSelector(
+    factory,
+    s => [s.state, s.trigger] as [PromiseResult<T>, () => void]
+  );
+}
+
+export const EffectProvider = ModelProvider;
+
+export const withEffectProvider = withModelProvider;
+
+export { asyncEffect } from './model';
+
+export { Strategy } from './strategy';

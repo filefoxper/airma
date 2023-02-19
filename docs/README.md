@@ -14,6 +14,8 @@
 `@airma` is a scope package, which contains some useful react tools. Every child package supports react from version `16.8.0`.
 
 * [@airma/react-state](/react-state/index.md)
+* [@airma/restful](/restful/index.md)
+* [@airma/react-effect](/react-effect/index.md)
 
 <h2> @airma/react-state </h2>
 

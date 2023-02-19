@@ -1,10 +1,3 @@
-export {
-  default as createModel,
-  createStore,
-  factory,
-} from './libs/reducer';
+export { default as createModel, createStore, factory } from './libs/reducer';
 
-export {
-  createProxy,
-  shallowEqual
-} from './libs/tools';
+export { createProxy, shallowEqual } from './libs/tools';

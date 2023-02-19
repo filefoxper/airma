@@ -5,8 +5,9 @@ declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P
 ) => P & { getSourceFrom: () => any };
 
-declare type FactoryModel<T extends AirReducer<any, any>> = T & {
+export declare type FactoryModel<T extends AirReducer<any, any>> = T & {
   pipe: PipeCallback<T extends AirReducer<infer S, any> ? S : never>;
+  effect?: [(...params: any[]) => any, Record<string, any>?];
 };
 
 export declare function useModel<S, T extends AirModelInstance>(
@@ -47,7 +48,7 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
   options?: { refreshDeps?: any[] }
 ): void;
 
-declare type FactoryCollection =
+export declare type FactoryCollection =
   | FactoryModel<(s: any) => any>
   | Array<FactoryModel<(s: any) => any>>
   | Record<string, FactoryModel<(s: any) => any>>;

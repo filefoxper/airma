@@ -1,8 +1,5 @@
-export declare type ResponseParam<T> = T | ((d: T) => T);
-
-export declare type ResponseType<T> = (data: ResponseParam<T>) => void;
-
-export declare type SideEffectCallback<T> = (response: ResponseType<T>) => any;
+import { FactoryCollection, FactoryModel } from '@airma/react-state';
+import { ComponentType, FC, ReactNode } from 'react';
 
 export declare type PromiseResult<T> = {
   data: T | undefined;
@@ -12,24 +9,88 @@ export declare type PromiseResult<T> = {
   abandon: boolean;
 };
 
-export declare function useSideEffect<T, C extends SideEffectCallback<T>>(
-  callback: C,
-  defaultState: T,
-  config?: { deps?: any[]; manual?: boolean } | any[]
-): [T, () => ReturnType<C>, { destroy: () => any }];
+export declare type StrategyType<T = any> = (
+  getCurrentState: () => PromiseResult<T>,
+  runner: () => Promise<PromiseResult<T>>,
+  storeRef: { current: any }
+) => Promise<PromiseResult<T>>;
 
-export declare function useQuery<T>(
-  callback: () => Promise<T>,
-  config?: { deps?: any[]; manual?: boolean } | any[]
-): [PromiseResult<T>, () => Promise<PromiseResult<T>>];
+export declare type PromiseEffectCallback<T> = (...params: any[]) => Promise<T>;
+
+export declare type ModelPromiseEffectCallback<
+  E extends PromiseEffectCallback<any>
+> = FactoryModel<
+  (st: PromiseResult & { version?: number }) => {
+    state: PromiseResult;
+    version: number;
+    setState: (s: PromiseResult) => PromiseResult & { version?: number };
+    trigger: () => PromiseResult & { version?: number };
+  }
+> & {
+  effect: [E];
+};
+
+export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
+  deps?: any[];
+  variables?: Parameters<C>;
+  strategy?: StrategyType;
+  manual?: boolean;
+};
+
+export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
+  variables?: Parameters<C>;
+  strategy?: StrategyType;
+};
+
+declare type PCR<
+  T extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+> = T extends PromiseEffectCallback<infer R>
+  ? R
+  : T extends ModelPromiseEffectCallback<infer C>
+  ? PCR<C>
+  : never;
+
+declare type MCC<
+  T extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+> = T extends PromiseEffectCallback<any>
+  ? T
+  : T extends ModelPromiseEffectCallback<infer C>
+  ? C
+  : never;
+
+export declare function useQuery<
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+>(
+  callback: D,
+  config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
+): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
 
 export declare function useMutation<
-  T,
-  C extends (...params: any[]) => Promise<T>
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
 >(
-  callback: C,
-  config?: { after?: (r: PromiseResult<T>) => any; repeatable?: boolean }
-): [
-  PromiseResult<T>,
-  (...params: Parameters<typeof callback>) => Promise<PromiseResult<T>>
-];
+  callback: D,
+  config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
+): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
+
+export declare function useAsyncEffect<
+  D extends ModelPromiseEffectCallback<any>
+>(factory: D): [PromiseResult<PCR<D>>, () => void];
+
+export declare function asyncEffect<
+  E extends (...params: any[]) => Promise<any>,
+  T = E extends (...params: any[]) => Promise<infer R> ? R : never
+>(effectCallback: E): ModelPromiseEffectCallback<E>;
+
+export declare const EffectProvider: FC<{
+  value: FactoryCollection;
+  children?: ReactNode;
+}>;
+
+export declare function withEffectProvider(
+  models: FactoryCollection
+): <P extends object>(component: ComponentType<P>) => typeof component;
+
+export declare const Strategy = {
+  debounce: (op: { time: number }) => StrategyType,
+  once: () => StrategyType
+};

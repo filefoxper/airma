@@ -1,48 +1,35 @@
 {
   "private": false,
   "name": "@airma/react-effect",
-  "version": "15.0.0",
+  "version": "15.1.0",
   "description": "This is a react async state management tool",
-  "main": "dist/index.js",
+  "license": "MIT",
   "author": "Jimmy.Harding",
-  "typings": "index.d.ts",
-  "scripts": {
-    "lint": "eslint src --fix --ext .ts,.tsx ",
-    "lint-init": "eslint --init",
-    "build": "webpack",
-    "analyze": "webpack --config webpack.analyze.js",
-    "test": "jest --coverage",
-    "docs": "docsify serve ./docs"
-  },
+  "homepage": "https://filefoxper.github.io/airma/#/react-effect/index",
   "repository": {
     "type": "git",
     "url": "https://github.com/filefoxper/airma"
   },
-  "homepage": "https://filefoxper.github.io/airma/#/react-effect/index",
+  "main": "dist/index.js",
   "files": [
     "dist",
     "index.d.ts"
   ],
-  "keywords": [
-    "react",
-    "hook",
-    "side-effects",
-    "state-management",
-    "async",
-    "async-state",
-    "closures",
-    "state",
-    "typescript",
-    "browser"
-  ],
-  "license": "MIT",
+  "scripts": {
+    "analyze": "webpack --config webpack.analyze.js",
+    "build": "webpack",
+    "docs": "docsify serve ./docs",
+    "lint": "eslint src --fix --ext .ts,.tsx ",
+    "lint-init": "eslint --init",
+    "test": "jest --coverage"
+  },
+  "typings": "index.d.ts",
   "dependencies": {
+    "@airma/react-state": "^17.0.8",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   },
   "devDependencies": {
-    "prettier": "2.3.2",
-    "typescript": "4.9.4",
     "esbuild": "^0.16.6",
     "eslint": "^8.27.0",
     "eslint-config-airbnb": "^19.0.4",
@@ -52,9 +39,23 @@
     "husky": "^7.0.1",
     "jest": "29.3.1",
     "pre-commit": "^1.2.2",
+    "prettier": "2.3.2",
     "prettier-eslint": "^12.0.0",
     "prettier-eslint-cli": "^5.0.1",
     "regenerator-runtime": "0.13.5",
-    "rewire": "5.0.0"
-  }
+    "rewire": "5.0.0",
+    "typescript": "4.9.4"
+  },
+  "keywords": [
+    "async",
+    "async-state",
+    "browser",
+    "closures",
+    "hook",
+    "react",
+    "side-effects",
+    "state",
+    "state-management",
+    "typescript"
+  ]
 }
