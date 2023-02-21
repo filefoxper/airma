@@ -441,7 +441,8 @@ config:
 * variables - you can set an array as parameters for query, when the elements change, the query callback runs.
 * deps - you can set an array as dependencies, sometimes you may want to drive query callback running by the different dependencies with variables.
 * manual - set manual `true`, means you want to execute the query manually, then the deps and variables change will not affect the query callback running.
-* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
+* strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside.
+* primaryStrategy - the primaryStrategy provides final running strategies inside strategies. If you want to set strategies, please use `strategy` option, this option is often setted for replacing the global primaryStrategy from `PrimaryStrategyProvider`. 
 
 returns:
 
@@ -473,7 +474,8 @@ parameters:
 config:
 
 * variables - you can set an array as parameters for query, when the elements change, the mutation callback runs.
-* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
+* strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside. 
+* primaryStrategy - the primaryStrategy provides final running strategies inside strategies. If you want to set strategies, please use `strategy` option, this option is often setted for replacing the global primaryStrategy from `PrimaryStrategyProvider`. 
 
 returns:
 
@@ -536,22 +538,83 @@ You can refer it to [ModelProvider](https://filefoxper.github.io/airma/#/react-s
 
 You can refer it to [withModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=withmodelprovider) in `@airma/react-state`.
 
+### PrimaryStrategyProvider
+
+It is a react `Provider` for setting global primaryStrategy for every `useQuery` and `useMutation` in `children`.
+
+```ts
+import {
+  PrimaryStrategyProvider,
+  Strategy,
+  useQuery
+} from '@airma/react-effect';
+
+const App = ()=>{
+  // if the `fetchUsers` is failed,
+  // the global primary `Strategy.error` works.
+  useQuery(fetchUsers, [data]);
+  useQuery(fetchGroups, {
+    variables: [...ids],
+    strategy: [
+      Strategy.debounce(300), 
+      Strategy.error(...)
+    ],
+    // use a local null primmaryStrategy, 
+    // so, the global one can not affect this
+    // query.
+    primmaryStrategy: null
+  });
+  ......
+}
+
+......
+{/* Set a primaryStrategy */}
+<PrimaryStrategyProvider 
+  value={Strategy.error(e => console.log(e))}
+>
+
+</PrimaryStrategyProvider>
+```
+
 ### Strategy
 
 It provides some useful effect running `Strategy` for you.
 
 ```ts
-const Strategy = {
-  debounce: (op: { time: number }) => StrategyType,
+const Strategy:{
+  debounce: (op: { time: number } | number) => StrategyType,
   once: () => StrategyType
+  error: (
+    process: (e: unknown) => any,
+    option?: { withAbandoned?: boolean }
+  ) => StrategyType;
 };
 ```
 
-You can use it to the config `strategy` in `useQuery` and `useMutation`. 
+You can use it to the config `strategy` in `useQuery` and `useMutation`.
+
+For example:
+
+```ts
+import {
+  Strategy,
+  useQuery
+} from '@airma/react-effect';
+
+const useUserList = (...ids:number[])=>{
+  useQuery(fetchUsers, {
+    variables: [...ids],
+    strategy: [
+      Strategy.debounce(300),
+      Strategy.error((e) =>console.log(e))
+    ]
+  })
+};
+```
 
 #### debounce 
 
-you can set a debounce time to it. like:
+you can set a debounce running time to it. like:
 
 ```ts
 useQuery(callback,{
@@ -566,6 +629,43 @@ Then the query callback runs with this debounce strategy.
 
 It is used to force the query or mutation callback only runs once, if no error comes out.
 
+#### error
+
+You can set a callback to process the error information from promise rejection.
+
+Use it as a global primary strategy can help you reduce the codes for dealing a common error process.
+
+```ts
+import {
+  Strategy,
+  PrimaryStrategyProvider
+} from '@airma/react-effect';
+
+const primary = Strategy.error((e) =>console.log(e));
+
+<PrimaryStrategyProvider value={primary}>
+......
+</PrimaryStrategyProvider>
+```
+
+By the default, it only process the error result which is not abandoned. You can set `{withAbandoned: true}` for dealing includes the abandoned errors.
+
+```ts
+import {
+  Strategy,
+  PrimaryStrategyProvider
+} from '@airma/react-effect';
+
+const primary = Strategy.error(
+  (e) =>console.log(e),
+  {withAbandoned: true}
+);
+
+<PrimaryStrategyProvider value={primary}>
+......
+</PrimaryStrategyProvider>
+```
+
 ## Write Strategy
 
 You can write Strategy yourself, it is a simple work.
@@ -578,42 +678,51 @@ export type StrategyType<T = any> = (
 ) => Promise<PromiseResult<T>>;
 ```
 
-A Strategy function accepts 3 parameters:
+A Strategy function accepts a parameter with properties:
 
-* getCurrentState - A function returns a current promise result.
-* runner - the wrapped effect callback, returns a promise.
-* storeRef - a store for your Strategy, you can store any thing which is helpful for your Strategy.
+* current - A callback returns a current promise result.
+* runner - The wrapped effect callback, returns a promise.
+* store - A store for your Strategy, you can store any thing which is helpful for your Strategy.
+* variables - The variables for current query or mutation.
 
 For example:
 
 ```ts
 function once(): StrategyType {
+
   // this inner function is a Strategy
-  return function oc(getCurrentState, runner, storeRef) {
+  return function oc(value: {
+    current: () => PromiseResult;
+    runner: () => Promise<PromiseResult>;
+    store: { current?: boolean };
+  }) {
+    const { current, runner, store } = value;
     // It store a boolean value to tell 
     // if the effect callback is started.
     // If this value is true,
     // it returns a current state promise,
     // and mark it to abandoned.
-    if (storeRef.current) {
+    if (store.current) {
       return new Promise(resolve => {
-        const currentState = getCurrentState();
+        // use current callback to fetch the current data,
+        // which is returned by the useQuery
+        const currentState = current();
         resolve({ ...currentState, abandon: true });
       });
     }
     // If the store value is false,
     // it marks it as started,
     // then truely start it.
-    storeRef.current = true;
+    store.current = true;
     return runner().then(d => {
       if (d.isError) {
         // if the promise is error,
         // mark it to false again,
         // the the effect callback can be started again.
-        storeRef.current = false;
+        store.current = false;
       }
       return d;
     });
   };
-}
+};
 ```

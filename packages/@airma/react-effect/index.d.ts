@@ -86,13 +86,22 @@ export declare const EffectProvider: FC<{
   children?: ReactNode;
 }>;
 
+export declare const PrimaryStrategyProvider: FC<{
+  value: StrategyType | null | StrategyType[];
+  children?: ReactNode;
+}>;
+
 export declare function withEffectProvider(
   models: FactoryCollection
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
 
-export declare const Strategy = {
-  debounce: (op: { time: number }) => StrategyType,
-  once: () => StrategyType
+export declare const Strategy: {
+  debounce: (op: { time: number } | number) => StrategyType;
+  once: () => StrategyType;
+  error: (
+    process: (e: unknown) => any,
+    option?: { withAbandoned?: boolean }
+  ) => StrategyType;
 };

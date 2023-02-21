@@ -15,7 +15,8 @@ import {
   useAsyncEffect,
   useMutation,
   useQuery,
-  withEffectProvider
+  withEffectProvider,
+  PrimaryStrategyProvider
 } from '@airma/react-effect';
 
 const { rest } = client(c => ({
