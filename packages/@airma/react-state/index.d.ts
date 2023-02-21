@@ -1,5 +1,5 @@
 import { AirModelInstance, AirReducer } from '@airma/core';
-import { ComponentType, FC, NamedExoticComponent, ReactNode } from 'react';
+import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P

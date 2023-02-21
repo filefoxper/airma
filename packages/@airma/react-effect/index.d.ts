@@ -1,5 +1,5 @@
 import { FactoryCollection, FactoryModel } from '@airma/react-state';
-import { ComponentType, FC, NamedExoticComponent, ReactNode } from 'react';
+import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 export declare type PromiseResult<T> = {
   data: T | undefined;
