@@ -1,5 +1,5 @@
 import { FactoryCollection, FactoryModel } from '@airma/react-state';
-import { ComponentType, FC, ReactNode } from 'react';
+import { ComponentType, FC, NamedExoticComponent, ReactNode } from 'react';
 
 export declare type PromiseResult<T> = {
   data: T | undefined;
@@ -88,7 +88,9 @@ export declare const EffectProvider: FC<{
 
 export declare function withEffectProvider(
   models: FactoryCollection
-): <P extends object>(component: ComponentType<P>) => typeof component;
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
 
 export declare const Strategy = {
   debounce: (op: { time: number }) => StrategyType,
