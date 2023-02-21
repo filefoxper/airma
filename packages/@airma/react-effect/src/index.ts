@@ -10,7 +10,8 @@ import {
   PromiseEffectCallback,
   QueryConfig,
   MutationConfig,
-  ModelPromiseEffectCallback
+  ModelPromiseEffectCallback,
+  StrategyType
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
@@ -76,6 +77,25 @@ function usePromise<T, C extends () => Promise<T>>(
   };
 }
 
+function buildStrategy(
+  store: { current: any }[],
+  st: (StrategyType | undefined | null)[]
+): StrategyType {
+  const defaultStrategy: StrategyType = value => value.runner();
+  return [...st]
+    .reverse()
+    .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
+      const storage = store[i] || { current: undefined };
+      return function middle(value) {
+        if (c == null) {
+          return r(value);
+        }
+        const nextRunner = () => r(value);
+        return c({ ...value, store: storage, runner: nextRunner });
+      };
+    }, defaultStrategy);
+}
+
 export function useQuery<T, C extends PromiseEffectCallback<T>>(
   callback: C | ModelPromiseEffectCallback<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -90,11 +110,14 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
   const { variables, deps, manual: man, strategy } = con || {};
   const manual = !deps && !variables ? true : man;
+  const strategies = Array.isArray(strategy) ? strategy : [strategy];
   const runner = usePromise<T, () => Promise<T>>(() =>
     effectCallback(...(variables || []))
   );
   const keyRef = useRef({});
-  const strategyStoreRef = useRef<any>();
+  const strategyStoreRef = useRef<{ current: any }[]>(
+    strategies.map(() => ({ current: undefined }))
+  );
 
   const versionRef = useRef(0);
   const caller = function caller(): Promise<PromiseResult<T>> {
@@ -139,8 +162,13 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     if (!strategy) {
       return call();
     }
-    const getCurrentState = () => instance.state;
-    return strategy(getCurrentState, call, strategyStoreRef);
+    const requires = {
+      current: () => instance.state,
+      variables,
+      runner: call,
+      store: strategyStoreRef
+    };
+    return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
 
   const effectQuery = function effectQuery() {
@@ -191,11 +219,15 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     model === effectModel ? [model, defaultPromiseResult()] : [model];
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
   const { variables, strategy } = con || {};
+  const strategies = Array.isArray(strategy) ? strategy : [strategy];
   const runner = usePromise<T, () => Promise<T>>(() =>
     effectCallback(...(variables || []))
   );
 
-  const strategyStoreRef = useRef<any>();
+  const strategyStoreRef = useRef<{ current: any }[]>(
+    strategies.map(() => ({ current: undefined }))
+  );
+
   const keyRef = useRef({});
   const savingRef = useRef(false);
   const caller = function caller(): Promise<PromiseResult<T>> {
@@ -236,8 +268,13 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     if (!strategy) {
       return call();
     }
-    const getCurrentState = () => instance.state;
-    return strategy(getCurrentState, call, strategyStoreRef);
+    const requires = {
+      current: () => instance.state,
+      variables,
+      runner: call,
+      store: strategyStoreRef
+    };
+    return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
 
   const mutate = function mutate() {
