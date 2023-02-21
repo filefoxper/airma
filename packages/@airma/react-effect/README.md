@@ -441,7 +441,7 @@ config:
 * variables - you can set an array as parameters for query, when the elements change, the query callback runs.
 * deps - you can set an array as dependencies, sometimes you may want to drive query callback running by the different dependencies with variables.
 * manual - set manual `true`, means you want to execute the query manually, then the deps and variables change will not affect the query callback running.
-* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
+* strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. 
 
 returns:
 
@@ -473,7 +473,7 @@ parameters:
 config:
 
 * variables - you can set an array as parameters for query, when the elements change, the mutation callback runs.
-* strategy - you can set a strategy function to make query callback running with the strategy you want, for example: `debounce`, `once`. 
+* strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. 
 
 returns:
 
@@ -578,42 +578,51 @@ export type StrategyType<T = any> = (
 ) => Promise<PromiseResult<T>>;
 ```
 
-A Strategy function accepts 3 parameters:
+A Strategy function accepts a parameter with properties:
 
-* getCurrentState - A function returns a current promise result.
-* runner - the wrapped effect callback, returns a promise.
-* storeRef - a store for your Strategy, you can store any thing which is helpful for your Strategy.
+* current - A callback returns a current promise result.
+* runner - The wrapped effect callback, returns a promise.
+* store - A store for your Strategy, you can store any thing which is helpful for your Strategy.
+* variables - The variables for current query or mutation.
 
 For example:
 
 ```ts
 function once(): StrategyType {
+
   // this inner function is a Strategy
-  return function oc(getCurrentState, runner, storeRef) {
+  return function oc(value: {
+    current: () => PromiseResult;
+    runner: () => Promise<PromiseResult>;
+    store: { current?: boolean };
+  }) {
+    const { current, runner, store } = value;
     // It store a boolean value to tell 
     // if the effect callback is started.
     // If this value is true,
     // it returns a current state promise,
     // and mark it to abandoned.
-    if (storeRef.current) {
+    if (store.current) {
       return new Promise(resolve => {
-        const currentState = getCurrentState();
+        // use current callback to fetch the current data,
+        // which is returned by the useQuery
+        const currentState = current();
         resolve({ ...currentState, abandon: true });
       });
     }
     // If the store value is false,
     // it marks it as started,
     // then truely start it.
-    storeRef.current = true;
+    store.current = true;
     return runner().then(d => {
       if (d.isError) {
         // if the promise is error,
         // mark it to false again,
         // the the effect callback can be started again.
-        storeRef.current = false;
+        store.current = false;
       }
       return d;
     });
   };
-}
+};
 ```

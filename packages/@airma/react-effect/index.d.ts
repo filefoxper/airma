@@ -33,13 +33,13 @@ export declare type ModelPromiseEffectCallback<
 export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyType;
+  strategy?: StrategyType | (StrategyType | null | undefined)[];
   manual?: boolean;
 };
 
 export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyType;
+  strategy?: StrategyType | (StrategyType | null | undefined)[];
 };
 
 declare type PCR<

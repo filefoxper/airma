@@ -23,20 +23,21 @@ export type PromiseResult<T = any> = {
   abandon: boolean;
 };
 
-export type StrategyType<T = any> = (
-  getCurrentState: () => PromiseResult<T>,
-  runner: () => Promise<PromiseResult<T>>,
-  storeRef: { current: any }
-) => Promise<PromiseResult<T>>;
+export type StrategyType<T = any> = (value: {
+  current: () => PromiseResult<T>;
+  variables?: any[];
+  runner: () => Promise<PromiseResult<T>>;
+  store: { current: any };
+}) => Promise<PromiseResult<T>>;
 
 export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyType;
+  strategy?: StrategyType | (StrategyType | null | undefined)[];
   manual?: boolean;
 };
 
 export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyType;
+  strategy?: StrategyType | (StrategyType | null | undefined)[];
 };

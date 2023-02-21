@@ -83,7 +83,6 @@ const Creating = memo(
     });
 
     const [{ data }, launch] = useAsyncEffect(fetchFactory);
-    console.log('data...', data);
 
     const [r, save] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -93,7 +92,7 @@ const Creating = memo(
           .then(() => true),
       {
         variables: [user],
-        strategy: Strategy.once()
+        strategy: [Strategy.debounce({ time: 300 }), Strategy.once()]
       }
     );
 
@@ -102,7 +101,7 @@ const Creating = memo(
         return;
       }
       launch();
-      onSubmit();
+      // onSubmit();
     }, [r]);
 
     return (
