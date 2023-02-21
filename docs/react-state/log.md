@@ -34,3 +34,7 @@
 ## v 17.0.7 2023-02-16
 
 * add `withModelProvider` API for a easy usage of `ModelProvider`. 
+
+## v 17.0.9 2023-02-21
+
+* optimize typescript descriptions about `FactoryModel` and `withModelProvider`.

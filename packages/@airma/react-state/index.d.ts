@@ -60,7 +60,9 @@ export declare const ModelProvider: FC<{
 
 export declare function withModelProvider(
   models: FactoryCollection
-): <P extends object>(component: ComponentType<P>) => typeof component;
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
 
 export declare function useSelector<
   R extends AirReducer<any, any>,
@@ -73,15 +75,15 @@ export declare function useSelector<
 
 export declare function factory<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): FactoryModel<typeof model>;
+): FactoryModel<AirReducer<S | undefined, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
-): FactoryModel<typeof model>;
+): FactoryModel<AirReducer<S, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): FactoryModel<typeof model>;
+): FactoryModel<AirReducer<S | undefined, T>>;
 
 export declare function keyModel<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
