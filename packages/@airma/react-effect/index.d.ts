@@ -30,16 +30,24 @@ export declare type ModelPromiseEffectCallback<
   effect: [E];
 };
 
+export declare type StrategyCollectionType =
+  | undefined
+  | null
+  | StrategyType
+  | (StrategyType | null | undefined)[];
+
 export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyType | (StrategyType | null | undefined)[];
+  strategy?: StrategyCollectionType;
   manual?: boolean;
+  exact?: boolean;
 };
 
 export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyType | (StrategyType | null | undefined)[];
+  strategy?: StrategyCollectionType;
+  exact?: boolean;
 };
 
 declare type PCR<
@@ -86,8 +94,17 @@ export declare const EffectProvider: FC<{
   children?: ReactNode;
 }>;
 
-export declare const PrimaryStrategyProvider: FC<{
-  value: StrategyType | null | StrategyType[];
+export declare type EffectType = 'query' | 'mutation';
+
+export declare type EffectConfig = {
+  strategy?: (
+    strategy: (StrategyType | null | undefined)[],
+    type: EffectType
+  ) => (StrategyType | null | undefined)[];
+};
+
+export declare const EffectConfigProvider: FC<{
+  value: EffectConfig;
   children?: ReactNode;
 }>;
 

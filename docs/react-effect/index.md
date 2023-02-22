@@ -442,7 +442,7 @@ config:
 * deps - you can set an array as dependencies, sometimes you may want to drive query callback running by the different dependencies with variables.
 * manual - set manual `true`, means you want to execute the query manually, then the deps and variables change will not affect the query callback running.
 * strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside.
-* primaryStrategy - the primaryStrategy provides final running strategies inside strategies. If you want to set strategies, please use `strategy` option, this option is often setted for replacing the global primaryStrategy from `PrimaryStrategyProvider`. 
+* exact - a boolean value, for ignore the affect from a global `EffectConfigProvider` config. 
 
 returns:
 
@@ -475,7 +475,7 @@ config:
 
 * variables - you can set an array as parameters for query, when the elements change, the mutation callback runs.
 * strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside. 
-* primaryStrategy - the primaryStrategy provides final running strategies inside strategies. If you want to set strategies, please use `strategy` option, this option is often setted for replacing the global primaryStrategy from `PrimaryStrategyProvider`. 
+* exact - a boolean value, for ignore the affect from a global `EffectConfigProvider` config. 
 
 returns:
 
@@ -538,20 +538,36 @@ You can refer it to [ModelProvider](https://filefoxper.github.io/airma/#/react-s
 
 You can refer it to [withModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=withmodelprovider) in `@airma/react-state`.
 
-### PrimaryStrategyProvider
+### EffectConfigProvider
 
-It is a react `Provider` for setting global primaryStrategy for every `useQuery` and `useMutation` in `children`.
+It is a react `Provider` for setting global config for every `useQuery` and `useMutation` in `children`, it can be ignored by the local config option `exact`.
 
 ```ts
 import {
-  PrimaryStrategyProvider,
+  EffectConfigProvider,
   Strategy,
   useQuery
 } from '@airma/react-effect';
+import type {EffectConfig} from '@airma/react-effect';
+
+// The EffectConfig only support rebuild strategy currently.
+const config: EffectConfig = {
+  // The strategy is a callback,
+  // it accepts a running effect strategy array,
+  // and a effect type: 'query' | 'mutation'.
+  // You can complete the running strategies
+  // with padding strategies,
+  // so, the running effect will work with these new strategies.
+  // It can be ignored by a local effect config option:
+  // `exact: true`
+  strategy:(
+    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
+  )=>[...s, Strategy.error((e)=>console.log(e))]
+}
 
 const App = ()=>{
   // if the `fetchUsers` is failed,
-  // the global primary `Strategy.error` works.
+  // the global config strategy `Strategy.error` works.
   useQuery(fetchUsers, [data]);
   useQuery(fetchGroups, {
     variables: [...ids],
@@ -559,21 +575,19 @@ const App = ()=>{
       Strategy.debounce(300), 
       Strategy.error(...)
     ],
-    // use a local null primmaryStrategy, 
-    // so, the global one can not affect this
-    // query.
-    primmaryStrategy: null
+    // tell useQuery to use the current config exactly.
+    exact: true
   });
   ......
 }
 
 ......
-{/* Set a primaryStrategy */}
-<PrimaryStrategyProvider 
+{/* Set a EffectConfig */}
+<EffectConfigProvider 
   value={Strategy.error(e => console.log(e))}
 >
 
-</PrimaryStrategyProvider>
+</EffectConfigProvider>
 ```
 
 ### Strategy
@@ -633,19 +647,23 @@ It is used to force the query or mutation callback only runs once, if no error c
 
 You can set a callback to process the error information from promise rejection.
 
-Use it as a global primary strategy can help you reduce the codes for dealing a common error process.
+Use it as a global effect config strategy can help you reduce the codes for dealing a common error process.
 
 ```ts
 import {
   Strategy,
-  PrimaryStrategyProvider
+  EffectConfigProvider
 } from '@airma/react-effect';
 
-const primary = Strategy.error((e) =>console.log(e));
+const error = Strategy.error((e) =>console.log(e));
 
-<PrimaryStrategyProvider value={primary}>
+const config = {
+  strategy: (s)=>[...s, error]
+}
+
+<EffectConfigProvider value={config}>
 ......
-</PrimaryStrategyProvider>
+</EffectConfigProvider>
 ```
 
 By the default, it only process the error result which is not abandoned. You can set `{withAbandoned: true}` for dealing includes the abandoned errors.
@@ -653,17 +671,21 @@ By the default, it only process the error result which is not abandoned. You can
 ```ts
 import {
   Strategy,
-  PrimaryStrategyProvider
+  EffectConfigProvider
 } from '@airma/react-effect';
 
-const primary = Strategy.error(
+const error = Strategy.error(
   (e) =>console.log(e),
   {withAbandoned: true}
 );
 
-<PrimaryStrategyProvider value={primary}>
+const config = {
+  strategy: (s)=>[...s, error]
+}
+
+<EffectConfigProvider value={config}>
 ......
-</PrimaryStrategyProvider>
+</EffectConfigProvider>
 ```
 
 ## Write Strategy

@@ -20,23 +20,22 @@ import {
   ModelPromiseEffectCallback,
   StrategyType,
   PromiseData,
-  PrimaryStrategyProviderProps
+  EffectConfigProviderProps,
+  EffectConfig
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
-const PrimaryStrategyContext = createContext<
-  StrategyType | null | StrategyType[]
->(null);
+const EffectConfigContext = createContext<EffectConfig | null>(null);
 
-export function PrimaryStrategyProvider({
+export function EffectConfigProvider({
   value,
   children
-}: PrimaryStrategyProviderProps) {
-  return createElement(PrimaryStrategyContext.Provider, { value }, children);
+}: EffectConfigProviderProps) {
+  return createElement(EffectConfigContext.Provider, { value }, children);
 }
 
-function usePrimaryStrategy(): StrategyType | null | StrategyType[] {
-  return useContext(PrimaryStrategyContext);
+function useEffectConfig(): EffectConfig | null {
+  return useContext(EffectConfigContext);
 }
 
 function parseEffect<
@@ -131,18 +130,16 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   const params: [typeof model, PromiseResult<T>?] =
     model === effectModel ? [model, defaultPromiseResult()] : [model];
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
-  const globalPrimaryStrategy = usePrimaryStrategy();
-  const {
-    variables,
-    deps,
-    manual: man,
-    strategy,
-    primaryStrategy = globalPrimaryStrategy
-  } = con || {};
+  const { variables, deps, manual: man, strategy, exact } = con || {};
+  const scopeEffectConfig = useEffectConfig() || {};
+  const { strategy: strategyCallback } = exact
+    ? { strategy: undefined }
+    : scopeEffectConfig;
   const manual = !deps && !variables ? true : man;
   const currentStrategies = toStrategies(strategy);
-  const primaryStrategies = toStrategies(primaryStrategy);
-  const strategies = currentStrategies.concat(primaryStrategies);
+  const strategies = strategyCallback
+    ? strategyCallback(currentStrategies, 'query')
+    : currentStrategies;
   const runner = usePromise<T, () => Promise<T>>(() =>
     effectCallback(...(variables || []))
   );
@@ -238,15 +235,15 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   const params: [typeof model, PromiseResult<T>?] =
     model === effectModel ? [model, defaultPromiseResult()] : [model];
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
-  const globalPrimaryStrategy = usePrimaryStrategy();
-  const {
-    variables,
-    strategy,
-    primaryStrategy = globalPrimaryStrategy
-  } = con || {};
+  const { variables, strategy, exact } = con || {};
+  const scopeEffectConfig = useEffectConfig() || {};
+  const { strategy: strategyCallback } = exact
+    ? { strategy: undefined }
+    : scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
-  const primaryStrategies = toStrategies(primaryStrategy);
-  const strategies = currentStrategies.concat(primaryStrategies);
+  const strategies = strategyCallback
+    ? strategyCallback(currentStrategies, 'mutation')
+    : currentStrategies;
   const runner = usePromise<T, () => Promise<T>>(() =>
     effectCallback(...(variables || []))
   );

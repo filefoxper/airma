@@ -1,15 +1,21 @@
 import React from 'react';
 import { render } from 'react-dom';
 import App from '@/app';
-import { PrimaryStrategyProvider, Strategy } from '@airma/react-effect';
+import {
+  EffectConfig,
+  EffectConfigProvider,
+  Strategy
+} from '@airma/react-effect';
 
 const root = document.getElementById('root');
 
-const primary = Strategy.error(e => console.log(e));
+const config: EffectConfig = {
+  strategy: s => [...s, Strategy.error(e => console.log(e))]
+};
 
 render(
-  <PrimaryStrategyProvider value={primary}>
+  <EffectConfigProvider value={config}>
     <App />
-  </PrimaryStrategyProvider>,
+  </EffectConfigProvider>,
   root
 );
