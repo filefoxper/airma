@@ -1,7 +1,7 @@
 import { PromiseResult, StrategyType } from './type';
 
-const debounce = function debounce(op: { time: number }): StrategyType {
-  const { time } = op;
+function debounce(op: { time: number } | number): StrategyType {
+  const time = typeof op === 'number' ? op : op.time;
   return function db(value: {
     current: () => PromiseResult;
     runner: () => Promise<PromiseResult>;
@@ -22,9 +22,9 @@ const debounce = function debounce(op: { time: number }): StrategyType {
       store.current = { id, resolve };
     });
   };
-};
+}
 
-const once = function once(): StrategyType {
+function once(): StrategyType {
   return function oc(value: {
     current: () => PromiseResult;
     runner: () => Promise<PromiseResult>;
@@ -45,9 +45,30 @@ const once = function once(): StrategyType {
       return d;
     });
   };
-};
+}
+
+function error(
+  process: (e: unknown) => any,
+  option?: { withAbandoned?: boolean }
+): StrategyType {
+  const { withAbandoned } = option || {};
+  return function er(value: {
+    current: () => PromiseResult;
+    runner: () => Promise<PromiseResult>;
+    store: { current?: boolean };
+  }) {
+    const { runner } = value;
+    return runner().then(d => {
+      if (d.isError && (!d.abandon || withAbandoned)) {
+        process(d.error);
+      }
+      return d;
+    });
+  };
+}
 
 export const Strategy = {
   debounce,
-  once
+  once,
+  error
 };
