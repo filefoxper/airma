@@ -16,7 +16,7 @@ import {
   useMutation,
   useQuery,
   withEffectProvider,
-  PrimaryStrategyProvider
+  EffectConfigProvider
 } from '@airma/react-effect';
 
 const { rest } = client(c => ({
@@ -173,9 +173,10 @@ export default withEffectProvider(fetchFactory)(function App() {
     { valid: defaultCondition, display: defaultCondition, creating: false }
   );
 
-  const [{ data = [], isFetching, error }, fetch] = useQuery(fetchFactory, [
-    validQuery
-  ]);
+  const [{ data = [], isFetching, error }, fetch] = useQuery(fetchFactory, {
+    variables: [validQuery],
+    exact: true
+  });
 
   return (
     <div style={{ padding: '12px 24px' }}>

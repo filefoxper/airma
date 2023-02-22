@@ -37,21 +37,34 @@ export type StrategyType<T = any> = (value: {
   store: { current: any };
 }) => Promise<PromiseResult<T>>;
 
+export type StrategyCollectionType =
+  | undefined
+  | null
+  | StrategyType
+  | (StrategyType | null | undefined)[];
+
 export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyType | (StrategyType | null | undefined)[];
-  primaryStrategy?: StrategyType | null | (StrategyType | null | undefined)[];
+  strategy?: StrategyCollectionType;
   manual?: boolean;
+  exact?: boolean;
 };
 
 export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyType | (StrategyType | null | undefined)[];
-  primaryStrategy?: StrategyType | null | (StrategyType | null | undefined)[];
+  strategy?: StrategyCollectionType;
+  exact?: boolean;
 };
 
-export type PrimaryStrategyProviderProps = {
-  value: StrategyType | null | StrategyType[];
+export type EffectConfig = {
+  strategy?: (
+    strategy: (StrategyType | null | undefined)[],
+    type: 'query' | 'mutation'
+  ) => (StrategyType | null | undefined)[];
+};
+
+export type EffectConfigProviderProps = {
+  value: EffectConfig;
   children?: ReactNode;
 };
