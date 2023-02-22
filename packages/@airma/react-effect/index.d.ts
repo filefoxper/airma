@@ -9,11 +9,12 @@ export declare type PromiseResult<T> = {
   abandon: boolean;
 };
 
-export declare type StrategyType<T = any> = (
-  getCurrentState: () => PromiseResult<T>,
-  runner: () => Promise<PromiseResult<T>>,
-  storeRef: { current: any }
-) => Promise<PromiseResult<T>>;
+export declare type StrategyType<T = any> = (value: {
+  current: () => PromiseResult<T>;
+  variables?: any[];
+  runner: () => Promise<PromiseResult<T>>;
+  store: { current: any };
+}) => Promise<PromiseResult<T>>;
 
 export declare type PromiseEffectCallback<T> = (...params: any[]) => Promise<T>;
 
