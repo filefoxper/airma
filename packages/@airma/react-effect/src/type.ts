@@ -15,6 +15,8 @@ export type ModelPromiseEffectCallback<E extends PromiseEffectCallback<any>> =
     effect: [E];
   };
 
+export type TriggerType = 'mount' | 'update' | 'manual';
+
 export type PromiseData<T = any> = {
   data?: T | undefined;
   error?: any;
@@ -28,6 +30,7 @@ export type PromiseResult<T = any> = {
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
+  triggerType: undefined | TriggerType;
 };
 
 export type StrategyType<T = any> = (value: {

@@ -21,7 +21,8 @@ import {
   StrategyType,
   PromiseData,
   EffectConfigProviderProps,
-  EffectConfig
+  EffectConfig,
+  TriggerType
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
@@ -143,17 +144,25 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   const runner = usePromise<T, () => Promise<T>>(() =>
     effectCallback(...(variables || []))
   );
+  const mountRef = useRef(true);
   const keyRef = useRef({});
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
   );
 
   const versionRef = useRef(0);
-  const caller = function caller(): Promise<PromiseResult<T>> {
+  const caller = function caller(
+    triggerType: TriggerType
+  ): Promise<PromiseResult<T>> {
     const version = versionRef.current + 1;
     versionRef.current = version;
     const { state: current, setState } = instance;
-    setState({ ...current, isFetching: true, fetchingKey: keyRef.current });
+    setState({
+      ...current,
+      isFetching: true,
+      fetchingKey: keyRef.current,
+      triggerType
+    });
     return runner().then(data => {
       const abandon = version !== versionRef.current;
       return {
@@ -161,29 +170,31 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
         ...data,
         abandon,
         isFetching: false,
-        fetchingKey: undefined
+        fetchingKey: undefined,
+        triggerType
       };
     });
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: () => Promise<PromiseResult<T>>
+    call: (triggerType: TriggerType) => Promise<PromiseResult<T>>,
+    triggerType: TriggerType
   ) {
     const requires = {
       current: () => instance.state,
       variables,
-      runner: call,
+      runner: () => call(triggerType),
       store: strategyStoreRef
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
 
-  const effectQuery = function effectQuery() {
+  const effectQuery = function effectQuery(isOnMount: boolean) {
     const currentFetchingKey = instance.state.fetchingKey;
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    callWithStrategy(caller).then(data => {
+    callWithStrategy(caller, isOnMount ? 'mount' : 'update').then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
@@ -192,7 +203,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   };
 
   const query = function query() {
-    return callWithStrategy(caller).then(data => {
+    return callWithStrategy(caller, 'manual').then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
@@ -201,6 +212,8 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   };
 
   useLayoutEffect(() => {
+    const isOnMount = mountRef.current;
+    mountRef.current = false;
     if (manual) {
       return;
     }
@@ -208,7 +221,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    effectQuery();
+    effectQuery(isOnMount);
   }, deps || variables || []);
 
   const triggerVersionRef = useRef(instance.version);
@@ -257,19 +270,25 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   const caller = function caller(): Promise<PromiseResult<T>> {
     if (savingRef.current) {
       return new Promise<PromiseResult<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true });
+        resolve({ ...instance.state, abandon: true, triggerType: 'manual' });
       });
     }
     savingRef.current = true;
     const { state: current, setState } = instance;
-    setState({ ...current, isFetching: true, fetchingKey: keyRef.current });
+    setState({
+      ...current,
+      isFetching: true,
+      fetchingKey: keyRef.current,
+      triggerType: 'manual'
+    });
     return runner().then(data => {
       savingRef.current = false;
       return {
         ...instance.state,
         ...data,
         isFetching: false,
-        fetchingKey: undefined
+        fetchingKey: undefined,
+        triggerType: 'manual'
       };
     });
   };

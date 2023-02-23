@@ -173,10 +173,15 @@ export default withEffectProvider(fetchFactory)(function App() {
     { valid: defaultCondition, display: defaultCondition, creating: false }
   );
 
-  const [{ data = [], isFetching, error }, fetch] = useQuery(fetchFactory, {
-    variables: [validQuery],
-    exact: true
-  });
+  const [{ data = [], isFetching, error, triggerType }, fetch] = useQuery(
+    fetchFactory,
+    {
+      variables: [validQuery],
+      exact: true
+    }
+  );
+
+  console.log('trigger', triggerType);
 
   return (
     <div style={{ padding: '12px 24px' }}>
