@@ -414,6 +414,8 @@ export declare type PromiseResult<T> = {
   isFetching: boolean;
   // is the result is abandoned
   abandon: boolean;
+  // the triggerType describes how this result came out.
+  triggerType: undefined | 'mount' | 'update' | 'manual'
 };
 ```
 ## API

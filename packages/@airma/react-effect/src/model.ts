@@ -23,11 +23,12 @@ export function effectModel(state: PromiseResult & { version?: number }) {
   };
 }
 
-export const defaultPromiseResult = () => ({
+export const defaultPromiseResult = (): PromiseResult => ({
   data: undefined,
   isError: false,
   isFetching: false,
-  abandon: false
+  abandon: false,
+  triggerType: undefined
 });
 
 export function asyncEffect<

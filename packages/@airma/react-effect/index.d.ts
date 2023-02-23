@@ -1,12 +1,15 @@
 import { FactoryCollection, FactoryModel } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
+declare type TriggerType = 'mount' | 'update' | 'manual';
+
 export declare type PromiseResult<T> = {
   data: T | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
   abandon: boolean;
+  triggerType: undefined | TriggerType;
 };
 
 export declare type StrategyType<T = any> = (value: {
