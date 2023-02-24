@@ -136,7 +136,37 @@ const Creating = memo(
   }
 );
 
-export default withEffectProvider(fetchFactory)(function App() {
+const conditionModel = (query: Query) => {
+  const handleQuery = () => {
+    return { ...query, valid: { ...query.display } };
+  };
+  return {
+    displayQuery: query.display,
+    validQuery: query.valid,
+    creating: query.creating,
+    create() {
+      return { ...query, creating: true };
+    },
+    submit() {
+      return { ...query, ...handleQuery(), creating: false };
+    },
+    cancel() {
+      return { ...query, creating: false };
+    },
+    changeDisplay(display: Partial<Condition>) {
+      return { ...query, display: { ...query.display, ...display } };
+    },
+    query: handleQuery
+  };
+};
+
+const condition = factory(conditionModel, {
+  valid: defaultCondition,
+  display: defaultCondition,
+  creating: false
+});
+
+const Condition = memo(() => {
   const {
     displayQuery,
     validQuery,
@@ -146,32 +176,54 @@ export default withEffectProvider(fetchFactory)(function App() {
     cancel,
     changeDisplay,
     query
-  } = useModel(
-    (query: Query) => {
-      const handleQuery = () => {
-        return { ...query, valid: { ...query.display } };
-      };
-      return {
-        displayQuery: query.display,
-        validQuery: query.valid,
-        creating: query.creating,
-        create() {
-          return { ...query, creating: true };
-        },
-        submit() {
-          return { ...query, ...handleQuery(), creating: false };
-        },
-        cancel() {
-          return { ...query, creating: false };
-        },
-        changeDisplay(display: Partial<Condition>) {
-          return { ...query, display: { ...query.display, ...display } };
-        },
-        query: handleQuery
-      };
-    },
-    { valid: defaultCondition, display: defaultCondition, creating: false }
+  } = useModel(condition);
+
+  return (
+    <div>
+      <span>name:</span>
+      <input
+        type="text"
+        value={displayQuery.name}
+        onChange={e => changeDisplay({ name: e.target.value })}
+      />
+      <span style={{ marginLeft: 12 }}>username:</span>
+      <input
+        type="text"
+        value={displayQuery.username}
+        onChange={e => changeDisplay({ username: e.target.value })}
+      />
+      <span style={{ marginLeft: 12 }}>age:</span>
+      <input
+        type="text"
+        value={displayQuery.age}
+        onChange={e => changeDisplay({ age: e.target.value })}
+      />
+      <button type="button" style={{ marginLeft: 12 }} onClick={query}>
+        query
+      </button>
+      <button type="button" style={{ marginLeft: 8 }} onClick={create}>
+        create
+      </button>
+    </div>
   );
+});
+
+export default withEffectProvider({ fetchFactory, condition })(function App() {
+  const conditionState = { ...defaultCondition, name: 'Mr' };
+  const {
+    displayQuery,
+    validQuery,
+    creating,
+    create,
+    submit,
+    cancel,
+    changeDisplay,
+    query
+  } = useModel(condition, {
+    valid: conditionState,
+    display: conditionState,
+    creating: false
+  });
 
   const [{ data = [], isFetching, error, triggerType }, fetch] = useQuery(
     fetchFactory,
@@ -181,36 +233,9 @@ export default withEffectProvider(fetchFactory)(function App() {
     }
   );
 
-  console.log('trigger', triggerType);
-
   return (
     <div style={{ padding: '12px 24px' }}>
-      <div>
-        <span>name:</span>
-        <input
-          type="text"
-          value={displayQuery.name}
-          onChange={e => changeDisplay({ name: e.target.value })}
-        />
-        <span style={{ marginLeft: 12 }}>username:</span>
-        <input
-          type="text"
-          value={displayQuery.username}
-          onChange={e => changeDisplay({ username: e.target.value })}
-        />
-        <span style={{ marginLeft: 12 }}>age:</span>
-        <input
-          type="text"
-          value={displayQuery.age}
-          onChange={e => changeDisplay({ age: e.target.value })}
-        />
-        <button type="button" style={{ marginLeft: 12 }} onClick={query}>
-          query
-        </button>
-        <button type="button" style={{ marginLeft: 8 }} onClick={create}>
-          create
-        </button>
-      </div>
+      <Condition />
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
         {creating ? (
           <Creating onSubmit={cancel} onCancel={cancel} />

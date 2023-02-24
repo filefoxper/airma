@@ -36,6 +36,7 @@ export interface Connection<
     outState?: { state: S; cache?: boolean; isDefault?: boolean }
   ) => void;
   updateState: (state: S) => void;
+  notice: () => void;
   connect: (dispatch?: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
