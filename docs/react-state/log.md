@@ -38,3 +38,7 @@
 ## v 17.0.9 2023-02-21
 
 * optimize typescript descriptions about `FactoryModel` and `withModelProvider`.
+
+## v 17.1.1 2023-02-24
+
+* optimize `useModel` scope model default state setting. 

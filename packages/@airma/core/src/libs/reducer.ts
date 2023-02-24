@@ -118,6 +118,9 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     updateState(state: S): void {
       update(updater.reducer, { state, cache: true });
     },
+    notice(): void {
+      generateDispatch(updater)({ state: updater.state, type: '' });
+    },
     connect(dispatchCall) {
       const { dispatches } = updater;
       if (!dispatchCall || dispatches.indexOf(dispatchCall) >= 0) {
