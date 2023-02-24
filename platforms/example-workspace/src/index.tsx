@@ -14,8 +14,17 @@ const config: EffectConfig = {
 };
 
 render(
-  <EffectConfigProvider value={config}>
-    <App />
-  </EffectConfigProvider>,
+  <React.StrictMode>
+    <EffectConfigProvider value={config}>
+      <App />
+    </EffectConfigProvider>
+  </React.StrictMode>,
   root
 );
+
+// render(
+//   <EffectConfigProvider value={config}>
+//     <App />
+//   </EffectConfigProvider>,
+//   root
+// );

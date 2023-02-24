@@ -233,6 +233,8 @@ export default withEffectProvider({ fetchFactory, condition })(function App() {
     }
   );
 
+  console.log('v', triggerType, data);
+
   return (
     <div style={{ padding: '12px 24px' }}>
       <Condition />

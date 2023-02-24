@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "17.1.1",
+  "version": "17.1.2",
   "description": "the purpose of this project is make useReducer more simplify",
   "license": "MIT",
   "author": "Jimmy.Harding",

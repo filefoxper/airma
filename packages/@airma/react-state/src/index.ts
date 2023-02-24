@@ -137,7 +137,10 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const instance = instanceRef.current;
   const current = connection || instance;
   const needInitializeScopeConnection =
-    connection && hasState && connection.getCacheState() == null;
+    connection != null &&
+    !!hasState &&
+    connection.getCacheState() == null &&
+    !refresh;
   if (needInitializeScopeConnection) {
     connection.update(model, { state, cache: true, ignoreDispatch: true });
   }
@@ -149,9 +152,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   }
 
   const dispatch = ({ state: actionState, type }: Action) => {
-    if (actionState === s && !type) {
-      return;
-    }
     setS(actionState);
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -170,14 +170,18 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!connection && !refresh) {
       current.update(model, { state: s });
     }
-    if (!refresh && needInitializeScopeConnection && !autoLink) {
-      current.notice();
-    }
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
     };
   }, []);
+
+  useEffect(() => {
+    if (needInitializeScopeConnection) {
+      current.notice();
+    }
+  }, [needInitializeScopeConnection]);
+
   return [current.getState(), current.agent, current.updateState];
 }
 
