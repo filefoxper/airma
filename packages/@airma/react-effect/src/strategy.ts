@@ -67,8 +67,29 @@ function error(
   };
 }
 
+function success<T>(
+  process: (data: T | undefined) => any,
+  option?: { withAbandoned?: boolean }
+): StrategyType<T> {
+  const { withAbandoned } = option || {};
+  return function sc(value: {
+    current: () => PromiseResult<T>;
+    runner: () => Promise<PromiseResult<T>>;
+    store: { current?: boolean };
+  }) {
+    const { runner } = value;
+    return runner().then(d => {
+      if (!d.isError && (!d.abandon || withAbandoned)) {
+        process(d.data);
+      }
+      return d;
+    });
+  };
+}
+
 export const Strategy = {
   debounce,
   once,
-  error
+  error,
+  success
 };

@@ -40,23 +40,23 @@ export type StrategyType<T = any> = (value: {
   store: { current: any };
 }) => Promise<PromiseResult<T>>;
 
-export type StrategyCollectionType =
+export type StrategyCollectionType<T> =
   | undefined
   | null
-  | StrategyType
-  | (StrategyType | null | undefined)[];
+  | StrategyType<T>
+  | (StrategyType<T> | null | undefined)[];
 
 export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyCollectionType;
+  strategy?: StrategyCollectionType<T>;
   manual?: boolean;
   exact?: boolean;
 };
 
 export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyCollectionType;
+  strategy?: StrategyCollectionType<T>;
   exact?: boolean;
 };
 
