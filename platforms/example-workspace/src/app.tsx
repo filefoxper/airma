@@ -229,6 +229,10 @@ export default withEffectProvider({ fetchFactory, condition })(function App() {
     fetchFactory,
     {
       variables: [validQuery],
+      strategy: [
+        Strategy.success(d => console.log((d || []).map(c => c.name))),
+        Strategy.error(e => console.log(e))
+      ],
       exact: true
     }
   );

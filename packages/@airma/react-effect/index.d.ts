@@ -34,23 +34,23 @@ export declare type ModelPromiseEffectCallback<
   effect: [E];
 };
 
-export declare type StrategyCollectionType =
+export declare type StrategyCollectionType<T> =
   | undefined
   | null
-  | StrategyType
-  | (StrategyType | null | undefined)[];
+  | StrategyType<T>
+  | (StrategyType<T> | null | undefined)[];
 
 export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
   variables?: Parameters<C>;
-  strategy?: StrategyCollectionType;
+  strategy?: StrategyCollectionType<T>;
   manual?: boolean;
   exact?: boolean;
 };
 
 export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   variables?: Parameters<C>;
-  strategy?: StrategyCollectionType;
+  strategy?: StrategyCollectionType<T>;
   exact?: boolean;
 };
 
@@ -125,4 +125,8 @@ export declare const Strategy: {
     process: (e: unknown) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType;
+  success: <T>(
+    process: (data: T | undefined) => any,
+    option?: { withAbandoned?: boolean }
+  ) => StrategyType<T>;
 };

@@ -690,6 +690,58 @@ const config = {
 </EffectConfigProvider>
 ```
 
+#### success
+
+You can set a callback to process the data from promise resolve.
+
+```ts
+import React from 'react';
+import {
+  Strategy,
+  useQuery
+} from '@airma/react-effect';
+import service from './service';
+
+const App = ()=>{
+
+  const [datasource, updateDatasource] = useState([]);
+
+  useQuery(service.fetch,{
+    variables: [{name:'name'}],
+    strategy: Strategy.success((d)=>updateDatasource(d||[]))
+  })
+
+  return ......;
+}
+```
+
+By the default, it only process the data result which is not abandoned. You can set `{withAbandoned: true}` for dealing includes the abandoned result.
+
+```ts
+import React from 'react';
+import {
+  Strategy,
+  useQuery
+} from '@airma/react-effect';
+import service from './service';
+
+const App = ()=>{
+
+  const [datasource, updateDatasource] = useState([]);
+
+  useQuery(service.fetch,{
+    variables: [{name:'name'}],
+    strategy: Strategy.success((d)=>updateDatasource(d||[]),{
+      withAbandoned: true
+    })
+  })
+
+  return ......;
+}
+```
+
+We suggest you use `Strategy.success` without setting a `{withAbandoned: true}` config, for the abandoned data is not helpful, and it would not be exsit in the useQuery or useMutation render state history.
+
 ## Write Strategy
 
 You can write Strategy yourself, it is a simple work.
