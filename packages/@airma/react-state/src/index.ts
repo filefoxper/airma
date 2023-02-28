@@ -60,17 +60,40 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
 
 export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>,
-  options?: { refreshDeps?: any[] }
+  params:
+    | Parameters<T>
+    | {
+        refreshDeps?: any[];
+        variables: Parameters<T>;
+      }
 ) {
-  const { refreshDeps = [...params] } = options || {};
+  const isVariableParams = Array.isArray(params);
+  const refreshDeps = (function computeRefreshDeps() {
+    if (isVariableParams) {
+      return params;
+    }
+    if (!params) {
+      return undefined;
+    }
+    return params.refreshDeps;
+  })();
+  const variables = (function computeVariables() {
+    if (isVariableParams) {
+      return params;
+    }
+    if (!params) {
+      return [];
+    }
+    return params.variables || [];
+  })();
+  const fn = usePersistFn(method);
   useEffect(() => {
-    const result = method(...params);
+    const result = fn(...variables);
     if (typeof result === 'function') {
       return result;
     }
     return () => undefined;
-  }, [method, ...refreshDeps]);
+  }, refreshDeps);
 }
 
 const ReactStateContext = createContext<Selector | null>(null);
@@ -268,11 +291,11 @@ export function useSelector<
     throw new Error(requiredError('useSelector'));
   }
   const { agent } = connection;
-  const current = callback(agent);
-  const [s, setS] = useState({});
+  const current = callback({ ...agent });
+  const [, setS] = useState({});
 
   const dispatch = usePersistFn(() => {
-    const next = callback(connection.agent);
+    const next = callback({ ...connection.agent });
     if (equalFn ? equalFn(current, next) : Object.is(current, next)) {
       return;
     }

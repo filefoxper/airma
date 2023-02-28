@@ -211,16 +211,19 @@ const App = ()=>{
 ```ts
 function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>,
-  options?: { refreshDeps?: any[] }
+  variables:
+    | Parameters<T>
+    | {
+        refreshDeps?: any[];
+        variables: Parameters<T>;
+      }
 ): void;
 ```
 
 Parameters
 
 * method - Any function callback.
-* params - The parameters for method, it is an array type object.
-* options - It is an optional config, you can provide a refresh dependencies to drive the refresh, in that case, the params will not affect when the refresh happens.
+* variables - It can be the parameters array for method, or a config which contains `variables` and an optional `refreshDeps`. If you choose a config setting, you'd better set `refreshDeps`, or it will works like `useEffect(callback)`. 
 
 Explain
 
@@ -230,17 +233,41 @@ This API is a supplement for `useRefreshModel`. Sometimes, we don't want to watc
 // you can consider this code as `useRefresh`
 export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>,
-  options?: { refreshDeps?: any[] }
+  params:
+    | Parameters<T>
+    | {
+        refreshDeps?: any[];
+        variables: Parameters<T>;
+      }
 ) {
-  const { refreshDeps = [...params] } = options || {};
+  const isVariableParams = Array.isArray(params);
+  const refreshDeps = (function computeRefreshDeps() {
+    if (isVariableParams) {
+      return params;
+    }
+    if (!params) {
+      return undefined;
+    }
+    return params.refreshDeps;
+  })();
+  const variables = (function computeVariables() {
+    if (isVariableParams) {
+      return params;
+    }
+    if (!params) {
+      return [];
+    }
+    return params.variables || [];
+  })();
+  const fnRef = useRef(method);
+  fnRef.current = method;
   useEffect(() => {
-    const result = method(...params);
+    const result = fnRef.current(...variables);
     if (typeof result === 'function') {
       return result;
     }
     return () => undefined;
-  }, [method, ...refreshDeps]);
+  }, refreshDeps);
 }
 ```
 

@@ -44,8 +44,12 @@ export declare function useRefreshModel<
 
 export declare function useRefresh<T extends (...args: any[]) => any>(
   method: T,
-  params: Parameters<T>,
-  options?: { refreshDeps?: any[] }
+  params:
+    | Parameters<T>
+    | {
+        refreshDeps?: any[];
+        variables: Parameters<T>;
+      }
 ): void;
 
 export declare type FactoryCollection =

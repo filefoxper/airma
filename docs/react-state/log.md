@@ -42,3 +42,7 @@
 ## v 17.1.1 2023-02-24
 
 * optimize `useModel` scope model default state setting. 
+
+## v 17.1.3 2023-02-28
+
+* optimize `useSelector` and `useRefresh` API.
