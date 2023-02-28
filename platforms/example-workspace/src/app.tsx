@@ -8,18 +8,17 @@ import {
   ModelProvider,
   withModelProvider
 } from '@airma/react-state';
-import { client } from '@airma/restful';
+import { client as cli } from '@airma/restful';
 import {
-  asyncEffect,
+  client,
   Strategy,
-  useAsyncEffect,
   useMutation,
   useQuery,
-  withEffectProvider,
-  EffectConfigProvider
+  useClient,
+  withClientProvider
 } from '@airma/react-effect';
 
-const { rest } = client(c => ({
+const { rest } = cli(c => ({
   ...c,
   headers: { ...c.headers, yige: 'yige' }
 }));
@@ -52,7 +51,7 @@ const defaultCondition: Condition = {
 const userQuery = (validQuery: Condition) =>
   rest('/api/user').path('list').setParams(validQuery).get<User[]>();
 
-const fetchFactory = asyncEffect(userQuery);
+const fetchFactory = client(userQuery);
 
 const models = (userData: Omit<User, 'id'>) => {
   return {
@@ -83,7 +82,7 @@ const Creating = memo(
       age: 10
     });
 
-    const [{ data }, launch] = useAsyncEffect(fetchFactory);
+    const [{ data }, launch] = useClient(fetchFactory);
 
     const [r, save] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -208,7 +207,7 @@ const Condition = memo(() => {
   );
 });
 
-export default withEffectProvider({ fetchFactory, condition })(function App() {
+export default withClientProvider({ fetchFactory, condition })(function App() {
   const conditionState = { ...defaultCondition, name: 'Mr' };
   const {
     displayQuery,

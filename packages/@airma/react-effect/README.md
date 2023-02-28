@@ -296,17 +296,17 @@ const App = ()=>{
 
 ## state sharing
 
-We have provides a `EffectProvider` for sharing the state changes of `useQuery` and `useMutation`.
+We have provides a `ClientProvider` for sharing the state changes of `useQuery` and `useMutation`.
 
 ```ts
 import React, {memo} from 'react';
-import { client } from '@airma/restful';
+import { client as restClient } from '@airma/restful';
 import { useModel, useSelector, factory } from '@airma/react-state';
-import { EffectProvider, asyncEffect, useAsyncEffect } from '@airma/react-effect';
+import { ClientProvider, client, useClient } from '@airma/react-effect';
 
 type UserQuery = {name: string, username: string};
 
-const cli = client();
+const cli = restClient();
 
 const userQueryModel = (state: UserQuery)=>{
     const {name, username} = state;
@@ -329,7 +329,7 @@ const queryUsers = (query:UserQuery)=> cli.rest('/api/user/list').
 
 const models = {
     userQuery: factory(userQueryModel), // make a customized model key
-    queryUsers: asyncEffect(queryUsers) // make an effect model key
+    queryUsers: client(queryUsers) // make an effect model key
 };
 
 const Condition = memo(()=>{
@@ -340,10 +340,10 @@ const Condition = memo(()=>{
         changeUsername
     } = useModel(models.userQuery);
 
-    // useAsyncEffect can accept the query state changes
+    // useClient can accept the query state changes
     // from `models.queryUsers`,
     // it also can trigger it query again by `trigger`.
-    const [{isFetching}, trigger] = useAsyncEffect(models.queryUsers);
+    const [{isFetching}, trigger] = useClient(models.queryUsers);
 
     return (
         <div>
@@ -381,19 +381,19 @@ const Datasource = memo(()=>{
 
 const App = memo(()=>{
     // yes, 
-    // EffectProvider is just the `ModelProvider` in 
+    // ClientProvider is just the `ModelProvider` in 
     // `@airma/react-state`,
     // you can choose any of them as you wish.
     return (
-        <EffectProvider value={models}>
+        <ClientProvider value={models}>
           <Condition/>
           <Datasource/>
-        </EffectProvider>
+        </ClientProvider>
     );
 })
 ```
 
-Now, you can share the query or mutation state any where in a `EffectProvider`. Because the `EffectProvider` is `ModelProvider`, so, they have same features, for example, the useQuery or useAsynEffect find the key in parent Providers, the middle Provider will not block them. You can refer to [ModelProvider](https://filefoxper.github.io/airma/#/react-state/feature?id=scope-state) in [@airma/react-state](https://filefoxper.github.io/airma/#/react-state/index).
+Now, you can share the query or mutation state any where in a `ClientProvider`. Because the `ClientProvider` is `ModelProvider`, so, they have same features, for example, the useQuery or useAsynEffect find the key in parent Providers, the middle Provider will not block them. You can refer to [ModelProvider](https://filefoxper.github.io/airma/#/react-state/feature?id=scope-state) in [@airma/react-state](https://filefoxper.github.io/airma/#/react-state/index).
 
 ## async execution result
 
@@ -435,7 +435,7 @@ function useQuery<
 
 parameters:
 
-* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a EffectProvider.
+* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a ClientProvider.
 * config - it is optional. If you set nothing, it means you want to execute it manually. It can be an tuple array as parameters for callback. It can be a config object to set features of this query.
 
 config:
@@ -444,7 +444,7 @@ config:
 * deps - you can set an array as dependencies, sometimes you may want to drive query callback running by the different dependencies with variables.
 * manual - set manual `true`, means you want to execute the query manually, then the deps and variables change will not affect the query callback running.
 * strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside.
-* exact - a boolean value, for ignore the affect from a global `EffectConfigProvider` config. 
+* exact - a boolean value, for ignore the affect from a global `ClientConfigProvider` config. 
 
 returns:
 
@@ -470,14 +470,14 @@ function useMutation<
 
 parameters:
 
-* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a EffectProvider.
+* callback - a callback returns a promise, or a effect model. When it is a `effect model`, the query result will be shared out to any place in a ClientProvider.
 * config - it is optional. It can be an tuple array as parameters for callback. It can be a config object to set features of this mutation.
 
 config:
 
 * variables - you can set an array as parameters for query, when the elements change, the mutation callback runs.
 * strategy - you can set a strategy function or a strategy array to make query callback running with the strategy you want, for example: `debounce`, `once`. If it is an array, the query follows running order from outside to inside. 
-* exact - a boolean value, for ignore the affect from a global `EffectConfigProvider` config. 
+* exact - a boolean value, for ignore the affect from a global `ClientConfigProvider` config. 
 
 returns:
 
@@ -488,12 +488,12 @@ returns:
 ]
 ```
 
-### asyncEffect
+### client ~~asyncEffect~~
 
-It is used to generate a `effect model` with effect( promise ) callback. We can provide it as a key to `EffectProvider` or [ModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=modelprovider) in `@airma/react-state` for state sharing. And use `useQuery` or `useMutation` to link it, and fetching the query state.
+It is used to generate a `effect model` with effect( promise ) callback. We can provide it as a key to `ClientProvider` or [ModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=modelprovider) in `@airma/react-state` for state sharing. And use `useQuery` or `useMutation` to link it, and fetching the query state.
 
 ```ts
-function asyncEffect<
+function client<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
 >(effectCallback: E): ModelPromiseEffectCallback<E>;
@@ -507,19 +507,19 @@ returns
 
 A [react-state factory model](https://filefoxper.github.io/airma/#/react-state/api?id=factory) with effect( promise ) callback.
 
-### useAsyncEffect
+### useClient ~~useAsyncEffect~~
 
 It is used to accept the state change from `useQuery` or `useMutation` with a same `effect model`.
 
 ```ts
-function useAsyncEffect<
+function useClient<
   D extends ModelPromiseEffectCallback<any>
 >(effectModel: D): [PromiseResult<PCR<D>>, () => void];
 ```
 
 parameters:
 
-* effectModel - an `effect model` created by `asyncEffect` API.
+* effectModel - an `effect model` created by `client` API.
 
 returns:
 
@@ -532,28 +532,28 @@ returns:
 
 The trigger method is different with `execute` method returned by `useQuery` and `useMutation`. It returns void, that means it can not be `await`.
 
-### EffectProvider
+### CilentProvider ~~EffectProvider~~
 
 You can refer it to [ModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=modelprovider) in `@airma/react-state`.
 
-### withEffectProvider
+### withClientProvider ~~withEffectProvider~~
 
 You can refer it to [withModelProvider](https://filefoxper.github.io/airma/#/react-state/api?id=withmodelprovider) in `@airma/react-state`.
 
-### EffectConfigProvider
+### ClientConfigProvider ~~EffectConfigProvider~~
 
 It is a react `Provider` for setting global config for every `useQuery` and `useMutation` in `children`, it can be ignored by the local config option `exact`.
 
 ```ts
 import {
-  EffectConfigProvider,
+  ClientConfigProvider,
   Strategy,
   useQuery
 } from '@airma/react-effect';
-import type {EffectConfig} from '@airma/react-effect';
+import type {ClientConfig} from '@airma/react-effect';
 
-// The EffectConfig only support rebuild strategy currently.
-const config: EffectConfig = {
+// The ClientConfig only support rebuild strategy currently.
+const config: ClientConfig = {
   // The strategy is a callback,
   // it accepts a running effect strategy array,
   // and a effect type: 'query' | 'mutation'.
@@ -584,12 +584,12 @@ const App = ()=>{
 }
 
 ......
-{/* Set a EffectConfig */}
-<EffectConfigProvider 
+{/* Set a ClientConfig */}
+<ClientConfigProvider 
   value={Strategy.error(e => console.log(e))}
 >
 
-</EffectConfigProvider>
+</ClientConfigProvider>
 ```
 
 ### Strategy
@@ -654,7 +654,7 @@ Use it as a global effect config strategy can help you reduce the codes for deal
 ```ts
 import {
   Strategy,
-  EffectConfigProvider
+  ClientConfigProvider
 } from '@airma/react-effect';
 
 const error = Strategy.error((e) =>console.log(e));
@@ -663,9 +663,9 @@ const config = {
   strategy: (s)=>[...s, error]
 }
 
-<EffectConfigProvider value={config}>
+<ClientConfigProvider value={config}>
 ......
-</EffectConfigProvider>
+</ClientConfigProvider>
 ```
 
 By the default, it only process the error result which is not abandoned. You can set `{withAbandoned: true}` for dealing includes the abandoned errors.
@@ -673,7 +673,7 @@ By the default, it only process the error result which is not abandoned. You can
 ```ts
 import {
   Strategy,
-  EffectConfigProvider
+  ClientConfigProvider
 } from '@airma/react-effect';
 
 const error = Strategy.error(
@@ -685,9 +685,9 @@ const config = {
   strategy: (s)=>[...s, error]
 }
 
-<EffectConfigProvider value={config}>
+<ClientConfigProvider value={config}>
 ......
-</EffectConfigProvider>
+</ClientConfigProvider>
 ```
 
 #### success

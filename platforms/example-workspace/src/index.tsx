@@ -2,22 +2,22 @@ import React from 'react';
 import { render } from 'react-dom';
 import App from '@/app';
 import {
-  EffectConfig,
-  EffectConfigProvider,
+  ClientConfig,
+  ClientConfigProvider,
   Strategy
 } from '@airma/react-effect';
 
 const root = document.getElementById('root');
 
-const config: EffectConfig = {
+const config: ClientConfig = {
   strategy: s => [...s, Strategy.error(e => console.log(e))]
 };
 
 render(
   <React.StrictMode>
-    <EffectConfigProvider value={config}>
+    <ClientConfigProvider value={config}>
       <App />
-    </EffectConfigProvider>
+    </ClientConfigProvider>
   </React.StrictMode>,
   root
 );
