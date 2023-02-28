@@ -72,27 +72,22 @@ export function rest(url: string | HttpProperties): HttpType {
     };
   };
 
-  const clone = () => {
-    return rest(properties);
-  };
-
   return {
     path(child = ''): HttpType {
       const { urls } = properties;
-      properties.urls = urls.concat(child.split('/'));
-      return clone();
+      return rest({ ...properties, urls: urls.concat(child.split('/')) });
     },
     setConfig(restConfig: RestConfig): HttpType {
-      properties.restConfig = { ...defaultRestConfig, ...restConfig };
-      return clone();
+      return rest({
+        ...properties,
+        restConfig: { ...defaultRestConfig, ...restConfig }
+      });
     },
     setBody<B extends Record<string, any>>(requestBody: B): HttpType {
-      properties.requestBody = requestBody;
-      return clone();
+      return rest({ ...properties, requestBody });
     },
     setParams<P extends Record<string, unknown>>(requestParams: P): HttpType {
-      properties.requestParams = requestParams;
-      return clone();
+      return rest({ ...properties, requestParams });
     },
     get<T>(config?: RestConfig): PromiseValue<T> {
       return run(setRequestConfig('GET', config));

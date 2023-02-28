@@ -28,12 +28,14 @@ import { defaultPromiseResult, effectModel } from './model';
 
 const EffectConfigContext = createContext<EffectConfig | null>(null);
 
-export function EffectConfigProvider({
+export function ClientConfigProvider({
   value,
   children
 }: EffectConfigProviderProps) {
   return createElement(EffectConfigContext.Provider, { value }, children);
 }
+
+export const EffectConfigProvider = ClientConfigProvider;
 
 function useEffectConfig(): EffectConfig | null {
   return useContext(EffectConfigContext);
@@ -326,7 +328,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   return [instance.state, mutate];
 }
 
-export function useAsyncEffect<T, C extends PromiseEffectCallback<T>>(
+export function useClient<T, C extends PromiseEffectCallback<T>>(
   factory: ModelPromiseEffectCallback<C>
 ): [PromiseResult<T>, () => void] {
   return useSelector(
@@ -335,10 +337,16 @@ export function useAsyncEffect<T, C extends PromiseEffectCallback<T>>(
   );
 }
 
+export const useAsyncEffect = useClient;
+
 export const EffectProvider = ModelProvider;
+
+export const ClientProvider = ModelProvider;
 
 export const withEffectProvider = withModelProvider;
 
-export { asyncEffect } from './model';
+export const withClientProvider = withModelProvider;
+
+export { asyncEffect, client } from './model';
 
 export { Strategy } from './strategy';

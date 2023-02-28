@@ -31,7 +31,7 @@ export const defaultPromiseResult = (): PromiseResult => ({
   triggerType: undefined
 });
 
-export function asyncEffect<
+export function client<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
 >(effectCallback: E): ModelPromiseEffectCallback<E> {
@@ -43,3 +43,5 @@ export function asyncEffect<
   ];
   return model as ModelPromiseEffectCallback<E>;
 }
+
+export const asyncEffect = client;
