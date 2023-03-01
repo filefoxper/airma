@@ -75,14 +75,22 @@ export declare function useQuery<
 >(
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
+): [
+  PromiseResult<PCR<D>>,
+  () => Promise<PromiseResult<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+];
 
 export declare function useMutation<
   D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
 >(
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): [PromiseResult<PCR<D>>, () => Promise<PromiseResult<PCR<D>>>];
+): [
+  PromiseResult<PCR<D>>,
+  () => Promise<PromiseResult<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+];
 
 /**
  * @deprecated

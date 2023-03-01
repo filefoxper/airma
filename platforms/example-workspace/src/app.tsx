@@ -49,7 +49,21 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
+  new Promise<User[]>(resolve => {
+    if (validQuery.name && validQuery.name.startsWith('Mr')) {
+      setTimeout(() => {
+        resolve(
+          rest('/api/user').path('list').setParams(validQuery).get<User[]>()
+        );
+      }, 5000);
+      return;
+    }
+    setTimeout(() => {
+      resolve(
+        rest('/api/user').path('list').setParams(validQuery).get<User[]>()
+      );
+    }, 400);
+  });
 
 const fetchFactory = client(userQuery);
 
@@ -84,15 +98,14 @@ const Creating = memo(
 
     const [{ data }, launch] = useClient(fetchFactory);
 
-    const [r, save] = useMutation(
+    const [r, , call] = useMutation(
       (u: Omit<User, 'id'>) =>
         rest('/api/user')
           .setBody(u)
           .post<null>()
           .then(() => true),
       {
-        variables: [user],
-        strategy: [Strategy.debounce({ time: 300 }), Strategy.once()]
+        strategy: [Strategy.once()]
       }
     );
 
@@ -123,7 +136,11 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+          <button
+            type="button"
+            style={{ marginLeft: 12 }}
+            onClick={() => call(user)}
+          >
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
@@ -177,6 +194,8 @@ const Condition = memo(() => {
     query
   } = useModel(condition);
 
+  const [{ isFetching }] = useClient(fetchFactory);
+
   return (
     <div>
       <span>name:</span>
@@ -207,7 +226,7 @@ const Condition = memo(() => {
   );
 });
 
-export default withClientProvider({ fetchFactory, condition })(function App() {
+export default withModelProvider({ fetchFactory, condition })(function App() {
   const conditionState = { ...defaultCondition, name: 'Mr' };
   const {
     displayQuery,
@@ -224,19 +243,9 @@ export default withClientProvider({ fetchFactory, condition })(function App() {
     creating: false
   });
 
-  const [{ data = [], isFetching, error, triggerType }, fetch] = useQuery(
-    fetchFactory,
-    {
-      variables: [validQuery],
-      strategy: [
-        Strategy.success(d => console.log((d || []).map(c => c.name))),
-        Strategy.error(e => console.log(e))
-      ],
-      exact: true
-    }
-  );
+  const [result, fetch] = useQuery(fetchFactory, [validQuery]);
 
-  console.log('v', triggerType, data);
+  const { data = [], isFetching, error, isError, triggerType } = result;
 
   return (
     <div style={{ padding: '12px 24px' }}>

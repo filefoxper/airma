@@ -451,9 +451,16 @@ returns:
 ```ts
 [
   result,
-  execute
+  execute,
+  callback
 ]
 ```
+
+The `execute` function has no parameters, it uses `variables` from `useQuery` as inner parameters.
+
+The `callback` function accepts parameters, you can set temporary parameters for executing again.
+
+Both of `execute` and `callback` works a `manual` triggerType.
 
 ### useMutation
 
@@ -484,9 +491,16 @@ returns:
 ```ts
 [
   result,
-  execute
+  execute,
+  callback
 ]
 ```
+
+The `execute` function has no parameters, it uses `variables` from `useMutation` as inner parameters.
+
+The `callback` function accepts parameters, you can set temporary parameters for executing again.
+
+Both of `execute` and `callback` works a `manual` triggerType.
 
 ### client ~~asyncEffect~~
 

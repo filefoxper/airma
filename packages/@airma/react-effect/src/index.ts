@@ -66,11 +66,11 @@ function parseEffect<
   ];
 }
 
-function usePromise<T, C extends () => Promise<T>>(
+function usePromise<T, C extends (vars?: any[]) => Promise<T>>(
   callback: C
-): () => Promise<PromiseData<T>> {
-  return (): Promise<PromiseData<T>> => {
-    const result = callback();
+): (vars?: any[]) => Promise<PromiseData<T>> {
+  return (vars): Promise<PromiseData<T>> => {
+    const result = callback(vars);
     if (!result || typeof result.then !== 'function') {
       throw new Error('The callback have to return a promise object.');
     }
@@ -121,10 +121,23 @@ function toStrategies(
   return Array.isArray(strategy) ? strategy : [strategy];
 }
 
+function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
+  const dispatchRef = useRef<T>(callback);
+  dispatchRef.current = callback;
+  const persistRef = useRef((...args: any[]): any =>
+    dispatchRef.current(...args)
+  );
+  return persistRef.current as T;
+}
+
 export function useQuery<T, C extends PromiseEffectCallback<T>>(
   callback: C | ModelPromiseEffectCallback<C>,
   config?: QueryConfig<T, C> | Parameters<C>
-): [PromiseResult<T>, () => Promise<PromiseResult<T>>] {
+): [
+  PromiseResult<T>,
+  () => Promise<PromiseResult<T>>,
+  (...variables: Parameters<C>) => Promise<PromiseResult<T>>
+] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con] = parseEffect<C, QueryConfig<T, C>>(
     callback,
@@ -143,8 +156,8 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'query')
     : currentStrategies;
-  const runner = usePromise<T, () => Promise<T>>(() =>
-    effectCallback(...(variables || []))
+  const runner = usePromise<T, (vars?: any[]) => Promise<T>>(vars =>
+    effectCallback(...(vars || variables || []))
   );
   const mountRef = useRef(true);
   const keyRef = useRef({});
@@ -154,7 +167,8 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
 
   const versionRef = useRef(0);
   const caller = function caller(
-    triggerType: TriggerType
+    triggerType: TriggerType,
+    vars?: Parameters<C>
   ): Promise<PromiseResult<T>> {
     const version = versionRef.current + 1;
     versionRef.current = version;
@@ -165,7 +179,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
       fetchingKey: keyRef.current,
       triggerType
     });
-    return runner().then(data => {
+    return runner(vars).then(data => {
       const abandon = version !== versionRef.current;
       return {
         ...instance.state,
@@ -179,13 +193,17 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: (triggerType: TriggerType) => Promise<PromiseResult<T>>,
-    triggerType: TriggerType
+    call: (
+      triggerType: TriggerType,
+      variables?: Parameters<C>
+    ) => Promise<PromiseResult<T>>,
+    triggerType: TriggerType,
+    vars?: Parameters<C>
   ) {
     const requires = {
       current: () => instance.state,
-      variables,
-      runner: () => call(triggerType),
+      variables: vars || variables,
+      runner: () => call(triggerType, vars),
       store: strategyStoreRef
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
@@ -204,14 +222,18 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     });
   };
 
-  const query = function query() {
-    return callWithStrategy(caller, 'manual').then(data => {
+  const query = function query(vars?: Parameters<C>) {
+    return callWithStrategy(caller, 'manual', vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
       return data;
     });
   };
+
+  const execute = usePersistFn(() => query());
+
+  const queryCallback = usePersistFn((...vars: Parameters<C>) => query(vars));
 
   useLayoutEffect(() => {
     const isOnMount = mountRef.current;
@@ -235,13 +257,17 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     query();
   }, [instance.version]);
 
-  return [instance.state, query];
+  return [instance.state, execute, queryCallback];
 }
 
 export function useMutation<T, C extends PromiseEffectCallback<T>>(
   callback: C | ModelPromiseEffectCallback<C>,
   config?: MutationConfig<T, C> | Parameters<C>
-): [PromiseResult<T>, () => Promise<PromiseResult<T>>] {
+): [
+  PromiseResult<T>,
+  () => Promise<PromiseResult<T>>,
+  (...variables: Parameters<C>) => Promise<PromiseResult<T>>
+] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con] = parseEffect<C, MutationConfig<T, C>>(
     callback,
@@ -259,8 +285,8 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
     : currentStrategies;
-  const runner = usePromise<T, () => Promise<T>>(() =>
-    effectCallback(...(variables || []))
+  const runner = usePromise<T, (vars?: any[]) => Promise<T>>((vars?: any[]) =>
+    effectCallback(...(vars || variables || []))
   );
 
   const strategyStoreRef = useRef<{ current: any }[]>(
@@ -269,7 +295,9 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
 
   const keyRef = useRef({});
   const savingRef = useRef(false);
-  const caller = function caller(): Promise<PromiseResult<T>> {
+  const caller = function caller(
+    vars?: Parameters<C>
+  ): Promise<PromiseResult<T>> {
     if (savingRef.current) {
       return new Promise<PromiseResult<T>>(resolve => {
         resolve({ ...instance.state, abandon: true, triggerType: 'manual' });
@@ -283,7 +311,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
       fetchingKey: keyRef.current,
       triggerType: 'manual'
     });
-    return runner().then(data => {
+    return runner(vars).then(data => {
       savingRef.current = false;
       return {
         ...instance.state,
@@ -296,25 +324,30 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: () => Promise<PromiseResult<T>>
+    call: (vars?: Parameters<C>) => Promise<PromiseResult<T>>,
+    vars?: Parameters<C>
   ) {
     const requires = {
       current: () => instance.state,
-      variables,
-      runner: call,
+      variables: vars || variables,
+      runner: () => call(vars),
       store: strategyStoreRef
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
 
-  const mutate = function mutate() {
-    return callWithStrategy(caller).then(data => {
+  const mutate = function mutate(vars?: Parameters<C>) {
+    return callWithStrategy(caller, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
       return data;
     });
   };
+
+  const execute = usePersistFn(() => mutate());
+
+  const mutateCallback = usePersistFn((...vars: Parameters<C>) => mutate(vars));
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
@@ -325,7 +358,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     mutate();
   }, [instance.version]);
 
-  return [instance.state, mutate];
+  return [instance.state, execute, mutateCallback];
 }
 
 export function useClient<T, C extends PromiseEffectCallback<T>>(
