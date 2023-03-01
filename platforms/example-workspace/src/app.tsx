@@ -98,7 +98,7 @@ const Creating = memo(
 
     const [{ data }, launch] = useClient(fetchFactory);
 
-    const [r, save, call] = useMutation(
+    const [r, , call] = useMutation(
       (u: Omit<User, 'id'>) =>
         rest('/api/user')
           .setBody(u)
