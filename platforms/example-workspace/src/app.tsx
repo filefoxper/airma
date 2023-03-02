@@ -196,6 +196,21 @@ const Condition = memo(() => {
 
   const [{ isFetching }] = useClient(fetchFactory);
 
+  const [count, setCount] = useState(0);
+
+  const { version, add } = useControlledModel(
+    c => {
+      return {
+        version: c,
+        add() {
+          return c + 1;
+        }
+      };
+    },
+    count,
+    setCount
+  );
+
   return (
     <div>
       <span>name:</span>
@@ -221,6 +236,9 @@ const Condition = memo(() => {
       </button>
       <button type="button" style={{ marginLeft: 8 }} onClick={create}>
         create
+      </button>
+      <button type="button" style={{ marginLeft: 8 }} onClick={add}>
+        version: {count}
       </button>
     </div>
   );

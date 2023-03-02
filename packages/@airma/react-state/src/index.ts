@@ -34,28 +34,49 @@ function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   return persistRef.current as T;
 }
 
-export function useControlledModel<S, T extends AirModelInstance, D extends S>(
+function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  onChange: (s: S) => any
+  onChange: (s: S) => any,
+  option?: { disabled: boolean }
 ): T {
+  const { disabled } = option || {};
+  const modelRef = useRef(model);
   const current = useMemo(() => createModel<S, T, D>(model, state, true), []);
-  current.update(model, { state, ignoreDispatch: true });
+  if (
+    !disabled &&
+    (state !== current.getState() || model !== modelRef.current)
+  ) {
+    current.update(model, { state, ignoreDispatch: true });
+    modelRef.current = model;
+  }
 
   const dispatch = ({ state: actionState }: Action) => {
-    onChange(actionState);
+    if (!disabled) {
+      onChange(actionState);
+    }
   };
   const persistDispatch = usePersistFn(dispatch);
   current.connect(persistDispatch);
 
   useEffect(() => {
-    current.update(model, { state });
+    if (!disabled) {
+      current.update(model, { state });
+    }
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
     };
   }, []);
   return current.agent;
+}
+
+export function useControlledModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  state: D,
+  onChange: (s: S) => any
+): T {
+  return useSourceControlledModel(model, state, onChange);
 }
 
 export function useRefresh<T extends (...args: any[]) => any>(
@@ -236,7 +257,9 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     typeof getSourceFrom === 'function' ? getSourceFrom() : undefined;
   const result = useSourceTupleModel(sourceFrom || model, state, option);
   const [s, agent, updateState] = result;
-  const controlledAgent = useControlledModel(model, s, updateState);
+  const controlledAgent = useSourceControlledModel(model, s, updateState, {
+    disabled: !sourceFrom
+  });
   return [s, sourceFrom ? controlledAgent : agent];
 }
 
