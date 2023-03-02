@@ -124,9 +124,9 @@ export const ModelProvider: FC<{
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
   const context = useContext(ReactStateContext);
-  const storeRef = useRef(createStore(value));
+  const storeMemo = useMemo(() => createStore(value), []);
   const selector = useMemo(() => {
-    const store = storeRef.current.update(value);
+    const store = storeMemo.update(value);
     return { ...store, parent: context };
   }, [context, value]);
   return createElement(

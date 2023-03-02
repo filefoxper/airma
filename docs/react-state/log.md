@@ -50,3 +50,7 @@
 ## v 17.1.4 2023-03-02
 
 * fix bug about auto refresh of `useModel`.
+
+## v 17.1.6 2023-03-02
+
+* fix bug about auto refresh model of `ModelProvider`.
