@@ -30,11 +30,11 @@ export declare function useModel<S, T extends AirModelInstance, D extends S>(
   option?: { refresh?: boolean; autoLink?: boolean }
 ): T;
 
-export declare function useControlledModel<
-  S,
-  T extends AirModelInstance,
-  D extends S
->(model: AirReducer<S, T>, state: D, onChange: (s: S) => any): T;
+export declare function useControlledModel<S, T extends AirModelInstance>(
+  model: AirReducer<S, T>,
+  state: S,
+  onChange: (s: S) => any
+): T;
 
 export declare function useRefreshModel<
   S,

@@ -46,3 +46,7 @@
 ## v 17.1.3 2023-02-28
 
 * optimize `useSelector` and `useRefresh` API.
+
+## v 17.1.4 2023-03-02
+
+* fix bug about auto refresh of `useModel`.
