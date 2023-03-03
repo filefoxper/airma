@@ -14,91 +14,14 @@
 
 ## Why effects
 
-React hook system is designed for synchronous render usage. But asynchronous operations are often used in components, so, take the asynchronous code out of render is a good choice. That's why `useEffect` is useful in hook system, we can set the asynchronous in it, and run it out of the render time.
+Do asynchronous operations in `effect` is more effective.
 
-Good example:
+1. You can pre-render a default result for asynchronous operation before it is really resolved.
+2. It makes component render with less asynchronous effects spread in event callbacks.
 
-```ts
-import {useEffect, useState} from 'react';
-import {query} from './service';
+If you are ready to improve your react app codes with less asynchronous operation effects, please take minutes to look 
 
-const useQueryEffect = (variables)=>{
-    const [data, setData] = useState(undefined);
-    const [isFetching, setFetching] = useState(false);
-    const [error, setError] = useState(undefined);
-
-    useEffect(()=>{
-        setFetching(true);
-        // limit the asynchronous only in useEffect
-        query(variables).then((d)=>{
-            // set the query result into state
-            setData(d);
-            setError(undefined);
-            setFetching(false);
-        },(e)=>{
-            setError(e);
-            setFetching(false);
-        });
-    },[variables]); // when variables change, run query
-
-    // return state information out for render usage
-    return {data, isFetching, error};
-};
-
-const App = memo(()=>{
-    ......
-    const {data, isFetching, error} = useQueryEffect(variables);
-
-    return ......;
-});
-```
-
-Not so good example:
-
-```ts
-import {memo, useState} from 'react';
-import {query} from './service';
-
-const App = memo(()=>{
-    const [data, setData] = useState(undefined);
-    const [isFetching, setFetching] = useState(false);
-    const [error, setError] = useState(undefined);
-
-    // Use asynchronous callback directly
-    // may affect the other operation codes,
-    // and make asynchronous operations spread out in component
-    const handleQuery = async (variables)=>{
-        setFetching(true);
-        try {
-            const d = await query(variables);
-            setData(d);
-            setError(undefined);
-        } catch(e) {
-            setError(e);
-        } finally {
-            setFetching(false);
-        }
-    };
-    
-    // affected by asynchronous callback `handleQuery`
-    const handleReset = async ()=>{
-        await handleQuery(defaultVariables);
-        doSomething();
-    };
-
-    useEffect(()=>{
-        handleQuery();
-    },[]);
-
-    return ......;
-}) 
-```
-
-Use asynchronous callback all over in component is not a good idea, we need concentrative controllers for limit asynchronous operations in less effects. Then we can have a simple synchronously render component.
-
-Now, Let's take some simple, but more powerful API to replace the code of good example above.
-
-## useQuery
+## Usage
 
 We can wrap a promise return callback to `useQuery`, when the dependecy varaibles change, it fetches data for you.
 

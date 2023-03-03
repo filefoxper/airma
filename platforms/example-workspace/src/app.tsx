@@ -6,7 +6,9 @@ import {
   useSelector,
   shallowEqual,
   ModelProvider,
-  withModelProvider
+  withModelProvider,
+  useRefresh,
+  useRefreshModel
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
@@ -15,7 +17,7 @@ import {
   useMutation,
   useQuery,
   useClient,
-  withClientProvider
+  useStatus
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -50,14 +52,6 @@ const defaultCondition: Condition = {
 
 const userQuery = (validQuery: Condition) =>
   new Promise<User[]>(resolve => {
-    if (validQuery.name && validQuery.name.startsWith('Mr')) {
-      setTimeout(() => {
-        resolve(
-          rest('/api/user').path('list').setParams(validQuery).get<User[]>()
-        );
-      }, 5000);
-      return;
-    }
     setTimeout(() => {
       resolve(
         rest('/api/user').path('list').setParams(validQuery).get<User[]>()
@@ -65,7 +59,9 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = client(userQuery);
+const fetchFactory = client(
+  (validQuery: Condition): Promise<User[]> => Promise.resolve([])
+);
 
 const models = (userData: Omit<User, 'id'>) => {
   return {
@@ -183,16 +179,11 @@ const condition = factory(conditionModel, {
 });
 
 const Condition = memo(() => {
-  const {
-    displayQuery,
-    validQuery,
-    creating,
-    create,
-    submit,
-    cancel,
-    changeDisplay,
-    query
-  } = useModel(condition);
+  const { displayQuery, create, changeDisplay, query } = useSelector(
+    condition,
+    s => s,
+    shallowEqual
+  );
 
   const [{ isFetching }] = useClient(fetchFactory);
 
@@ -245,7 +236,24 @@ const Condition = memo(() => {
 });
 
 export default withModelProvider({ fetchFactory, condition })(function App() {
-  const conditionState = { ...defaultCondition, name: 'Mr' };
+  const [defaultState, setDefaultState] = useState({
+    valid: defaultCondition,
+    display: defaultCondition,
+    creating: false
+  });
+
+  useEffect(() => {
+    setTimeout(() => {
+      const currentCondition = { ...defaultCondition, name: 'Mr' };
+      const state = {
+        valid: currentCondition,
+        display: currentCondition,
+        creating: true
+      };
+      setDefaultState(state);
+    }, 600);
+  }, []);
+
   const {
     displayQuery,
     validQuery,
@@ -255,15 +263,22 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     cancel,
     changeDisplay,
     query
-  } = useModel(condition, {
-    valid: conditionState,
-    display: conditionState,
-    creating: false
+  } = useModel(condition, defaultState);
+
+  fetchFactory.implement(userQuery);
+
+  const d = useQuery(fetchFactory, {
+    variables: [validQuery],
+    defaultData: []
   });
 
-  const [result, fetch] = useQuery(fetchFactory, [validQuery]);
+  const { isFetching, loaded } = useStatus(d);
 
-  const { data = [], isFetching, error, isError, triggerType } = result;
+  const [result, fetch] = d;
+
+  const { data, error, isError, triggerType } = result;
+
+  console.log(loaded);
 
   return (
     <div style={{ padding: '12px 24px' }}>

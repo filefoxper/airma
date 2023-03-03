@@ -4,15 +4,17 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef
 } from 'react';
 import {
   ModelProvider,
+  shallowEqual,
   useModel,
   useSelector,
   withModelProvider
 } from '@airma/react-state';
-import {
+import type {
   PromiseResult,
   PromiseEffectCallback,
   QueryConfig,
@@ -22,7 +24,9 @@ import {
   PromiseData,
   EffectConfigProviderProps,
   EffectConfig,
-  TriggerType
+  TriggerType,
+  LocalClientConfig,
+  Status
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
@@ -97,18 +101,29 @@ function buildStrategy(
   st: (StrategyType | undefined | null)[]
 ): StrategyType {
   const defaultStrategy: StrategyType = value => value.runner();
-  return [...st]
-    .reverse()
-    .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
-      const storage = store[i] || { current: undefined };
-      return function middle(value) {
-        if (c == null) {
-          return r(value);
-        }
-        const nextRunner = () => r(value);
-        return c({ ...value, store: storage, runner: nextRunner });
+  return function strategy(v) {
+    const callback = [...st]
+      .reverse()
+      .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
+        const storage = store[i] || { current: undefined };
+        return function middle(value) {
+          if (c == null) {
+            return r(value);
+          }
+          const nextRunner = () => r(value);
+          return c({ ...value, store: storage, runner: nextRunner });
+        };
+      }, defaultStrategy);
+    return callback(v).then(d => {
+      const { loaded } = v.current();
+      const { abandon, isError, isFetching } = d;
+      const currentLoaded = loaded || (!abandon && !isError && !isFetching);
+      return {
+        ...d,
+        loaded: currentLoaded
       };
-    }, defaultStrategy);
+    });
+  };
 }
 
 function toStrategies(
@@ -143,10 +158,36 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     callback,
     cg
   );
-  const params: [typeof model, PromiseResult<T>?] =
-    model === effectModel ? [model, defaultPromiseResult()] : [model];
+  const {
+    variables,
+    deps,
+    manual: man,
+    strategy,
+    defaultData,
+    exact
+  } = con || {};
+
+  const hasDefaultData = Object.prototype.hasOwnProperty.call(
+    con || {},
+    'defaultData'
+  );
+
+  const params: [typeof model, PromiseResult<T>?] = (function computeParams() {
+    if (model === effectModel) {
+      return [
+        model,
+        defaultPromiseResult(
+          hasDefaultData ? { data: defaultData, loaded: true } : undefined
+        )
+      ];
+    }
+    return hasDefaultData
+      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+      : [model];
+  })();
+
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
-  const { variables, deps, manual: man, strategy, exact } = con || {};
+
   const scopeEffectConfig = useEffectConfig() || {};
   const { strategy: strategyCallback } = exact
     ? { strategy: undefined }
@@ -188,7 +229,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
         isFetching: false,
         fetchingKey: undefined,
         triggerType
-      };
+      } as PromiseResult<T>;
     });
   };
 
@@ -235,6 +276,8 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
 
   const queryCallback = usePersistFn((...vars: Parameters<C>) => query(vars));
 
+  const effectDeps = deps || variables || [];
+
   useLayoutEffect(() => {
     const isOnMount = mountRef.current;
     mountRef.current = false;
@@ -246,7 +289,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
       return;
     }
     effectQuery(isOnMount);
-  }, deps || variables || []);
+  }, [...effectDeps, manual]);
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
@@ -273,10 +316,27 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     callback,
     cg
   );
-  const params: [typeof model, PromiseResult<T>?] =
-    model === effectModel ? [model, defaultPromiseResult()] : [model];
+  const { variables, strategy, exact, defaultData } = con || {};
+  const hasDefaultData = Object.prototype.hasOwnProperty.call(
+    con || {},
+    'defaultData'
+  );
+
+  const params: [typeof model, PromiseResult<T>?] = (function computeParams() {
+    if (model === effectModel) {
+      return [
+        model,
+        defaultPromiseResult(
+          hasDefaultData ? { data: defaultData, loaded: true } : undefined
+        )
+      ];
+    }
+    return hasDefaultData
+      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+      : [model];
+  })();
+
   const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
-  const { variables, strategy, exact } = con || {};
   const scopeEffectConfig = useEffectConfig() || {};
   const { strategy: strategyCallback } = exact
     ? { strategy: undefined }
@@ -319,7 +379,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
         isFetching: false,
         fetchingKey: undefined,
         triggerType: 'manual'
-      };
+      } as PromiseResult<T>;
     });
   };
 
@@ -362,12 +422,42 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
 }
 
 export function useClient<T, C extends PromiseEffectCallback<T>>(
-  factory: ModelPromiseEffectCallback<C>
+  factory: ModelPromiseEffectCallback<C>,
+  config?: LocalClientConfig
 ): [PromiseResult<T>, () => void] {
-  return useSelector(
+  const { loaded } = config || {};
+  const result = useSelector(
     factory,
-    s => [s.state, s.trigger] as [PromiseResult<T>, () => void]
+    s => [s.state, s.trigger] as [PromiseResult<T>, () => void],
+    shallowEqual
   );
+  const [res] = result;
+  if (loaded && !res.loaded) {
+    throw new Error(
+      'You have set a loaded confirm config, but currently, this promise result has bot been loaded.'
+    );
+  }
+  return result;
+}
+
+export function useStatus(
+  ...results: (PromiseResult | [PromiseResult, ...any])[]
+): Status {
+  return useMemo(() => {
+    const resultArray = results.map(d => {
+      const [r] = Array.isArray(d) ? d : [d];
+      return r as PromiseResult;
+    });
+    const isFetching = resultArray.some(d => d.isFetching);
+    const isError = resultArray.some(d => d.isError);
+    const loaded = resultArray.every(d => d.loaded);
+    return {
+      isFetching,
+      isError,
+      isSuccess: !isError && loaded,
+      loaded
+    };
+  }, results);
 }
 
 export const useAsyncEffect = useClient;

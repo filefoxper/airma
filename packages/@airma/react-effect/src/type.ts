@@ -13,6 +13,7 @@ export type ModelPromiseEffectCallback<E extends PromiseEffectCallback<any>> =
     }
   > & {
     effect: [E];
+    implement: (c: E) => void;
   };
 
 export type TriggerType = 'mount' | 'update' | 'manual';
@@ -23,15 +24,31 @@ export type PromiseData<T = any> = {
   isError?: boolean;
 };
 
-export type PromiseResult<T = any> = {
-  data: T | undefined;
+type LoadedPromiseResult<T> = {
+  data: T;
   error?: any;
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
+  loaded: true;
 };
+
+type UnloadedPromiseResult = {
+  data: undefined;
+  error?: any;
+  isError: boolean;
+  isFetching: boolean;
+  fetchingKey?: unknown;
+  abandon: boolean;
+  triggerType: undefined | TriggerType;
+  loaded: false;
+};
+
+export type PromiseResult<T = any> =
+  | LoadedPromiseResult<T>
+  | UnloadedPromiseResult;
 
 export type StrategyType<T = any> = (value: {
   current: () => PromiseResult<T>;
@@ -48,6 +65,7 @@ export type StrategyCollectionType<T> =
 
 export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
+  defaultData?: T;
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
@@ -55,6 +73,7 @@ export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
 };
 
 export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
+  defaultData?: T;
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   exact?: boolean;
@@ -70,4 +89,15 @@ export type EffectConfig = {
 export type EffectConfigProviderProps = {
   value: EffectConfig;
   children?: ReactNode;
+};
+
+export type LocalClientConfig = {
+  loaded?: boolean;
+};
+
+export type Status = {
+  isFetching: boolean;
+  loaded: boolean;
+  isError: boolean;
+  isSuccess: boolean;
 };

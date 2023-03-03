@@ -95,24 +95,36 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     }
     generateDispatch(updater)({ state: updater.state, type: '' });
   }
-  return {
-    agent: createProxy(defaultModel, {
-      get(target: T, p: string): unknown {
-        const value = updater.current[p];
-        if (
-          Object.prototype.hasOwnProperty.call(updater.current, p) &&
-          typeof value === 'function'
-        ) {
-          return rebuildDispatchMethod<S, T>(updater, p);
-        }
-        return value;
+  const agent = createProxy(defaultModel, {
+    get(target: T, p: string): unknown {
+      const value = updater.current[p];
+      if (
+        Object.prototype.hasOwnProperty.call(updater.current, p) &&
+        typeof value === 'function'
+      ) {
+        return rebuildDispatchMethod<S, T>(updater, p);
       }
-    }),
+      return value;
+    }
+  });
+  return {
+    agent,
     getCacheState(): { state: S } | null {
       return updater.cacheState;
     },
     getState(): S {
       return updater.state;
+    },
+    getCurrent(): T {
+      const keys = Object.keys(updater.current);
+      const result = { ...updater.current };
+      keys.forEach((key: keyof T) => {
+        const value = result[key];
+        if (typeof value === 'function') {
+          result[key] = agent[key];
+        }
+      });
+      return result;
     },
     update,
     updateState(state: S): void {

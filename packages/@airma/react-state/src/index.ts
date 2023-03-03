@@ -313,12 +313,11 @@ export function useSelector<
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
-  const { agent } = connection;
-  const current = callback({ ...agent });
+  const current = callback(connection.getCurrent());
   const [, setS] = useState({});
 
   const dispatch = usePersistFn(() => {
-    const next = callback({ ...connection.agent });
+    const next = callback(connection.getCurrent());
     if (equalFn ? equalFn(current, next) : Object.is(current, next)) {
       return;
     }
