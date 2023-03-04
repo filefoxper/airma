@@ -210,4 +210,113 @@ const App = ()=>{
 }
 ```
 
-Now, we still have a trouble, that the data is always starts with `undefined`.
+Now, we still have a trouble, we can not set `useQuery` only working in the time that dependencies or variables are updating.
+
+### TriggerOn
+
+Set `config.triggerOn` option can limit `useQuery` working mode. It has 3 mode for choosing:
+
+* mount - When `useQuery` mounts, it works.
+* update - When `deps` or `variables` are changed, it works.
+* manual - When a `trigger` or a `execution` is called, it works.
+
+API `useQuery` has a default full set: `['mount', 'update', 'manual']`, that means `useQuery` works in 3 mode, when `config.manual` is setted, the `triggerOn` is limited to be `['manual']` forcely.
+
+```ts
+import React from 'react';
+import {useQuery} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const fetchUsers = (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [state, trigger, execute] = useQuery(
+        fetchUsers,
+        {
+            variables: [query],
+            // Set `useQuery` work in `manual` mode
+            triggerOn: ['manual']
+        }
+    );
+    const {
+        // User[] | undefined
+        data,
+        // boolean
+        isFetching,
+        // any
+        error,
+        // boolean
+        isError,
+        // boolean
+        loaded
+    } = state;
+
+    const handleTrigger = ()=>{
+        // Query manually 
+        trigger();
+    }
+    ......
+}
+```
+
+The `triggerOn` setting is the last way to make `useQuery` manually. In fact, `config.triggerOn` can provide more help for you, for you can select and composite the 3 `triggerTypes` to fit your need.
+
+### Strategy
+
+
+
+## UseMutation
+
+API `useMutation` is very similar with `useQuery`. The only different is that `useMutation` has a default `config.triggerOn` setting with `['manual']`. That is why `useMutation` only works in a manual mode.
+
+Now, we can use `config.triggerOn` to change it.
+
+```ts
+import React from 'react';
+import {useMutation} from '@airma/react-effect';
+import {User} from './type';
+
+const saveUser = (user: User): Promise<User> => 
+    Promise.resolve(user);
+
+const App = ()=>{
+    const [user, setUser] = useState<User>({...});
+    const [state, trigger] = useMutation(
+        saveUser,
+        {
+            variables: [ user ],
+            // Set `update` and `manual` working mode
+            triggerOn: ['update', 'manual']
+        }
+    );
+    const {
+        // User | undefined
+        data,
+        // boolean
+        isFetching,
+        // any
+        error,
+        // boolean
+        isError
+    } = result;
+
+    const handleClick = ()=>{
+        // We can change the variables to make
+        // useMutation works.
+        setUser({...});
+    }
+
+    ......
+}
+```
+
+For API `useMutation` is too similar with API `useQuery`, we don't repeat again.
+
+## Share state changes
