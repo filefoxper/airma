@@ -1,1 +1,6 @@
 * [Document](/react-effect/index.md)
+* [Install and Support](/react-effect/install.md)
+* [Concepts](/react-effect/concepts.md)
+* [Guides](/react-effect/guides.md)
+* [Features](/react-effect/feature.md)
+* [API](/react-effect/api.md)

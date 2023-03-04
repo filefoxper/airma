@@ -161,11 +161,14 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   const {
     variables,
     deps,
+    triggerOn = ['mount', 'update', 'manual'],
     manual: man,
     strategy,
     defaultData,
     exact
   } = con || {};
+
+  const triggerTypes: TriggerType[] = man ? ['manual'] : triggerOn;
 
   const hasDefaultData = Object.prototype.hasOwnProperty.call(
     con || {},
@@ -255,7 +258,11 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    callWithStrategy(caller, isOnMount ? 'mount' : 'update').then(data => {
+    const triggerType = isOnMount ? 'mount' : 'update';
+    if (triggerTypes.indexOf(triggerType) < 0) {
+      return;
+    }
+    callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
@@ -264,7 +271,13 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   };
 
   const query = function query(vars?: Parameters<C>) {
-    return callWithStrategy(caller, 'manual', vars).then(data => {
+    const triggerType = 'manual';
+    if (triggerTypes.indexOf(triggerType) < 0) {
+      return new Promise<PromiseResult<T>>(resolve => {
+        resolve({ ...instance.state, abandon: true } as PromiseResult<T>);
+      });
+    }
+    return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
@@ -281,15 +294,12 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   useLayoutEffect(() => {
     const isOnMount = mountRef.current;
     mountRef.current = false;
-    if (manual) {
-      return;
-    }
     const currentFetchingKey = instance.state.fetchingKey;
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
     effectQuery(isOnMount);
-  }, [...effectDeps, manual]);
+  }, [...effectDeps]);
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
@@ -316,7 +326,15 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     callback,
     cg
   );
-  const { variables, strategy, exact, defaultData } = con || {};
+  const {
+    variables,
+    strategy,
+    exact,
+    defaultData,
+    deps,
+    triggerOn = ['manual']
+  } = con || {};
+  const triggerTypes = triggerOn;
   const hasDefaultData = Object.prototype.hasOwnProperty.call(
     con || {},
     'defaultData'
@@ -353,6 +371,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     strategies.map(() => ({ current: undefined }))
   );
 
+  const mountRef = useRef(true);
   const keyRef = useRef({});
   const savingRef = useRef(false);
   const caller = function caller(
@@ -385,6 +404,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
 
   const callWithStrategy = function callWithStrategy(
     call: (vars?: Parameters<C>) => Promise<PromiseResult<T>>,
+    triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
     const requires = {
@@ -396,8 +416,31 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
 
+  const effectQuery = function effectQuery(isOnMount: boolean) {
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
+    const triggerType = isOnMount ? 'mount' : 'update';
+    if (triggerTypes.indexOf(triggerType) < 0) {
+      return;
+    }
+    callWithStrategy(caller, triggerType).then(data => {
+      if (!data.abandon) {
+        instance.setState(data);
+      }
+      return data;
+    });
+  };
+
   const mutate = function mutate(vars?: Parameters<C>) {
-    return callWithStrategy(caller, vars).then(data => {
+    const triggerType = 'manual';
+    if (triggerTypes.indexOf(triggerType) < 0) {
+      return new Promise<PromiseResult<T>>(resolve => {
+        resolve({ ...instance.state, abandon: true });
+      });
+    }
+    return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
       }
@@ -410,6 +453,19 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   const mutateCallback = usePersistFn((...vars: Parameters<C>) => mutate(vars));
 
   const triggerVersionRef = useRef(instance.version);
+
+  const effectDeps = deps || variables || [];
+
+  useLayoutEffect(() => {
+    const isOnMount = mountRef.current;
+    mountRef.current = false;
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
+    effectQuery(isOnMount);
+  }, [...effectDeps]);
+
   useEffect(() => {
     if (triggerVersionRef.current === instance.version) {
       return;

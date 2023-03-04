@@ -71,6 +71,9 @@ const models = (userData: Omit<User, 'id'>) => {
     },
     changeName(name: string) {
       return { ...userData, name };
+    },
+    update() {
+      return { ...userData };
     }
   };
 };
@@ -91,16 +94,23 @@ const Creating = memo(
       username: '',
       age: 10
     });
+    const [validUser, updateUser] = useState(user);
+
+    const update = () => {
+      updateUser(user);
+    };
 
     const [{ data }, launch] = useClient(fetchFactory);
 
-    const [r, , call] = useMutation(
+    const [r, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
         rest('/api/user')
           .setBody(u)
           .post<null>()
           .then(() => true),
       {
+        variables: [validUser],
+        triggerOn: ['update', 'manual'],
         strategy: [Strategy.once()]
       }
     );
@@ -132,11 +142,7 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            style={{ marginLeft: 12 }}
-            onClick={() => call(user)}
-          >
+          <button type="button" style={{ marginLeft: 12 }} onClick={update}>
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>

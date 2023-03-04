@@ -14,10 +14,10 @@
 
 ## Why effects
 
-Do asynchronous operations in `effect` is more effective.
+Do asynchronous operations in `effects` is more effective.
 
 1. You can pre-render a default result for asynchronous operation before it is really resolved.
-2. It makes component render with less asynchronous effects spread in event callbacks.
+2. It makes component render with less asynchronous effects spread in event handle callbacks.
 
 If you are ready to improve your react app codes with less asynchronous operation effects, please take minutes to read the [documents](https://filefoxper.github.io/airma/#/react-effect/index) of this tool. 
 
@@ -27,7 +27,7 @@ The basic hook API `useQuery` and `useMutation` maintains a promise result state
 
 ### UseQuery
 
-This API is often used to query data with a promise returning callback and parameters for this callback. When the parameters are changed or setted first time, `useQuery` calls query callback.
+This API is often used to query data with a promise returning callback and parameters for this callback. When `useQuery` is mounted, or the elements of parameters changed, it calls query callback.
 
 ```ts
 import React from 'react';
@@ -45,7 +45,7 @@ const fetchUsers = (query: UserQuery):Promise<User[]> =>
 
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
-    const [result, trigger, execute] = useQuery(
+    const [state, trigger, execute] = useQuery(
         // Use query callback
         fetchUsers,
         // Set parameters for query callback
@@ -62,13 +62,13 @@ const App = ()=>{
         isError,
         // boolean
         loaded
-    } = result;
+    } = state;
 
     ......
 }
 ```
 
-The hook API `useQuery` returns a tuple `[result, trigger, execute]`. Element `result` contains informations about this query action. Element `trigger` is a no parameter callback which returns a `result` promise, it should be used just like a query trigger. Element `execute` is a callback which accepts parameters, and returns a `result` promise.
+The hook API `useQuery` returns a tuple `[state, trigger, execute]`. Element `state` contains informations about this query action. Element `trigger` is a no parameter callback which returns a `state` promise, it should be used just like a query trigger. Element `execute` is a callback which accepts parameters, and returns a `state` promise.
 
 If you don't want the auto query action happens, when the parameters are changed or setted first time, you should set optional config `manual` to stop it.
 
@@ -82,7 +82,7 @@ const fetchUsers = (query: UserQuery):Promise<User[]> =>
 
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
-    const [result, trigger] = useQuery(
+    const [state, trigger] = useQuery(
         fetchUsers,
         // Set optional config manual
         {manual: true}
@@ -98,7 +98,7 @@ const App = ()=>{
         isError,
         // boolean
         loaded
-    } = result;
+    } = state;
 
     const handleClick = async ()=>{
         const {
@@ -138,7 +138,7 @@ const saveUser = (user: User): Promise<User> =>Promise.resolve(user);
 
 const App = ()=>{
     const [user, setUser] = useState({name:'', username:''});
-    const [result, trigger, execute] = useMutation(
+    const [state, trigger, execute] = useMutation(
         // Provide mutation callback
         saveUser,
         // Set parameters
@@ -155,7 +155,7 @@ const App = ()=>{
         isError
         // boolean
         loaded
-    } = result;
+    } = state;
 
     const handleClick = ()=>{
         // Trigger it manually
@@ -172,7 +172,7 @@ It only works in `manual` mode, so you don't have to worry about the auto mutati
 
 Sometimes you want to control the running way about the promise callback.
 
-For example, we often save data once, and then unmount component immediately after saving success to prevent a repeat saving mistake. 
+For example, we often save data oncely, and then unmount component immediately after saving success to prevent a repeat saving mistake. 
 
 ```ts
 import React from 'react';
@@ -184,7 +184,7 @@ const saveUser = (user:User):Promise<User> =>
 
 const App = ()=>{
     const [user, setUser] = useState({name:'', username:''});
-    const [result, trigger] = useMutation(
+    const [state, trigger] = useMutation(
         saveUser,
         // Set variables and strategy
         {
@@ -230,7 +230,7 @@ const Child1 = memo(()=>{
   // Query for current login user.
   // Update promise state into store
   // with client `loginUser`
-  const [ result ] = useQuery(loginUser,[]);
+  const [ state ] = useQuery(loginUser,[]);
 
   return ......;
 });
@@ -238,7 +238,7 @@ const Child1 = memo(()=>{
 const Child2 = memo(()=>{
   // Take and subscribe promise state changes
   // of client `loginUser` in store.
-  const [ result ] = useClient(loginUser);
+  const [ state ] = useClient(loginUser);
 
   return ......;
 });

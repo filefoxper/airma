@@ -65,6 +65,7 @@ export type StrategyCollectionType<T> =
 
 export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
+  triggerOn?: TriggerType[];
   defaultData?: T;
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
@@ -74,6 +75,8 @@ export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
 
 export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
   defaultData?: T;
+  deps?: any[];
+  triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   exact?: boolean;
