@@ -54,3 +54,7 @@
 ## v 17.1.6 2023-03-02
 
 * fix bug about auto refresh model of `ModelProvider`.
+
+## v 17.1.9 2023-03-03
+
+* fix bug about useSelector can not listen to store state change.

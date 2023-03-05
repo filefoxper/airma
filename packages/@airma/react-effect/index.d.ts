@@ -3,18 +3,35 @@ import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
-export declare type PromiseResult<T> = {
-  data: T | undefined;
+declare type LoadedPromiseResult<T> = {
+  data: T;
   error?: any;
   isError: boolean;
   isFetching: boolean;
+  fetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
+  loaded: true;
 };
+
+declare type UnloadedPromiseResult = {
+  data: undefined;
+  error?: any;
+  isError: boolean;
+  isFetching: boolean;
+  fetchingKey?: unknown;
+  abandon: boolean;
+  triggerType: undefined | TriggerType;
+  loaded: false;
+};
+
+export declare type PromiseResult<T> =
+  | LoadedPromiseResult<T>
+  | UnloadedPromiseResult;
 
 export declare type StrategyType<T = any> = (value: {
   current: () => PromiseResult<T>;
-  variables?: any[];
+  variables: any[];
   runner: () => Promise<PromiseResult<T>>;
   store: { current: any };
 }) => Promise<PromiseResult<T>>;
@@ -32,6 +49,7 @@ export declare type ModelPromiseEffectCallback<
   }
 > & {
   effect: [E];
+  implement: (c: E) => void;
 };
 
 export declare type StrategyCollectionType<T> =
@@ -42,16 +60,33 @@ export declare type StrategyCollectionType<T> =
 
 export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
   deps?: any[];
+  triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
   exact?: boolean;
 };
 
+declare type DefaultQueryConfig<
+  T,
+  C extends PromiseEffectCallback<T>
+> = QueryConfig<T, C> & {
+  defaultData: T;
+};
+
 export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
+  deps?: any[];
+  triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   exact?: boolean;
+};
+
+declare type DefaultMutationConfig<
+  T,
+  C extends PromiseEffectCallback<T>
+> = MutationConfig<T, C> & {
+  defaultData: T;
 };
 
 declare type PCR<
@@ -74,6 +109,16 @@ export declare function useQuery<
   D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
 >(
   callback: D,
+  config: DefaultQueryConfig<PCR<D>, MCC<D>>
+): [
+  LoadedPromiseResult<PCR<D>>,
+  () => Promise<LoadedPromiseResult<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+];
+export declare function useQuery<
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+>(
+  callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
   PromiseResult<PCR<D>>,
@@ -85,6 +130,16 @@ export declare function useMutation<
   D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
 >(
   callback: D,
+  config: DefaultMutationConfig<PCR<D>, MCC<D>>
+): [
+  LoadedPromiseResult<PCR<D>>,
+  () => Promise<LoadedPromiseResult<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+];
+export declare function useMutation<
+  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+>(
+  callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
   PromiseResult<PCR<D>>,
@@ -92,16 +147,28 @@ export declare function useMutation<
   (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
 ];
 
+declare type LocalClientConfig = {
+  loaded?: boolean;
+};
+
 /**
  * @deprecated
  * @param factory
+ * @param config
  */
 export declare function useAsyncEffect<
   D extends ModelPromiseEffectCallback<any>
->(factory: D): [PromiseResult<PCR<D>>, () => void];
+>(factory: D, config?: LocalClientConfig): [PromiseResult<PCR<D>>, () => void];
 
 export declare function useClient<D extends ModelPromiseEffectCallback<any>>(
-  factory: D
+  factory: D,
+  config: {
+    loaded: true;
+  }
+): [LoadedPromiseResult<PCR<D>>, () => void];
+export declare function useClient<D extends ModelPromiseEffectCallback<any>>(
+  factory: D,
+  config?: LocalClientConfig
 ): [PromiseResult<PCR<D>>, () => void];
 
 /**
@@ -117,6 +184,17 @@ export declare function client<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
 >(effectCallback: E): ModelPromiseEffectCallback<E>;
+
+declare type Status = {
+  isFetching: boolean;
+  loaded: boolean;
+  isError: boolean;
+  isSuccess: boolean;
+};
+
+export declare function useStatus(
+  ...results: (PromiseResult | [PromiseResult, ...any])[]
+): Status;
 
 /**
  * @deprecated
@@ -170,14 +248,14 @@ export declare function withClientProvider(
 ) => typeof component;
 
 export declare const Strategy: {
-  debounce: (op: { time: number } | number) => StrategyType;
+  debounce: (op: { duration: number } | number) => StrategyType;
   once: () => StrategyType;
   error: (
     process: (e: unknown) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType;
   success: <T>(
-    process: (data: T | undefined) => any,
+    process: (data: T) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
 };

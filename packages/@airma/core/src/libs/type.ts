@@ -31,6 +31,7 @@ export interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
+  getCurrent(): T;
   update: (
     reducer: AirReducer<S, T>,
     outState?: { state: S; cache?: boolean; isDefault?: boolean }

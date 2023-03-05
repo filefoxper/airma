@@ -1,7 +1,7 @@
 import { PromiseResult, StrategyType } from './type';
 
-function debounce(op: { time: number } | number): StrategyType {
-  const time = typeof op === 'number' ? op : op.time;
+function debounce(op: { duration: number } | number): StrategyType {
+  const time = typeof op === 'number' ? op : op.duration;
   return function db(value: {
     current: () => PromiseResult;
     runner: () => Promise<PromiseResult>;
@@ -68,7 +68,7 @@ function error(
 }
 
 function success<T>(
-  process: (data: T | undefined) => any,
+  process: (data: T) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType<T> {
   const { withAbandoned } = option || {};
@@ -80,7 +80,7 @@ function success<T>(
     const { runner } = value;
     return runner().then(d => {
       if (!d.isError && (!d.abandon || withAbandoned)) {
-        process(d.data);
+        process(d.data as T);
       }
       return d;
     });
