@@ -246,7 +246,7 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   ) {
     const requires = {
       current: () => instance.state,
-      variables: vars || variables,
+      variables: vars || variables || [],
       runner: () => call(triggerType, vars),
       store: strategyStoreRef
     };
@@ -409,7 +409,7 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   ) {
     const requires = {
       current: () => instance.state,
-      variables: vars || variables,
+      variables: vars || variables || [],
       runner: () => call(vars),
       store: strategyStoreRef
     };

@@ -31,7 +31,7 @@ export declare type PromiseResult<T> =
 
 export declare type StrategyType<T = any> = (value: {
   current: () => PromiseResult<T>;
-  variables?: any[];
+  variables: any[];
   runner: () => Promise<PromiseResult<T>>;
   store: { current: any };
 }) => Promise<PromiseResult<T>>;

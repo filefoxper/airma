@@ -4,3 +4,4 @@
 * [Guides](/react-effect/guides.md)
 * [Features](/react-effect/feature.md)
 * [API](/react-effect/api.md)
+* [Change Logs](/react-effect/log.md)

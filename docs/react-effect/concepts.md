@@ -163,6 +163,8 @@ const App = ()=>{
 
 Strategy is a wrap callback design for promise callback. It can intercept promise callback, and do some strategy like `debounce`, `once` to affect the callback. You can return another promise result to replace the current one, and the `state` uses the final result from a strategy list.
 
+You can use a list to chain strategies together like: `[Strategy.debounce(300), Strategy.once()]`. It wraps another from left to right, and finally it wraps the actual promise callback in.
+
 A strategy looks like:
 
 ```ts
@@ -170,12 +172,14 @@ function once(): StrategyType {
   // Function oc is a strategy
   return function oc(value: {
     current: () => PromiseResult;
+    variables: any[]; // current varibles for runner.
     runner: () => Promise<PromiseResult>;
     store: { current?: any };
   }) {
     // It accepts a parameter.
     // Field current is a callback for getting current state.
-    // Field runner is a callback returns a promise state.
+    // Field runner is a next strategy callback 
+    // or the final actual promise callback.
     // Field store contains a current key, 
     // you can cache and fetch any thing from `store.current`
     const { current, runner, store } = value;
@@ -205,6 +209,8 @@ function once(): StrategyType {
   };
 }
 ```
+
+A strategy callback should always returns a promise, and resolve with a [state](/react-effect/concepts?id=state) like object. You can ignore promise result by setting the `abandon` field `true` in resolving state result.
 
 Usage of Strategy:
 
