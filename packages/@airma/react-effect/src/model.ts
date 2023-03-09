@@ -1,5 +1,6 @@
 import { factory } from '@airma/react-state';
-import type { ModelPromiseEffectCallback, PromiseResult } from './type';
+import type { PromiseResult } from './type';
+import { SessionKey } from './type';
 
 export function effectModel(state: PromiseResult & { version?: number }) {
   const { version, ...rest } = state;
@@ -36,20 +37,17 @@ export const defaultPromiseResult = (config?: {
   ...config
 });
 
-export function client<
+export function sessionKey<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E): ModelPromiseEffectCallback<E> {
+>(effectCallback: E): SessionKey<E> {
   const context = { implemented: false };
-  const model = factory(
-    effectModel,
-    defaultPromiseResult()
-  ) as ModelPromiseEffectCallback<E>;
+  const model = factory(effectModel, defaultPromiseResult()) as SessionKey<E>;
   model.effect = [
     function effectCallbackReplace(...params: any[]) {
       return effectCallback(...params);
     } as E
-  ];
+  ] as [E];
   model.implement = function impl(callback: E) {
     if (context.implemented) {
       return;
@@ -57,7 +55,5 @@ export function client<
     model.effect[0] = callback;
     context.implemented = true;
   };
-  return model as ModelPromiseEffectCallback<E>;
+  return model as SessionKey<E>;
 }
-
-export const asyncEffect = client;

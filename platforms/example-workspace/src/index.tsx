@@ -2,29 +2,29 @@ import React from 'react';
 import { render } from 'react-dom';
 import App from '@/app';
 import {
-  ClientConfig,
-  ClientConfigProvider,
+  GlobalQueryConfig,
+  QueryConfigProvider,
   Strategy
 } from '@airma/react-effect';
 
 const root = document.getElementById('root');
 
-const config: ClientConfig = {
+const config: GlobalQueryConfig = {
   strategy: s => [...s, Strategy.error(e => console.log(e))]
 };
 
 render(
   <React.StrictMode>
-    <ClientConfigProvider value={config}>
+    <QueryConfigProvider value={config}>
       <App />
-    </ClientConfigProvider>
+    </QueryConfigProvider>
   </React.StrictMode>,
   root
 );
 
 // render(
-//   <EffectConfigProvider value={config}>
+//   <QueryConfigProvider value={config}>
 //     <App />
-//   </EffectConfigProvider>,
+//   </QueryConfigProvider>,
 //   root
 // );

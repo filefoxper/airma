@@ -12,12 +12,13 @@ import {
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
-  client,
+  query,
   Strategy,
   useMutation,
   useQuery,
-  useClient,
-  useStatus
+  useQuerySelector,
+  useQueryStatus,
+  useQueryTrigger
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -59,7 +60,7 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = client(
+const fetchFactory = query(
   (validQuery: Condition): Promise<User[]> => Promise.resolve([])
 );
 
@@ -100,7 +101,7 @@ const Creating = memo(
       updateUser(user);
     };
 
-    const [{ data }, launch] = useClient(fetchFactory);
+    const launch = useQueryTrigger(fetchFactory);
 
     const [r, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -191,7 +192,7 @@ const Condition = memo(() => {
     shallowEqual
   );
 
-  const [{ isFetching }] = useClient(fetchFactory);
+  const { isFetching } = useSelector(fetchFactory, s => s.state);
 
   const [count, setCount] = useState(0);
 
@@ -207,6 +208,10 @@ const Condition = memo(() => {
     count,
     setCount
   );
+
+  useEffect(() => {
+    console.log('isFetching...', isFetching);
+  }, [isFetching]);
 
   return (
     <div>
@@ -248,18 +253,6 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     creating: false
   });
 
-  useEffect(() => {
-    setTimeout(() => {
-      const currentCondition = { ...defaultCondition, name: 'Mr' };
-      const state = {
-        valid: currentCondition,
-        display: currentCondition,
-        creating: true
-      };
-      setDefaultState(state);
-    }, 600);
-  }, []);
-
   const {
     displayQuery,
     validQuery,
@@ -278,13 +271,11 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     defaultData: []
   });
 
-  const { isFetching, loaded } = useStatus(d);
+  const { isFetching, loaded } = useQueryStatus(d);
 
   const [result, fetch] = d;
 
   const { data, error, isError, triggerType } = result;
-
-  console.log(loaded);
 
   return (
     <div style={{ padding: '12px 24px' }}>

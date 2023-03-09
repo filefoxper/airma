@@ -9,68 +9,57 @@ import {
 } from 'react';
 import {
   ModelProvider,
-  shallowEqual,
   useModel,
   useSelector,
   withModelProvider
 } from '@airma/react-state';
 import type {
   PromiseResult,
-  PromiseEffectCallback,
+  PromiseCallback,
   QueryConfig,
   MutationConfig,
-  ModelPromiseEffectCallback,
   StrategyType,
   PromiseData,
-  EffectConfigProviderProps,
-  EffectConfig,
+  GlobalConfigProviderProps,
+  GlobalConfig,
   TriggerType,
-  LocalClientConfig,
-  Status
+  Status,
+  SessionKey
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
-const EffectConfigContext = createContext<EffectConfig | null>(null);
+const EffectConfigContext = createContext<GlobalConfig | null>(null);
 
-export function ClientConfigProvider({
+export function GlobalConfigProvider({
   value,
   children
-}: EffectConfigProviderProps) {
+}: GlobalConfigProviderProps) {
   return createElement(EffectConfigContext.Provider, { value }, children);
 }
 
-export const EffectConfigProvider = ClientConfigProvider;
-
-function useEffectConfig(): EffectConfig | null {
+function useEffectConfig(): GlobalConfig | null {
   return useContext(EffectConfigContext);
 }
 
 function parseEffect<
   E extends (...p: any[]) => any,
   C extends Record<string, any> = Record<string, any>
->(
-  callback: E | ModelPromiseEffectCallback<E>,
-  config?: C
-): [ModelPromiseEffectCallback<E>, E, C?] {
-  const { pipe } = callback as ModelPromiseEffectCallback<E>;
+>(callback: E | SessionKey<E>, config?: C): [SessionKey<E>, E, C?] {
+  const { pipe } = callback as SessionKey<E>;
   const isModel = typeof pipe === 'function';
   if (!isModel) {
-    return [
-      effectModel as ModelPromiseEffectCallback<E>,
-      callback as E,
-      config
-    ];
+    return [effectModel as SessionKey<E>, callback as E, config];
   }
-  const { effect } = callback as ModelPromiseEffectCallback<E>;
+  const { effect } = callback as SessionKey<E>;
   const [effectCallback, cg] = effect;
   return [
-    callback as ModelPromiseEffectCallback<E>,
+    callback as SessionKey<E>,
     effectCallback,
     (cg || config) as C | undefined
   ];
 }
 
-function usePromise<T, C extends (vars?: any[]) => Promise<T>>(
+function usePromiseCallback<T, C extends (vars?: any[]) => Promise<T>>(
   callback: C
 ): (vars?: any[]) => Promise<PromiseData<T>> {
   return (vars): Promise<PromiseData<T>> => {
@@ -145,9 +134,9 @@ function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   return persistRef.current as T;
 }
 
-export function useQuery<T, C extends PromiseEffectCallback<T>>(
-  callback: C | ModelPromiseEffectCallback<C>,
-  config?: QueryConfig<T, C> | Parameters<C>
+export function useQuery<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>,
+  config: QueryConfig<T, C> | Parameters<C>
 ): [
   PromiseResult<T>,
   () => Promise<PromiseResult<T>>,
@@ -167,8 +156,6 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     defaultData,
     exact
   } = con || {};
-
-  const triggerTypes: TriggerType[] = man ? ['manual'] : triggerOn;
 
   const hasDefaultData = Object.prototype.hasOwnProperty.call(
     con || {},
@@ -196,11 +183,12 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
     ? { strategy: undefined }
     : scopeEffectConfig;
   const manual = !deps && !variables ? true : man;
+  const triggerTypes: TriggerType[] = manual ? ['manual'] : triggerOn;
   const currentStrategies = toStrategies(strategy);
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'query')
     : currentStrategies;
-  const runner = usePromise<T, (vars?: any[]) => Promise<T>>(vars =>
+  const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(vars =>
     effectCallback(...(vars || variables || []))
   );
   const mountRef = useRef(true);
@@ -313,9 +301,9 @@ export function useQuery<T, C extends PromiseEffectCallback<T>>(
   return [instance.state, execute, queryCallback];
 }
 
-export function useMutation<T, C extends PromiseEffectCallback<T>>(
-  callback: C | ModelPromiseEffectCallback<C>,
-  config?: MutationConfig<T, C> | Parameters<C>
+export function useMutation<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>,
+  config: MutationConfig<T, C> | Parameters<C>
 ): [
   PromiseResult<T>,
   () => Promise<PromiseResult<T>>,
@@ -363,8 +351,8 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
     : currentStrategies;
-  const runner = usePromise<T, (vars?: any[]) => Promise<T>>((vars?: any[]) =>
-    effectCallback(...(vars || variables || []))
+  const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(
+    (vars?: any[]) => effectCallback(...(vars || variables || []))
   );
 
   const strategyStoreRef = useRef<{ current: any }[]>(
@@ -477,26 +465,16 @@ export function useMutation<T, C extends PromiseEffectCallback<T>>(
   return [instance.state, execute, mutateCallback];
 }
 
-export function useClient<T, C extends PromiseEffectCallback<T>>(
-  factory: ModelPromiseEffectCallback<C>,
-  config?: LocalClientConfig
+export function useSession<T, C extends PromiseCallback<T>>(
+  sessionKey: SessionKey<C>
 ): [PromiseResult<T>, () => void] {
-  const { loaded } = config || {};
-  const result = useSelector(
-    factory,
-    s => [s.state, s.trigger] as [PromiseResult<T>, () => void],
-    shallowEqual
+  return useSelector(
+    sessionKey,
+    s => [s.state, s.trigger] as [PromiseResult<T>, () => void]
   );
-  const [res] = result;
-  if (loaded && !res.loaded) {
-    throw new Error(
-      'You have set a loaded confirm config, but currently, this promise result has bot been loaded.'
-    );
-  }
-  return result;
 }
 
-export function useStatus(
+export function useSessionStatus(
   ...results: (PromiseResult | [PromiseResult, ...any])[]
 ): Status {
   return useMemo(() => {
@@ -510,22 +488,15 @@ export function useStatus(
     return {
       isFetching,
       isError,
-      isSuccess: !isError && loaded,
       loaded
     };
   }, results);
 }
 
-export const useAsyncEffect = useClient;
+export const SessionProvider = ModelProvider;
 
-export const EffectProvider = ModelProvider;
+export const withSessionProvider = withModelProvider;
 
-export const ClientProvider = ModelProvider;
-
-export const withEffectProvider = withModelProvider;
-
-export const withClientProvider = withModelProvider;
-
-export { asyncEffect, client } from './model';
+export { sessionKey } from './model';
 
 export { Strategy } from './strategy';
