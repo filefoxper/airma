@@ -4,11 +4,11 @@ import { ReactNode } from 'react';
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export type SessionKey<E extends PromiseCallback<any>> = FactoryModel<
-  (st: PromiseResult & { version?: number }) => {
-    state: PromiseResult;
+  (st: SessionState & { version?: number }) => {
+    state: SessionState;
     version: number;
-    setState: (s: PromiseResult) => PromiseResult & { version?: number };
-    trigger: () => PromiseResult & { version?: number };
+    setState: (s: SessionState) => SessionState & { version?: number };
+    trigger: () => SessionState & { version?: number };
   }
 > & {
   effect: [E];
@@ -23,10 +23,11 @@ export type PromiseData<T = any> = {
   isError?: boolean;
 };
 
-type LoadedPromiseResult<T> = {
+type LoadedSessionState<T> = {
   data: T;
   error?: any;
   isError: boolean;
+  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -34,10 +35,11 @@ type LoadedPromiseResult<T> = {
   loaded: true;
 };
 
-type UnloadedPromiseResult = {
+type UnloadedSessionState = {
   data: undefined;
   error?: any;
   isError: boolean;
+  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -45,16 +47,16 @@ type UnloadedPromiseResult = {
   loaded: false;
 };
 
-export type PromiseResult<T = any> =
-  | LoadedPromiseResult<T>
-  | UnloadedPromiseResult;
+export type SessionState<T = any> =
+  | LoadedSessionState<T>
+  | UnloadedSessionState;
 
 export type StrategyType<T = any> = (value: {
-  current: () => PromiseResult<T>;
+  current: () => SessionState<T>;
   variables: any[];
-  runner: () => Promise<PromiseResult<T>>;
+  runner: () => Promise<SessionState<T>>;
   store: { current: any };
-}) => Promise<PromiseResult<T>>;
+}) => Promise<SessionState<T>>;
 
 export type StrategyCollectionType<T> =
   | undefined
@@ -69,7 +71,6 @@ export type QueryConfig<T, C extends PromiseCallback<T>> = {
   variables: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
-  exact?: boolean;
 };
 
 export type MutationConfig<T, C extends PromiseCallback<T>> = {
@@ -78,7 +79,6 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
-  exact?: boolean;
 };
 
 export type GlobalConfig = {

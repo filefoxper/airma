@@ -12,13 +12,12 @@ import {
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
-  query,
+  sessionKey,
   Strategy,
   useMutation,
   useQuery,
-  useQuerySelector,
-  useQueryStatus,
-  useQueryTrigger
+  useSession,
+  useCombinedSessionState
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -60,9 +59,7 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = query(
-  (validQuery: Condition): Promise<User[]> => Promise.resolve([])
-);
+const fetchFactory = sessionKey(userQuery);
 
 const models = (userData: Omit<User, 'id'>) => {
   return {
@@ -101,7 +98,7 @@ const Creating = memo(
       updateUser(user);
     };
 
-    const launch = useQueryTrigger(fetchFactory);
+    const [, launch] = useSession(fetchFactory);
 
     const [r, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -192,7 +189,7 @@ const Condition = memo(() => {
     shallowEqual
   );
 
-  const { isFetching } = useSelector(fetchFactory, s => s.state);
+  const [{ isFetching }] = useSession(fetchFactory);
 
   const [count, setCount] = useState(0);
 
@@ -208,10 +205,6 @@ const Condition = memo(() => {
     count,
     setCount
   );
-
-  useEffect(() => {
-    console.log('isFetching...', isFetching);
-  }, [isFetching]);
 
   return (
     <div>
@@ -264,18 +257,18 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     query
   } = useModel(condition, defaultState);
 
-  fetchFactory.implement(userQuery);
-
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
     defaultData: []
   });
 
-  const { isFetching, loaded } = useQueryStatus(d);
-
   const [result, fetch] = d;
 
-  const { data, error, isError, triggerType } = result;
+  const sessionState = useCombinedSessionState(result);
+
+  console.log(sessionState);
+
+  const { data, error, isError, triggerType, isFetching } = result;
 
   return (
     <div style={{ padding: '12px 24px' }}>

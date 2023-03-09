@@ -1,24 +1,24 @@
 import { factory } from '@airma/react-state';
-import type { PromiseResult } from './type';
+import type { SessionState } from './type';
 import { SessionKey } from './type';
 
-export function effectModel(state: PromiseResult & { version?: number }) {
+export function effectModel(state: SessionState & { version?: number }) {
   const { version, ...rest } = state;
-  const mergeVersion = (s: PromiseResult) => {
+  const mergeVersion = (s: SessionState) => {
     return { ...s, version };
   };
   return {
     state: rest,
     version: version || 0,
     setState(
-      s: PromiseResult | ((p: PromiseResult) => PromiseResult)
-    ): PromiseResult & { version?: number } {
+      s: SessionState | ((p: SessionState) => SessionState)
+    ): SessionState & { version?: number } {
       if (typeof s !== 'function') {
         return mergeVersion(s);
       }
       return mergeVersion(s(state));
     },
-    trigger(): PromiseResult & { version?: number } {
+    trigger(): SessionState & { version?: number } {
       return { ...state, version: (version || 0) + 1 };
     }
   };
@@ -27,7 +27,7 @@ export function effectModel(state: PromiseResult & { version?: number }) {
 export const defaultPromiseResult = (config?: {
   data: any;
   loaded: true;
-}): PromiseResult => ({
+}): SessionState => ({
   data: undefined,
   isError: false,
   isFetching: false,

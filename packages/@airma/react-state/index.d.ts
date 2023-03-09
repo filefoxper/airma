@@ -89,14 +89,14 @@ export declare function factory<S, T extends AirModelInstance, D extends S>(
   defaultState?: D
 ): FactoryModel<AirReducer<S | undefined, T>>;
 
-export declare function keyModel<S, T extends AirModelInstance>(
+export declare function storeKey<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
 ): FactoryModel<typeof model>;
-export declare function keyModel<S, T extends AirModelInstance, D extends S>(
+export declare function storeKey<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
 ): FactoryModel<typeof model>;
-export declare function keyModel<S, T extends AirModelInstance, D extends S>(
+export declare function storeKey<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
 ): FactoryModel<typeof model>;

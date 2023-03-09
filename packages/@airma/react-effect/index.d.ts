@@ -3,7 +3,7 @@ import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
-declare type LoadedPromiseResult<T> = {
+declare type LoadedSessionState<T> = {
   data: T;
   error?: any;
   isError: boolean;
@@ -14,7 +14,7 @@ declare type LoadedPromiseResult<T> = {
   loaded: true;
 };
 
-declare type UnloadedPromiseResult = {
+declare type UnloadedSessionState = {
   data: undefined;
   error?: any;
   isError: boolean;
@@ -25,25 +25,25 @@ declare type UnloadedPromiseResult = {
   loaded: false;
 };
 
-export declare type PromiseResult<T> =
-  | LoadedPromiseResult<T>
-  | UnloadedPromiseResult;
+export declare type SessionState<T> =
+  | LoadedSessionState<T>
+  | UnloadedSessionState;
 
 export declare type StrategyType<T = any> = (value: {
-  current: () => PromiseResult<T>;
+  current: () => SessionState<T>;
   variables: any[];
-  runner: () => Promise<PromiseResult<T>>;
+  runner: () => Promise<SessionState<T>>;
   store: { current: any };
-}) => Promise<PromiseResult<T>>;
+}) => Promise<SessionState<T>>;
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 declare type SessionKey<E extends PromiseCallback<any>> = FactoryModel<
-  (st: PromiseResult & { version?: number }) => {
-    state: PromiseResult;
+  (st: SessionState & { version?: number }) => {
+    state: SessionState;
     version: number;
-    setState: (s: PromiseResult) => PromiseResult & { version?: number };
-    trigger: () => PromiseResult & { version?: number };
+    setState: (s: SessionState) => SessionState & { version?: number };
+    trigger: () => SessionState & { version?: number };
   }
 > & {
   effect: [E];
@@ -62,7 +62,6 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
-  exact?: boolean;
 };
 
 declare type DefaultQueryConfig<T, C extends PromiseCallback<T>> = QueryConfig<
@@ -77,7 +76,6 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
-  exact?: boolean;
 };
 
 declare type DefaultMutationConfig<
@@ -107,9 +105,9 @@ export declare function useQuery<
   callback: D,
   config: DefaultQueryConfig<PCR<D>, MCC<D>>
 ): [
-  LoadedPromiseResult<PCR<D>>,
-  () => Promise<LoadedPromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
 ];
 export declare function useQuery<
   D extends PromiseCallback<any> | SessionKey<any>
@@ -117,9 +115,9 @@ export declare function useQuery<
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
-  PromiseResult<PCR<D>>,
-  () => Promise<PromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
 ];
 
 export declare function useMutation<
@@ -128,9 +126,9 @@ export declare function useMutation<
   callback: D,
   config: DefaultMutationConfig<PCR<D>, MCC<D>>
 ): [
-  LoadedPromiseResult<PCR<D>>,
-  () => Promise<LoadedPromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
 ];
 export declare function useMutation<
   D extends PromiseCallback<any> | SessionKey<any>
@@ -138,29 +136,22 @@ export declare function useMutation<
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
-  PromiseResult<PCR<D>>,
-  () => Promise<PromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
 ];
 
 export declare function useSession<D extends SessionKey<any>>(
   factory: D
-): [PromiseResult<PCR<D>>, () => void];
+): [SessionState<PCR<D>>, () => void];
 
 export declare function sessionKey<
-  E extends (...params: any[]) => Promise<any>,
-  T = E extends (...params: any[]) => Promise<infer R> ? R : never
+  E extends (...params: any[]) => Promise<any>
 >(effectCallback: E): SessionKey<E>;
 
-declare type Status = {
-  isFetching: boolean;
-  loaded: boolean;
-  isError: boolean;
-};
-
-export declare function useSessionStatus(
-  ...results: (PromiseResult | [PromiseResult, ...any])[]
-): Status;
+export declare function useCombinedSessionState(
+  ...sessionStates: SessionState[]
+): SessionState;
 
 export declare const SessionProvider: FC<{
   value: FactoryCollection;

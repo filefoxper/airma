@@ -357,4 +357,4 @@ export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
 
-export const keyModel = createFactory;
+export const storeKey = createFactory;

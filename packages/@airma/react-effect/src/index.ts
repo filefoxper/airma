@@ -14,7 +14,7 @@ import {
   withModelProvider
 } from '@airma/react-state';
 import type {
-  PromiseResult,
+  SessionState,
   PromiseCallback,
   QueryConfig,
   MutationConfig,
@@ -28,17 +28,17 @@ import type {
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
-const EffectConfigContext = createContext<GlobalConfig | null>(null);
+const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
 export function GlobalConfigProvider({
   value,
   children
 }: GlobalConfigProviderProps) {
-  return createElement(EffectConfigContext.Provider, { value }, children);
+  return createElement(GlobalConfigContext.Provider, { value }, children);
 }
 
-function useEffectConfig(): GlobalConfig | null {
-  return useContext(EffectConfigContext);
+function useGlobalConfig(): GlobalConfig | null {
+  return useContext(GlobalConfigContext);
 }
 
 function parseEffect<
@@ -138,9 +138,9 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config: QueryConfig<T, C> | Parameters<C>
 ): [
-  PromiseResult<T>,
-  () => Promise<PromiseResult<T>>,
-  (...variables: Parameters<C>) => Promise<PromiseResult<T>>
+  SessionState<T>,
+  () => Promise<SessionState<T>>,
+  (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con] = parseEffect<C, QueryConfig<T, C>>(
@@ -153,8 +153,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     triggerOn = ['mount', 'update', 'manual'],
     manual: man,
     strategy,
-    defaultData,
-    exact
+    defaultData
   } = con || {};
 
   const hasDefaultData = Object.prototype.hasOwnProperty.call(
@@ -162,7 +161,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [typeof model, PromiseResult<T>?] = (function computeParams() {
+  const params: [typeof model, SessionState<T>?] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -176,12 +175,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       : [model];
   })();
 
-  const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
+  const instance = useModel(...(params as [typeof model, SessionState<T>]));
 
-  const scopeEffectConfig = useEffectConfig() || {};
-  const { strategy: strategyCallback } = exact
-    ? { strategy: undefined }
-    : scopeEffectConfig;
+  const scopeEffectConfig = useGlobalConfig() || {};
+  const { strategy: strategyCallback } = scopeEffectConfig;
   const manual = !deps && !variables ? true : man;
   const triggerTypes: TriggerType[] = manual ? ['manual'] : triggerOn;
   const currentStrategies = toStrategies(strategy);
@@ -201,7 +198,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const caller = function caller(
     triggerType: TriggerType,
     vars?: Parameters<C>
-  ): Promise<PromiseResult<T>> {
+  ): Promise<SessionState<T>> {
     const version = versionRef.current + 1;
     versionRef.current = version;
     const { state: current, setState } = instance;
@@ -220,7 +217,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
         isFetching: false,
         fetchingKey: undefined,
         triggerType
-      } as PromiseResult<T>;
+      } as SessionState<T>;
     });
   };
 
@@ -228,7 +225,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     call: (
       triggerType: TriggerType,
       variables?: Parameters<C>
-    ) => Promise<PromiseResult<T>>,
+    ) => Promise<SessionState<T>>,
     triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
@@ -261,8 +258,8 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const query = function query(vars?: Parameters<C>) {
     const triggerType = 'manual';
     if (triggerTypes.indexOf(triggerType) < 0) {
-      return new Promise<PromiseResult<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as PromiseResult<T>);
+      return new Promise<SessionState<T>>(resolve => {
+        resolve({ ...instance.state, abandon: true } as SessionState<T>);
       });
     }
     return callWithStrategy(caller, triggerType, vars).then(data => {
@@ -305,9 +302,9 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config: MutationConfig<T, C> | Parameters<C>
 ): [
-  PromiseResult<T>,
-  () => Promise<PromiseResult<T>>,
-  (...variables: Parameters<C>) => Promise<PromiseResult<T>>
+  SessionState<T>,
+  () => Promise<SessionState<T>>,
+  (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con] = parseEffect<C, MutationConfig<T, C>>(
@@ -317,7 +314,6 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const {
     variables,
     strategy,
-    exact,
     defaultData,
     deps,
     triggerOn = ['manual']
@@ -328,7 +324,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [typeof model, PromiseResult<T>?] = (function computeParams() {
+  const params: [typeof model, SessionState<T>?] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -342,11 +338,9 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       : [model];
   })();
 
-  const instance = useModel(...(params as [typeof model, PromiseResult<T>]));
-  const scopeEffectConfig = useEffectConfig() || {};
-  const { strategy: strategyCallback } = exact
-    ? { strategy: undefined }
-    : scopeEffectConfig;
+  const instance = useModel(...(params as [typeof model, SessionState<T>]));
+  const scopeEffectConfig = useGlobalConfig() || {};
+  const { strategy: strategyCallback } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
@@ -364,9 +358,9 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const savingRef = useRef(false);
   const caller = function caller(
     vars?: Parameters<C>
-  ): Promise<PromiseResult<T>> {
+  ): Promise<SessionState<T>> {
     if (savingRef.current) {
-      return new Promise<PromiseResult<T>>(resolve => {
+      return new Promise<SessionState<T>>(resolve => {
         resolve({ ...instance.state, abandon: true, triggerType: 'manual' });
       });
     }
@@ -386,12 +380,12 @@ export function useMutation<T, C extends PromiseCallback<T>>(
         isFetching: false,
         fetchingKey: undefined,
         triggerType: 'manual'
-      } as PromiseResult<T>;
+      } as SessionState<T>;
     });
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: (vars?: Parameters<C>) => Promise<PromiseResult<T>>,
+    call: (vars?: Parameters<C>) => Promise<SessionState<T>>,
     triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
@@ -424,7 +418,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const mutate = function mutate(vars?: Parameters<C>) {
     const triggerType = 'manual';
     if (triggerTypes.indexOf(triggerType) < 0) {
-      return new Promise<PromiseResult<T>>(resolve => {
+      return new Promise<SessionState<T>>(resolve => {
         resolve({ ...instance.state, abandon: true });
       });
     }
@@ -467,30 +461,43 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
 export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>
-): [PromiseResult<T>, () => void] {
+): [SessionState<T>, () => void] {
   return useSelector(
     sessionKey,
-    s => [s.state, s.trigger] as [PromiseResult<T>, () => void]
+    s => [s.state, s.trigger] as [SessionState<T>, () => void]
   );
 }
 
-export function useSessionStatus(
-  ...results: (PromiseResult | [PromiseResult, ...any])[]
-): Status {
+export function useCombinedSessionState(
+  ...sessionStates: SessionState[]
+): SessionState {
   return useMemo(() => {
-    const resultArray = results.map(d => {
-      const [r] = Array.isArray(d) ? d : [d];
-      return r as PromiseResult;
-    });
-    const isFetching = resultArray.some(d => d.isFetching);
-    const isError = resultArray.some(d => d.isError);
-    const loaded = resultArray.every(d => d.loaded);
+    const isFetching = sessionStates.some(d => d.isFetching);
+    const isError = sessionStates.some(d => d.isError);
+    const loaded = sessionStates.every(d => d.loaded);
+    const data = sessionStates.map(d => d.data);
+    const error = sessionStates.map(d => d.error);
+    if (loaded) {
+      return {
+        data,
+        error: isError ? error : undefined,
+        isFetching,
+        isError,
+        loaded,
+        abandon: false,
+        triggerType: undefined
+      };
+    }
     return {
+      data: undefined,
+      error: isError ? error : undefined,
       isFetching,
       isError,
-      loaded
+      loaded,
+      abandon: false,
+      triggerType: undefined
     };
-  }, results);
+  }, sessionStates);
 }
 
 export const SessionProvider = ModelProvider;
