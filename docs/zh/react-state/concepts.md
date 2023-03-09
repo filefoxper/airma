@@ -10,17 +10,21 @@
 
 ## 模型
 
-A `model` is a function which returns an object to provide display data and action methods. You can use it with different APIs provided by `@airma/react-state`. 
+模型定义为一个以 state 状态为入参的函数，该函数需要返回一个自定义 object （`实例原型`）。我们需要对自定义 object 添加与 state 相关的`渲染属性`及用于生产新 state 的`行为方法`。对 `@airma/react-state` 来说，模型是核心组件，是万物之源。
 
-A model looks like:
+以下为模型的样例伪代码:
 
 ```ts
+// model 是个模型函数
+// 以 param 入参为 state
 const model = <T>(param:T) =>({
-    // data for displaying
+    // data1, data2 ... 为渲染数据
     data1: any,
     data2: any,
     ......,
-    // action method for calling from instance 
+    // method1, method2 ... 为行为方法，
+    // 行为方法需要返回一个与 state 同类型数据，
+    // 用于生成新的 state 状态
     method1(...params:any[]):T{
         return nextParam1;
     },
@@ -31,22 +35,23 @@ const model = <T>(param:T) =>({
 });
 ```
 
-Examples:
+例子:
 
-1. count model:
+1. 计数器模型:
 
 ```ts
+// 状态 count 为模型需要维护的常变状态数据，即该模型的 state
 const counter = (count:number)=>{
     return {
-        // count value
+        // 使用 count 直接渲染 
         count,
-        // is count a negative number
+        // isNegative 为 count 是否为负数的渲染状态
         isNegative: count<0,
-        // method to increase count
+        // increase 是一个生成当前 count+1 的行为方法 
         increase(){
             return count+1;
         },
-        // method to decrease count
+        // decrease 是一个生成当前 count-1 的行为方法
         decrease(){
             return count-1;
         }
@@ -54,12 +59,12 @@ const counter = (count:number)=>{
 }
 ```
 
-2. toggle model:
+2. boolean 切换模型:
 
 ```ts
 type ToggleInstance = [boolean, ()=>boolean];
 
-// You can use tuple array as a proto instance too.
+// 我们可以返回一个元组类型的对象作为模型的实例原型
 const toggler = (visible:boolean):ToggleInstance =>[
     visible, 
     ()=>!visible
@@ -68,19 +73,19 @@ const toggler = (visible:boolean):ToggleInstance =>[
 
 ## State
 
-In `@airma/react-state`, state is the parameter for model, you can provide a default state by `useModel(model, state)` API. Every method from instance should returns a next state, `useModel` uses these next state to refresh instance.
+在 `@airma/react-state` 中，state 为模型函数的入参，通常我们在使用 `useModel` API时，需要为我们的模型提供一个默认 state 状态参数用于`模型实例`的初始化。在我们使用`模型实例`方法时，方法返回值将会被作为下一个 state，用于再次调用模型，并更新`模型实例`。
 
 ## 实例原型
 
-The object returned by `model` contains states and methods. It is a masterplate for generating a operable `instance`, we call it a `proto instance`.
+实例原型是指模型返回的 object，它是一个模版处理器。它将用于生成`实例`（代理），通过调用`实例`（代理）上的方法才能引起 state 的更迭，以及`实例`的整体更新。
 
-Examples:
+例子:
 
-count model:
+计数器模型:
 
 ```ts
 const counter = (count:number)=>{
-    // proto instance
+    // 实例原型
     return {
         count,
         isNegative: count<0,
@@ -92,6 +97,9 @@ const counter = (count:number)=>{
         }
     }
 }
+
+// instance 为实例
+const instance = useModel(counter, 0);
 ```
 
 ## 实例
