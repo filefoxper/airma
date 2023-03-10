@@ -24,6 +24,7 @@ import {
   FunctionComponent
 } from 'react';
 import type { AirReducerLike, Selector } from './type';
+import { ModelKey } from '../index';
 
 function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   const dispatchRef = useRef<T>(callback);
@@ -195,7 +196,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     current.update(model);
   }
 
-  const dispatch = ({ state: actionState, type }: Action) => {
+  const dispatch = ({ state: actionState }: Action) => {
     setS(actionState);
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -314,14 +315,16 @@ export function useSelector<
     throw new Error(requiredError('useSelector'));
   }
   const current = callback(connection.getCurrent());
-  const [, setS] = useState({});
+  const eqCallback = (s: any, t: any) =>
+    equalFn ? equalFn(s, t) : Object.is(s, t);
+  const [s, setS] = useState({ data: current });
 
   const dispatch = usePersistFn(() => {
     const next = callback(connection.getCurrent());
-    if (equalFn ? equalFn(current, next) : Object.is(current, next)) {
+    if (eqCallback(s.data, next)) {
       return;
     }
-    setS({});
+    setS({ data: next });
   });
 
   connection.connect(dispatch);
@@ -333,7 +336,7 @@ export function useSelector<
     };
   }, []);
 
-  return current;
+  return s.data;
 }
 
 export function withModelProvider(
@@ -353,8 +356,20 @@ export function withModelProvider(
   };
 }
 
+export function useIsValidModel(
+  model: AirReducer<any, any> | ModelKey<any>
+): boolean {
+  const { pipe } = model as ModelKey<any>;
+  const context = useContext(ReactStateContext);
+  if (typeof pipe !== 'function') {
+    return true;
+  }
+  const connection = context ? findConnection(context, model) : null;
+  return connection != null;
+}
+
 export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
 
-export const storeKey = createFactory;
+export const createModelKey = createFactory;

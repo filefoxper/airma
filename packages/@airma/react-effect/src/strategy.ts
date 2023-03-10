@@ -47,6 +47,40 @@ function once(): StrategyType {
   };
 }
 
+function memo<T>(
+  equalFn?: (source: T | undefined, target: T) => boolean
+): StrategyType {
+  return function mo(value) {
+    const { runner, current } = value;
+    return runner().then(d => {
+      const state = current();
+      if (
+        typeof equalFn === 'function'
+          ? equalFn(state.data, d.data)
+          : state.data === d.data
+      ) {
+        return { ...d, data: state.data };
+      }
+      return d;
+    });
+  };
+}
+
+function stringify() {
+  const comparator = function comparator(s: any, t: any) {
+    if (Object.is(s, t)) {
+      return true;
+    }
+    if (s == null || t == null) {
+      return false;
+    }
+    return JSON.stringify(s) === JSON.stringify(t);
+  };
+  return memo(comparator);
+}
+
+memo.stringify = stringify;
+
 function error(
   process: (e: unknown) => any,
   option?: { withAbandoned?: boolean }
@@ -92,5 +126,6 @@ export const Strategy = {
   debounce,
   once,
   error,
-  success
+  success,
+  memo
 };

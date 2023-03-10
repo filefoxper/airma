@@ -1,9 +1,9 @@
-import { FactoryModel } from '@airma/react-state';
+import {ModelKey, ModelKeys} from '@airma/react-state';
 import { ReactNode } from 'react';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export type SessionKey<E extends PromiseCallback<any>> = FactoryModel<
+export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -89,7 +89,7 @@ export type GlobalConfig = {
 };
 
 export type GlobalConfigProviderProps = {
-  value: GlobalConfig;
+  value?: GlobalConfig;
   children?: ReactNode;
 };
 
@@ -98,3 +98,8 @@ export type Status = {
   loaded: boolean;
   isError: boolean;
 };
+
+export type SessionProviderProps = {
+  value: ModelKeys;
+  children?: ReactNode;
+}

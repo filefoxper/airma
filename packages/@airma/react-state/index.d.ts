@@ -5,7 +5,7 @@ declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P
 ) => P & { getSourceFrom: () => any };
 
-export declare type FactoryModel<T extends AirReducer<any, any>> = T & {
+export declare type ModelKey<T extends AirReducer<any, any>> = T & {
   pipe: PipeCallback<T extends AirReducer<infer S, any> ? S : never>;
   effect?: [(...params: any[]) => any, Record<string, any>?];
 };
@@ -14,7 +14,7 @@ export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S, T> & { getSourceFrom: () => any }
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
-  model: FactoryModel<AirReducer<S, T>>
+  model: ModelKey<AirReducer<S, T>>
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
@@ -52,18 +52,18 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
       }
 ): void;
 
-export declare type FactoryCollection =
-  | FactoryModel<(s: any) => any>
-  | Array<FactoryModel<(s: any) => any>>
-  | Record<string, FactoryModel<(s: any) => any>>;
+export declare type ModelKeys =
+  | ModelKey<(s: any) => any>
+  | Array<ModelKey<(s: any) => any>>
+  | Record<string, ModelKeys>;
 
 export declare const ModelProvider: FC<{
-  value: FactoryCollection;
+  value: ModelKeys;
   children?: ReactNode;
 }>;
 
 export declare function withModelProvider(
-  models: FactoryCollection
+  models: ModelKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -79,26 +79,35 @@ export declare function useSelector<
 
 export declare function factory<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): FactoryModel<AirReducer<S | undefined, T>>;
+): ModelKey<AirReducer<S | undefined, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
-): FactoryModel<AirReducer<S, T>>;
+): ModelKey<AirReducer<S, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): FactoryModel<AirReducer<S | undefined, T>>;
+): ModelKey<AirReducer<S | undefined, T>>;
 
-export declare function storeKey<S, T extends AirModelInstance>(
+export declare function createModelKey<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): FactoryModel<typeof model>;
-export declare function storeKey<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>,
-  defaultState: D
-): FactoryModel<typeof model>;
-export declare function storeKey<S, T extends AirModelInstance, D extends S>(
+): ModelKey<typeof model>;
+export declare function createModelKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S, T>, defaultState: D): ModelKey<typeof model>;
+export declare function createModelKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): FactoryModel<typeof model>;
+): ModelKey<typeof model>;
+
+export declare function useIsValidModel(
+  model: AirReducer<any, any> | ModelKey<any>
+): boolean;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;

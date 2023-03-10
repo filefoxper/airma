@@ -1,6 +1,6 @@
 import React, { memo, useEffect, useState } from 'react';
 import {
-  factory,
+  createModelKey,
   useModel,
   useControlledModel,
   useSelector,
@@ -12,12 +12,13 @@ import {
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
-  sessionKey,
+  createSessionKey,
   Strategy,
   useMutation,
   useQuery,
   useSession,
-  useCombinedSessionState
+  useIsFetching,
+  SessionProvider
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -59,7 +60,7 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = sessionKey(userQuery);
+const fetchFactory = createSessionKey(userQuery);
 
 const models = (userData: Omit<User, 'id'>) => {
   return {
@@ -176,7 +177,7 @@ const conditionModel = (query: Query) => {
   };
 };
 
-const condition = factory(conditionModel, {
+const condition = createModelKey(conditionModel, {
   valid: defaultCondition,
   display: defaultCondition,
   creating: false
@@ -189,22 +190,7 @@ const Condition = memo(() => {
     shallowEqual
   );
 
-  const [{ isFetching }] = useSession(fetchFactory);
-
-  const [count, setCount] = useState(0);
-
-  const { version, add } = useControlledModel(
-    c => {
-      return {
-        version: c,
-        add() {
-          return c + 1;
-        }
-      };
-    },
-    count,
-    setCount
-  );
+  const [{ isFetching, data }] = useSession(fetchFactory);
 
   return (
     <div>
@@ -232,9 +218,6 @@ const Condition = memo(() => {
       <button type="button" style={{ marginLeft: 8 }} onClick={create}>
         create
       </button>
-      <button type="button" style={{ marginLeft: 8 }} onClick={add}>
-        version: {count}
-      </button>
     </div>
   );
 });
@@ -246,29 +229,21 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     creating: false
   });
 
-  const {
-    displayQuery,
-    validQuery,
-    creating,
-    create,
-    submit,
-    cancel,
-    changeDisplay,
-    query
-  } = useModel(condition, defaultState);
+  const { validQuery, creating, cancel } = useModel(condition, defaultState);
 
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
-    defaultData: []
+    defaultData: [],
+    strategy: Strategy.memo.stringify()
   });
 
-  const [result, fetch] = d;
+  const [result] = d;
 
-  const sessionState = useCombinedSessionState(result);
+  const { data, error, isFetching } = result;
 
-  console.log(sessionState);
-
-  const { data, error, isError, triggerType, isFetching } = result;
+  useEffect(() => {
+    console.log('effect data change...', data);
+  }, [data]);
 
   return (
     <div style={{ padding: '12px 24px' }}>

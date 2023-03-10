@@ -8,7 +8,9 @@ import {
   useRef
 } from 'react';
 import {
+  factory,
   ModelProvider,
+  useIsValidModel,
   useModel,
   useSelector,
   withModelProvider
@@ -23,18 +25,54 @@ import type {
   GlobalConfigProviderProps,
   GlobalConfig,
   TriggerType,
-  Status,
   SessionKey
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
+const defaultIsFetchingState: any[] = [];
+
+const isFetchingModel = factory((fetchingKeys: any[]) => {
+  return {
+    isFetching: fetchingKeys.length > 0,
+    startFetching(fetchingKey: any) {
+      const isFetching = fetchingKeys.some(k => k === fetchingKey);
+      if (isFetching) {
+        return fetchingKeys;
+      }
+      return fetchingKeys.concat(fetchingKey);
+    },
+    endFetching(fetchingKey: any) {
+      const isFetching = fetchingKeys.some(k => k === fetchingKey);
+      if (!isFetching) {
+        return fetchingKeys;
+      }
+      return fetchingKeys.filter(k => k !== fetchingKey);
+    }
+  };
+}, defaultIsFetchingState);
+
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
-export function GlobalConfigProvider({
+export function GlobalRefreshProvider({
   value,
   children
 }: GlobalConfigProviderProps) {
-  return createElement(GlobalConfigContext.Provider, { value }, children);
+  const isValid = useIsValidModel(isFetchingModel);
+  return isValid
+    ? createElement(
+        GlobalConfigContext.Provider,
+        { value: value || null },
+        children
+      )
+    : createElement(
+        ModelProvider,
+        { value: isFetchingModel },
+        createElement(
+          GlobalConfigContext.Provider,
+          { value: value || null },
+          children
+        )
+      );
 }
 
 function useGlobalConfig(): GlobalConfig | null {
@@ -176,6 +214,11 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   })();
 
   const instance = useModel(...(params as [typeof model, SessionState<T>]));
+  const { startFetching, endFetching } = useModel(
+    isFetchingModel,
+    defaultIsFetchingState,
+    { autoLink: true }
+  );
 
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback } = scopeEffectConfig;
@@ -208,6 +251,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       fetchingKey: keyRef.current,
       triggerType
     });
+    startFetching(keyRef.current);
     return runner(vars).then(data => {
       const abandon = version !== versionRef.current;
       return {
@@ -250,6 +294,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
+        endFetching(keyRef.current);
       }
       return data;
     });
@@ -295,6 +340,13 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     query();
   }, [instance.version]);
 
+  useEffect(
+    () => () => {
+      endFetching(keyRef.current);
+    },
+    []
+  );
+
   return [instance.state, execute, queryCallback];
 }
 
@@ -339,6 +391,11 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   })();
 
   const instance = useModel(...(params as [typeof model, SessionState<T>]));
+  const { startFetching, endFetching } = useModel(
+    isFetchingModel,
+    defaultIsFetchingState,
+    { autoLink: true }
+  );
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
@@ -366,6 +423,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     }
     savingRef.current = true;
     const { state: current, setState } = instance;
+    startFetching(keyRef.current);
     setState({
       ...current,
       isFetching: true,
@@ -410,6 +468,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
+        endFetching(keyRef.current);
       }
       return data;
     });
@@ -456,6 +515,13 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     mutate();
   }, [instance.version]);
 
+  useEffect(
+    () => () => {
+      endFetching(keyRef.current);
+    },
+    []
+  );
+
   return [instance.state, execute, mutateCallback];
 }
 
@@ -468,42 +534,27 @@ export function useSession<T, C extends PromiseCallback<T>>(
   );
 }
 
-export function useCombinedSessionState(
-  ...sessionStates: SessionState[]
-): SessionState {
-  return useMemo(() => {
-    const isFetching = sessionStates.some(d => d.isFetching);
-    const isError = sessionStates.some(d => d.isError);
-    const loaded = sessionStates.every(d => d.loaded);
-    const data = sessionStates.map(d => d.data);
-    const error = sessionStates.map(d => d.error);
-    if (loaded) {
-      return {
-        data,
-        error: isError ? error : undefined,
-        isFetching,
-        isError,
-        loaded,
-        abandon: false,
-        triggerType: undefined
-      };
-    }
-    return {
-      data: undefined,
-      error: isError ? error : undefined,
-      isFetching,
-      isError,
-      loaded,
-      abandon: false,
-      triggerType: undefined
-    };
+export function useIsFetching(...sessionStates: SessionState[]): boolean {
+  const isLocalFetching = useMemo(() => {
+    return sessionStates.some(d => d.isFetching);
   }, sessionStates);
+  const valid = useIsValidModel(isFetchingModel);
+  // const { isFetching: isGlobalFetching } = useModel(
+  //   isFetchingModel,
+  //   defaultIsFetchingState,
+  //   { autoLink: true }
+  // );
+  const isGlobalFetching = useSelector(isFetchingModel, s => s.isFetching);
+  if (valid && !sessionStates.length) {
+    return isGlobalFetching;
+  }
+  return isLocalFetching;
 }
 
 export const SessionProvider = ModelProvider;
 
 export const withSessionProvider = withModelProvider;
 
-export { sessionKey } from './model';
+export { createSessionKey } from './model';
 
 export { Strategy } from './strategy';

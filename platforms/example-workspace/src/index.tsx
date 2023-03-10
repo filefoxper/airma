@@ -3,7 +3,7 @@ import { render } from 'react-dom';
 import App from '@/app';
 import {
   GlobalConfig,
-  GlobalConfigProvider,
+  GlobalRefreshProvider,
   Strategy
 } from '@airma/react-effect';
 
@@ -15,16 +15,16 @@ const config: GlobalConfig = {
 
 render(
   <React.StrictMode>
-    <GlobalConfigProvider value={config}>
+    <GlobalRefreshProvider value={config}>
       <App />
-    </GlobalConfigProvider>
+    </GlobalRefreshProvider>
   </React.StrictMode>,
   root
 );
 
 // render(
-//   <GlobalConfigProvider value={config}>
+//   <GlobalRefreshProvider value={config}>
 //     <App />
-//   </GlobalConfigProvider>,
+//   </GlobalRefreshProvider>,
 //   root
 // );

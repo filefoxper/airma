@@ -1,5 +1,6 @@
-import { FactoryCollection, FactoryModel } from '@airma/react-state';
+import { ModelKeys, ModelKey } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
+import { stringify } from 'qs';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -38,7 +39,7 @@ export declare type StrategyType<T = any> = (value: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-declare type SessionKey<E extends PromiseCallback<any>> = FactoryModel<
+declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -145,16 +146,16 @@ export declare function useSession<D extends SessionKey<any>>(
   factory: D
 ): [SessionState<PCR<D>>, () => void];
 
-export declare function sessionKey<
+export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
 >(effectCallback: E): SessionKey<E>;
 
-export declare function useCombinedSessionState(
+export declare function useIsFetching(
   ...sessionStates: SessionState[]
-): SessionState;
+): boolean;
 
 export declare const SessionProvider: FC<{
-  value: FactoryCollection;
+  value: ModelKeys;
   children?: ReactNode;
 }>;
 
@@ -167,13 +168,13 @@ export declare type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export declare const GlobalConfigProvider: FC<{
+export declare const GlobalRefreshProvider: FC<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
 
 export declare function withSessionProvider(
-  models: FactoryCollection
+  models: ModelKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -189,4 +190,7 @@ export declare const Strategy: {
     process: (data: T) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
+  memo: (<T>(
+    equalFn?: (source: T | undefined, target: T) => boolean
+  ) => StrategyType<T>) & { stringify: () => StrategyType };
 };

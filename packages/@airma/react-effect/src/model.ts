@@ -37,7 +37,7 @@ export const defaultPromiseResult = (config?: {
   ...config
 });
 
-export function sessionKey<
+export function createSessionKey<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
 >(effectCallback: E): SessionKey<E> {
