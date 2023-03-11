@@ -1,9 +1,9 @@
-import {ModelKey, ModelKeys} from '@airma/react-state';
+import { StoreKey, StoreKeys } from '@airma/react-state';
 import { ReactNode } from 'react';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
+export type SessionKey<E extends PromiseCallback<any>> = StoreKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -68,7 +68,7 @@ export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
   defaultData?: T;
-  variables: Parameters<C>;
+  variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
 };
@@ -77,7 +77,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   defaultData?: T;
   deps?: any[];
   triggerOn?: TriggerType[];
-  variables: Parameters<C>;
+  variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
 };
 
@@ -100,6 +100,6 @@ export type Status = {
 };
 
 export type SessionProviderProps = {
-  value: ModelKeys;
+  value: StoreKeys;
   children?: ReactNode;
-}
+};

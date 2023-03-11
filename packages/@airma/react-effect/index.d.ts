@@ -1,6 +1,5 @@
-import { ModelKeys, ModelKey } from '@airma/react-state';
+import { StoreKeys, StoreKey } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
-import { stringify } from 'qs';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -39,7 +38,7 @@ export declare type StrategyType<T = any> = (value: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
+declare type SessionKey<E extends PromiseCallback<any>> = StoreKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -155,7 +154,7 @@ export declare function useIsFetching(
 ): boolean;
 
 export declare const SessionProvider: FC<{
-  value: ModelKeys;
+  value: StoreKeys;
   children?: ReactNode;
 }>;
 
@@ -174,7 +173,7 @@ export declare const GlobalRefreshProvider: FC<{
 }>;
 
 export declare function withSessionProvider(
-  models: ModelKeys
+  models: StoreKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;

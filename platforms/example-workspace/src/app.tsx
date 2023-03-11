@@ -1,6 +1,6 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
-  createModelKey,
+  createStoreKey,
   useModel,
   useControlledModel,
   useSelector,
@@ -177,18 +177,16 @@ const conditionModel = (query: Query) => {
   };
 };
 
-const condition = createModelKey(conditionModel, {
+const condition = createStoreKey(conditionModel, {
   valid: defaultCondition,
   display: defaultCondition,
   creating: false
 });
 
 const Condition = memo(() => {
-  const { displayQuery, create, changeDisplay, query } = useSelector(
-    condition,
-    s => s,
-    shallowEqual
-  );
+  const { displayQuery, create, changeDisplay, query } = useModel(condition);
+
+  // useQuery(fetchFactory, [useMemo(() => ({ name: 'M', username: '' }), [])]);
 
   const [{ isFetching, data }] = useSession(fetchFactory);
 
@@ -241,9 +239,11 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
 
   const { data, error, isFetching } = result;
 
+  // const isFetching = useIsFetching();
+
   useEffect(() => {
-    console.log('effect data change...', data);
-  }, [data]);
+    console.log('effect data change...', isFetching);
+  }, [isFetching]);
 
   return (
     <div style={{ padding: '12px 24px' }}>

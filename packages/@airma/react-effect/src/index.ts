@@ -10,8 +10,9 @@ import {
 import {
   factory,
   ModelProvider,
-  useIsValidModel,
+  useIsModelMatchedInStore,
   useModel,
+  useRealtimeInstance,
   useSelector,
   withModelProvider
 } from '@airma/react-state';
@@ -57,8 +58,8 @@ export function GlobalRefreshProvider({
   value,
   children
 }: GlobalConfigProviderProps) {
-  const isValid = useIsValidModel(isFetchingModel);
-  return isValid
+  const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
+  return isMatchedInStore
     ? createElement(
         GlobalConfigContext.Provider,
         { value: value || null },
@@ -174,7 +175,7 @@ function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
 
 export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
-  config: QueryConfig<T, C> | Parameters<C>
+  config?: QueryConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState<T>>,
@@ -199,7 +200,11 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [typeof model, SessionState<T>?] = (function computeParams() {
+  const params: [
+    typeof model,
+    SessionState<T>,
+    { useDefaultState?: false; realtimeInstance: false }?
+  ] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -209,11 +214,22 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       ];
     }
     return hasDefaultData
-      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
-      : [model];
+      ? [
+          model,
+          defaultPromiseResult({ data: defaultData, loaded: true }),
+          { realtimeInstance: false }
+        ]
+      : [
+          model,
+          defaultPromiseResult({ data: defaultData, loaded: true }),
+          { useDefaultState: false, realtimeInstance: false }
+        ];
   })();
 
-  const instance = useModel(...(params as [typeof model, SessionState<T>]));
+  const stableInstance = useModel(
+    ...(params as [typeof model, SessionState<T>])
+  );
+  const instance = useRealtimeInstance(stableInstance);
   const { startFetching, endFetching } = useModel(
     isFetchingModel,
     defaultIsFetchingState,
@@ -310,6 +326,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
+        endFetching(keyRef.current);
       }
       return data;
     });
@@ -321,7 +338,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const isOnMount = mountRef.current;
     mountRef.current = false;
     const currentFetchingKey = instance.state.fetchingKey;
@@ -337,6 +354,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       return;
     }
     triggerVersionRef.current = instance.version;
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
     query();
   }, [instance.version]);
 
@@ -347,12 +368,12 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     []
   );
 
-  return [instance.state, execute, queryCallback];
+  return [stableInstance.state, execute, queryCallback];
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
-  config: MutationConfig<T, C> | Parameters<C>
+  config?: MutationConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState<T>>,
@@ -376,7 +397,11 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [typeof model, SessionState<T>?] = (function computeParams() {
+  const params: [
+    typeof model,
+    SessionState<T>,
+    { useDefaultState?: false; realtimeInstance?: false }?
+  ] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -386,11 +411,22 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       ];
     }
     return hasDefaultData
-      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
-      : [model];
+      ? [
+          model,
+          defaultPromiseResult({ data: defaultData, loaded: true }),
+          { realtimeInstance: false }
+        ]
+      : [
+          model,
+          defaultPromiseResult({ data: defaultData, loaded: true }),
+          { useDefaultState: false, realtimeInstance: false }
+        ];
   })();
 
-  const instance = useModel(...(params as [typeof model, SessionState<T>]));
+  const stableInstance = useModel(
+    ...(params as [typeof model, SessionState<T>])
+  );
+  const instance = useRealtimeInstance(stableInstance);
   const { startFetching, endFetching } = useModel(
     isFetchingModel,
     defaultIsFetchingState,
@@ -484,6 +520,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
+        endFetching(keyRef.current);
       }
       return data;
     });
@@ -497,7 +534,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const isOnMount = mountRef.current;
     mountRef.current = false;
     const currentFetchingKey = instance.state.fetchingKey;
@@ -512,6 +549,10 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       return;
     }
     triggerVersionRef.current = instance.version;
+    const currentFetchingKey = instance.state.fetchingKey;
+    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return;
+    }
     mutate();
   }, [instance.version]);
 
@@ -522,7 +563,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     []
   );
 
-  return [instance.state, execute, mutateCallback];
+  return [stableInstance.state, execute, mutateCallback];
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
@@ -538,14 +579,13 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
   const isLocalFetching = useMemo(() => {
     return sessionStates.some(d => d.isFetching);
   }, sessionStates);
-  const valid = useIsValidModel(isFetchingModel);
-  // const { isFetching: isGlobalFetching } = useModel(
-  //   isFetchingModel,
-  //   defaultIsFetchingState,
-  //   { autoLink: true }
-  // );
-  const isGlobalFetching = useSelector(isFetchingModel, s => s.isFetching);
-  if (valid && !sessionStates.length) {
+  const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
+  const { isFetching: isGlobalFetching } = useModel(
+    isFetchingModel,
+    defaultIsFetchingState,
+    { autoLink: true, realtimeInstance: false }
+  );
+  if (isMatchedInStore && !sessionStates.length) {
     return isGlobalFetching;
   }
   return isLocalFetching;

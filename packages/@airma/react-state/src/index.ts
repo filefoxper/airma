@@ -24,7 +24,9 @@ import {
   FunctionComponent
 } from 'react';
 import type { AirReducerLike, Selector } from './type';
-import { ModelKey } from '../index';
+
+const realtimeInstanceMountProperty =
+  '@@_airmaReactStateRealtimeInstancePropertyV17_@@';
 
 function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   const dispatchRef = useRef<T>(callback);
@@ -120,7 +122,7 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
-export const ModelProvider: FC<{
+export const StoreProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
@@ -136,6 +138,8 @@ export const ModelProvider: FC<{
     children
   );
 };
+
+export const ModelProvider = StoreProvider;
 
 function findConnection<S, T extends AirModelInstance>(
   c: Selector,
@@ -155,11 +159,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
-    hasState?: boolean;
+    useDefaultState?: boolean;
+    realtimeInstance?: boolean;
   }
-): [S | undefined, T, (s: S | undefined) => void] {
-  const defaultOpt = { refresh: false, required: false, autoLink: false };
-  const { refresh, required, autoLink, hasState } = {
+): [
+  S | undefined,
+  T & { [realtimeInstanceMountProperty]?: T },
+  (s: S | undefined) => void
+] {
+  const defaultOpt = {
+    refresh: false,
+    required: false,
+    autoLink: false,
+    realtimeInstance: true
+  };
+  const { refresh, required, autoLink, useDefaultState, realtimeInstance } = {
     ...defaultOpt,
     ...option
   };
@@ -183,20 +197,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const current = connection || instance;
   const needInitializeScopeConnection =
     connection != null &&
-    !!hasState &&
+    !!useDefaultState &&
     connection.getCacheState() == null &&
     !refresh;
   if (needInitializeScopeConnection) {
     connection.update(model, { state, cache: true, ignoreDispatch: true });
   }
-  const initialState = current.getState();
-  const [s, setS] = useState<S | undefined>(initialState);
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
     current.update(model);
   }
-
+  const initialState = current.getState();
+  const [s, setS] = useState<S | undefined>(initialState);
+  const [agent, setAgent] = useState(current.getCurrent());
   const dispatch = ({ state: actionState }: Action) => {
+    setAgent(current.getCurrent());
     setS(actionState);
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -227,7 +242,14 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  return [current.getState(), current.agent, current.updateState];
+  if (realtimeInstance) {
+    return [current.getState(), current.agent, current.updateState];
+  }
+
+  (agent as T & { [realtimeInstanceMountProperty]?: T })[
+    realtimeInstanceMountProperty
+  ] = current.agent;
+  return [current.getState(), agent, current.updateState];
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
@@ -240,7 +262,8 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
-    hasState?: boolean;
+    useDefaultState?: boolean;
+    realtimeInstance?: boolean;
   }
 ): [S, T];
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
@@ -250,7 +273,8 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
-    hasState?: boolean;
+    useDefaultState?: boolean;
+    realtimeInstance?: boolean;
   }
 ): [S | undefined, T] {
   const { getSourceFrom } = model as AirReducerLike;
@@ -270,21 +294,31 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; autoLink?: boolean; hasState?: boolean }
+  option?: {
+    refresh?: boolean;
+    autoLink?: boolean;
+    useDefaultState?: boolean;
+    realtimeInstance?: boolean;
+  }
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; autoLink?: boolean; hasState?: boolean }
+  option?: {
+    refresh?: boolean;
+    autoLink?: boolean;
+    useDefaultState?: boolean;
+    realtimeInstance?: boolean;
+  }
 ): T {
   const { pipe } = model as FactoryInstance<any>;
   const { getSourceFrom } = model as AirReducerLike;
   const required =
     typeof pipe === 'function' || typeof getSourceFrom === 'function';
-  const hasState = arguments.length > 1;
+  const useDefaultState = arguments.length > 1;
   const [, agent] = useTupleModel(model, state, {
     required,
-    hasState,
+    useDefaultState,
     ...option
   });
   return agent;
@@ -339,7 +373,7 @@ export function useSelector<
   return s.data;
 }
 
-export function withModelProvider(
+export function withStoreProvider(
   models: Array<any> | ((...args: any) => any) | Record<string, any>
 ) {
   return function connect<
@@ -356,13 +390,23 @@ export function withModelProvider(
   };
 }
 
-export function useIsValidModel(
-  model: AirReducer<any, any> | ModelKey<any>
-): boolean {
-  const { pipe } = model as ModelKey<any>;
+export function useRealtimeInstance<T>(
+  instance: T & { [realtimeInstanceMountProperty]?: T }
+): T {
+  const realtimeInstance = instance[realtimeInstanceMountProperty];
+  if (!realtimeInstance) {
+    return instance;
+  }
+  return realtimeInstance;
+}
+
+export const withModelProvider = withStoreProvider;
+
+export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
+  const { pipe } = model as AirReducer<any, any> & { pipe: () => void };
   const context = useContext(ReactStateContext);
   if (typeof pipe !== 'function') {
-    return true;
+    return false;
   }
   const connection = context ? findConnection(context, model) : null;
   return connection != null;
@@ -372,4 +416,4 @@ export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
 
-export const createModelKey = createFactory;
+export const createStoreKey = createFactory;
