@@ -62,7 +62,7 @@ const userQuery = (validQuery: Condition) =>
 
 const fetchFactory = createSessionKey(userQuery);
 
-const models = (userData: Omit<User, 'id'>) => {
+const createModel = (userData: Omit<User, 'id'>) => {
   return {
     user: userData,
     changeUsername(username: string) {
@@ -88,39 +88,31 @@ const Info = memo(
 
 const Creating = memo(
   ({ onSubmit, onCancel }: { onSubmit: () => any; onCancel: () => any }) => {
-    const { user, changeUsername, changeName } = useModel(models, {
+    const { user, changeUsername, changeName } = useModel(createModel, {
       name: '',
       username: '',
       age: 10
     });
-    const [validUser, updateUser] = useState(user);
-
-    const update = () => {
-      updateUser(user);
-    };
 
     const [, launch] = useSession(fetchFactory);
 
-    const [r, trigger] = useMutation(
+    const [, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
         rest('/api/user')
           .setBody(u)
           .post<null>()
           .then(() => true),
       {
-        variables: [validUser],
-        triggerOn: ['update', 'manual'],
-        strategy: [Strategy.once()]
+        variables: [user],
+        strategy: [
+          Strategy.once(),
+          Strategy.success(() => {
+            launch();
+            // onSubmit();
+          })
+        ]
       }
     );
-
-    useEffect(() => {
-      if (!r.data) {
-        return;
-      }
-      launch();
-      // onSubmit();
-    }, [r]);
 
     return (
       <div>
@@ -141,7 +133,7 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={update}>
+          <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
@@ -242,8 +234,8 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
   // const isFetching = useIsFetching();
 
   useEffect(() => {
-    console.log('effect data change...', isFetching);
-  }, [isFetching]);
+    console.log('effect data change...', data);
+  }, [data]);
 
   return (
     <div style={{ padding: '12px 24px' }}>

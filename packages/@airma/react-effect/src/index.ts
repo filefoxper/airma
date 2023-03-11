@@ -200,11 +200,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [
-    typeof model,
-    SessionState<T>,
-    { useDefaultState?: false; realtimeInstance: false }?
-  ] = (function computeParams() {
+  const params: [typeof model, SessionState<T>?] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -214,16 +210,8 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       ];
     }
     return hasDefaultData
-      ? [
-          model,
-          defaultPromiseResult({ data: defaultData, loaded: true }),
-          { realtimeInstance: false }
-        ]
-      : [
-          model,
-          defaultPromiseResult({ data: defaultData, loaded: true }),
-          { useDefaultState: false, realtimeInstance: false }
-        ];
+      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+      : [model];
   })();
 
   const stableInstance = useModel(
@@ -350,16 +338,16 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
-    if (triggerVersionRef.current === instance.version) {
+    if (triggerVersionRef.current === stableInstance.version) {
       return;
     }
-    triggerVersionRef.current = instance.version;
+    triggerVersionRef.current = stableInstance.version;
     const currentFetchingKey = instance.state.fetchingKey;
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
     query();
-  }, [instance.version]);
+  }, [stableInstance.version]);
 
   useEffect(
     () => () => {
@@ -397,11 +385,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     'defaultData'
   );
 
-  const params: [
-    typeof model,
-    SessionState<T>,
-    { useDefaultState?: false; realtimeInstance?: false }?
-  ] = (function computeParams() {
+  const params: [typeof model, SessionState<T>?] = (function computeParams() {
     if (model === effectModel) {
       return [
         model,
@@ -411,16 +395,8 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       ];
     }
     return hasDefaultData
-      ? [
-          model,
-          defaultPromiseResult({ data: defaultData, loaded: true }),
-          { realtimeInstance: false }
-        ]
-      : [
-          model,
-          defaultPromiseResult({ data: defaultData, loaded: true }),
-          { useDefaultState: false, realtimeInstance: false }
-        ];
+      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+      : [model];
   })();
 
   const stableInstance = useModel(
@@ -450,11 +426,12 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const keyRef = useRef({});
   const savingRef = useRef(false);
   const caller = function caller(
+    triggerType: TriggerType,
     vars?: Parameters<C>
   ): Promise<SessionState<T>> {
     if (savingRef.current) {
       return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true, triggerType: 'manual' });
+        resolve({ ...instance.state, abandon: true, triggerType });
       });
     }
     savingRef.current = true;
@@ -464,7 +441,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       ...current,
       isFetching: true,
       fetchingKey: keyRef.current,
-      triggerType: 'manual'
+      triggerType
     });
     return runner(vars).then(data => {
       savingRef.current = false;
@@ -473,20 +450,23 @@ export function useMutation<T, C extends PromiseCallback<T>>(
         ...data,
         isFetching: false,
         fetchingKey: undefined,
-        triggerType: 'manual'
+        triggerType
       } as SessionState<T>;
     });
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: (vars?: Parameters<C>) => Promise<SessionState<T>>,
+    call: (
+      triggerType: TriggerType,
+      vars?: Parameters<C>
+    ) => Promise<SessionState<T>>,
     triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
     const requires = {
       current: () => instance.state,
       variables: vars || variables || [],
-      runner: () => call(vars),
+      runner: () => call(triggerType, vars),
       store: strategyStoreRef
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
@@ -530,7 +510,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
   const mutateCallback = usePersistFn((...vars: Parameters<C>) => mutate(vars));
 
-  const triggerVersionRef = useRef(instance.version);
+  const triggerVersionRef = useRef(stableInstance.version);
 
   const effectDeps = deps || variables || [];
 
@@ -545,16 +525,16 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   }, [...effectDeps]);
 
   useEffect(() => {
-    if (triggerVersionRef.current === instance.version) {
+    if (triggerVersionRef.current === stableInstance.version) {
       return;
     }
-    triggerVersionRef.current = instance.version;
+    triggerVersionRef.current = stableInstance.version;
     const currentFetchingKey = instance.state.fetchingKey;
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
     mutate();
-  }, [instance.version]);
+  }, [stableInstance.version]);
 
   useEffect(
     () => () => {
@@ -583,7 +563,7 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
   const { isFetching: isGlobalFetching } = useModel(
     isFetchingModel,
     defaultIsFetchingState,
-    { autoLink: true, realtimeInstance: false }
+    { autoLink: true }
   );
   if (isMatchedInStore && !sessionStates.length) {
     return isGlobalFetching;

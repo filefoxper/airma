@@ -171,7 +171,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh: false,
     required: false,
     autoLink: false,
-    realtimeInstance: true
+    realtimeInstance: false
   };
   const { refresh, required, autoLink, useDefaultState, realtimeInstance } = {
     ...defaultOpt,
@@ -181,7 +181,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const connection =
     context && required ? findConnection(context, model) : undefined;
   if (required && !autoLink && !connection) {
-    throw new Error('Can not find a right model in store.');
+    throw new Error(
+      'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
+    );
   }
   const prevStateRef = useRef<null | { state: D | undefined }>(null);
   const modelRef = useRef<AirReducer<S, T>>(model);
@@ -246,10 +248,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     return [current.getState(), current.agent, current.updateState];
   }
 
-  (agent as T & { [realtimeInstanceMountProperty]?: T })[
-    realtimeInstanceMountProperty
-  ] = current.agent;
-  return [current.getState(), agent, current.updateState];
+  const stableInstance = agent as T & { [realtimeInstanceMountProperty]?: T };
+
+  return [
+    current.getState(),
+    { ...stableInstance, [realtimeInstanceMountProperty]: current.agent },
+    current.updateState
+  ];
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
