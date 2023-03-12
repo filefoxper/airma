@@ -2,11 +2,11 @@
 
 ## Persist methods
 
-The methods from instance are persistent. You can pass it to a memo component directly. Every time, when we call a method, it refreshes from proto instance, and run the newest one to generate a next state. So, it has no problem about the stale method running caused by closures.
+The methods from `instance` are persistent, using them as props of memo component is very helpful. The `instance` method is a wrap function, it always calls the newest `proto instance` method when it works. So, the render closures can not affect it with stale values, that keeps it more safer than `useState`.
 
 We have talked about the trouble about `setState` in [section guide](/react-state/guides?id=local-state). Let's continue the talking. 
 
-Take a view about the code below:
+The trouble about `useState` usage:
 
 ```ts
 import React,{memo, useState} from 'react';
@@ -18,12 +18,13 @@ const App = memo(()=>{
     // click `lazy increase` button first
     const lazyIncrease = ()=>{
         setTimeout(()=>{
+            // it should use like: `setCount(c=>c+1)`
+            // to keep safe.
             setCount(count + 1);
         }, 3000);
     };
 
-    // then click `increase` button 3 times immediately
-    // in 3 seconds after you click `lazy increase` button.
+    // then click `increase` button 3 times immediately.
     const increase = ()=>{
         setCount(count + 1);
     };
@@ -38,12 +39,13 @@ const App = memo(()=>{
 })
 ```
 
-Let's click `lazy increase` button first, then click `increase` button 3 times in 3 seconds immediately, and after 3 seconds what the `count` should display? Is that `4`? No, it is `1`. Why? The closures of course. If we want to make  `count` growth normally by increase 1, every time when we click buttons, we should setState like `setCount((c)=>c + 1)`.
+Let's click `lazy increase` button first, then click `increase` button 3 times immediately, and after 3 seconds what the `count` should display? Is that `4`? No, it is `1`. Why? The render closures of course. If we want to make  `count` growth normally by increase 1, every time when we click buttons, we should setState like `setCount((c)=>c + 1)`.
 
 The `useModel` API can help you avoid this case easily.
 
 ```ts
 import React,{memo, useState} from 'react';
+import {useModel} from '@airma/react-state';
 
 const App = memo(()=>{
 
@@ -73,32 +75,38 @@ Let's do the operation again, we can see the result of `count` is always correct
 
 ## Scope state
 
-The scope state in `@airma/react-state` is persisted in a store created by `ModelProvider`. Every `ModelProvider` has its own store created by factory collections, we can use the factory model in collections as a key to link the state in a nearest matched parent `ModelProvider`. If the parent `ModelProvider` is not matched with the factory usage (`useModel` or `useSelector`), it keeps finding through the `ModelProvider` tree util the top one.
+The scope state in `@airma/react-state` is persisted in a store created by `StoreProvider`. Every `StoreProvider` has its own store created by store keys, we can use these keys to link a nearest matched parent `StoreProvider` for state usage. It matches the parent `StoreProvider` from inside to outside, if there is no matched store, it throws error.
 
 ```ts
-const factory1 = factory(model);
+import {
+    useModel, 
+    createStoreKey, 
+    StoreProvider
+} from '@airma/react-state';
 
-const factory2 = factory(model);
+const key1 = createStoreKey(model);
 
-const Factory1Usage = ()=>{
-    useModel(factory1);
+const key2 = createStoreKey(model);
+
+const Comp = ()=>{
+    useModel(key1);
     return ......;
 }
 
 const App = ()=>{
-    // the usage in `Factory1Usage` find link in
-    // `<ModelProvider value={factory1}>`
+    // the usage in `Comp` find link in
+    // `<StoreProvider value={key1}>`
     return (
-        <ModelProvider value={factory1}>
-            <ModelProvider value={factory2}>
-                <Factory1Usage/>
-            </ModelProvider>
-        </ModelProvider>
+        <StoreProvider value={key1}>
+            <StoreProvider value={key2}>
+                <Comp/>
+            </StoreProvider>
+        </StoreProvider>
     );
 }
 ```
 
-The `factory` API generates a unique key by every calling, it can not be affected by the wrapped model. So, though the `factory1` and `factory2` wraps a same model, they are still different.
+The `createStoreKey` API always generates a unique store key. Though the `key1` and `key2` wraps a same model, they are still different.
 
 ## More usage
 
@@ -109,7 +117,7 @@ For example, we can use `useSelector` to organize asynchronous methods as side e
 ```ts
 import React, {memo, useEffect} from 'react';
 import {
-    ModelProvider,
+    StoreProvider,
     useSelector, 
     useRefresh,
     useModel
@@ -178,6 +186,4 @@ const Source = memo(()=>{
 ......
 ```
 
-This example is just for explaining you can use these APIs flexible. We do not recommend using `useSelector` to do an asynchronous work.
-
-Let's take a view about [API](/react-state/api.md).
+Let's take the final section about [API](/react-state/api.md).

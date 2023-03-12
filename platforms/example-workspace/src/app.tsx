@@ -224,7 +224,7 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
     defaultData: [],
-    strategy: Strategy.memo.stringify()
+    strategy: Strategy.memo()
   });
 
   const [result] = d;

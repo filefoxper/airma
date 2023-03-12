@@ -96,13 +96,15 @@ const counter = (count:number)=>{
 
 ## Instance
 
-The `proto instance` can be transformed to be a `Proxy` object by `useModel` API. Call the methods from this `Proxy` object can lead a `model` refresh. We call the `Proxy` object `instance`.
+The `proto instance` is always mapped to be an interface object by `useModel` API. Call methods from this interface object can lead a `model` refresh. We call this object a `instance`.
+
+### Stable instance
 
 Examples:
 
-count model:
-
 ```ts
+import {useModel} from '@airma/react-state';
+
 const counter = (count:number)=>{
     // proto instance
     return {
@@ -117,17 +119,70 @@ const counter = (count:number)=>{
     }
 }
 
-// instance from proto instance
+// stable instance from proto instance
 const instance = useModel(counter, 0);
+
+useEffect(()=>{
+    setTimeout(()=>{
+        // You might have called instance.increase to make count 1, 
+        // but, the scope closure fixed count always be 0.
+        console.log(instance.count);
+    },1000);
+},[]);
 ```
 
-## Refresh
+The properties of `instance` are stable in a render time, no matter where and when you get them, they are fixed by the render scope closure. If you want to get a newest property value from `instance` in a side effect function runtime, you need to use `realtime instance`.
 
-When we call a method from `instance`, it returns a next `state` for `model`, then `useModel` API recalls the `model` with this new `state` to refresh `instance`. We call these procedures `refresh`.
+### Realtime instance
 
 Examples:
 
-count model:
+```ts
+import {useModel, useRealtimeInstance} from '@airma/react-state';
+
+const counter = (count:number)=>{
+    // proto instance
+    return {
+        count,
+        isNegative: count<0,
+        increase(){
+            return count+1;
+        },
+        decrease(){
+            return count-1;
+        }
+    }
+}
+
+// stable instance from proto instance
+const instance = useModel(counter, 0);
+
+// realtime instance from stable
+const realtimeInstanceFromStable = useRealtimeInstance(instance);
+
+// realtime instance from proto instance
+const realtimeInstance = useModel(counter, 0, {realtimeInstance:true});
+
+useEffect(()=>{
+    setTimeout(()=>{
+        // You might have called instance.increase to make count 1, 
+        // but, the scope closure fixed count always be 0.
+        console.log(instance.count);
+        // A realtime instance make sure you can get a newest value.
+        console.log(realtimeInstanceFromStable.count);
+        // A realtime instance make sure you can get a newest value.
+        console.log(realtimeInstance.count);
+    },1000);
+},[]);
+```
+
+The only different with `stable instance` is that `realtime instance` can not fit `React.Strict` mode so well, but it has a realtime property getter. So, we call both of them `instance`.
+
+## Refresh
+
+When we call a method from `instance`, it returns a next `state` as a new parameter for `model`, then `useModel` API recalls the `model` with this new `state` to refresh `instance`. We call these procedures `refresh`.
+
+Examples:
 
 ```ts
 const counter = (count:number)=>{
@@ -147,7 +202,9 @@ const counter = (count:number)=>{
 // instance from proto instance
 const {count, increase} = useModel(counter, 0);
 ......
-increase(); // refresh
+const clickEventHandler = ()=>{
+    increase(); // refresh
+};
 ```
 
 The process of refresh:

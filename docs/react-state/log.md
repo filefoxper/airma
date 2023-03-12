@@ -58,3 +58,12 @@
 ## v 17.1.9 2023-03-03
 
 * fix bug about useSelector can not listen to store state change.
+
+## v 17.2.0 2023-03-12
+
+* add API `createStoreKey`.
+* add API `StoreProvider`.
+* add API `withStoreProvider`.
+* optimize `instance` to `stable instance` and `realtime instance`.
+* add API `useRealtimeInstance`.
+* add API `useIsModelMatchedInStore`

@@ -62,7 +62,7 @@ export function useNavigation<T>(source:T[]):Navigation<T>{
 }
 ```
 
-As we have talked, that `setState` is not good for test, and too much `setState` split one change to mutiple changes.
+As we have talked, that `setState` is not good enough for test, and too much `setState` split one change to mutiple changes.
 
 useModel.ts
 
@@ -117,11 +117,11 @@ export function useNavigation<T>(source:T[]):Navigation<T>{
 }
 ```
 
-As we can see, the model function is more good at telling the often changes, and we can compute others from the often changes. 
+As we can see, the model function is more good at telling the often changes, and we can compute other useful data from the often changes. 
 
 A model can be reused more easier.
 
-If we want to make another useNavigation with field sort function, what we can do? Compare the `useState` and `useModel` examples.
+If we want to make another useNavigation with a sort feature, what we can do? Compare the `useState` and `useModel` examples.
 
 type.ts
 
@@ -146,8 +146,9 @@ export function useSortNavigation<T>(source:T[]){
     const [order, setOrder] = useState<'desc'|'asc'>('desc');
     const [field, setField] = useState<null|keyof T>(null);
     // every time when the order changes,
-    // the source are recomputed,
-    // it can lead the setPage(1) happens in `useNavigation`
+    // the source is recomputed,
+    // it can lead the setPage(1) happens in 
+    // `useNavigation -> useEffect`
     const sortedSource = useMemo(()=>{
         return field?_.orderBy(source, [field], [order]) : source;
     },[source, order, field]);
@@ -218,11 +219,11 @@ export function useSortNavigation<T>(source:T[]):Navigation<T>{
 } 
 ```
 
-Yes, we copied part of the codes from `useNavigation`, but reuse the main logic about how to navigate pages, and compose the sort function with it.
+Yes, we copied part of the codes from `useNavigation`, but reuse the main logic about how to navigate pages, and compose the sort feature with it.
 
 #### Controlled Model
 
-There are more reusage that `model` can do better than `useState`, for example, sometimes we want to reuse the uncontrolled model logic into a controlled component.
+There are more reusages that a `model` can do better than `useState`, for example, sometimes we want to reuse an uncontrolled model logic into a controlled component.
 
 model.ts
 
@@ -288,7 +289,7 @@ API `useControlledModel` can link `state` and `setState` outside, it has no stat
 
 ## Scope state
 
-Sometimes, we need `React.useContext` to manage a scope state, for we don't want to pass states and actions through a deep props flow one by one. 
+Sometimes, we need `React.useContext` to manage a scope state, for we don't want to pass states and action methods through a deep props flow one by one. 
 
 There are two ways to build scope state. 
 
@@ -299,8 +300,8 @@ The outside global store is terrible. It makes components difficult to be reused
 
 There are 4 important APIs to work the scope states.
 
-1. `factory`, it wraps a model, and generate a new model as a key to store.
-2. `ModelProvider`, it is a Context.Provider, which provides a scope store for child usages.
+1. `createStoreKey`, it wraps a model, and generate a new model as a key to store.
+2. `StoreProvider`, it is a Context.Provider, which provides a scope store for child usages.
 3. `useModel`, if we have provide a factory model for `useModel`, it uses this factory as a key to link a matched store state.
 4. `useSelector`, it is a child usage like `useModel`, but can select data or methods from instance, and only when the selected result change can make it rerender. This API is often used to reduce the render frequency of component.
 
@@ -339,7 +340,7 @@ export function fetchSource(query:Query):Promise<User[]>{
 model.ts
 
 ```ts
-import {factory} from '@airma/react-state';
+import {createStoreKey} from '@airma/react-state';
 import _ from 'lodash';
 import type {Query, User} from './type';
 
@@ -422,36 +423,37 @@ function sourceModel(changes: SourceChanges){
     }
 }
 
-// factory collections,
+// storeKeys,
 // we will use `useModel(queryModels.search)`
 // to link searchModel state from a matched Provider store
 const queryModels = {
-    search: factory(searchModel, defaultSearch()),
-    source: factory(sourceModel, defaultSource())
+    search: createStoreKey(searchModel, defaultSearch()),
+    source: createStoreKey(sourceModel, defaultSource())
 }
 
 export {
-    // the factory collections are the keys to link 
+    // the storeKeys are the keys to link 
     // store states.
     // before use these keys, 
-    // we will provide them to `ModelProvider`
+    // we will provide them to `StoreProvider`
     // for generating a scope store.
     queryModels
 }
 ```
 
-We creates factories, and provide them to `ModelProvider` for generating a scope store. After that, we will use them as keys to link states from store by using `useModel` or `useSelector`.
+We creates storeKeys, and provide them to `StoreProvider` for generating a scope store. After that, we will use them as keys to link states from store by using `useModel` or `useSelector`.
 
 layout.tsx
 
 ```ts
 import React, {memo, useEffect} from 'react';
 import {
-    ModelProvider,
+    StoreProvider,
     useSelector, 
     useRefresh,
     useModel
 } from '@airma/react-state';
+import {useQuery} from '@airma/react-query';
 import {Input, Button, Table, Pagination} from 'antd';
 import {queryModels} from './model';
 import {fetchSource} from './service';
@@ -483,49 +485,6 @@ const Search = memo(()=>{
     );
 });
 
-// simulate a useQuery, 
-// which fetches users when validQuery changes.
-// It returns a `fetching` status and current `users`.
-const useQuery = (validQuery:Query)=>{
-    const {
-        fetching, 
-        source,
-        startFetch,
-        updateSource,
-        finishFetch
-    } = useModel((changes:{fetching:boolean, source:User[]})=>{
-        const changeFetching = (start:boolean)=>{
-            return {...changes,fetching:start};
-        }
-        return {
-            ...changes,
-            startFetch(){
-                return changeFetching(true);
-            },
-            updateSource(s:User[]){
-                return {...changes,source:s};
-            },
-            finishFetch(){
-                return changeFetching(false);
-            }
-        }
-    },{fetching:false, source:[]});
-
-    useEffect(()=>{
-        (async function fetching(){
-            startFetch();
-            try{
-                const source = await fetchSource(validQuery);
-                updateSource(source);
-            }finally{
-                finishFetch();
-            }
-        })();
-    },[validQuery]);
-
-    return {fetching, source};
-}
-
 const Source = memo(()=>{
     // link searchModel state in store,
     // and select the `validQuery` from created instance,
@@ -544,7 +503,11 @@ const Source = memo(()=>{
         updateSource
     } = useModel(queryModels.source);
 
-    const {fetching, source} = useQuery(validQuery);
+    // useQuery for fetching data
+    const [{isFetching, data: source}] = useQuery(fetchSource, {
+        variables: [validQuery],
+        defaultData: []
+    });
 
     // when the source(users) changes,
     // the `updateSource` method from `queryModels.source` instance
@@ -556,7 +519,7 @@ const Source = memo(()=>{
         <div>
             <Table
                 dataSource={datasource}
-                loading={fetching}
+                loading={isFetching}
                 bordered
                 pagination={false}
             >
@@ -574,24 +537,24 @@ const Source = memo(()=>{
 });
 
 export default function Page(){
-    // before use factory collections to link store states,
-    // we need to provide it to a `ModelProvider` for store creating.
+    // before use storeKeys to link store states,
+    // we need to provide them to `StoreProvider` for store creation.
     return (
-        <ModelProvider value={queryModels}>
+        <StoreProvider value={queryModels}>
             <Search/>
             <Source/>
-        </ModelProvider>
+        </StoreProvider>
     );
 }
 ```
 
 The `@airma/react-state` scope state usage steps are:
 
-1. Create factory collections( or factory).
-2. Provide factory collections to a parent `ModelProvider`.
-3. Use `useModel` or `useSelector` in the children of `ModelProvider` to link store for usage.
+1. Create store key by API `createStoreKey`.
+2. Provide store keys to a parent `StoreProvider`.
+3. Use `useModel` or `useSelector` in the children of `StoreProvider` to link store for usage.
 
-Sometimes, we want to initialize a default state to store in component. We can use `useModel(factoryModel, defaultState)` to do that. If the factory model is matched, and the store state is uninitialized, the default state can be initialized into store once.
+Sometimes, we want to initialize a default state to store in render time, we can use `useModel(storeKey, defaultState)` to do that. If the store key is matched, and the store state is not changed by action method operations, the default state can be initialized into store once.
 
 ```ts
 import React, {memo} from 'react';
@@ -607,7 +570,7 @@ const defaultSearch = {
 }
 
 const Search = memo(()=>{
-    // we can use default parameter for initializing in component
+    // we can use default parameter for initializing in render time
     useModel(queryModels.search, defaultSearch);
 
     ......
@@ -628,12 +591,12 @@ export default function Page(){
 
 #### AutoLink
 
-If the factory key can not find a matched store in the parent `ModelProvider`s, the `useModel` API throws an error to tell that the key factory can not find a matched store. That often happens when we want to reuse a scope state using component or customized hook out of the matched Provider. In that case, we can set a `autoLink` option to tell `useModel` use a local state instead, if the matched store can not be found.
+If the store key can not match a store in parent `StoreProvider`s, the `useModel` API throws an error to tell that the key can not matched a store. That often happens when we want to reuse component or customized hook with scope state to a out Provider component. In that case, we can set a `autoLink` optional config to tell `useModel` use a local state instead, if there is no match store in parent.
 
 ```ts
 import React, {memo} from 'react';
 import {
-    ModelProvider,
+    StoreProvider,
     useModel
 } from '@airma/react-state';
 import {queryModels} from './model';
@@ -646,7 +609,7 @@ const defaultSearch = {
 const Search = memo(()=>{
     // `autoLink` option makes `useModel` to
     // create a local state with `defaultSearch`,
-    // if no parent store matched `queryModels.search`. 
+    // if no store matched with `queryModels.search`. 
     // Be careful, if the `autoLink` is opening,
     // the initializing about default state for store state
     // is auto disabled. 
@@ -664,24 +627,24 @@ export default function Page(){
             {/* no matched store has been hound, */} 
             {/* useModel creates a private state instead */}
             <Search/>
-            <ModelProvider value={queryModels}>
+            <StoreProvider value={queryModels}>
                 <Search/>
                 <Source/>
-            </ModelProvider>
+            </StoreProvider>
         </div>
     );
 }
 ```
 
-Set `autoLink` option to `useModel` can create a private state when the matched store for factory is not found. But, it also disables the default state initializing for matched case.
+Set `autoLink` option to `useModel` can create a private state when there is no matched store for store key. But, it also disables the default state initializing for the opposite case.
 
 #### Pipe
 
-The factory model has a `pipe` method, you can use it to replace a new model, and link state to a matched store.
+The store key has a `pipe` method, you can use it to link the matched store state with another model.
 
 ```ts
 import React, {memo} from 'react';
-import {ModelProvider, factory, useModel} from '@airma/react-state';
+import {StoreProvider, createStoreKey, useModel} from '@airma/react-state';
 
 const counter = (count:number = 0)=> ({
     count,
@@ -689,10 +652,10 @@ const counter = (count:number = 0)=> ({
     decrease:()=>count - 1
 });
 
-const countFactory = factory(counter);
+const countStoreKey = createStoreKey(counter);
 
 const Counter = memo(()=>{
-    const {count, increase, decrease} = useModel(countFactory);
+    const {count, increase, decrease} = useModel(countStoreKey);
 
     return ......
 });
@@ -702,7 +665,7 @@ const Cleaner = memo(()=>{
     // the matched store state.
     // when we click `clean` button,
     // the count in `Counter` component changes to 0.
-    const {clear} = useModel(countFactory.pipe((c:number)=>{
+    const {clear} = useModel(countStoreKey.pipe((c:number)=>{
         clear():number{
             return 0;
         }
@@ -714,16 +677,16 @@ const Cleaner = memo(()=>{
 export default function Page(){
     return (
         <div>
-            <ModelProvider value={countFactory}>
+            <StoreProvider value={countStoreKey}>
                 <Counter/>
                 <Cleaner/>
-            </ModelProvider>
+            </StoreProvider>
         </div>
     );
 }
 ```
 
-If you want to learn more about scope state, take the next [section](/react-state/feature.md) about features of `@airma/react-state`.
+If you want to learn more about scope state, you can take the next [section](/react-state/feature.md) about features of `@airma/react-state`.
 
 
 

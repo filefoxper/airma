@@ -49,16 +49,16 @@ API `useModel` can generate an `instance` object by calling a `model` function w
 
 It looks like `useReducer`, but more free for usage, you can forget `dispatch` now.
 
-To make a state change sharable, you need to create a `factory`, and use it on a `ModelProvider`, then use `useModel` or `useSelector` to link it.
+To make a state change sharable, you need to create a `store key`, and use it on a `StoreProvider`, then use `useModel` or `useSelector` to link it.
 
 ```tsx
 import React,{memo} from 'react';
 import {render} from 'react-dom'
 import {
-  ModelProvider,
+  StoreProvider,
   useModel,
   useSelector,
-  factory
+  createStoreKey
 } from '@airma/react-state';
 
 const counter = (count:number = 0) =>{
@@ -70,10 +70,9 @@ const counter = (count:number = 0) =>{
   };
 };
 
-// Use API `factory` to build a model factory.
-// It can be used as a `function` key for state link.
-// A factory is not a store, it only carries a default state.
-const couterFactory =  factory(counter);
+// Use API `createStoreKey` to build a store key.
+// It can be used as a key to link store state.
+const couterFactory =  createStoreKey(counter);
 
 const Increase = memo(()=>{
   // use API `useSelector` to fetch the `increase` method.
@@ -94,7 +93,7 @@ const Decrease = memo(()=>{
 });
 
 const CountValue = memo(()=>{
-  // use API `useModel` with a factory can link the store state.
+  // use API `useModel` with a store key can link the store state.
   const {count,isNegative} = useModel(couterFactory);
   return (
     <span style={isNegative?{color:'red'}:undefined}>{count}</span>
@@ -105,16 +104,16 @@ function Counter({index}:{index:number}){
     return (
       <div>
         counter:{index}
-        {/* ModelProvider can hold factories, */}
-        {/* and create a instance store in it, */}
-        {/* then we can use factory as key to fetch instance */}
-        <ModelProvider value={couterFactory}>
+        {/* StoreProvider can hold store keys, */}
+        {/* and create a inside store, */}
+        {/* then we can use store key to link store state */}
+        <StoreProvider value={couterFactory}>
           <div>
             <Decrease/>
             <CountValue/>
             <Increase/>
           </div>
-        </ModelProvider>
+        </StoreProvider>
       </div>
     );
 }

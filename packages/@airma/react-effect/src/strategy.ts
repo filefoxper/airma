@@ -47,8 +47,18 @@ function once(): StrategyType {
   };
 }
 
+const stringifyComparator = function comparator(s: any, t: any) {
+  if (Object.is(s, t)) {
+    return true;
+  }
+  if (s == null || t == null) {
+    return false;
+  }
+  return JSON.stringify(s) === JSON.stringify(t);
+};
+
 function memo<T>(
-  equalFn?: (source: T | undefined, target: T) => boolean
+  equalFn: (source: T | undefined, target: T) => boolean = stringifyComparator
 ): StrategyType {
   return function mo(value) {
     const { runner, current } = value;
@@ -65,21 +75,6 @@ function memo<T>(
     });
   };
 }
-
-function stringify() {
-  const comparator = function comparator(s: any, t: any) {
-    if (Object.is(s, t)) {
-      return true;
-    }
-    if (s == null || t == null) {
-      return false;
-    }
-    return JSON.stringify(s) === JSON.stringify(t);
-  };
-  return memo(comparator);
-}
-
-memo.stringify = stringify;
 
 function error(
   process: (e: unknown) => any,

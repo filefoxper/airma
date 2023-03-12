@@ -431,11 +431,11 @@ Sharing state between components is very useful for react app. It helps us use s
 
 We can use the follow APIs to share state between components.
 
-1. ClientProvider - It is a react context provider component. It creates a store inside to maintain states from `useQuery` or `useMutation` which you want to sharing in the context scope.
-2. client - It helps you create a sharing key for promise callback. Provide these sharing keys to `ClientProvider` can create a store. And you can use them as a key to link the store in deep child component usages.
-3. useClient - It is a point hook to accept state changes from a parent `ClientProvider`. You need a client key for it to accept state changes.
-4. useQuery - It is a point hook to broadcast or accept state changes in `ClientProvider`. You need a client key for it too, if not, it is just a local query hook.
-5. useMutation - It is a point hook to broadcast or accept state changes in `ClientProvider`. You need a client key for it too, if not, it is just a local mutation hook.
+1. SessionProvider - It is a react context provider component. It creates a store inside to maintain states from `useQuery` or `useMutation` which you want to sharing in the context scope.
+2. createSessionKey - It helps you create a sharing session key for promise callback. Provide these keys to `SessionProvider` can create a store. And you can use them to link the store in deep child component usages.
+3. useSession - It is a point hook to accept state changes from a parent `SessionProvider`. You need a session key for it to accept state changes.
+4. useQuery - It is a point hook to broadcast or accept state changes in `SessionProvider`. You need a session key for it too, if not, it is just a local query hook.
+5. useMutation - It is a point hook to broadcast or accept state changes in `SessionProvider`. You need a session key for it too, if not, it is just a local mutation hook.
 
 Here is an example about how to share a login user information and a login user config information after application initialized. 
 
@@ -443,11 +443,11 @@ Here is an example about how to share a login user information and a login user 
 import React from 'react';
 import {render} from 'react-dom';
 import {
-    client,
-    ClientProvider,
+    createSessionKey,
+    SessionProvider,
     useMutation,
     useQuery,
-    useClient,
+    useSession,
     useStatus
 } from '@airma/react-effect';
 import {login, fetchConfig} from './service';
@@ -459,11 +459,11 @@ import {LoginBody, User, Config} from './type';
 // function login (user: LoginBody): Promise<User>;
 // function fetchConfig(userId: number | null): Promise<Config>;
 
-// use `client` to create a login request key
-const loginUser = client(login);
+// use `createSessionKey` to create a login request key
+const loginUser = createSessionKey(login);
 
-// use `client` to create a fetchConfig request key
-const config = client(fetchConfig);
+// use `createSessionKey` to create a fetchConfig request key
+const config = createSessionKey(fetchConfig);
 
 // combine keys together
 const clientKeys = {
@@ -472,8 +472,8 @@ const clientKeys = {
 };
 
 const App = ()=>{
-    const [ {data: user} ] = useClient(loginUser, {loaded:true});
-    const [ {data: userConfig} ] = useClient(config, {loaded: true});
+    const [ {data: user} ] = useSession(loginUser, {loaded:true});
+    const [ {data: userConfig} ] = useSession(config, {loaded: true});
 
     return ......;
 }
@@ -507,11 +507,14 @@ const Login = ()=>{
 }
 
 const Entry = ()=>{
-    // Use useClient and client key loginUser to accept state changes 
+
+    // Use useSession and session key loginUser to accept state changes 
     // from useMutation in component Login
-    const loginClient = useClient(loginUser);
+    const loginClient = useSession(loginUser);
+
     const [ {data, loaded} ] = loginClient;
-    // use `useQuery` and config key to query config,
+
+    // use `useQuery` and session key to query config,
     // and broadcast result to other components.
     const configClient = useQuery(config,{
         // Limit useQuery works in update mode,
@@ -521,11 +524,9 @@ const Entry = ()=>{
         variables: [ loaded? data.id : null ],
         triggerOn: ['update']
     });
-    // Use useStatus to check if loginClient and configClient
-    // have loaded data.
-    const {
-        loaded: initialized
-    } = useStatus(loginClient, configClient);
+
+    const initialized = loginClient.loaded && configClient.loaded;
+
     // If not, it should still show Login component
     if (!initialized) {
         return <Login/>;
@@ -535,49 +536,33 @@ const Entry = ()=>{
 
 render(
     // use client keys to create a store in ClientProvider
-    <ClientProvider value={clientKeys}>
+    <StoreProvider value={clientKeys}>
         <Entry/>
-    </ClientProvider>,
+    </StoreProvider>,
     document.getElementById('root')
 );
 ```
 
-The code above shows how to use state sharing. And you may notice the API `useStatus`, it is used to summary the status of useQuery and useMutation APIs. You can pass multiple clients or states from these APIs to it.
+The code above shows how to use state sharing.
 
-The status structure:
-
-```ts
-declare type Status = {
-  // If some states are fetching
-  isFetching: boolean;
-  // If all states has loaded data
-  loaded: boolean;
-  // If there are some rejections
-  isError: boolean;
-  // If all states are successed.
-  isSuccess: boolean;
-};
-```
-
-`@airma/react-effect` support a `ClientProvider` tree match. You can use a child `ClientProvider` in a parent one, like:
+`@airma/react-effect` support a `SessionProvider` tree match. You can use a child `SessionProvider` in a parent one, like:
 
 ```ts
 import React from 'react';
 import {render} from 'react-dom';
 import {
-    client,
-    ClientProvider,
+    createSessionKey,
+    SessionProvider,
     useMutation,
     useQuery,
-    useClient,
-    useStatus
+    useSession
 } from '@airma/react-effect';
 import {login, fetchConfig, fetchTodos} from './service';
 import {LoginBody, User, Config, Todo} from './type';
 
-const loginUser = client(login);
+const loginUser = createSessionKey(login);
 
-const config = client(fetchConfig);
+const config = createSessionKey(fetchConfig);
 
 const globalKeys = {
     loginUser,
@@ -586,24 +571,24 @@ const globalKeys = {
 
 const pageKeys ={
     // function fetchTodos():Promise<Todo[]>
-    todos: client(fetchTodos)
+    todos: createSessionKey(fetchTodos)
 }
 
 const TodoList = ()=>{
-    const [ {data: list} ] = useClient(pageKeys.todos);
+    const [ {data: list} ] = useSession(pageKeys.todos);
     return ......;
 };
 
 const Page = ()=>{
-    // useClient can not match the key loginUser
-    // in <ClientProvider value={pageKeys} />, 
-    // it will auto go up to <ClientProvider value={globalKeys} />,
+    // useSession can not match the key loginUser
+    // in <SessionProvider value={pageKeys} />, 
+    // it will auto go up to <SessionProvider value={globalKeys} />,
     // and it will match state there.
-    const [ {data: user} ] = useClient(loginUser, {loaded:true});
-    const [ {data: userConfig} ] = useClient(config, {loaded: true});
+    const [ {data: user} ] = useSession(loginUser, {loaded:true});
+    const [ {data: userConfig} ] = useSession(config, {loaded: true});
 
     // useQuery matches its key pageKeys.todos
-    // in <ClientProvider value={pageKeys} />.
+    // in <SessionProvider value={pageKeys} />.
     useQuery(pageKeys.todos,[]);
 
     return ......;
@@ -626,29 +611,27 @@ const Login = ()=>{
 const Entry = ()=>{
     const loginClient = ...;
     const configClient = ...;
-    const {
-        loaded: initialized
-    } = useStatus(loginClient, configClient);
+    const initialized = loginClient.loaded && configClient.loaded;
     if (!initialized) {
         return <Login/>;
     }
-    // Use a child ClientProvider
+    // Use a child SessionProvider
     return (
-        <ClientProvider value={pageKeys}>
+        <SessionProvider value={pageKeys}>
           <Page/>
-        </ClientProvider>
+        </SessionProvider>
     );
 }
 
 render(
-    // Use a global ClientProvider
-    <ClientProvider value={globalKeys}>
+    // Use a global SessionProvider
+    <SessionProvider value={globalKeys}>
         <Entry/>
-    </ClientProvider>,
+    </SessionProvider>,
     document.getElementById('root')
 );
 ```
 
-The code above shows that the sharing state usage point matches state from the closest parent `ClientProvider` to a farther one.
+The code above shows that the sharing state usage point matches state from the closest parent `SessionProvider` to a farther one.
 
 We will introduce the features of `useQuery` and `useMutation` in next [section](/react-effect/feature.md).

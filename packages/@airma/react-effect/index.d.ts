@@ -142,7 +142,15 @@ export declare function useMutation<
 ];
 
 export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config: { loaded: true }
+): [LoadedSessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
   factory: D
+): [SessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config?: { loaded?: boolean }
 ): [SessionState<PCR<D>>, () => void];
 
 export declare function createSessionKey<
@@ -189,7 +197,7 @@ export declare const Strategy: {
     process: (data: T) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
-  memo: (<T>(
+  memo: <T>(
     equalFn?: (source: T | undefined, target: T) => boolean
-  ) => StrategyType<T>) & { stringify: () => StrategyType };
+  ) => StrategyType<T>;
 };

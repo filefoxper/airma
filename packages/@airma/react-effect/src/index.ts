@@ -547,12 +547,21 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
-  sessionKey: SessionKey<C>
+  sessionKey: SessionKey<C>,
+  config?: { loaded?: boolean }
 ): [SessionState<T>, () => void] {
-  return useSelector(
+  const session = useSelector(
     sessionKey,
     s => [s.state, s.trigger] as [SessionState<T>, () => void]
   );
+  const { loaded: shouldLoaded } = config || {};
+  const [{ loaded }] = session;
+  if (shouldLoaded && !loaded) {
+    throw new Error(
+      'The session is not loaded yet, check config, and set {loaded: undefined}.'
+    );
+  }
+  return session;
 }
 
 export function useIsFetching(...sessionStates: SessionState[]): boolean {
@@ -565,6 +574,11 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
     defaultIsFetchingState,
     { autoLink: true }
   );
+  if (!isMatchedInStore && !sessionStates.length) {
+    throw new Error(
+      'You should provide a `GlobalRefreshProvider` to support a global `isFetching` detect.'
+    );
+  }
   if (isMatchedInStore && !sessionStates.length) {
     return isGlobalFetching;
   }

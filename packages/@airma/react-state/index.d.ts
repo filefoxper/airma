@@ -76,7 +76,18 @@ export declare const ModelProvider: FC<{
   children?: ReactNode;
 }>;
 
+export declare const StoreProvider: FC<{
+  value: StoreKeys;
+  children?: ReactNode;
+}>;
+
 export declare function withModelProvider(
+  models: StoreKeys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
+
+export declare function withStoreProvider(
   models: StoreKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>

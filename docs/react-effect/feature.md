@@ -61,10 +61,10 @@ const App = ()=>{
 
 ## State sharing
 
-When you are using [state sharing](/react-effect/guides?id=sharing-state) with `useQuery` or `useMutation` in `ClientProvider`, you may use a same key in multiple times to query or mutate data at the same time. In that case, only the first triggered one can actually call the promise callback, and others will be an acceptor to accept the state change from `ClientProvider`.
+When you are using [state sharing](/react-effect/guides?id=sharing-state) with `useQuery` or `useMutation` in `SessionProvider`, you may use a same key in multiple times to query or mutate data at the same time. In that case, only the first triggered one can actually call the promise callback, and others will be an acceptor to accept the state change from `SessionProvider`.
 
 ```ts
-const query = client(fetchData);
+const query = createSessionKey(fetchData);
 
 const Child1 = ()=>{
     // It is a earliest triggered one
@@ -86,49 +86,10 @@ const App = ()=>{
     // The query in Child1 and Child2 triggered in component mount
     // at the same time.
     return (
-        <ClientProvider value={query}>
+        <SessionProvider value={query}>
           <Child1/>
           <Child2/>
-        </ClientProvider>
-    );
-}
-```
-
-It only happens when the `useQuery` or `useMutation` is working in the `mount` or `update` mode. If you triggered them manually like use `trigger` or `execute` method, the promise callback still works.
-
-```ts
-const query = client(fetchData);
-
-const Child1 = ()=>{
-    // It is a earliest triggered one
-    useQuery(query, []);
-
-    return ......;
-}
-
-const Child2 = ()=>{
-    // It will not actually call fetchData when component is mounting,
-    // for there is a same key calling happened.
-    // But it is triggered in useLayoutEffect,
-    // the fetchData is called here finally.
-    const [ {data}, trigger, execute ] = useQuery(query, []);
-
-    useLayoutEffect(()=>{
-        // trigger manually
-        trigger();
-    },[]);
-
-    return ......;
-}
-
-const App = ()=>{
-    // The query in Child1 and Child2 triggered in component mount
-    // at the same time.
-    return (
-        <ClientProvider value={query}>
-          <Child1/>
-          <Child2/>
-        </ClientProvider>
+        </SessionProvider>
     );
 }
 ```
