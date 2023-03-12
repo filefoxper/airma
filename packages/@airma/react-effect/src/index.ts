@@ -54,10 +54,7 @@ const isFetchingModel = factory((fetchingKeys: any[]) => {
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
-export function GlobalRefreshProvider({
-  value,
-  children
-}: GlobalConfigProviderProps) {
+export function GlobalProvider({ value, children }: GlobalConfigProviderProps) {
   const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
   return isMatchedInStore
     ? createElement(

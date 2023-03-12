@@ -175,8 +175,8 @@ export declare type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export declare const GlobalRefreshProvider: FC<{
-  value: GlobalConfig;
+export declare const GlobalProvider: FC<{
+  value?: GlobalConfig;
   children?: ReactNode;
 }>;
 

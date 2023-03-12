@@ -15,3 +15,7 @@
 * rename API `GlobalConfigProvider` to `GlobalRefreshProvider`.
 * rename API `ClientProvider` to `SessionProvider`.
 * add API `useIsFetching`.
+
+# v 17.0.1 2023-03-12
+
+* rename API `GlobalRefreshProvider` to `GlobalProvider`.

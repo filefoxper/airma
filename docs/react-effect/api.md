@@ -256,12 +256,12 @@ const Strategy: {
 * Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 
-## GlobalRefreshProvider
+## GlobalProvider
 
 It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
 
 ```ts
-GlobalRefreshProvider props:{
+GlobalProvider props:{
     value: GlobalConfig,
     children?: ReactNode
 }
@@ -277,7 +277,7 @@ GlobalRefreshProvider props:{
 ```ts
 import React from 'react';
 import {
-  GlobalRefreshProvider,
+  GlobalProvider,
   Strategy,
   useQuery
 } from '@airma/react-effect';
@@ -316,11 +316,11 @@ const App = ()=>{
 
 ......
 {/* Set a ClientConfig */}
-<GlobalRefreshProvider 
+<GlobalProvider 
   value={Strategy.error(e => console.log(e))}
 >
   <App/>
-</GlobalRefreshProvider>
+</GlobalProvider>
 ```
 
 ## useIsFetching
@@ -343,4 +343,4 @@ A boolean data, if any of sessionStates is in `fetching`, it returns true.
 
 Explain
 
-If `useIsFetching` is in a `GlobalRefreshProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalRefreshProvider`.
+If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalProvider`.
