@@ -77,7 +77,18 @@ export function rest(url: string | HttpProperties): HttpType {
       const { urls } = properties;
       return rest({ ...properties, urls: urls.concat(child.split('/')) });
     },
-    setConfig(restConfig: RestConfig): HttpType {
+    setConfig(
+      restConfig: RestConfig | ((c: RestConfig) => RestConfig)
+    ): HttpType {
+      if (typeof restConfig === 'function') {
+        rest({
+          ...properties,
+          restConfig: {
+            ...defaultRestConfig,
+            ...restConfig(properties.restConfig)
+          }
+        });
+      }
       return rest({
         ...properties,
         restConfig: { ...defaultRestConfig, ...restConfig }

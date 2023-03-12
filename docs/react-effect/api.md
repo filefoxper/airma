@@ -12,7 +12,7 @@ function useQuery(callback, variables){
 
 ### Parameters
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a client key `client((...variables:any[])=>Promise<any>)`.
+* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
 * variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
 
 Variables config:
@@ -33,9 +33,7 @@ Variables config:
     strategy?: Strategy | (Strategy[]),
     // limit the working trigger type in `mount`, `update`, `manual`
     // default with ['mount', 'update', 'manual']
-    triggerOn?: TriggerType[],
-    // to ignore the global config from `ClientConfigProvider`
-    exact?: boolean
+    triggerOn?: TriggerType[]
 }
 ```
 
@@ -76,7 +74,7 @@ function useMutation(callback, variables){
 
 ### Parameters
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a client key `client((...variables:any[])=>Promise<any>)`.
+* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
 * variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
 
 Variables config:
@@ -95,9 +93,7 @@ Variables config:
     strategy?: Strategy | (Strategy[]),
     // limit the working trigger type in `mount`, `update`, `manual`
     // default with ['manual']
-    triggerOn?: TriggerType[],
-    // to ignore the global config from `ClientConfigProvider`
-    exact?: boolean
+    triggerOn?: TriggerType[]
 }
 ```
 
@@ -126,13 +122,13 @@ type State<T> = {
 } 
 ```
 
-## client
+## createSessionKey
 
-It is used to create a client key from a promise callback.
+It is used to create a session key for a promise callback.
 
 ```ts
-function client(promiseCallback){
-    return ClientKey;
+function createSessionKey(promiseCallback){
+    return SessionKey;
 }
 ```
 
@@ -142,40 +138,40 @@ function client(promiseCallback){
 
 ### Returns
 
-* ClientKey - It is a client key model. It can be provided to ClientProvider() for creating a store. And with this key inside ClientProvider, you can broadcast or accept state changes. 
+* SessionKey - It is a session key function. It can be provided to SessionProvider for creating a store. And with this key inside SessionProvider, you can broadcast or accept state changes. 
 
-## ClientProvider
+## SessionProvider
 
-It is a React Context Provider component. It is used for creating a scope store by using client keys.
+It is a React Context Provider component. It is used for creating a scope store by using session keys.
 
 ```ts
-ClientProvider props:{
-    value: <client keys>,
+SessionProvider props:{
+    value: <session keys>,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* value - It should be client keys, an object with client key values or just a simple client key.
+* value - It should be session keys.
 * children - React Nodes
 
 ### Returns
 
 It returns a React element.
 
-## withClientProvider
+## withSessionProvider
 
-It is a HOC mode for ClientProvider.
+It is a HOC mode for SessionProvider.
 
 ```ts
-function withClientProvider(clientKeys){
+function withSessionProvider(clientKeys){
     return function connect(Component){
         return function HocComponent(componentProps){
             return (
-                <ClientProvider value={clientKeys}>
+                <SessionProvider value={clientKeys}>
                   <Component {...componentProps}/>
-                </ClientProvider>
+                </SessionProvider>
             );
         }
     }
@@ -187,19 +183,19 @@ function withClientProvider(clientKeys){
 ```ts
 import React from 'react';
 import {
-    withClientProvider, 
+    withSessionProvider, 
     useQuery, 
-    useClient
+    useSession
 } from '@airma/react-effect';
 
 const clientKey = ...;
 
 const Child = ()=>{
-    const [ {data} ] = useClient(clientKey);
+    const [ {data} ] = useSession(clientKey);
     return ......;
 }
 
-const App = withClientProvider(clientKey)(()=>{
+const App = withSessionProvider(clientKey)(()=>{
 
     useQuery(clientKey, []);
 
@@ -211,55 +207,24 @@ const App = withClientProvider(clientKey)(()=>{
 })
 ```
 
-## useClient
+## useSession
 
-It is a react hook used to accept state changes from the nearest mathced [ClientProvider](/react-effect/api?id=clientprovider).
+It is a react hook used to accept state changes from the nearest mathced [SessionProvider](/react-effect/api?id=sessionprovider).
 
 ```ts
-function useClient(clientKey){
+function useClient(sessionKey){
     return [state, trigger];
 }
 ```
 
 ### Parameters
 
-* clientKey - A client key created by [client](/react-effect/api?id=client) API.
+* sessionKey - A session key created by [createSessionKey](/react-effect/api?id=createsessionkey) API.
 
 ### Returns
 
-* state - The promise state from nearest ClientProvider store matched with the clientKey.
-* trigger - It is a no parameter callback, returns void. It can be used to trigger query or mutation which is using the same client key manually.
-
-## useStatus
-
-It is used to summary status from promise states or clients.
-
-```ts
-function useStatus(...stateOrclients){
-    return Status;
-}
-```
-
-### Parameters
-
-* stateOrclients - It is a parameter array. You can set what a `useQuery` or `useMutation` return to it, or extract the promise states to it.
-
-### Returns
-
-Status is a summary object for clients.
-
-```ts
-type Status = {
-  // If some states are fetching
-  isFetching: boolean;
-  // If all states has loaded data
-  loaded: boolean;
-  // If there are some rejections
-  isError: boolean;
-  // If all states are successed.
-  isSuccess: boolean;
-}
-```
+* state - The promise state from nearest SessionProvider store matched with the session key.
+* trigger - It is a no parameter callback, returns void. It can be used to trigger query or mutation which is using the same session key manually.
 
 ## Strategy
 
@@ -279,6 +244,9 @@ const Strategy: {
     process: (data: T) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
+  memo: <T>(
+    equalFn?: (source: T | undefined, target: T) => boolean
+  ) => StrategyType<T>;
 };
 ```
 
@@ -286,21 +254,22 @@ const Strategy: {
 * Strategy.once - It returns a strategy. With it, when your promise callback has resolved a promise, it can not be called again.
 * Strategy.error - It returns a strategy. You can provide a error process callback for it. When the promise is rejected, it calls the process callback with error parameter.
 * Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
+* Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 
-## ClientConfigProvider
+## GlobalRefreshProvider
 
 It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
 
 ```ts
-ClientConfigProvider props:{
-    value: ClientConfig,
+GlobalRefreshProvider props:{
+    value: GlobalConfig,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* value - It should be client config.
+* value - It should be global config.
 * children - React Nodes
 
 ### Example
@@ -308,14 +277,14 @@ ClientConfigProvider props:{
 ```ts
 import React from 'react';
 import {
-  ClientConfigProvider,
+  GlobalRefreshProvider,
   Strategy,
   useQuery
 } from '@airma/react-effect';
-import type {ClientConfig} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
 
-// The ClientConfig only support rebuild strategy currently.
-const config: ClientConfig = {
+// The GlobalConfig only support rebuild strategy currently.
+const config: GlobalConfig = {
   // The strategy is a callback,
   // it accepts a running effect strategy array,
   // and a effect type: 'query' | 'mutation'.
@@ -347,10 +316,31 @@ const App = ()=>{
 
 ......
 {/* Set a ClientConfig */}
-<ClientConfigProvider 
+<GlobalRefreshProvider 
   value={Strategy.error(e => console.log(e))}
 >
   <App/>
-</ClientConfigProvider>
+</GlobalRefreshProvider>
 ```
 
+## useIsFetching
+
+It is a hook to detect if there are some `useQuery` or `useMutation` are still fetching.
+
+```ts
+export declare function useIsFetching(
+  ...sessionStates: SessionState[]
+): boolean;
+```
+
+Parameters
+
+* sessionStates - The states of `useQuery` or `useMutation` for detecting.
+
+Returns
+
+A boolean data, if any of sessionStates is in `fetching`, it returns true.
+
+Explain
+
+If `useIsFetching` is in a `GlobalRefreshProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalRefreshProvider`.

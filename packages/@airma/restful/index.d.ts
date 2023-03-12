@@ -94,11 +94,13 @@ declare type PromiseValue<T = any> = Promise<T> & {
 declare type HttpType = {
   path(url: string): HttpType;
 
-  setConfig(restConfig: RestConfig): HttpType;
+  setConfig(restConfig: RestConfig | ((c: RestConfig) => RestConfig)): HttpType;
 
-  setBody<B extends Record<string | number, any>>(requestBody: B): HttpType;
+  setBody<B extends Record<string, any> | Record<number, any>>(
+    requestBody: B
+  ): HttpType;
 
-  setParams<P extends Record<string | number, unknown>>(
+  setParams<P extends Record<string, any> | Record<number, any>>(
     requestParams: P
   ): HttpType;
 

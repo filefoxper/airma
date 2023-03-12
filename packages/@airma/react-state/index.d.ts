@@ -5,7 +5,7 @@ declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P
 ) => P & { getSourceFrom: () => any };
 
-export declare type FactoryModel<T extends AirReducer<any, any>> = T & {
+export declare type StoreKey<T extends AirReducer<any, any>> = T & {
   pipe: PipeCallback<T extends AirReducer<infer S, any> ? S : never>;
   effect?: [(...params: any[]) => any, Record<string, any>?];
 };
@@ -14,7 +14,7 @@ export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S, T> & { getSourceFrom: () => any }
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
-  model: FactoryModel<AirReducer<S, T>>
+  model: StoreKey<AirReducer<S, T>>
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
@@ -22,12 +22,22 @@ export declare function useModel<S, T extends AirModelInstance>(
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
-  option?: { refresh?: boolean; autoLink?: boolean }
+  option?: {
+    refresh?: boolean;
+    autoLink?: boolean;
+    realtimeInstance?: boolean;
+    useDefaultState?: boolean;
+  }
 ): T;
 export declare function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
-  option?: { refresh?: boolean; autoLink?: boolean }
+  option?: {
+    refresh?: boolean;
+    autoLink?: boolean;
+    realtimeInstance?: boolean;
+    useDefaultState?: boolean;
+  }
 ): T;
 
 export declare function useControlledModel<S, T extends AirModelInstance>(
@@ -40,7 +50,11 @@ export declare function useRefreshModel<
   S,
   T extends AirModelInstance,
   D extends S
->(model: AirReducer<S, T>, state: D, option?: { autoLink?: boolean }): T;
+>(
+  model: AirReducer<S, T>,
+  state: D,
+  option?: { autoLink?: boolean; realtimeInstance?: boolean }
+): T;
 
 export declare function useRefresh<T extends (...args: any[]) => any>(
   method: T,
@@ -52,18 +66,29 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
       }
 ): void;
 
-export declare type FactoryCollection =
-  | FactoryModel<(s: any) => any>
-  | Array<FactoryModel<(s: any) => any>>
-  | Record<string, FactoryModel<(s: any) => any>>;
+export declare type StoreKeys =
+  | StoreKey<(s: any) => any>
+  | Array<StoreKey<(s: any) => any>>
+  | Record<string, StoreKeys>;
 
 export declare const ModelProvider: FC<{
-  value: FactoryCollection;
+  value: StoreKeys;
+  children?: ReactNode;
+}>;
+
+export declare const StoreProvider: FC<{
+  value: StoreKeys;
   children?: ReactNode;
 }>;
 
 export declare function withModelProvider(
-  models: FactoryCollection
+  models: StoreKeys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
+
+export declare function withStoreProvider(
+  models: StoreKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -79,26 +104,37 @@ export declare function useSelector<
 
 export declare function factory<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): FactoryModel<AirReducer<S | undefined, T>>;
+): StoreKey<AirReducer<S | undefined, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
-): FactoryModel<AirReducer<S, T>>;
+): StoreKey<AirReducer<S, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): FactoryModel<AirReducer<S | undefined, T>>;
+): StoreKey<AirReducer<S | undefined, T>>;
 
-export declare function keyModel<S, T extends AirModelInstance>(
+export declare function createStoreKey<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): FactoryModel<typeof model>;
-export declare function keyModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>,
-  defaultState: D
-): FactoryModel<typeof model>;
-export declare function keyModel<S, T extends AirModelInstance, D extends S>(
+): StoreKey<typeof model>;
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S, T>, defaultState: D): StoreKey<typeof model>;
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): FactoryModel<typeof model>;
+): StoreKey<typeof model>;
+
+export declare function useRealtimeInstance<T>(instance: T): T;
+
+export declare function useIsModelMatchedInStore(
+  model: AirReducer<any, any> | StoreKey<any>
+): boolean;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;

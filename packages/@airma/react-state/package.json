@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "17.1.9",
+  "version": "17.2.0",
   "description": "the purpose of this project is make useReducer more simplify",
   "license": "MIT",
   "author": "Jimmy.Harding",
@@ -24,9 +24,9 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/core": "^17.2.1",
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
+    "@airma/core": "^17.2.2",
+    "react": "16.8.0",
+    "react-dom": "16.8.0"
   },
   "devDependencies": {
     "esbuild": "^0.16.6",

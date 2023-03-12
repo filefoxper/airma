@@ -1,9 +1,9 @@
-import { FactoryCollection, FactoryModel } from '@airma/react-state';
+import { StoreKeys, StoreKey } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
-declare type LoadedPromiseResult<T> = {
+declare type LoadedSessionState<T> = {
   data: T;
   error?: any;
   isError: boolean;
@@ -14,7 +14,7 @@ declare type LoadedPromiseResult<T> = {
   loaded: true;
 };
 
-declare type UnloadedPromiseResult = {
+declare type UnloadedSessionState = {
   data: undefined;
   error?: any;
   isError: boolean;
@@ -25,224 +25,163 @@ declare type UnloadedPromiseResult = {
   loaded: false;
 };
 
-export declare type PromiseResult<T> =
-  | LoadedPromiseResult<T>
-  | UnloadedPromiseResult;
+export declare type SessionState<T> =
+  | LoadedSessionState<T>
+  | UnloadedSessionState;
 
 export declare type StrategyType<T = any> = (value: {
-  current: () => PromiseResult<T>;
+  current: () => SessionState<T>;
   variables: any[];
-  runner: () => Promise<PromiseResult<T>>;
+  runner: () => Promise<SessionState<T>>;
   store: { current: any };
-}) => Promise<PromiseResult<T>>;
+}) => Promise<SessionState<T>>;
 
-export declare type PromiseEffectCallback<T> = (...params: any[]) => Promise<T>;
+declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export declare type ModelPromiseEffectCallback<
-  E extends PromiseEffectCallback<any>
-> = FactoryModel<
-  (st: PromiseResult & { version?: number }) => {
-    state: PromiseResult;
+declare type SessionKey<E extends PromiseCallback<any>> = StoreKey<
+  (st: SessionState & { version?: number }) => {
+    state: SessionState;
     version: number;
-    setState: (s: PromiseResult) => PromiseResult & { version?: number };
-    trigger: () => PromiseResult & { version?: number };
+    setState: (s: SessionState) => SessionState & { version?: number };
+    trigger: () => SessionState & { version?: number };
   }
 > & {
   effect: [E];
   implement: (c: E) => void;
 };
 
-export declare type StrategyCollectionType<T> =
+declare type StrategyCollectionType<T> =
   | undefined
   | null
   | StrategyType<T>
   | (StrategyType<T> | null | undefined)[];
 
-export declare type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
+declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
-  exact?: boolean;
 };
 
-declare type DefaultQueryConfig<
+declare type DefaultQueryConfig<T, C extends PromiseCallback<T>> = QueryConfig<
   T,
-  C extends PromiseEffectCallback<T>
-> = QueryConfig<T, C> & {
+  C
+> & {
   defaultData: T;
 };
 
-export declare type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
+declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
-  exact?: boolean;
 };
 
 declare type DefaultMutationConfig<
   T,
-  C extends PromiseEffectCallback<T>
+  C extends PromiseCallback<T>
 > = MutationConfig<T, C> & {
   defaultData: T;
 };
 
-declare type PCR<
-  T extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
-> = T extends PromiseEffectCallback<infer R>
-  ? R
-  : T extends ModelPromiseEffectCallback<infer C>
-  ? PCR<C>
-  : never;
+declare type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
+  T extends PromiseCallback<infer R>
+    ? R
+    : T extends SessionKey<infer C>
+    ? PCR<C>
+    : never;
 
-declare type MCC<
-  T extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
-> = T extends PromiseEffectCallback<any>
-  ? T
-  : T extends ModelPromiseEffectCallback<infer C>
-  ? C
-  : never;
+declare type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
+  T extends PromiseCallback<any>
+    ? T
+    : T extends SessionKey<infer C>
+    ? C
+    : never;
 
 export declare function useQuery<
-  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+  D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config: DefaultQueryConfig<PCR<D>, MCC<D>>
 ): [
-  LoadedPromiseResult<PCR<D>>,
-  () => Promise<LoadedPromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
 ];
 export declare function useQuery<
-  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+  D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
-  PromiseResult<PCR<D>>,
-  () => Promise<PromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
 ];
 
 export declare function useMutation<
-  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+  D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config: DefaultMutationConfig<PCR<D>, MCC<D>>
 ): [
-  LoadedPromiseResult<PCR<D>>,
-  () => Promise<LoadedPromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedPromiseResult<PCR<D>>>
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
 ];
 export declare function useMutation<
-  D extends PromiseEffectCallback<any> | ModelPromiseEffectCallback<any>
+  D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): [
-  PromiseResult<PCR<D>>,
-  () => Promise<PromiseResult<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<PromiseResult<PCR<D>>>
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
 ];
 
-declare type LocalClientConfig = {
-  loaded?: boolean;
-};
-
-/**
- * @deprecated
- * @param factory
- * @param config
- */
-export declare function useAsyncEffect<
-  D extends ModelPromiseEffectCallback<any>
->(factory: D, config?: LocalClientConfig): [PromiseResult<PCR<D>>, () => void];
-
-export declare function useClient<D extends ModelPromiseEffectCallback<any>>(
+export declare function useSession<D extends SessionKey<any>>(
   factory: D,
-  config: {
-    loaded: true;
-  }
-): [LoadedPromiseResult<PCR<D>>, () => void];
-export declare function useClient<D extends ModelPromiseEffectCallback<any>>(
+  config: { loaded: true }
+): [LoadedSessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D
+): [SessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
   factory: D,
-  config?: LocalClientConfig
-): [PromiseResult<PCR<D>>, () => void];
+  config?: { loaded?: boolean }
+): [SessionState<PCR<D>>, () => void];
 
-/**
- * @deprecated
- * @param effectCallback
- */
-export declare function asyncEffect<
-  E extends (...params: any[]) => Promise<any>,
-  T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E): ModelPromiseEffectCallback<E>;
+export declare function createSessionKey<
+  E extends (...params: any[]) => Promise<any>
+>(effectCallback: E): SessionKey<E>;
 
-export declare function client<
-  E extends (...params: any[]) => Promise<any>,
-  T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E): ModelPromiseEffectCallback<E>;
+export declare function useIsFetching(
+  ...sessionStates: SessionState[]
+): boolean;
 
-declare type Status = {
-  isFetching: boolean;
-  loaded: boolean;
-  isError: boolean;
-  isSuccess: boolean;
-};
-
-export declare function useStatus(
-  ...results: (PromiseResult | [PromiseResult, ...any])[]
-): Status;
-
-/**
- * @deprecated
- */
-export declare const EffectProvider: FC<{
-  value: FactoryCollection;
+export declare const SessionProvider: FC<{
+  value: StoreKeys;
   children?: ReactNode;
 }>;
 
-export declare const ClientProvider: FC<{
-  value: FactoryCollection;
-  children?: ReactNode;
-}>;
+declare type QueryType = 'query' | 'mutation';
 
-export declare type EffectType = 'query' | 'mutation';
-
-export declare type ClientConfig = {
+export declare type GlobalConfig = {
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
-    type: EffectType
+    type: QueryType
   ) => (StrategyType | null | undefined)[];
 };
 
-/**
- * @deprecated
- */
-export declare const EffectConfigProvider: FC<{
-  value: ClientConfig;
+export declare const GlobalRefreshProvider: FC<{
+  value: GlobalConfig;
   children?: ReactNode;
 }>;
 
-export declare const ClientConfigProvider: FC<{
-  value: ClientConfig;
-  children?: ReactNode;
-}>;
-
-/**
- * @deprecated
- * @param models
- */
-export declare function withEffectProvider(
-  models: FactoryCollection
-): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
-) => typeof component;
-
-export declare function withClientProvider(
-  models: FactoryCollection
+export declare function withSessionProvider(
+  models: StoreKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -257,5 +196,8 @@ export declare const Strategy: {
   success: <T>(
     process: (data: T) => any,
     option?: { withAbandoned?: boolean }
+  ) => StrategyType<T>;
+  memo: <T>(
+    equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
 };

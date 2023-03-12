@@ -116,6 +116,14 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       return updater.state;
     },
     getCurrent(): T {
+      if (Array.isArray(updater.current)) {
+        return updater.current.map((d, i) => {
+          if (typeof d === 'function') {
+            return agent[i];
+          }
+          return d;
+        }) as unknown as T;
+      }
       const keys = Object.keys(updater.current);
       const result = { ...updater.current };
       keys.forEach((key: keyof T) => {

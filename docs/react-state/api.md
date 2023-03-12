@@ -9,7 +9,7 @@ function useModel<S, T extends Record<string|number, any>>(
 function useModel<S, T extends Record<string|number, any>, D extends S>(
   model: (state:S)=>T,
   state: D,
-  option?: { refresh?: boolean; autoLink?: boolean }
+  option?: { refresh?: boolean; autoLink?: boolean; realtimeInstance?: boolean }
 ): T;
 ```
 
@@ -17,12 +17,13 @@ Parameters:
 
 * model - A function accepts a state parameter, and returns an object to provide display data and action methods.
 * state - Optional, a default state for model initial.
-* option - Optional, an optional config for opening `refresh` and `autoLink` mode.
+* option - Optional, an optional config for opening `refresh`, `autoLink` and `realtimeInstance` mode.
 
 Explain
 
 1. `option.refresh`: When open the `refresh` optional config, `useModel` follows the change of state. That means every change of state parameter will lead a refresh for instance. You can consider it as [useRefreshModel](/react-state/api?id=userefreshmodel).
 2. `option.autoLink`: When open the `autoLink` optional config, `useModel` creates a local state instead a unavailable store state. You can refer to the [guides detail](/react-state/guides?id=autolink) to learn it.
+3. `option.realtimeInstance`: When open this option, `useModel` returns a [realtime instance](/react-state/concepts?id=instance).
 
 Returns
 
@@ -153,6 +154,8 @@ const App = ()=>{
 
 ## useRefreshModel
 
+It is a shortcut usage about [useModel(model, state, {refresh:true})](/react-state/api?id=usemodel).
+
 ```ts
 function useRefreshModel<
   S,
@@ -161,7 +164,7 @@ function useRefreshModel<
 >(
   model: (state:S)=>T,
   state: D,
-  option?: { autoLink?: boolean }
+  option?: { autoLink?: boolean; realtimeInstance?:boolean }
 ): T;
 ```
 
@@ -169,7 +172,7 @@ Parameters
 
 * model - A function accepts a state parameter, and returns an object to provide display data and action methods.
 * state - An outside state for refresh model instance.
-* option - Optional, an optional config for opening `autoLink` mode.
+* option - Optional, an optional config for opening `autoLink` and `realtimeInstance` mode.
 
 Explain
 
@@ -279,10 +282,10 @@ Returns
 
 ```ts
 export declare function useSelector<
-  R extends AirReducer<any, any>,
+  R extends StoreKey<AirReducer<any, any>>,
   C extends (instance: ReturnType<R>) => any
 >(
-  factoryModel: R,
+  storeKey: R,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
@@ -290,13 +293,13 @@ export declare function useSelector<
 
 Parameters
 
-* factoryModel - A factory model, it should be wrapped by [factory](/react-state/api?id=factory) API.
+* storeKey - A store key, it should be a result of calling [createStoreKey](/react-state/api?id=createstorekey).
 * selector - A callback to select properties from instance which is refreshed by the matched store state.
 * equalFn - Optional callback, it is used to provide a comparator for comparing if the result of `selector` has been changed. Only when the result of `selector` has been changed, it drive the component which uses it to render. In default, it compares the result change by using `===` expression.
 
 Explain
 
-This API only can be used to link a matched store with factory model. It can select data from instance which is refreshed by the matched store state. If no matched store is found, it throws an error. When a state change happens, `useSelector` refresh and select data from the instance, only if the selected result is changed, it drives component to render. So, it is often used for reducing the frequency of component render.
+This API only can be used to link a matched store with store key. It can select data from instance which is refreshed by the matched store state. If there is no matched store, it throws an error. When a state change happens, `useSelector` refresh and select data from the instance, only if the selected result is changed, it drives component to render. So, it is often used for reducing the frequency of component render.
 
 Returns
 
@@ -306,10 +309,14 @@ Example
 
 ```ts
 import React from 'react';
-import {ModelProvider, factory, useSelector} from '@airma/react-state';
+import {
+  StoreProvider, 
+  createStoreKey, 
+  useSelector
+} from '@airma/react-state';
 
-// use factory API to make a key to store
-const counter = factory((state:number)=>({
+// use createStoreKey API to make a key to store
+const counter = createStoreKey((state:number)=>({
     count: state,
     isNegative: state<0,
     increase:()=> state + 1,
@@ -339,99 +346,139 @@ const Counter = ()=>{
 
 export default ()=>{
     return (
-        <ModelProvider value={counter}>
+        <StoreProvider value={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
-        </ModelProvider>
+        </StoreProvider>
     );
 }
 ```
 
-## ModelProvider
+## useRealtimeInstance
 
 ```ts
-type Factory=((state:any)=>Record<number|string, any>)&{
+export declare function useRealtimeInstance<T>(instance: T): T;
+```
+
+Parameter
+
+* instance - A instance, it can be a [stable instance](/react-state/concepts?id=stable-instance) or a [realtime instance](/react-state/concepts?id=realtime-instance).
+
+Returns
+
+A [realtime instance](/react-state/concepts?id=realtime-instance).
+
+## useIsModelMatchedInStore
+
+```ts
+export declare function useIsModelMatchedInStore(
+  model: AirReducer<any, any> | StoreKey<any>
+): boolean;
+```
+
+Parameters
+
+* model - A model or a store key
+
+Returns
+
+If the model is a store key, and if the store key is matched with a store.
+
+## StoreProvider
+
+It has another name [ModelProvider](/react-state/api?id=modelprovider).
+
+```ts
+type StoreKey=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-const ModelProvider: FC<{
-  value:  Array<Factory> | Factory | Record<string, Factory>;
+const StoreProvider: FC<{
+  value:  Array<StoreKey> | StoreKey | Record<string, StoreKey>;
   children: ReactNode;
 }>;
 ```
 
 Props
 
-* value - Factorys, it can be a collection of factory models or just a factory model.
+* value - Store keys.
 * children - react nodes
 
 Returns
 
 * react nodes
 
-## withModelProvider
+## ModelProvider
+
+It has another name [StoreProvider](/react-state/api?id=storeprovider).
+
+## withStoreProvider
 
 ```ts
-type Factory=((state:any)=>Record<number|string, any>)&{
+type StoreKey=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-function withModelProvider(
-  models: Array<Factory> | Factory | Record<string, Factory>
+function withStoreProvider(
+  keys: Array<StoreKey> | StoreKey | Record<string, StoreKey>
 ): <P extends object>(component: ComponentType<P>) => typeof component;
 ```
 
 Parameters
 
-* models - Factorys, it can be a collection of factory models or just a factory model.
+* keys - Store keys.
 
 Returns
 
-* A callback which accepts a React Component, and returns a `HOC` of the parameter Component with a out `ModelProvider` wrap.
+* A callback which accepts a React Component, and returns a `HOC` of the parameter Component with a out `StoreProvider` wrap.
 
 
 Explain
 
-It is a `HOC` usage for `ModelProvider`.
+It is a `HOC` usage for `StoreProvider`.
 
 Example
 
 ```ts
 import React from 'react';
 import { 
-    withModelProvider, 
-    factory, 
+    withStoreProvider, 
+    createStoreKey, 
     useModel, 
     useSelector 
 } from '@airma/react-state';
 import model from './model';
 
-const models = factory(model);
+const models = createStoreKey(model);
 
-const App = withModelProvider(models)(()=>{
+const App = withStoreProvider(models)(()=>{
     const {...} = useModel(models);
     const data = useSelector(models, s=>s.data);
 });
 ```
 
-## factory
+## withModelProvider
+
+It is another name of [withStoreProvider](/react-state/api?id=withstoreprovider).
+
+## createStoreKey
 
 ```ts
-type Factory=((state:any)=>Record<number|string, any>)&{
+type StoreKey=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-function factory<S,T extends Record<string|number,any>>(
+function createStoreKey<S,T extends Record<string|number,any>>(
     model: (state:S)=>T,
     defaultState?: S
-):Factory;
+):StoreKey;
 ```
 
 Parameters
@@ -445,11 +492,11 @@ If you want to learn how to use `pipe`, please review the [guide detail](/react-
 
 Returns
 
-* A factory model, which can be provided to `ModelProvider` for generating a store, and be provided as key to link the store state for `useModel` or `useSelector`.
+* A store key model, which can be provided to `StoreProvider` for generating a store, and be provided as key to link the store state for `useModel` or `useSelector`.
 
-## keyModel
+## factory
 
-It is another name of [factory API](/react-state/api?id=factory).
+It is another name of [createStoreKey](/react-state/api?id=createstorekey).
 
 ## shallowEqual
 

@@ -1,6 +1,6 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
-  factory,
+  createStoreKey,
   useModel,
   useControlledModel,
   useSelector,
@@ -12,12 +12,13 @@ import {
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
-  client,
+  createSessionKey,
   Strategy,
   useMutation,
   useQuery,
-  useClient,
-  useStatus
+  useSession,
+  useIsFetching,
+  SessionProvider
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -59,11 +60,9 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = client(
-  (validQuery: Condition): Promise<User[]> => Promise.resolve([])
-);
+const fetchFactory = createSessionKey(userQuery);
 
-const models = (userData: Omit<User, 'id'>) => {
+const createModel = (userData: Omit<User, 'id'>) => {
   return {
     user: userData,
     changeUsername(username: string) {
@@ -89,39 +88,31 @@ const Info = memo(
 
 const Creating = memo(
   ({ onSubmit, onCancel }: { onSubmit: () => any; onCancel: () => any }) => {
-    const { user, changeUsername, changeName } = useModel(models, {
+    const { user, changeUsername, changeName } = useModel(createModel, {
       name: '',
       username: '',
       age: 10
     });
-    const [validUser, updateUser] = useState(user);
 
-    const update = () => {
-      updateUser(user);
-    };
+    const [, launch] = useSession(fetchFactory);
 
-    const [{ data }, launch] = useClient(fetchFactory);
-
-    const [r, trigger] = useMutation(
+    const [, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
         rest('/api/user')
           .setBody(u)
           .post<null>()
           .then(() => true),
       {
-        variables: [validUser],
-        triggerOn: ['update', 'manual'],
-        strategy: [Strategy.once()]
+        variables: [user],
+        strategy: [
+          Strategy.once(),
+          Strategy.success(() => {
+            launch();
+            // onSubmit();
+          })
+        ]
       }
     );
-
-    useEffect(() => {
-      if (!r.data) {
-        return;
-      }
-      launch();
-      // onSubmit();
-    }, [r]);
 
     return (
       <div>
@@ -142,7 +133,7 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={update}>
+          <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
@@ -178,35 +169,18 @@ const conditionModel = (query: Query) => {
   };
 };
 
-const condition = factory(conditionModel, {
+const condition = createStoreKey(conditionModel, {
   valid: defaultCondition,
   display: defaultCondition,
   creating: false
 });
 
 const Condition = memo(() => {
-  const { displayQuery, create, changeDisplay, query } = useSelector(
-    condition,
-    s => s,
-    shallowEqual
-  );
+  const { displayQuery, create, changeDisplay, query } = useModel(condition);
 
-  const [{ isFetching }] = useClient(fetchFactory);
+  // useQuery(fetchFactory, [useMemo(() => ({ name: 'M', username: '' }), [])]);
 
-  const [count, setCount] = useState(0);
-
-  const { version, add } = useControlledModel(
-    c => {
-      return {
-        version: c,
-        add() {
-          return c + 1;
-        }
-      };
-    },
-    count,
-    setCount
-  );
+  const [{ isFetching, data }] = useSession(fetchFactory);
 
   return (
     <div>
@@ -234,9 +208,6 @@ const Condition = memo(() => {
       <button type="button" style={{ marginLeft: 8 }} onClick={create}>
         create
       </button>
-      <button type="button" style={{ marginLeft: 8 }} onClick={add}>
-        version: {count}
-      </button>
     </div>
   );
 });
@@ -248,43 +219,23 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
     creating: false
   });
 
-  useEffect(() => {
-    setTimeout(() => {
-      const currentCondition = { ...defaultCondition, name: 'Mr' };
-      const state = {
-        valid: currentCondition,
-        display: currentCondition,
-        creating: true
-      };
-      setDefaultState(state);
-    }, 600);
-  }, []);
-
-  const {
-    displayQuery,
-    validQuery,
-    creating,
-    create,
-    submit,
-    cancel,
-    changeDisplay,
-    query
-  } = useModel(condition, defaultState);
-
-  fetchFactory.implement(userQuery);
+  const { validQuery, creating, cancel } = useModel(condition, defaultState);
 
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
-    defaultData: []
+    defaultData: [],
+    strategy: Strategy.memo()
   });
 
-  const { isFetching, loaded } = useStatus(d);
+  const [result] = d;
 
-  const [result, fetch] = d;
+  const { data, error, isFetching } = result;
 
-  const { data, error, isError, triggerType } = result;
+  // const isFetching = useIsFetching();
 
-  console.log(loaded);
+  useEffect(() => {
+    console.log('effect data change...', data);
+  }, [data]);
 
   return (
     <div style={{ padding: '12px 24px' }}>

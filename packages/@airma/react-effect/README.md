@@ -206,16 +206,16 @@ const App = ()=>{
 
 There are steps you need to do for sharing promise state changes.
 
-1. Create a `client` for every promise callback.
-2. Set `clients` to `ClientProvider` for creating state store.
-3. Use `client` as a key to store in `ClientProvider`, and build a persistent link with the right state.
+1. Create a `session key` for every promise callback.
+2. Set `session keys` to `SessionProvider` for creating session store.
+3. Use `session key` to link a `SessionProvider` store for promise state sharing.
 
 ```ts
 import React, {memo} from 'react';
 import { 
-  ClientProvider, 
-  client, 
-  useClient, 
+  SessionProvider, 
+  createSessionKey, 
+  useSession, 
   useQuery 
 } from '@airma/react-effect';
 import {User} from './type';
@@ -223,13 +223,13 @@ import {User} from './type';
 const fetchLoginUser = (query:UserQuery):Promise<User>=> 
     Promise.resolve({...});
 
-// Create a `client`
-const loginUser = client(fetchLoginUser);
+// Create a `session key`
+const loginUser = createSessionKey(fetchLoginUser);
 
 const Child1 = memo(()=>{
   // Query for current login user.
   // Update promise state into store
-  // with client `loginUser`
+  // with session key `loginUser`
   const [ state ] = useQuery(loginUser,[]);
 
   return ......;
@@ -237,20 +237,20 @@ const Child1 = memo(()=>{
 
 const Child2 = memo(()=>{
   // Take and subscribe promise state changes
-  // of client `loginUser` in store.
-  const [ state ] = useClient(loginUser);
+  // of session key `loginUser` in store.
+  const [ state ] = useSession(loginUser);
 
   return ......;
 });
 
 const App = memo(()=>{
-  // Set client `loginUser` into `ClientProvider`,
+  // Set session key `loginUser` into `SessionProvider`,
   // and create a store inside.
   return (
-      <ClientProvider value={loginUser}>
+      <SessionProvider value={loginUser}>
         <Child1/>
         <Child2/>
-      </ClientProvider>
+      </SessionProvider>
   );
 })
 ```

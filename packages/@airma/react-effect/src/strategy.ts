@@ -1,12 +1,12 @@
-import { PromiseResult, StrategyType } from './type';
+import { SessionState, StrategyType } from './type';
 
 function debounce(op: { duration: number } | number): StrategyType {
   const time = typeof op === 'number' ? op : op.duration;
   return function db(value: {
-    current: () => PromiseResult;
-    runner: () => Promise<PromiseResult>;
+    current: () => SessionState;
+    runner: () => Promise<SessionState>;
     store: { current?: { id: any; resolve: (d: any) => void } };
-  }): Promise<PromiseResult> {
+  }): Promise<SessionState> {
     const { current, runner, store } = value;
     if (store.current) {
       const { id, resolve } = store.current;
@@ -15,7 +15,7 @@ function debounce(op: { duration: number } | number): StrategyType {
       const currentState = current();
       resolve({ ...currentState, abandon: true });
     }
-    return new Promise<PromiseResult>(resolve => {
+    return new Promise<SessionState>(resolve => {
       const id = setTimeout(() => {
         resolve(runner());
       }, time);
@@ -26,8 +26,8 @@ function debounce(op: { duration: number } | number): StrategyType {
 
 function once(): StrategyType {
   return function oc(value: {
-    current: () => PromiseResult;
-    runner: () => Promise<PromiseResult>;
+    current: () => SessionState;
+    runner: () => Promise<SessionState>;
     store: { current?: boolean };
   }) {
     const { current, runner, store } = value;
@@ -47,20 +47,50 @@ function once(): StrategyType {
   };
 }
 
+const stringifyComparator = function comparator(s: any, t: any) {
+  if (Object.is(s, t)) {
+    return true;
+  }
+  if (s == null || t == null) {
+    return false;
+  }
+  return JSON.stringify(s) === JSON.stringify(t);
+};
+
+function memo<T>(
+  equalFn: (source: T | undefined, target: T) => boolean = stringifyComparator
+): StrategyType {
+  return function mo(value) {
+    const { runner, current } = value;
+    return runner().then(d => {
+      const state = current();
+      if (
+        typeof equalFn === 'function'
+          ? equalFn(state.data, d.data)
+          : state.data === d.data
+      ) {
+        return { ...d, data: state.data };
+      }
+      return d;
+    });
+  };
+}
+
 function error(
   process: (e: unknown) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value: {
-    current: () => PromiseResult;
-    runner: () => Promise<PromiseResult>;
+    current: () => SessionState;
+    runner: () => Promise<SessionState>;
     store: { current?: boolean };
   }) {
     const { runner } = value;
     return runner().then(d => {
-      if (d.isError && (!d.abandon || withAbandoned)) {
+      if (d.isError && !d.isErrorProcessed && (!d.abandon || withAbandoned)) {
         process(d.error);
+        return { ...d, isErrorProcessed: true };
       }
       return d;
     });
@@ -73,8 +103,8 @@ function success<T>(
 ): StrategyType<T> {
   const { withAbandoned } = option || {};
   return function sc(value: {
-    current: () => PromiseResult<T>;
-    runner: () => Promise<PromiseResult<T>>;
+    current: () => SessionState<T>;
+    runner: () => Promise<SessionState<T>>;
     store: { current?: boolean };
   }) {
     const { runner } = value;
@@ -91,5 +121,6 @@ export const Strategy = {
   debounce,
   once,
   error,
-  success
+  success,
+  memo
 };

@@ -1,20 +1,19 @@
-import { FactoryModel } from '@airma/react-state';
+import { StoreKey, StoreKeys } from '@airma/react-state';
 import { ReactNode } from 'react';
 
-export type PromiseEffectCallback<T> = (...params: any[]) => Promise<T>;
+export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export type ModelPromiseEffectCallback<E extends PromiseEffectCallback<any>> =
-  FactoryModel<
-    (st: PromiseResult & { version?: number }) => {
-      state: PromiseResult;
-      version: number;
-      setState: (s: PromiseResult) => PromiseResult & { version?: number };
-      trigger: () => PromiseResult & { version?: number };
-    }
-  > & {
-    effect: [E];
-    implement: (c: E) => void;
-  };
+export type SessionKey<E extends PromiseCallback<any>> = StoreKey<
+  (st: SessionState & { version?: number }) => {
+    state: SessionState;
+    version: number;
+    setState: (s: SessionState) => SessionState & { version?: number };
+    trigger: () => SessionState & { version?: number };
+  }
+> & {
+  effect: [E];
+  implement: (c: E) => void;
+};
 
 export type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -24,10 +23,11 @@ export type PromiseData<T = any> = {
   isError?: boolean;
 };
 
-type LoadedPromiseResult<T> = {
+type LoadedSessionState<T> = {
   data: T;
   error?: any;
   isError: boolean;
+  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -35,10 +35,11 @@ type LoadedPromiseResult<T> = {
   loaded: true;
 };
 
-type UnloadedPromiseResult = {
+type UnloadedSessionState = {
   data: undefined;
   error?: any;
   isError: boolean;
+  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -46,16 +47,16 @@ type UnloadedPromiseResult = {
   loaded: false;
 };
 
-export type PromiseResult<T = any> =
-  | LoadedPromiseResult<T>
-  | UnloadedPromiseResult;
+export type SessionState<T = any> =
+  | LoadedSessionState<T>
+  | UnloadedSessionState;
 
 export type StrategyType<T = any> = (value: {
-  current: () => PromiseResult<T>;
+  current: () => SessionState<T>;
   variables: any[];
-  runner: () => Promise<PromiseResult<T>>;
+  runner: () => Promise<SessionState<T>>;
   store: { current: any };
-}) => Promise<PromiseResult<T>>;
+}) => Promise<SessionState<T>>;
 
 export type StrategyCollectionType<T> =
   | undefined
@@ -63,44 +64,42 @@ export type StrategyCollectionType<T> =
   | StrategyType<T>
   | (StrategyType<T> | null | undefined)[];
 
-export type QueryConfig<T, C extends PromiseEffectCallback<T>> = {
+export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
   defaultData?: T;
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   manual?: boolean;
-  exact?: boolean;
 };
 
-export type MutationConfig<T, C extends PromiseEffectCallback<T>> = {
+export type MutationConfig<T, C extends PromiseCallback<T>> = {
   defaultData?: T;
   deps?: any[];
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
-  exact?: boolean;
 };
 
-export type EffectConfig = {
+export type GlobalConfig = {
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'
   ) => (StrategyType | null | undefined)[];
 };
 
-export type EffectConfigProviderProps = {
-  value: EffectConfig;
+export type GlobalConfigProviderProps = {
+  value?: GlobalConfig;
   children?: ReactNode;
-};
-
-export type LocalClientConfig = {
-  loaded?: boolean;
 };
 
 export type Status = {
   isFetching: boolean;
   loaded: boolean;
   isError: boolean;
-  isSuccess: boolean;
+};
+
+export type SessionProviderProps = {
+  value: StoreKeys;
+  children?: ReactNode;
 };
