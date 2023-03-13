@@ -81,7 +81,7 @@ export function rest(url: string | HttpProperties): HttpType {
       restConfig: RestConfig | ((c: RestConfig) => RestConfig)
     ): HttpType {
       if (typeof restConfig === 'function') {
-        rest({
+        return rest({
           ...properties,
           restConfig: {
             ...defaultRestConfig,
