@@ -1,14 +1,14 @@
-# Install and support
+# 安装与支持
 
-The package lives in [npm](https://www.npmjs.com/get-npm). To install the latest stable version, run the following command:
+当前工具的可运行包维护在[npm](https://www.npmjs.com/get-npm)官方服务器。您可以运行如下命令获取最新的稳定版本。
 
-## Install command
+## 安装命令
 
 ```
 npm i @airma/react-state
 ```
 
-## Browser support
+## 浏览器支持
 
 ```
 chrome: '>=58',
@@ -17,6 +17,10 @@ firefox: '=>57',
 safari: '>=11'
 ```
 
-If you want to support older browser versions, you'd better have your own polyfills.
+如果你需要在更早版本的浏览器使用该工具，需要对其提供全面的 polyfill 支持。
 
-Go to next section to learn [concepts](/react-state/concepts.md) about `@airma/react-state`.
+## 声明
+
+我们将长期持续维护该工具的运作，并承诺在大版本升级来临之前，不对 API 进行破坏性调整。生效时间：2023-04-01
+
+接下来，请进入下一章了解该工具包含的部分[概念](/zh/react-state/concepts.md)，以便可以更容易上手使用它。
