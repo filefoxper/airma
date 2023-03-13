@@ -10,7 +10,7 @@
 
 # @airma/react-state
 
-`@airma/react-state` is a state management tool. It uses a method calling style to change state.
+`@airma/react-state` 是一款基于 object 模型的类 redux 状态管理工具，它抛弃了传统 reducer 系统的 dispatch 事件分发机制，采取了类似面向对象的方法调用机制来维护模型状态值。
 
 ```tsx
 import React from 'react';
@@ -19,32 +19,33 @@ import {useModel} from '@airma/react-state';
 
 const App = ()=>{
 
-    // useModel create a instance from model function
+    // 使用 useModel 创建一个模型实例对象。
+    // 函数模型入参 count 为模型状态。
     const instance = useModel((count:number)=>({
         count,
         isNegative: count<0,
-        // method returns next parameter for model function
+        // 用于修改状态的模型实例方法原型。
+        // 方法调用返回值即为状态更迭值。
         increase:()=> count + 1,
         decrease:()=> count - 1
-    }),0); // default parameter 0
+    }),0); // 默认状态 0
 
     const {
         count, 
         isNegative,
-        // call method returns a next parameter
-        // for model function refreshment.
+        // 通过调用来自实例的方法来实现状态更迭和实例刷新
         decrease, 
         increase
     } = instance;
 
     return (
         <div>
-            <div>start with a counter</div>
-            <button onClick={decrease}>decrease</button>
+            <div>计数器模型</div>
+            <button onClick={decrease}>-</button>
             <span style={isNegative?{color:'red'}:undefined}>
                 {count}
             </span>
-            <button onClick={increase}>increase</button>
+            <button onClick={increase}>+</button>
         </div>
     );
 }
@@ -53,6 +54,8 @@ render(<App/>, document.getElementById('root'));
 ```
 
 The example above is using `useModel` to create a `count model instance`. By calling method `increase`/`decrease` from this instance, we can increase or decrease the `count` from `model instance`.
+
+上例通过建立一个计数器模型创建了一个计数器组件。
 
 ## Introduction
 
