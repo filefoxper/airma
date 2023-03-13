@@ -11,7 +11,8 @@ import {
   createStore,
   factory as createFactory,
   createModel,
-  shallowEqual as shallowEq
+  shallowEqual as shallowEq,
+  createProxy
 } from '@airma/core';
 import {
   useEffect,
@@ -162,11 +163,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
   }
-): [
-  S | undefined,
-  T & { [realtimeInstanceMountProperty]?: T },
-  (s: S | undefined) => void
-] {
+): [S | undefined, T, (s: S | undefined) => void] {
   const defaultOpt = {
     refresh: false,
     required: false,
@@ -248,13 +245,17 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     return [current.getState(), current.agent, current.updateState];
   }
 
-  const stableInstance = agent as T & { [realtimeInstanceMountProperty]?: T };
+  const stableInstance = createProxy(agent, {
+    get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
+      const v = target[p];
+      if (p === realtimeInstanceMountProperty) {
+        return current.agent;
+      }
+      return v;
+    }
+  });
 
-  return [
-    current.getState(),
-    { ...stableInstance, [realtimeInstanceMountProperty]: current.agent },
-    current.updateState
-  ];
+  return [current.getState(), stableInstance, current.updateState];
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
@@ -338,7 +339,7 @@ export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
 }
 
 const requiredError = (api: string): string =>
-  `API "${api}" can only work in a RequiredModelProvider which contains the right seeking factory model`;
+  `API "${api}" can not work, there is no matched StoreProvider with its store key.`;
 
 export function useSelector<
   R extends AirReducer<any, any>,

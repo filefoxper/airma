@@ -1,14 +1,14 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
-  createStoreKey,
-  useModel,
-  useControlledModel,
-  useSelector,
-  shallowEqual,
-  ModelProvider,
-  withModelProvider,
-  useRefresh,
-  useRefreshModel
+    createStoreKey,
+    useModel,
+    useControlledModel,
+    useSelector,
+    shallowEqual,
+    ModelProvider,
+    withModelProvider,
+    useRefresh,
+    useRefreshModel, useRealtimeInstance
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
@@ -176,6 +176,13 @@ const condition = createStoreKey(conditionModel, {
 });
 
 const Condition = memo(() => {
+  const instance = useModel(
+    (v: boolean) => [v, () => !v] as [boolean, () => boolean],
+    false
+  );
+  const [v] = useRealtimeInstance(instance);
+  console.log('v...', v);
+  const [visible, toggle] = instance;
   const { displayQuery, create, changeDisplay, query } = useModel(condition);
 
   // useQuery(fetchFactory, [useMemo(() => ({ name: 'M', username: '' }), [])]);
@@ -207,6 +214,9 @@ const Condition = memo(() => {
       </button>
       <button type="button" style={{ marginLeft: 8 }} onClick={create}>
         create
+      </button>
+      <button type="button" style={{ marginLeft: 8 }} onClick={toggle}>
+        {visible ? 'visible' : 'invisible'}
       </button>
     </div>
   );
