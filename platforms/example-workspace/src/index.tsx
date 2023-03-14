@@ -6,7 +6,7 @@ import { GlobalConfig, GlobalProvider, Strategy } from '@airma/react-effect';
 const root = document.getElementById('root');
 
 const config: GlobalConfig = {
-  strategy: s => [...s, Strategy.error(e => console.log(e))]
+  strategy: s => [...s, Strategy.error(e => console.log('final...',e))]
 };
 
 render(

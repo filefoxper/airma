@@ -3,7 +3,6 @@ import {
   createElement,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef
 } from 'react';
@@ -170,6 +169,34 @@ function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   return persistRef.current as T;
 }
 
+function createRuntimeCache() {
+  const runtimeCacheStore: Array<[any, any]> = [];
+  const fetchTuple = (key: any) => {
+    const data = runtimeCacheStore.find(([k]) => k === key);
+    if (!Array.isArray(data)) {
+      return undefined;
+    }
+    return data;
+  };
+  return {
+    cache(key: any, value: any) {
+      const data = fetchTuple(key);
+      if (data) {
+        data[1] = value;
+        return;
+      }
+      runtimeCacheStore.push([key, value]);
+    },
+    fetch(key: any) {
+      const tuple = fetchTuple(key);
+      if (!tuple) {
+        return undefined;
+      }
+      return tuple[1];
+    }
+  };
+}
+
 export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -278,7 +305,8 @@ export function useQuery<T, C extends PromiseCallback<T>>(
       current: () => instance.state,
       variables: vars || variables || [],
       runner: () => call(triggerType, vars),
-      store: strategyStoreRef
+      store: strategyStoreRef,
+      runtimeCache: createRuntimeCache()
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };
@@ -464,7 +492,8 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       current: () => instance.state,
       variables: vars || variables || [],
       runner: () => call(triggerType, vars),
-      store: strategyStoreRef
+      store: strategyStoreRef,
+      runtimeCache: createRuntimeCache()
     };
     return buildStrategy(strategyStoreRef.current, strategies)(requires);
   };

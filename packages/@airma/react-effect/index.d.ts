@@ -34,6 +34,10 @@ export declare type StrategyType<T = any> = (value: {
   variables: any[];
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
+  runtimeCache: {
+    cache: (key: any, value: any) => void;
+    fetch: (key: any) => any;
+  };
 }) => Promise<SessionState<T>>;
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;

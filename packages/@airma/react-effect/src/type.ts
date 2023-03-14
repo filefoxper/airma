@@ -27,7 +27,6 @@ type LoadedSessionState<T> = {
   data: T;
   error?: any;
   isError: boolean;
-  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -39,7 +38,6 @@ type UnloadedSessionState = {
   data: undefined;
   error?: any;
   isError: boolean;
-  isErrorProcessed?: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
   abandon: boolean;
@@ -56,6 +54,10 @@ export type StrategyType<T = any> = (value: {
   variables: any[];
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
+  runtimeCache: {
+    cache: (key: any, value: any) => void;
+    fetch: (key: any) => any;
+  };
 }) => Promise<SessionState<T>>;
 
 export type StrategyCollectionType<T> =

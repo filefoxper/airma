@@ -1,14 +1,15 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
-    createStoreKey,
-    useModel,
-    useControlledModel,
-    useSelector,
-    shallowEqual,
-    ModelProvider,
-    withModelProvider,
-    useRefresh,
-    useRefreshModel, useRealtimeInstance
+  createStoreKey,
+  useModel,
+  useControlledModel,
+  useSelector,
+  shallowEqual,
+  ModelProvider,
+  withModelProvider,
+  useRefresh,
+  useRefreshModel,
+  useRealtimeInstance
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
@@ -181,7 +182,6 @@ const Condition = memo(() => {
     false
   );
   const [v] = useRealtimeInstance(instance);
-  console.log('v...', v);
   const [visible, toggle] = instance;
   const { displayQuery, create, changeDisplay, query } = useModel(condition);
 
@@ -233,8 +233,7 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
 
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
-    defaultData: [],
-    strategy: Strategy.memo()
+    defaultData: []
   });
 
   const [result] = d;

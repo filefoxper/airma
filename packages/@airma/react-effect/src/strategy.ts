@@ -81,16 +81,17 @@ function error(
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
-  return function er(value: {
-    current: () => SessionState;
-    runner: () => Promise<SessionState>;
-    store: { current?: boolean };
-  }) {
-    const { runner } = value;
+  return function er(value) {
+    const { runner, runtimeCache } = value;
+    const hasHigherErrorProcessor = runtimeCache.fetch(error);
+    runtimeCache.cache(error, true);
     return runner().then(d => {
-      if (d.isError && !d.isErrorProcessed && (!d.abandon || withAbandoned)) {
+      if (
+        d.isError &&
+        !hasHigherErrorProcessor &&
+        (!d.abandon || withAbandoned)
+      ) {
         process(d.error);
-        return { ...d, isErrorProcessed: true };
       }
       return d;
     });
