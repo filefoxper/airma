@@ -327,161 +327,127 @@ API `useControlledModel` 可用于将原先用于 `useModel` 的非受控模型�
 
 ## 上下文状态
 
-Sometimes, we need `React.useContext` to manage a scope state, for we don't want to pass states and action methods through a deep props flow one by one. 
+React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider` 范围内任意深度的子组件可以通过 `useContext` 获取父组件维护状态的状态管理方式。
 
-There are two ways to build scope state. 
+目前很多状态管理工具都只提供了全局上下文状态管理模式，store 数据维护在一个全局常量中，经过反复使用，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
 
-1. Use an outside store to build a global scope state management.
-2. Create store inside a parent component.
+`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路，我们可以建立一套全局的上下文状态键，并通过键去链接这些维护在 `Provider` 中的上下文状态。
 
-The outside global store is terrible. It makes components difficult to be reused. So, `@airma/react-state` choose the way about creating store inside a parent component. 
+这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局上下文作用域。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
 
-There are 4 important APIs to work the scope states.
+回到上例，在一个页面中，被多次使用的组件 `ReactElement` 实例是不同的，所以，内部 `Provider` 组件的 `ReactElement` 实例也是不同的，而上下文状态库 `store` 是建立并维护在 `Provider` 实例内部的，所以即便使用了相同的全局键，不同实例中获取的上下文状态依然是隔离的，不同步的。这就避免了上述的全局上下文的大一统问题。
 
-1. `createStoreKey`, it wraps a model, and generate a new model as a key to store.
-2. `StoreProvider`, it is a Context.Provider, which provides a scope store for child usages.
-3. `useModel`, if we have provide a factory model for `useModel`, it uses this factory as a key to link a matched store state.
-4. `useSelector`, it is a child usage like `useModel`, but can select data or methods from instance, and only when the selected result change can make it rerender. This API is often used to reduce the render frequency of component.
+通过使用以下 API，我们可以快速建立起一套上下文状态管理使用作用域：
 
-Let's take a page query example to see how to use it.
+1. `createStoreKey`，用于把一个模型函数包装成一个全局键，可以理解为创建一把钥匙：`const key = createStoreKey(model, defaultState?)`。
+2. `StoreProvider`，提供上下文状态作用域的 `Provider`，它使用全局键在实例内部维护一个状态库（store） ：`<StoreProvider value={key} />...</StoreProvider>`。
+3. `useModel`，使用全局键的 `useModel` 会根据键连接到最近与之匹配的 `StoreProvider`，并与该 Provider 实例内部的 store 进行状态同步：`const instance = useModel(key)`。
+4. `useSelector`，与 `useModel` 类似，同样需要通过全局键来链接最近与之匹配的 `StoreProvider`，并同步状态数据。不同的是 `useSelector` 还需要使用者提供 `select` 数据选取回调函数，以选取当前组件需要的那部分数据。当上下文状态变更时，如 `select` 函数返回值没有变更，则不触发渲染。这有利于提升组件运行效率，降低组件渲染频率：`useSelector(key, (instance)=>instance.xxx)`。
 
-#### Example
+让我们以一个查询页面为例来看看，如何使用 `@airma/react-state` 的上下文状态管理机制。
 
-type.ts
+### 例子
+
+老规矩，先定义模型所需的类型。
 
 ```ts
-// we will use {username?:string} as a request param
-// to fetch users from a remote server.
+// type.ts
+
+// 查询条件
 export type Query = {
     username?: string;
 };
 
+// 每条数据基本类型
 export type User = {
     id: number;
     username: string;
     name: string;
 }
-```
 
-service.ts
-
-```ts
-// this is a fake package
-import rest from '@airma/fake-rest';
-
-export function fetchSource(query:Query):Promise<User[]>{
-    // this is a service to fetch users with query object.
-    return rest('/api/user').setRequestParams(query).get<User[]>();
+// 模型状态
+// 即可操作状态数据
+export type State = {
+    // 页面输入显示的查询条件
+    displayQuery: Query;
+    // 最近提交的查询条件
+    validQuery: Query;
+    // 查询获得的所有 User 列表数据
+    source: User[];
+    // 当前选中的页码
+    page: number;
+    // 当前每页限制条数
+    pageSize: number;
 }
 ```
 
-model.ts
+定义请求文件。
+
+```ts
+// service.ts
+
+// @airma/restful 是一个真实存在的异步请求库 
+import { client } from '@airma/restful';
+import { Query, User } from './type';
+
+const { rest } = client;
+
+export function fetchSource(query: Query): Promise<User[]>{
+    // 获取 User 列表信息的请求
+    return rest('/api/user').setParams(query).get<User[]>();
+}
+```
+
+定义查询页面依赖的本地模型.
 
 ```ts
 import {createStoreKey} from '@airma/react-state';
 import _ from 'lodash';
-import type {Query, User} from './type';
+import type {Query, User, State} from './type';
 
-/**
- * we split the whole query function to two models,
- * the `searchModel` is designed for manage the query conditions,
- * the `sourceModel` is designed for manage datasource for table,
- * and page infos for pagination.
- **/
-
-type SearchChanges = {
-    // this query is for display and modify
-    displayQuery:Query;
-    // this query is from displayQuery,
-    // when we submit or reset, it changes,
-    // and we can use it as a request param to fetch users
-    validQuery:Query;
-};
-
-type SourceChanges = {
-    // users from request
-    source: User[];
-    // current page number;
-    page: number;
-    // current page size;
-    pageSize: number;
-};
-
-const defaultSearch = (): SearchChanges => ({
+const defaultState = (): State => ({
     validQuery: {},
-    displayQuery: {}
-});
-
-function searchModel(changes: SearchChanges){
-    return {
-        ...changes,
-        changeUsername(username:string): SearchChanges{
-            // change username to displayQuery,
-            // it will be used to a Input
-            const {displayQuery} = changes;
-            return {
-                ...changes, 
-                displayQuery: {...displayQuery, username}
-            };
-        },
-        submit(): SearchChanges{
-            // when we click submit button,
-            // the displayQuery should be replace the validQuery,
-            // we will use validQuery for fetching users later.
-            const {displayQuery} = changes;
-            return {...changes, validQuery: {...displayQuery}};
-        },
-        reset(): SearchChanges{
-            return defaultSearch();
-        }
-    }
-}
-
-const defaultSource = (): SourceChanges => ({
+    displayQuery: {},
     source: [],
     page: 1,
     pageSize: 10
 });
 
-// to manage the fetched users
-function sourceModel(changes: SourceChanges){
-    const {source, page, pageSize} = changes;
-    const datasource = _.chunk(source, pageSize)[page - 1] || [];
+function model(state: State){
+    const {source, page, pageSize, displayQuery} = state;
+    const total = source.length;
+    const datasource = _.chunk(source, 10)[page - 1];
     return {
-        datasource,
+        displayQuery,
         page,
         pageSize,
-        totalElement: source.length,
-        changePage(p: number, s: number): SourceChanges{
-            return {source, page: p, pageSize: s};
+        datasource,
+        total,
+        changeDisplayQuery(displayQuery: Query): State{
+            return {
+                ...state, 
+                displayQuery
+            };
         },
-        updateSource(s: User[]){
-            return {source:s, page:1, pageSize};
+        submit(): State{
+            const {displayQuery} = state;
+            return {...state, validQuery: {...displayQuery}};
+        },
+        updateSource(users: User[]): State{
+            return {...state, source: users, page: 1};
+        },
+        changePage(p: number, s: number): State{
+            return {...state, page:p, pageSize: s};
         }
     }
 }
 
-// storeKeys,
-// we will use `useModel(queryModels.search)`
-// to link searchModel state from a matched Provider store
-const queryModels = {
-    search: createStoreKey(searchModel, defaultSearch()),
-    source: createStoreKey(sourceModel, defaultSource())
-}
-
-export {
-    // the storeKeys are the keys to link 
-    // store states.
-    // before use these keys, 
-    // we will provide them to `StoreProvider`
-    // for generating a scope store.
-    queryModels
-}
+export const modelKey = createStoreKey(model, defaultState());
 ```
 
-We creates storeKeys, and provide them to `StoreProvider` for generating a scope store. After that, we will use them as keys to link states from store by using `useModel` or `useSelector`.
+我们使用 `createStoreKey` 创建了一个全局键，之后将用于 `StoreProvider` 创建上下文状态库，并在子组件中链接该状态库，进而达到数据同步的效果。
 
-layout.tsx
+现在开始创建查询页面。
 
 ```ts
 import React, {memo, useEffect} from 'react';
@@ -491,7 +457,7 @@ import {
     useRefresh,
     useModel
 } from '@airma/react-state';
-import {useQuery} from '@airma/react-query';
+import {useQuery} from '@airma/react-effect';
 import {Input, Button, Table, Pagination} from 'antd';
 import {queryModels} from './model';
 import {fetchSource} from './service';
