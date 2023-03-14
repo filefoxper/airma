@@ -1,48 +1,57 @@
-# Guides
+# 引导
 
-There are two different state types in react:
+从技术上来说 React 状态可分为`本地状态`和`上下文状态`两种形式。
 
-1. local state
-2. scope state
+## 本地状态
 
-## Local state
+本地状态是指由组件自身维护，并只能通过 props 传递给父子组件的数据。我们常使用 `React.useState` 或 `React.useReducer` 进行状态管理工作。而这两个原生 API 需要使用者对 React 数据管理有更深入的理解，否则会在开发过程中碰到一些小麻烦，我们将会在[特性](/zh/react-state/feature)篇介绍它们，这里我们还是从设计的角度分析 `useModel` 和 `useState` 各自的优劣势。
 
-We often use `React.useState` or `React.useReducer` to manage local states. There are some troubles if you can not handle them well, we will talk about these troubles in the [feature](/react-state/feature.md) section.
+### 可组合性分析
 
-Now, let's compare the examples about how to make a page navigation between use `useState` and `useModel`.
+我们以一个数据分页需求为例，分别使用 `useState` 和 `useModel` 开发一个 `customized hook`。
 
-#### Easy composite
-
-type.ts
+在开始实现前，先定义好最终需要实现的接口会是个好习惯，无论使用哪种技术，这种习惯都能帮助你快速建立一个虚拟图形。
 
 ```ts
-export type Navigation<T> = {
-    // the current records for display
+// type.ts
+export interface Navigation<T> {
+    // 当前页码对应的列表数据
     datasource: T[];
-    // current page
+    // 当前页码
     page: number;
-    // page size
+    // 每页记录限定条数
     pageSize: number;
-    // total records number
+    // 当前所有记录条数
     totalElement: number;
-    // an action method for change page and page size.
+    // 一个修改分页信息的行为方法
     changePage(p:number, s:number):any;
 }
 ```
 
-useState.ts
+#### 使用 useState 构建
+
+让我们先使用我们最熟悉的 `useState` API 进行快速构建。
 
 ```ts
+// useState.ts
 import {useState, useEffect} from 'react';
 import _ from 'lodash';
 
-// simple enough, but too much `useState`
+// 这是一个非常简单的数据分页自定义 hook，
+// 使用 useState 非常方便。
+// 我们需要使用者给我们提供需要被操作的所有数据列表 source
 export function useNavigation<T>(source:T[]):Navigation<T>{
+    // 设置页码状态
     const [page, setPage] = useState(1);
+    // 设置每页限定记录条数状态
     const [pageSize, setPageSize] = useState(10);
+    // 使用各种状态条件截取当前页码对应的渲染列表数据
     const datasource = _.chunk(source, pageSize)[page - 1];
     
     useEffect(()=>{
+        // 当使用者提供的所有数据列表有变化时，
+        // 我们需要将 page 重置为 1，
+        // 这类似于点击查询按钮，进行重新查询的场景
         setPage(1);
     },[source]);
 
@@ -52,51 +61,60 @@ export function useNavigation<T>(source:T[]):Navigation<T>{
         pageSize,
         totalElement: source.length,
         changePage:(p:number, s:number) => {
-            // too much `setState`,
-            // you have to split the changes to  
-            // different state sources. 
+            // 目前比较流行的 React ui 库中，
+            // 分页组件的 change 回调，通常同时回传
+            // p 当前页码，s 每页限定条数。
             setPage(p);
+            // 因为我们的分布式 useState 设计，导致我们需要多次 setState,
+            // 这并非一件好事。
             setPageSize(s);
         }
     }
 }
 ```
 
-As we have talked, that `setState` is not good enough for test, and too much `setState` split one change to mutiple changes.
+就如之前所谈，`setState` 并不利于测试。而过于分布的 `useState` 虽然易于使用，但也把数据之间的羁绊给隔离开了，这不利于我们统筹预测数据状态最后该有的样子。
 
-useModel.ts
+#### 使用 useModel 构建
+
+使用模型与分布式状态管理最大的不同点在于，模型需要统一维护状态，因此，将模型函数抽取出来是个不错的 idea。
 
 ```ts
 import {useModel, useRefresh} from '@airma/react-state';
 import _ from 'lodash';
 
+// 我们将所有会影响到最终结果的输入条件抽取成状态类型，
+// 并称其为 changes
 export type Changes<T> = {
     source: T[];
     page: number;
     pageSize: number;
 };
 
+// 统一建立模型初始状态
 export function defaultState<T>(source:T[]):Changes<T> {
     return {source, page: 1, pageSize: 10};
 };
 
-// a pure function model.
-// it is easy for test.
-// it is more easier for reusage.
+// 抽取纯函数模型，
+// 这非常利于单元测试和统筹预测状态这些工作。
+// 可以将 changes 状态理解为模型的变量，
+// 当变量改变时，即重新运行模型，刷新实例。 
 export function navigation<T>(changes: Changes<T>){
-    // we designed the often change data as state,
-    // and compute other data from state.
     const {source, page, pageSize} = changes;
+    // 我们所需的渲染状态都应该由 changes 加工而来
     const datasource = _.chunk(source, pageSize)[page - 1];
     return {
         datasource,
         page,
         pageSize,
         totalElement: source.length,
-        // update all the changes
+        // 通过 return 一次性更新所有模型变量
         changePage(p:number, s:number):Changes<T>{
             return {source, page:p, pageSize:s};
         },
+        // 因为外部变量 source 也是可变的，
+        // 所以我们需要为其清晰地描述一个行为方法。
         updateSource(s:T[]):Changes<T>{
             return {source:s, page:1, pageSize}
         }
@@ -109,8 +127,8 @@ export function useNavigation<T>(source:T[]):Navigation<T>{
         ...rest
     } = useModel(navigation, defaultState(source));
 
-    // useRefresh API watches the dependencies change,
-    // and use these dependencies as params to call the method.
+    // 这里我们使用 react-state API useRefresh 来更新数据，
+    // useRefresh 相当于 useEffect(()=>updateSource(source), [source])
     useRefresh(updateSource, [source]);
 
     return rest;
@@ -287,7 +305,7 @@ export function useComposite(){
 
 API `useControlledModel` can link `state` and `setState` outside, it has no state inside. When the out `state` changes, it refreshes instance. When the instance method is called, the result of method is sent out through the out `setState`. 
 
-## Scope state
+## 上下文状态
 
 Sometimes, we need `React.useContext` to manage a scope state, for we don't want to pass states and action methods through a deep props flow one by one. 
 
