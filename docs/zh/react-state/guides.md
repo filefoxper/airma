@@ -329,22 +329,153 @@ API `useControlledModel` 可用于将原先用于 `useModel` 的非受控模型�
 
 React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider` 范围内任意深度的子组件可以通过 `useContext` 获取父组件维护状态的状态管理方式。
 
-目前很多状态管理工具都只提供了全局上下文状态管理模式，store 数据维护在一个全局常量中，经过反复使用，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
+目前很多状态管理工具都只提供了全局上下文状态管理模式，将 store 数据库维护在一个全局常量中。经过大量实践，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
 
-`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路，我们可以建立一套全局的上下文状态键，并通过键去链接这些维护在 `Provider` 中的上下文状态。
+`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 `StoreProvider` 组件实例中存放的是使用键生成的整个`模型实例`）。
 
-这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局上下文作用域。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
+这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局库。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
 
-回到上例，在一个页面中，被多次使用的组件 `ReactElement` 实例是不同的，所以，内部 `Provider` 组件的 `ReactElement` 实例也是不同的，而上下文状态库 `store` 是建立并维护在 `Provider` 实例内部的，所以即便使用了相同的全局键，不同实例中获取的上下文状态依然是隔离的，不同步的。这就避免了上述的全局上下文的大一统问题。
+### 键
 
-通过使用以下 API，我们可以快速建立起一套上下文状态管理使用作用域：
+ `createStoreKey` API 可用于将模型函数包装成`键`。`键`也是模型，`键`模型是`被包装模型`的复刻，它的入参返回与`被包装模型`保持一致，但却拥有连接`库`的能力。
 
-1. `createStoreKey`，用于把一个模型函数包装成一个全局键，可以理解为创建一把钥匙：`const key = createStoreKey(model, defaultState?)`。
-2. `StoreProvider`，提供上下文状态作用域的 `Provider`，它使用全局键在实例内部维护一个状态库（store） ：`<StoreProvider value={key} />...</StoreProvider>`。
-3. `useModel`，使用全局键的 `useModel` 会根据键连接到最近与之匹配的 `StoreProvider`，并与该 Provider 实例内部的 store 进行状态同步：`const instance = useModel(key)`。
-4. `useSelector`，与 `useModel` 类似，同样需要通过全局键来链接最近与之匹配的 `StoreProvider`，并同步状态数据。不同的是 `useSelector` 还需要使用者提供 `select` 数据选取回调函数，以选取当前组件需要的那部分数据。当上下文状态变更时，如 `select` 函数返回值没有变更，则不触发渲染。这有利于提升组件运行效率，降低组件渲染频率：`useSelector(key, (instance)=>instance.xxx)`。
+ ```ts
+ // global/model.ts
 
-让我们以一个查询页面为例来看看，如何使用 `@airma/react-state` 的上下文状态管理机制。
+ import { 
+    createStoreKey 
+} from '@airma/react-state';
+ import type { User, Config } from './type';
+
+// 当前登陆用户信息模型
+ const currentUserModel = (user: User | null)=>{
+    return {
+        user,
+        login(currentUser: User){
+            return currentUSer;
+        },
+        logout(){
+            return null;
+        }
+    }
+ }
+
+ // 系统配置信息模型
+ const systemConfigModel = (config: Config = {})=>{
+    return {
+        config,
+        updateConfig(key: string, value: string){
+            return {...config, [key]: value};
+        }
+    }
+ }
+
+// 使用 createStoreKey 生成 `键`模型
+export const currentUserKey = createStoreKey(
+    // 被包装模型
+    currentUserModel,
+    // 默认值
+    null
+);
+
+// 使用 createStoreKey 生成 `键`模型
+export const systemConfigKey = createStoreKey(
+    // 被包装模型。
+    // 因为模型函数的参数已经设置了默认值，
+    // 故可以忽略这里的 `默认值` 参数。
+    systemConfigModel
+);
+
+// 因为 `键` 就是钥匙，
+// 所以我们可以根据喜好把多个 `键` 组成一个钥匙串来使用，
+// storeKeys 就是我们的全局配置钥匙串。
+export const storeKeys = {
+    loginUser: currentUserKey,
+    systemConfig: systemConfigKey
+};
+ ```
+
+`键`有两个重要作用：
+
+1. 提供给 `StoreProvider` 用于生成上下文模型实例状态`库` (store)。
+2. 提供给 `useModel` 和 `useSelector` 用作查找和连接匹配`库`的钥匙，并负责与库建立起同步的桥梁。
+
+```ts
+import React from 'react';
+import {render} from 'react-dom';
+import {
+    StoreProvider,
+    useModel,
+    useSelector
+} from '@airma/react-state';
+import {
+    currentUserKey, 
+    storeKeys
+} from '@/global/model';
+import type {User, Config} from '@/global/type';
+
+const Login = ()=>{
+    // 使用 `键` currentUserKey 连接 store，
+    // 并选 store 模型实例的行为方法。
+    // 调用行为方法可引起库中实例对象刷新，
+    // 并通知其他同 `键` 使用者同步实例对象。
+    const handleLogin = useSelector(
+        currentUserKey, 
+        i=>i.login
+    );
+    return ......;
+}
+
+const Header = ()=>{
+    // `键` currentUserKey 的其他使用者，
+    // 它们获取的实例对象是状态同步的
+    const {
+        user, 
+        logout
+    } = useModel(currentUserKey);
+    return ......;
+}
+
+const Body = ()=>{
+    const {
+        config, 
+        updateConfig
+    } = useModel(storeKeys.systemConfig);
+    return ......;
+}
+
+const App = ()=>{
+    // `键` currentUserKey 的其他使用者，
+    // 它们获取的实例对象是状态同步的。
+    // 我们也可以通过钥匙串访问 `键` currentUserKey，
+    // 如此处的 storeKeys.loginUser
+    const currentUser = useSelector(
+        storeKeys.loginUser,
+        ({user})=>user
+    );
+    return !currentUser? (
+        <Login/>
+    ) : (
+        <div>
+          <Header/>
+          <Body/>
+        </div>
+    );
+};
+
+render(
+    // 使用钥匙串对象创建 库
+    <StoreProvider value={storeKeys}>
+      <App/>
+    </StoreProvider>
+);
+```
+
+* API `useSelector` 可通过`键`查找到库中对应的实例，并选取当前组件需要的数据或行为方法。当有同`键`使用者触发了实例刷新，useSelector 会根据所选对象值是否发生改变来决定是否需要渲染当前组件。通过使用这个 API，我们可以降低使用组件的渲染频率，从而达到优化组件性能的目的。
+* API `useModel` 也可通过`键`查找到库中对应的实例。与 `useSelector` 不同，`useModel` 始终返回完整的`库`实例对象，并响应每次实例刷新。
+
+### 库
+
 
 ### 例子
 
