@@ -116,6 +116,7 @@ export function navigation<T>(changes: Changes<T>){
         // 因为外部变量 source 也是可变的，
         // 所以我们需要为其清晰地描述一个行为方法。
         updateSource(s:T[]):Changes<T>{
+            // 根据需求，我们需要在 source 更新时将 page 设置为 1
             return {source:s, page:1, pageSize}
         }
     }
@@ -135,15 +136,18 @@ export function useNavigation<T>(source:T[]):Navigation<T>{
 }
 ```
 
-As we can see, the model function is more good at telling the often changes, and we can compute other useful data from the often changes. 
+虽然初看模型用法会比分布式 `useState` 稍微复杂一些，但事实上模型更善于处理这种复杂的状态结构，我们可以容易地分析出哪些是变量状态，哪些是渲染数据，并提供一分详细且清晰的行为方法。详细的行为方法其实非常重要，这可以让其他维护者轻松了解这套模型能做什么。
 
-A model can be reused more easier.
+或许以上例子并不能明显的说明 `useModel` 的优势，那么，接下来，我们来分析关于 `useState` 和 `useModel` 的组合性对比。
 
-If we want to make another useNavigation with a sort feature, what we can do? Compare the `useState` and `useModel` examples.
+### 组合性
 
-type.ts
+以上例需求为基础，现在我们需要在已实现的分页功能上添加字段排序功能，要求排序时，不改变页码和每页限定记录条数。
+
+同样，我们可以先设计需求返回类型以预先确认目标。
 
 ```ts
+// type.ts
 import {Navigation} from './nav/type'
 
 type SortNavigation<T> = Navigation<T> & {
@@ -153,7 +157,9 @@ type SortNavigation<T> = Navigation<T> & {
 };
 ```
 
-useState.ts
+#### 使用 useState 组合
+
+我们可以根据 customized hook 优良的组合特性，通过调用原 useNavigation 的方式来实现满足当前需求的 `useSortNavigation`。
 
 ```ts
 import {useState, useMemo} from 'react';
@@ -163,14 +169,15 @@ import {useNavigation} from './nav/hook';
 export function useSortNavigation<T>(source:T[]){
     const [order, setOrder] = useState<'desc'|'asc'>('desc');
     const [field, setField] = useState<null|keyof T>(null);
-    // every time when the order changes,
-    // the source is recomputed,
-    // it can lead the setPage(1) happens in 
-    // `useNavigation -> useEffect`
+    // 我们首先需要计算出整体列表排序后的列表数据
     const sortedSource = useMemo(()=>{
         return field?_.orderBy(source, [field], [order]) : source;
     },[source, order, field]);
 
+    // 对排序后的数据使用之前的 useNavigation，
+    // 这时我们发现，每次排序时，页码总是被重置为 1，
+    // 这并不符合需求，我们需要对原来的 useNavigation 进行修改，
+    // 以满足我们的新需求。
     const data = useNavigation(sortedSource);
     return {
         ...data,
@@ -184,11 +191,11 @@ export function useSortNavigation<T>(source:T[]){
 }
 ```
 
-If we compose a customized hook like this, it may lead bugs, for we don't want `setPage(1)` happens when sort action works out. So, we have to copy and modify the `useNavigation` hook to support it.
+我们发现通过 customized hook 的组合方式并不能在不修改被组合的原始 hook 的情况下完美实现我们的需求，为此我们需要回过头来修改原始 hook。那如果之后还有更多的需求呢？每次组合都要去修改更多的原始 hook 吗？这显然不现实。我们之所以不能很好的按需组合 customized hook 是因为，这是个多出口（`useState`）的回调 API，它不像纯函数一样有稳定的输入和输出，过于依赖外部 API 的存在。这也是为什么在涉及多种行为的模型中 `useReducer` 比 `useState` 拥有更好组合特性的原因。而作为 `reducer` 衍生方案的 `model` 对这类组合方案也是非常在行的。
 
-What about `useModel`?
+#### 使用 useModel 组合
 
-useModel.ts
+作为拥有稳定输入输出函数的模型更利于组合。
 
 ```ts
 import {useModel, useRefresh} from '@airma/react-state';
@@ -196,11 +203,13 @@ import _ from 'lodash';
 import {navigation, defaultState} from './nav/hook';
 import type {Changes} from './nav/hook';
 
+// 定义我们的新状态
 type SortChanges<T> = Changes<T> & {
     order: 'desc'|'asc',
     field: null | keyof T
 }
 
+// 生成默认的新状态
 function defaultSortState<T>(source:T[]):SortChanges<T>{
     const onlyPages = defaultState(source);
     return {...onlyPages, order:'desc', field:null};
@@ -211,13 +220,21 @@ function sortNavigation<T>(changes:SortChanges<T>){
     const sortedSource = field? 
             _.orderBy(source, [field], [order]) : 
             source;
-    // reuse navigation
+    // 我们只要引用旧模型即可实现不修改原模型的组合。
+    // 因为在原模型中并不能包含 useEffect 这样的副作用 API
     const nav = navigation({...rest, source:sortedSource});
     return {
         ...nav,
         order,
         field,
+        // 添加排序行为
         sort(field: null|keyof T, order: 'asc'|'desc'):SortChanges<T>{
+            // 当调用 sort 行为方法时，source 并不会被修改，
+            // 所以外部的 useRefresh(updateSource, [source]) 不会运行，
+            // page 也就不会被重置为 1。
+            // 补充：
+            // 如果我们的需求是排序后页码需要重置为 1 的话，
+            // 只要在 return 对象中添加 page: 1 即可。
             return {...changes, field, order};
         }
     }
@@ -229,70 +246,73 @@ export function useSortNavigation<T>(source:T[]):Navigation<T>{
         ...rest
     } = useModel(sortNavigation, defaultSortState(source));
 
-    // if the source is not changed, 
-    // the sort action can not lead `setPage to 1` happening.
+    // 当 source 改变时，页码依然会重置为 1，
+    // 这是 updateSource 行为方法做的事。
     useRefresh(updateSource, [source]);
 
     return rest;
 } 
 ```
 
-Yes, we copied part of the codes from `useNavigation`, but reuse the main logic about how to navigate pages, and compose the sort feature with it.
+是的，在使用 `useModel` 组合的过程中，我们厚颜无耻的复制了一份 customized hook 进行修改，但这种小当量的修改又有什么关系呢？
 
-#### Controlled Model
+### 受控模型
 
-There are more reusages that a `model` can do better than `useState`, for example, sometimes we want to reuse an uncontrolled model logic into a controlled component.
+受控模型的`受控`概念来源于 react 受控组件。当我们构建 react 子组件时，往往需要使用来自父组件传递的 props 中的 `value` 和 `onChange` 做简单的输入输出工作，这时，我们希望直接使用 `value` 作渲染，使用 `onChange` 作对外的状态提交，而不是自己维护一份 `state` 状态。
 
-model.ts
+在实际应用中，有很多模型逻辑是可以在受控与非受控直接通用的，但很可惜，通常我们的模型都会维护一个私有状态，这大大增加了我们将模型运用于受控的场景。`@airma/react-state` 给出了以模型为单位的解决方案 `useControlledModel`。
+
+以下例子描述的是一个多选模型，该模型通过 toggle 反选行为修改 selected 数组中的选中值。
 
 ```ts
-// this is a selection model
+// 这是一个支持反选的多选功能模型
+// selected 状态为当前选中值组成的数组
 export function selection<T>(selected:T[]){
     return {
         selected,
         toggle(toggled:T){
-            // toggled is a immediate param,
-            // it makes selected change.
-            // so, the often changes here is selected.
+            // 对 toggled 对象进行反选操作。
+            // 如 selected 中包含该值，则把它移出选中数组
             if(selected.includes(toggled)){
                 return selected.filter((d)=>d!==toggled);
             }
+            // 反之，则加入选中数组
             return selected.concat(toggled);
         }
     }
 } 
 ```
 
-uncontrolled state usage:
+非受控行为：
 
 ```ts
 import {useModel} from '@airma/react-state';
 import {selection} from './model';
 
 export function useSelection<T>(){
+    // useModel 维护了一个本地私有状态
     const {selected, toggle} = useModel(selection,[]);
     return [selected, toggle];
 }
 ```
 
-controlled state usage:
+受控行为：
 
 ```ts
 import {useControlledModel} from '@airma/react-state';
 import {selection} from './model';
 
 export function useControlledSelection<T>(
-    state:T[],
-    setState:(toggled:T[])=>any
+    value:T[],
+    onChange:(selected:T[])=>any
 ){
-    // useControlledModel links state and setState outside.
-    // When the method is called, and generate a next state,
-    // the next state is sent out through setState.
-    // When the state changes, the instance refreshes.
+    // 当我们需要在一个受控组件中使用该模型时，
+    // 我们只要将 useModel 替换成 useControlledModel，
+    // 并接入 value, onChange 即可。
     const {selected, toggle} = useControlledModel(
         selection,
-        state,
-        setState
+        value,
+        onChange
     );
     return [selected, toggle];
 }
@@ -303,7 +323,7 @@ export function useComposite(){
 }
 ```
 
-API `useControlledModel` can link `state` and `setState` outside, it has no state inside. When the out `state` changes, it refreshes instance. When the instance method is called, the result of method is sent out through the out `setState`. 
+API `useControlledModel` 可用于将原先用于 `useModel` 的非受控模型接入一个受控环境，并通过 value, onChange 进行控制。
 
 ## 上下文状态
 
