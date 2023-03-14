@@ -95,6 +95,12 @@ export type GlobalConfigProviderProps = {
   children?: ReactNode;
 };
 
+export type GlobalSessionProviderProps = {
+  config?: GlobalConfig;
+  value?: StoreKeys;
+  children?: ReactNode;
+};
+
 export type Status = {
   isFetching: boolean;
   loaded: boolean;

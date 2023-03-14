@@ -25,7 +25,8 @@ import type {
   GlobalConfigProviderProps,
   GlobalConfig,
   TriggerType,
-  SessionKey
+  SessionKey,
+  GlobalSessionProviderProps
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
@@ -67,6 +68,34 @@ export function GlobalProvider({ value, children }: GlobalConfigProviderProps) {
         createElement(
           GlobalConfigContext.Provider,
           { value: value || null },
+          children
+        )
+      );
+}
+
+export function GlobalSessionProvider({
+  config,
+  value,
+  children
+}: GlobalSessionProviderProps) {
+  const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
+  const keys = useMemo(() => {
+    return [isMatchedInStore ? undefined : isFetchingModel, value].filter(
+      d => d
+    );
+  }, [isMatchedInStore, value]);
+  return !keys.length
+    ? createElement(
+        GlobalConfigContext.Provider,
+        { value: config || null },
+        children
+      )
+    : createElement(
+        ModelProvider,
+        { value: keys },
+        createElement(
+          GlobalConfigContext.Provider,
+          { value: config || null },
           children
         )
       );

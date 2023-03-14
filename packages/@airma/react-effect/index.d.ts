@@ -184,6 +184,12 @@ export declare const GlobalProvider: FC<{
   children?: ReactNode;
 }>;
 
+export declare const GlobalSessionProvider: FC<{
+  config?: GlobalConfig;
+  value?: StoreKeys;
+  children?: ReactNode;
+}>;
+
 export declare function withSessionProvider(
   models: StoreKeys
 ): <P extends Record<string, any>>(

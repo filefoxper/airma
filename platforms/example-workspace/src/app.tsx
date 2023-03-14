@@ -61,7 +61,7 @@ const userQuery = (validQuery: Condition) =>
     }, 400);
   });
 
-const fetchFactory = createSessionKey(userQuery);
+export const fetchFactory = createSessionKey(userQuery);
 
 const createModel = (userData: Omit<User, 'id'>) => {
   return {
@@ -189,6 +189,10 @@ const Condition = memo(() => {
 
   const [{ isFetching, data }] = useSession(fetchFactory);
 
+  useEffect(() => {
+    console.log('effect data change...', data);
+  }, [data]);
+
   return (
     <div>
       <span>name:</span>
@@ -222,7 +226,7 @@ const Condition = memo(() => {
   );
 });
 
-export default withModelProvider({ fetchFactory, condition })(function App() {
+export default withModelProvider({ condition })(function App() {
   const [defaultState, setDefaultState] = useState({
     valid: defaultCondition,
     display: defaultCondition,
@@ -241,10 +245,6 @@ export default withModelProvider({ fetchFactory, condition })(function App() {
   const { data, error, isFetching } = result;
 
   // const isFetching = useIsFetching();
-
-  useEffect(() => {
-    console.log('effect data change...', data);
-  }, [data]);
 
   return (
     <div style={{ padding: '12px 24px' }}>
