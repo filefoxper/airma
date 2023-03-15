@@ -240,10 +240,10 @@ void
 
 ```ts
 export declare function useSelector<
-  R extends StoreKey<AirReducer<any, any>>,
+  R extends Key<AirReducer<any, any>>,
   C extends (instance: ReturnType<R>) => any
 >(
-  storeKey: R,
+  key: R,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
@@ -251,34 +251,31 @@ export declare function useSelector<
 
 参数：
 
+* key - [键](/zh/react-state/guides?id=键)模型。
+* selector - 选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
+* equalFn - 可选对比函数，用于对比`库链接`实例刷新时，上次选取数据与本次选取值是否相等。默认以 `===` 作为对比方案。
 
+解释：
 
-Parameters
+`useSelector` 用于选取`库链接`实例中的部分数据，当实例刷新时，若判断上次选取数据与本次选取值相等，则不触发渲染，继续沿用上次选中值。否则相应实例刷新，触发使用组件渲染。对比标准 `equalFn`。
 
-* storeKey - A store key, it should be a result of calling [createStoreKey](/react-state/api?id=createstorekey).
-* selector - A callback to select properties from instance which is refreshed by the matched store state.
-* equalFn - Optional callback, it is used to provide a comparator for comparing if the result of `selector` has been changed. Only when the result of `selector` has been changed, it drive the component which uses it to render. In default, it compares the result change by using `===` expression.
+该 API 大最大作用就是降低渲染频率，提高渲染性能。
 
-Explain
+返回：
 
-This API only can be used to link a matched store with store key. It can select data from instance which is refreshed by the matched store state. If there is no matched store, it throws an error. When a state change happens, `useSelector` refresh and select data from the instance, only if the selected result is changed, it drives component to render. So, it is often used for reducing the frequency of component render.
+selector 回调函数返回值。
 
-Returns
-
-* A result selected from instance refreshd by the matched store state.
-
-Example
+例子：
 
 ```ts
 import React from 'react';
 import {
-  StoreProvider, 
-  createStoreKey, 
+  Provider, 
+  createKey, 
   useSelector
 } from '@airma/react-state';
 
-// use createStoreKey API to make a key to store
-const counter = createStoreKey((state:number)=>({
+const counter = createKey((state:number)=>({
     count: state,
     isNegative: state<0,
     increase:()=> state + 1,
@@ -286,33 +283,32 @@ const counter = createStoreKey((state:number)=>({
 }));
 
 const Increase = ()=>{
-    // select action method from instance,
-    // the action method from instance is persistent,
-    // so, useSelector will never drive `Increase` rerender again.
+    // 选取行为方法
     const increase = useSelector(counter, instance=>instance.increase);
 
     return ......
 }
 
 const Decrease = ()=>{
-    // same as `Increase`
+    // 选取行为方法
     const decrease = useSelector(counter, instance=>instance.decrease);
 
     return ......
 }
 
 const Counter = ()=>{
+    // 选取渲染数据
     const count = useSelector(counter, instance=>instance.count);
     return ......
 }
 
 export default ()=>{
     return (
-        <StoreProvider value={counter}>
+        <Provider keys={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
-        </StoreProvider>
+        </Provider>
     );
 }
 ```

@@ -78,6 +78,164 @@ const App = memo(()=>{
 
 我们使用实例方法进行相同操作，因为行为方法调用的是最新原型实例方法，所以3秒后，值为2，符合我们的预期。
 
+## 上下文查找库方式
+
+通过`键`查找库的过程总是沿着 `Provider` 树自近及远的，若最近一层父级 `Provider 库` 没有与之匹配的`链接`，则继续往更高层查找，直到最顶层的 `Provider` 为止。若始终没有匹配，`useSelector` 或 `useModel` 会抛出查找异常错误。
+
+```ts
+import React from 'react';
+import {
+    Provider,
+    useSelector
+} from '@airma/react-state';
+import {globalKeys} from '@/global/models';
+import {pageKeys} from './models';
+
+// const globalKeys = {loginUser: Key, config: Key}
+// const pageKeys = {condition: Key, todoList: Key}
+
+const Condition = ()=>{
+    // useSelector 先到最近的 <Provider keys={pageKeys}> 查找，
+    // 查找无果后向更高层 <Provider keys={globalKeys}> 发起查找，
+    // 最后使用匹配 <Provider keys={globalKeys}> store
+    const userId = useSelector(
+        globalKeys.loginUser, 
+        instance => instance.id
+    );
+    // useModel 在最近的 <Provider keys={pageKeys}> store 中匹配成功
+    const {
+        displayQuery, 
+        changeDisplayQuery,
+        submit
+    } = useModel(pageKeys.condition);
+    return ......;
+};
+
+const List = ()=>{
+    const list = useSelector(
+        pageKeys.todoList,
+        instance => instance.list
+    );
+    return ......;
+};
+
+const Page = ()=>{
+    // 使用 pageKeys 创建当前页面的上下文作用域
+    return (
+        <Provider keys={pageKeys}>
+          <Condition/>
+          <List/>
+        </Provider>
+    );
+}
+
+const App = ()=>{
+    // 使用 globalKeys 创建应用全局的上下文作用域
+    return (
+        <Provider keys={globalKeys}>
+          <Page/>
+        </Provider>
+    );
+}
+```
+
+上例展示了一个简单的`键库`匹配规则，即：由近及远，直到匹配成功或全部匹配失败为止。这条规则非常重要，它保证了我们的多节点上下文系统能够正常工作，同时避免大一统的应用级全局上下文的尴尬局面。
+
+## 高级用法
+
+`@airma/react-state` 中有些冷门，却非常使用的 API，在这里做一些简单介绍。
+
+### 神奇的管道
+
+我们常用于上下文状态管理中的`键`模型函数自带有一个 pipe 管道方法。我们可以使用管道方法将`链接`中的状态同步到一个仅参数状态类型一致的新模型中，从而得到一个状态与`链接`同步的新`实例`。
+
+```ts
+import React from 'react';
+import { 
+    createKey,
+    Provider,
+    useModel,
+    useSelector, 
+} from '@airma/react-state';
+
+const counterModel = (count: number = 0)=>({
+    count,
+    isNegative: count < 0,
+    increase: ()=>count + 1,
+    decrease: ()=>count - 1
+});
+
+// 创 `键`
+const counterKey = createKey(counterModel);
+
+const Decrease = ()=>{
+    const decrease = useSelector(
+        counterKey, 
+        i => i.decrease
+    );
+    return (
+        <button onClick={decrease}>-</button>
+    );
+}
+
+const Increase = ()=>{
+    const increase = useSelector(
+        counterKey, 
+        i => i.increase
+    );
+    return (
+        <button onClick={increase}>+</button>
+    )
+}
+
+const Reset = ()=>{
+    const {
+        reset
+    } = useModel(
+        // 使用管道将链接的状态同步到指定模型
+        counterKey.pipe((c: number)=>({
+            reset(){
+                return 0;
+            }
+        }))
+    )
+    return (
+        <button onClick={reset}>reset</button>
+    );
+}
+
+const Counter = ()=>{
+    const count = useSelector(
+        counterKey, 
+        i=>i.count
+    );
+    return (
+        <div>
+          <Decrease />
+          <span>{count}</span>
+          <Increase />
+          <Reset />
+        </div>
+    );
+}
+
+const App = ()=>{
+    return (
+        <Provider keys={counterKey}>
+          <Counter />
+        </Provider>
+    )
+}
+```
+
+### 链接独立
+
+试想，我们在一个公共组件中使用了 `useModel(modelKey)` 的方式去匹配`库链接`，这导致了我们的公共组件很难在`库`外使用，那有没有方法可以让我们的`useModel`在找不到匹配库的情况下创建一个本地`链接`使用呢？
+
+有，那就是`链接独立`配置项：`autoLink`。使用该配置项可以让`useModel(modelKey)` 在无法查找到匹配`库`时，利用`键`模型本身就是模型函数的原理，创建一个本地`链接`。
+
+`autoLink` 配置项只对使用`键`模型的`useModel`起作用，另外为了方便建立本地链接，使用 `autoLink` 的 `useModel` 必须提供默认状态值：`useModel(modelKey, defaultState, { autoLink: true })`，该默认状态只在无法匹配`库`，必须使用`本地链接`时有效，它无法参与上下文状态库`链接`的运行时初始化功能。 
+
 ## Typescript 支持
 
 `@airma/react-state` 拥有一套完整的 `typescript` 类型检查声明。使用 `typescript` 可以最大限度发挥该工具的优势。如：

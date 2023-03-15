@@ -5,6 +5,7 @@
 1. [模型](/zh/react-state/concepts?id=模型)
 2. [实例](/zh/react-state/concepts?id=实例)
 3. [刷新](/zh/react-state/concepts?id=刷新)
+4. [链接](/zh/react-state/concepts?id=链接)
 
 ## 模型
 
@@ -71,6 +72,7 @@ const toggler = (visible:boolean):ToggleInstance =>[
     ()=>!visible
 ]; // 返回元组类型的 `原型`
 ```
+
 
 ## 实例
 
@@ -227,5 +229,9 @@ refresh state... 1
 [自动] 使用 useState 将新原型更新为新实例 {count: 1, isNegative: false ...}；
 ```
 通过以上类命令式的打印过程，我们可以更清楚的了解一次刷新过程，到底发生了什么。
+
+## 链接
+
+链接是 `@airma/react-state` 的基本工作单元对象，`useModel` API 就是通过链接对象来存储`模型`、`实例`、`状态`等信息，并协调`实例`的刷新，渲染等自动化过程。
 
 在了解了 `@airma/react-state` 的概念和工作原理后，让我们进入最让人振奋的 [引导](/zh/react-state/guides.md) 章节，看看关于该工具的更高级功能（跨组件状态同步），以及如何在实际工作中用好它。

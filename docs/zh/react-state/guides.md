@@ -331,7 +331,7 @@ React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider
 
 目前很多状态管理工具都只提供了全局上下文状态管理模式，将 store 数据库维护在一个全局常量中。经过大量实践，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
 
-`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 [Provider](/zh/react-state/api?id=provider) API 组件实例中存放的是使用键[模型](/zh/react-state/concepts?id=模型)生成的[模型实例](/zh/react-state/concepts?id=实例)）。
+`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 [Provider](/zh/react-state/api?id=provider) API 组件实例中存放的是使用键[模型](/zh/react-state/concepts?id=模型)生成的[链接](/zh/react-state/concepts?id=链接)）。
 
 这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局库。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
 
@@ -371,8 +371,7 @@ React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider
  }
 
 // 使用 createKey 生成 `键`模型，
-// 通过 传入第二个参数 可以进行预先初始化，
-// 在生产库实例的同时会使用该默认值
+// 通过 传入第二个参数 可以进行预先初始化
 export const currentUserKey = createKey(
     // 被包装模型
     currentUserModel,
@@ -399,8 +398,8 @@ export const storeKeys = {
 
 `键`有两个重要作用：
 
-1. 提供给 `Provider` 组件，用于生成上下文模型实例状态`库` (store)。
-2. 提供给 `useModel` 和 `useSelector` 用作链接`库`的钥匙，负责与`库`中的实例建立同步链接。
+1. 提供给 `Provider` 组件，用于生成上下文链接`库` (store)。
+2. 提供给 `useModel` 和 `useSelector` 用作打开`库`链接的钥匙，并负责匹配的链接建立同步。
 
 ```ts
 import React from 'react';
@@ -417,10 +416,10 @@ import {
 import type {User, Config} from '@/global/type';
 
 const Login = ()=>{
-    // 使用 `键` currentUserKey 连接 store，
-    // 并选取 store 模型实例的行为方法。
+    // 使用 `键` currentUserKey 匹配 store，
+    // 并选取 store 链接中模型实例的行为方法。
     // 调用行为方法可引起库中实例对象刷新，
-    // 并通知其他同 `键` 使用者同步实例对象。
+    // 并通知其他同 `键` 使用者同步实例与状态。
     const handleLogin = useSelector(
         currentUserKey, 
         i=>i.login
@@ -473,86 +472,25 @@ render(
 );
 ```
 
-* API `useSelector` 可通过`键`查找到库中对应的实例，并选取当前组件需要的数据或行为方法。当有同`键`使用者触发了实例刷新，useSelector 会根据所选对象值是否发生改变来决定是否需要渲染当前组件。通过使用这个 API，我们可以降低使用组件的渲染频率，从而达到优化组件性能的目的。
-* API `useModel` 也可通过`键`查找到库中对应的实例。与 `useSelector` 不同，`useModel` 始终返回匹配到的完整的`库`实例对象，并响应每次实例刷新。
+* API `useSelector` 可通过`键`查找到库中对应的`链接`，并从`链接`实例中选取当前组件需要的数据或行为方法。当有同`键`使用者触发了实例刷新，useSelector 会根据所选对象值是否发生改变来决定是否需要渲染当前组件。通过使用这个 API，我们可以降低使用组件的渲染频率，从而达到优化组件性能的目的。
+* API `useModel` 也可通过`键`查找到库中对应`链接`的实例。与 `useSelector` 不同，`useModel` 始终返回匹配到的完整的`链接`实例对象，并响应每次实例刷新。
 
 ### 库
 
-[Provider](/zh/react-state/api?id=provider)组件根据我们提供的`键`模型或`键`模型串（可以是单个`键`模型函数，也可以是由多个`键`组成的 object或数组）生成一个内部的实例集合。这个实例集合被称为`库`。
+[Provider](/zh/react-state/api?id=provider)组件根据我们提供的`键`模型或`键`模型串（可以是单个`键`模型函数，也可以是由多个`键`组成的 object或数组）生成一个内部的`链接`集合。这个集合被称为`库`。
 
-为 `useModel` 或 `useSelector` 这些实例链接点提供`键`模型，可以快速匹配`库`中的实例，并建立同步链接。
+为 `useModel` 或 `useSelector` 提供正确的`键`模型，可以快速匹配`库`中的链接，并建立同步机制。
 
-### 查找
-
-通过`键`查找库的过程总是沿着 `Provider` 树自近及远的，若最近一层父 `Provider` 的`库`中没有与之匹配的`实例`，则继续往更高层查找，直到顶层 `Provider` 为止。若始终没有找到匹配`实例`，`useSelector` 或 `useModel` 会抛出查找异常错误。
-
-```ts
-import React from 'react';
-import {
-    Provider,
-    useSelector
-} from '@airma/react-state';
-import {globalKeys} from '@/global/models';
-import {pageKeys} from './models';
-
-// const globalKeys = {loginUser: Key, config: Key}
-// const pageKeys = {condition: Key, todoList: Key}
-
-const Condition = ()=>{
-    // useSelector 先到最近的 <Provider keys={pageKeys}> 查找，
-    // 查找无果后向更高层 <Provider keys={globalKeys}> 发起查找，
-    // 最后使用匹配到的 <Provider keys={globalKeys}> store
-    const userId = useSelector(
-        globalKeys.loginUser, 
-        instance => instance.id
-    );
-    // useModel 在最近的 <Provider keys={pageKeys}> store 中匹配成功
-    const {
-        displayQuery, 
-        changeDisplayQuery,
-        submit
-    } = useModel(pageKeys.condition);
-    return ......;
-};
-
-const List = ()=>{
-    const list = useSelector(
-        pageKeys.todoList,
-        instance => instance.list
-    );
-    return ......;
-};
-
-const Page = ()=>{
-    // 使用 pageKeys 创建当前页面的上下文作用域
-    return (
-        <Provider keys={pageKeys}>
-          <Condition/>
-          <List/>
-        </Provider>
-    );
-}
-
-const App = ()=>{
-    // 使用 globalKeys 创建应用全局的上下文作用域
-    return (
-        <Provider keys={globalKeys}>
-          <Page/>
-        </Provider>
-    );
-}
-```
-
-上例展示了一个简单的`键库`匹配规则，即：由近及远，直到匹配成功或全部匹配失败为止。这条规则非常重要，它保证了我们的多库系统能够正常工作，同时避免大一统的应用级全局上下文的尴尬局面。或许大家已经注意到，当 `useModel` 联合 `键` 进行上下文同步操作时是不需要`默认状态值`的，因为`默认状态值`已经在创建`键`的时候填写了：`createKey(model, defaultState)`，那如何在组件内部另外进行初始化默认值操作呢？接下来我们来看一看，`useModel`在上下文状态操作中的初始化操作。
+或许大家已经注意到，当 `useModel` 联合 `键` 进行上下文同步操作时是不需要`默认状态值`的，因为`默认状态值`已经在创建`键`的时候填写了：`createKey(model, defaultState)`，那如何在组件内部另外进行运行时初始化操作呢？接下来我们来看一看，`useModel`在上下文状态操作中的初始化操作。
 
 ### 初始化
 
-上下文作用域同步实例的初始化方式由两种：
+在上下文作用域中初始化匹配`链接状态`的方式有两种：
 
-1. 通过 `createKey` API 进行预先初始化，初始化的实际运行过程会在创建库的时候执行。如：`createKey(model, defaultState)`。
-2. 通过 `useModel` API 在 function 组件中进行初始化。
+1. 通过 `createKey` API 进行预初始化，初始化的实际运行过程会在创建库的时候执行。如：`createKey(model, defaultState)`。
+2. 通过 `useModel` API 在 function 组件中进行运行时初始化。
 
-通过 `createKey` API 进行预先初始化，只能为`库`实例提供一个写死的常量默认状态，这没什么好说的，这里我们重点介绍使用 `useModel` 在组件中初始化的方式。
+通过 `createKey` API 进行预初始化，只能为`库`中`链接`提供一个写死的常量默认状态，这没什么好说的，这里我们重点介绍使用 `useModel` 在组件中进行运行时初始化的方式。
 
 ```ts
 import React from 'react';
@@ -574,11 +512,11 @@ const counterModel = (count: number = 0)=>({
 const counterKey = createKey(counterModel, 0);
 
 const Decrease = ()=>{
-    // 初始化默认状态 2，
-    // 因为该组件的加载顺序在 Counter 组件的 useModel 之后，
+    // 运行初始化状态值 2，
+    // 因为该组件的加载顺序在 Counter 父组件的 useModel 之后，
     // 而 Counter 组件中的 useModel 将库实例状态初始化成了 1，
-    // 所以运行时默认状态已经存在，这里的初始化失败。
-    // 最终觉得库实例中的状态为 1。
+    // 所以运行时默认状态已经存在，2 被忽略，
+    // 最终库链接中的状态为 1。
     const {decrease} = useModel(counterKey, 2);
     return (
         <button onClick={decrease}>-</button>
@@ -594,7 +532,7 @@ const Increase = ()=>{
 }
 
 const Counter = ()=>{
-    // 初始化默认状态 1
+    // 运行时初始化状态 1
     const {count} = useModel(counterKey, 1);
     return (
         <div>
@@ -614,9 +552,9 @@ const App = ()=>{
 }
 ```
 
-通过上例，我们可以知道，对使用上下文状态的`实例`，进行运行时初始化，其初始状态值是由 `useModel` 的运行顺序决定的。越先运行的 `useModel` 初始化优先级越高。
+通过上例分析，我们知道，对`Provider库链接`进行运行时初始化，`链接`状态值是由 `useModel` 的运行顺序决定的。越先运行的 `useModel` 初始化优先级越高。
 
-如果 `useModel` 没有初始化不是最先运行的，会发生状态冲突错误吗？
+如果最先运行的 `useModel` 没有初始化，后续的 `useModel` 做了运行时初始化的工作，会发生状态冲突错误吗？
 
 ```ts
 import React from 'react';
@@ -638,9 +576,10 @@ const counterModel = (count: number = 0)=>({
 const counterKey = createKey(counterModel, 0);
 
 const Decrease = ()=>{
-    // 初始化默认状态 2，
+    // 运行时初始化状态 2，
     // 因为之前没有发生运行时初始化，
-    // 所遇你初始化后 count 为 2
+    // 所以，初始化后 count 为 2，
+    // 初始化成功。
     const {decrease} = useModel(counterKey, 2);
     return (
         <button onClick={decrease}>-</button>
@@ -656,10 +595,10 @@ const Increase = ()=>{
 }
 
 const Counter = ()=>{
-    // 不进行运行时初始化
+    // 不进行运行时初始化，
     // 初始默认状态为 0，
     // 由于 Decrease 组件将 count 初始化成 2，
-    // 故，Counter 组件会被强制重新渲染，count 会被更新为 2
+    // 故，此处的 useModel 会触发组件重新渲染将 count 更新为 2
     const {count} = useModel(counterKey);
     return (
         <div>
@@ -679,11 +618,11 @@ const App = ()=>{
 }
 ```
 
-也就是说运行时初始化如果不在最前，则会触发之前的 `useModel` 进行强制渲染更新。虽然，这个过程是靠谱的，但这是对性能的浪费。所以我们建议如果需要对`上下文库实例`使用运行时初始化特性，请将初始化 `useModel` 放在最先运行区域。
+也就是说运行时初始化如果不在最前，则会触发之前的 `useModel` 进行重渲染更新。虽然，这个过程是靠谱的，但这是对性能的浪费。所以我们建议如果需要对`上下文链接状态`使用运行时初始化特性，请将初始化 `useModel` 放在最先运行区域。
 
 ### 实战
 
-这里，我们以一个用户查询列表页为例（假分页查询），进行实战演示。为了提高演练的真实性，我们这示例中引用了 [@airma/restful](/restful) 与 [@airma/react-effect](/zh/react-effect) 工具库。
+这里，我们以一个用户查询列表页为例（假分页查询），进行实战演示。为了提高演练的真实性，我们在示例中引用了 [@airma/restful](/restful) 与 [@airma/react-effect](/zh/react-effect) 工具库。
 
 老规矩，万事开头皆类型。让我们先为查询页面定义所需的类型。
 
@@ -797,12 +736,12 @@ function model(state: State){
     }
 }
 
-// 创建“键”，因为我们只需要同步一个模型实例，所以不需要使用“钥匙串”结构，
+// 创建“键”，因为我们只需要同步一个模型链接，所以不需要使用“钥匙串”结构，
 // 即：“object”结构，{model:modelKey}
 export const modelKey = createKey(model, defaultState());
 ```
 
-我们使用 `createKey` 创建了一个全局键，之后将用于在 `Provider` 中创建上下文状态库，并在子组件中链接该状态库，进而达到实例数据同步的效果。
+我们使用 `createKey` 创建了一个全局键，之后将用于在 `Provider` 中创建上下文状态链接库，并在子组件中访问该库，从而达到实例状态同步的效果。
 
 现在开始构建查询页面。
 
@@ -854,7 +793,7 @@ const Condition = memo(()=>{
 });
 
 const SourceContent = memo(()=>{
-    // 连接并同步更新实例
+    // 匹配并同步状态与实例
     const {
         validQuery,
         datasource,
@@ -899,7 +838,7 @@ const SourceContent = memo(()=>{
 });
 
 export default function Page(){
-    // 使用 modelKey 建立实例库
+    // 使用 modelKey 建立链接库
     return (
         <Provider keys={modelKey}>
             <Condition />
