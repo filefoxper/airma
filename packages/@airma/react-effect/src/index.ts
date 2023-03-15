@@ -8,12 +8,12 @@ import {
 } from 'react';
 import {
   factory,
-  ModelProvider,
+  Provider,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
   useSelector,
-  withModelProvider
+  withProvider
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -22,7 +22,6 @@ import type {
   MutationConfig,
   StrategyType,
   PromiseData,
-  GlobalConfigProviderProps,
   GlobalConfig,
   TriggerType,
   SessionKey,
@@ -54,28 +53,9 @@ const isFetchingModel = factory((fetchingKeys: any[]) => {
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
-export function GlobalProvider({ value, children }: GlobalConfigProviderProps) {
-  const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
-  return isMatchedInStore
-    ? createElement(
-        GlobalConfigContext.Provider,
-        { value: value || null },
-        children
-      )
-    : createElement(
-        ModelProvider,
-        { value: isFetchingModel },
-        createElement(
-          GlobalConfigContext.Provider,
-          { value: value || null },
-          children
-        )
-      );
-}
-
 export function GlobalSessionProvider({
   config,
-  value,
+  keys: value,
   children
 }: GlobalSessionProviderProps) {
   const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
@@ -91,8 +71,8 @@ export function GlobalSessionProvider({
         children
       )
     : createElement(
-        ModelProvider,
-        { value: keys },
+        Provider,
+        { keys },
         createElement(
           GlobalConfigContext.Provider,
           { value: config || null },
@@ -640,9 +620,9 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
   return isLocalFetching;
 }
 
-export const SessionProvider = ModelProvider;
+export const SessionProvider = Provider;
 
-export const withSessionProvider = withModelProvider;
+export const withSessionProvider = withProvider;
 
 export { createSessionKey } from './model';
 

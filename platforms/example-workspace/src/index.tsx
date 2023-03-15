@@ -3,7 +3,6 @@ import { render } from 'react-dom';
 import App, { fetchFactory } from '@/app';
 import {
   GlobalConfig,
-  GlobalProvider,
   GlobalSessionProvider,
   Strategy
 } from '@airma/react-effect';
@@ -20,7 +19,7 @@ const keys = {
 
 render(
   <React.StrictMode>
-    <GlobalSessionProvider config={config} value={keys}>
+    <GlobalSessionProvider config={config} keys={keys}>
       <App />
     </GlobalSessionProvider>
   </React.StrictMode>,

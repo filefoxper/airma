@@ -123,7 +123,7 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
-export const StoreProvider: FC<{
+export const ModelProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
@@ -140,7 +140,24 @@ export const StoreProvider: FC<{
   );
 };
 
-export const ModelProvider = StoreProvider;
+export const StoreProvider = ModelProvider;
+
+export const Provider: FC<{
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>;
+  children?: ReactNode;
+}> = function RequiredModelProvider({ keys, children }) {
+  const context = useContext(ReactStateContext);
+  const storeMemo = useMemo(() => createStore(keys), []);
+  const selector = useMemo(() => {
+    const store = storeMemo.update(keys);
+    return { ...store, parent: context };
+  }, [context, keys]);
+  return createElement(
+    ReactStateContext.Provider,
+    { value: selector },
+    children
+  );
+};
 
 function findConnection<S, T extends AirModelInstance>(
   c: Selector,
@@ -379,6 +396,22 @@ export function useSelector<
   return s.data;
 }
 
+export function withProvider<
+  P extends Record<string, any>,
+  C extends ComponentType<P>
+>(
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>,
+  Comp: C
+): ComponentType<P> {
+  return function WithModelProviderComponent(props: P) {
+    return createElement(
+      Provider,
+      { keys },
+      createElement<P>(Comp as FunctionComponent<P>, props)
+    );
+  };
+}
+
 export function withStoreProvider(
   models: Array<any> | ((...args: any) => any) | Record<string, any>
 ) {
@@ -422,4 +455,4 @@ export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
 
-export const createStoreKey = createFactory;
+export const createKey = createFactory;

@@ -3,36 +3,41 @@
 ## useModel
 
 ```ts
-function useModel<S, T extends Record<string|number, any>>(
-  model: (state:S)=>T
-): T;
-function useModel<S, T extends Record<string|number, any>, D extends S>(
+function useModel<
+  S, 
+  T extends Record<string, any>| Record<number, any>,
+  D extends S
+>(
   model: (state:S)=>T,
-  state: D,
-  option?: { refresh?: boolean; autoLink?: boolean; realtimeInstance?: boolean }
+  state?: D,
+  option?: { 
+    refresh?: boolean; 
+    autoLink?: boolean; 
+    realtimeInstance?: boolean 
+  }
 ): T;
 ```
 
-Parameters:
+参数：
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
-* state - Optional, a default state for model initial.
-* option - Optional, an optional config for opening `refresh`, `autoLink` and `realtimeInstance` mode.
+* model - 模型函数，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* state - 默认状态值，当 model 为 [键](/zh/react-state/guides?id=键) 模型时为可选项。
+* option - 可选配置，可配置 `refresh`，`autoLink`，`realtimeInstance` 项，开启不同的功能。
 
-Explain
+解释：
 
-1. `option.refresh`: When open the `refresh` optional config, `useModel` follows the change of state. That means every change of state parameter will lead a refresh for instance. You can consider it as [useRefreshModel](/react-state/api?id=userefreshmodel).
-2. `option.autoLink`: When open the `autoLink` optional config, `useModel` creates a local state instead a unavailable store state. You can refer to the [guides detail](/react-state/guides?id=autolink) to learn it.
-3. `option.realtimeInstance`: When open this option, `useModel` returns a [realtime instance](/react-state/concepts?id=instance).
+1. `option.refresh`：当该配置项为 `true` 时，`useModel` 会跟随默认状态值的变化刷新实例。
+2. `option.autoLink`：当该配置项为 `true` 时，如果 `useModel` 使用的 `键` 无法访问到匹配的 `库`，则将 `键` 模型当作本地模型使用，实例维护在 `useModel` 中。成功匹配上下文实例库的 `useModel`，在开启 `autoLink` 的情况下，不具备[运行时初始化](/zh/react-state/guides?id=初始化)的能力。
+3. `option.realtimeInstance`：当该配置项为 `true` 时，返回的实例对象为[非稳定实例](/zh/react-state/concepts?id=非稳定实例)。
 
-Returns
+返回：
 
-* A instance object, call the action method from instance, can generate a next state, and refreshes instance with this new state.
+模型[实例](/zh/react-state/concepts?id=实例)
 
-Example
+例子：
 
 ```ts
-// local state usage
+// 本地状态
 import {useModel} from '@airma/react-state';
 
 const counter = (state:number)=>({
@@ -41,7 +46,7 @@ const counter = (state:number)=>({
     decrease:()=> state - 1
 });
 
-// customized hook
+// 自定义 hook
 const useCounter = ()=>{
     const {
         count,
@@ -56,24 +61,23 @@ const useCounter = ()=>{
 or 
 
 ```ts
-// scope state usage
+// 上下文状态
 import React from 'react';
 import {
     useModel, 
-    factory,
-    ModelProvider
+    createKey,
+    Provider
 } from '@airma/react-state';
 
-// use factory API to make a key to store
-const counter = factory((state:number)=>({
+// 建立 `键` 模型
+const counter = createKey((state:number)=>({
     count: state,
     increase:()=> state + 1,
     decrease:()=> state - 1
 }));
 
-// deep component
 const Counter = ({name}:{name:string})=>{
-    // use factory model `counter` as key to store
+    // 使用 `键` 模型链接上下文状态库中的实例
     const {
         count,
         increase,
@@ -84,12 +88,12 @@ const Counter = ({name}:{name:string})=>{
 };
 
 export const App = ()=>{
-    // ModelProvider to create store with factory model
+    // Provider 通过 `键` 创建并维护实例库
     return (
-        <ModelProvider value={counter}>
+        <Provider keys={counter}>
             <Counter name="count_1">
             <Counter name="count_2">
-        </ModelProvider>
+        </Provider>
     );
 }
 ```
@@ -108,21 +112,21 @@ function useControlledModel<
 ): T;
 ```
 
-Parameters
+参数：
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
-* state - An outside state for refresh model instance.
-* onChange - A callback to feedback a next state outside.
+* model - 模型函数，不能为 `键` 模型，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* state - 外部状态值。
+* onChange - 对外反馈变化状态的 callback 接口。
 
-Explain
+解释：
 
-This API can help you reuse model more easier. It is drived by an outside state, and feedback a next state to change the outside state when the action method from instance calls. It has no state inside. You can refer to [guide section](/react-state/guides?id=controlled-model) for detail.
+该 API 有助于将模型复用至受控模式，`useControlledModel` 不维护内部状态，完全传入 state 外部状态值的变化，这与 `useModel` 的 `refresh` 模式以及 `useRefreshModel` 不同。可参考引导的[受控模型](zh/react-state/guides?id=受控模型)部分。
 
-Returns
+返回：
 
-* A instance object, call the action method from instance, can generate a next state, and feedback this new state outside by the `onChange` callback.
+完全受控的模型[实例](/zh/react-state/concepts?id=实例)
 
-Example
+例子：
 
 ```ts
 import React from 'react';
@@ -154,8 +158,6 @@ const App = ()=>{
 
 ## useRefreshModel
 
-It is a shortcut usage about [useModel(model, state, {refresh:true})](/react-state/api?id=usemodel).
-
 ```ts
 function useRefreshModel<
   S,
@@ -168,21 +170,21 @@ function useRefreshModel<
 ): T;
 ```
 
-Parameters
+参数：
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
-* state - An outside state for refresh model instance.
-* option - Optional, an optional config for opening `autoLink` and `realtimeInstance` mode.
+* model - 模型函数，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* state - 状态值，`useRefreshModel` 监听该值的变化刷新实例。
+* option - 可选配置，可配置 `autoLink`，`realtimeInstance` 项，开启不同的功能。
 
-Explain
+解释：
 
-This API is a shortcut for `useModel(model, state, {refresh:true})`. When the state parameter changes, it refreshes the instance. When the action method from instance is called, it refreshes the instance. It is different with `useControlledModel`, for it maintains an own state or links with a store state (when use a factory model). So, it is just follow the outside state change, it will not feedback state outside.
+API `useRefreshModel` 相当于 [useModel(model, state, {refresh: true})](/zh/react-state/api?id=usemodel) 的快捷使用方式，内部有自己的 state 或有链接的实例库 state。当传参 state 发生变化时，`useRefreshModel` 会刷新实例，当实例行为方法被调用时，也会刷新实例。
 
-Returns
+返回：
 
-* A instance object, call the action method from instance, can generate a next state, and refreshes instance with this new state.
+模型[实例](/zh/react-state/concepts?id=实例)
 
-Example
+例子：
 
 ```ts
 import React from 'react';
@@ -192,14 +194,12 @@ import {counter} from './model';
 const App = ()=>{
     const [state, setState] = useState(0);
 
+    // 跟随 state 变化渲染，当并不完全受控于 state
     const {
         count,
-        // the action method changes its own state: count,
-        // it can not change state from useState
         increase,
         decrease,
     } = useRefreshModel(counter, state); 
-    // the state change can refresh count
 
     const resetCountTo = (c)=>{
         setState(c);
@@ -223,60 +223,18 @@ function useRefresh<T extends (...args: any[]) => any>(
 ): void;
 ```
 
-Parameters
+参数：
 
-* method - Any function callback.
-* variables - It can be the parameters array for method, or a config which contains `variables` and an optional `refreshDeps`. If you choose a config setting, you'd better set `refreshDeps`, or it will works like `useEffect(callback)`. 
+* method - 任意带参数的回调函数
+* variables - 回调函数依赖参数，或配置。
 
-Explain
+解释：
 
-This API is a supplement for `useRefreshModel`. Sometimes, we don't want to watch and change a whole state, and we can use it for a partial watch and change. It watches if the params are changed, and then call the method function with the newest params.
+`useRefresh` API 通过监听 variables 变化调用 method 回调函数。variables 为 method 的参数。如果希望改变监听依赖，可设置 refreshDeps 作监听依赖，设置 refreshDeps 后，`useRefresh` 不再监听 variables 变化。
 
-```ts
-// you can consider this code as `useRefresh`
-export function useRefresh<T extends (...args: any[]) => any>(
-  method: T,
-  params:
-    | Parameters<T>
-    | {
-        refreshDeps?: any[];
-        variables: Parameters<T>;
-      }
-) {
-  const isVariableParams = Array.isArray(params);
-  const refreshDeps = (function computeRefreshDeps() {
-    if (isVariableParams) {
-      return params;
-    }
-    if (!params) {
-      return undefined;
-    }
-    return params.refreshDeps;
-  })();
-  const variables = (function computeVariables() {
-    if (isVariableParams) {
-      return params;
-    }
-    if (!params) {
-      return [];
-    }
-    return params.variables || [];
-  })();
-  const fnRef = useRef(method);
-  fnRef.current = method;
-  useEffect(() => {
-    const result = fnRef.current(...variables);
-    if (typeof result === 'function') {
-      return result;
-    }
-    return () => undefined;
-  }, refreshDeps);
-}
-```
+返回
 
-Returns
-
-* void
+void
 
 ## useSelector
 
@@ -290,6 +248,10 @@ export declare function useSelector<
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 ```
+
+参数：
+
+
 
 Parameters
 
@@ -385,7 +347,7 @@ Returns
 
 If the model is a store key, and if the store key is matched with a store.
 
-## StoreProvider
+## Provider
 
 It has another name [ModelProvider](/react-state/api?id=modelprovider).
 
@@ -466,7 +428,7 @@ const App = withStoreProvider(models)(()=>{
 
 It is another name of [withStoreProvider](/react-state/api?id=withstoreprovider).
 
-## createStoreKey
+## createKey
 
 ```ts
 type StoreKey=((state:any)=>Record<number|string, any>)&{

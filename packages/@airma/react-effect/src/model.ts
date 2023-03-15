@@ -1,4 +1,4 @@
-import { factory } from '@airma/react-state';
+import { createKey } from '@airma/react-state';
 import type { SessionState } from './type';
 import { SessionKey } from './type';
 
@@ -42,7 +42,7 @@ export function createSessionKey<
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
 >(effectCallback: E): SessionKey<E> {
   const context = { implemented: false };
-  const model = factory(effectModel, defaultPromiseResult()) as SessionKey<E>;
+  const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
   model.effect = [
     function effectCallbackReplace(...params: any[]) {
       return effectCallback(...params);

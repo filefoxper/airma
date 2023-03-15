@@ -1,12 +1,12 @@
-# Features
+# 特性
 
-## Persist methods
+## 恒定行为方法
 
-The methods from `instance` are persistent, using them as props of memo component is very helpful. The `instance` method is a wrap function, it always calls the newest `proto instance` method when it works. So, the render closures can not affect it with stale values, that keeps it more safer than `useState`.
+一个模型`实例`上的`行为方法`是始终恒定不变的。使用者可以自由将这些`行为方法`用于 memo 组件的 callback 接口，这些恒定的`行为方法`对提升组件渲染效率非常有利。
 
-We have talked about the trouble about `setState` in [section guide](/react-state/guides?id=local-state). Let's continue the talking. 
+虽然`实例`中的行为方法是始终恒定不变的，但在被调用时，行为方法会运行最新的`实例原型`方法以确保数据的正确性。所以，恒定的行为方法依然是数据安全的，甚至比普通的 `useState` 更加安全。
 
-The trouble about `useState` usage:
+让我们继续之前的话题，看看使用`useState`的其他问题。除了容易分散逻辑，与`模型`或 `useReducer` 比，`useState` 还非常容易引入老数据问题（闭包产生的问题）。
 
 ```ts
 import React,{memo, useState} from 'react';
@@ -15,16 +15,21 @@ const App = memo(()=>{
 
     const [count, setCount] = useState(0);
 
-    // click `lazy increase` button first
+    // 先点击“延时 + 1”按钮
     const lazyIncrease = ()=>{
         setTimeout(()=>{
-            // it should use like: `setCount(c=>c+1)`
-            // to keep safe.
+            // 这里的 count 来源于 useState，
+            // 并在第一次渲染中，形成了闭包常量。
+            // 这时闭包常量 count 为 0，
+            // 所以 3 秒后运行 的是 0 + 1，
+            // 无论 useState 更新与否，
+            // 闭包一旦形成，就不能再做常量更新了，
+            // 因为更新值只会影响到下次渲染的 lazyIncrease
             setCount(count + 1);
         }, 3000);
     };
 
-    // then click `increase` button 3 times immediately.
+    // 然后快速点击“ + 1”按钮
     const increase = ()=>{
         setCount(count + 1);
     };
@@ -32,16 +37,16 @@ const App = memo(()=>{
     return (
         <div>
             <span>{count}</span>
-            <button onClick={increase}>increase</button>
-            <button onClick={lazyIncrease}>lazy increase</button>
+            <button onClick={increase}> + 1</button>
+            <button onClick={lazyIncrease}>延时 + 1</button>
         </div>
     );
 })
 ```
 
-Let's click `lazy increase` button first, then click `increase` button 3 times immediately, and after 3 seconds what the `count` should display? Is that `4`? No, it is `1`. Why? The render closures of course. If we want to make  `count` growth normally by increase 1, every time when we click buttons, we should setState like `setCount((c)=>c + 1)`.
+上例中，我们先点击`延时 + 1`按钮，然后立即点击` + 1`按钮。3秒后得到的`count`值依然是 1。这是因为 `setTimeout` 中饮用的 `count` 变量是个闭包值，所以即便我们通过 +1 操作，延时更新逻辑中的 `count` 依然是 0，这相当于运行了 `setCount(0 + 1)`。如果我们希望延时操作是在最新的 `count` 上进行的，那么最好的选择是 `setCount(c =>c + 1)`，通过回调的形式进行 `setState` 更新。
 
-The `useModel` API can help you avoid this case easily.
+让我们再来看看`模型实例`行为方法的表现：
 
 ```ts
 import React,{memo, useState} from 'react';
@@ -54,7 +59,7 @@ const App = memo(()=>{
         increase:()=>c + 1
     });
 
-    // click `lazy increase` button first
+    // 进行相同操作
     const lazyIncrease = ()=>{
         setTimeout(()=>{
             increase();
@@ -64,126 +69,36 @@ const App = memo(()=>{
     return (
         <div>
             <span>{count}</span>
-            <button onClick={increase}>increase</button>
-            <button onClick={lazyIncrease}>lazy increase</button>
+            <button onClick={increase}> + 1</button>
+            <button onClick={lazyIncrease}>延时 + 1</button>
         </div>
     );
 })
 ```
 
-Let's do the operation again, we can see the result of `count` is always correct.
+我们使用实例方法进行相同操作，因为行为方法调用的是最新原型实例方法，所以3秒后，值为2，符合我们的预期。
 
-## Scope state
+## Typescript 支持
 
-The scope state in `@airma/react-state` is persisted in a store created by `StoreProvider`. Every `StoreProvider` has its own store created by store keys, we can use these keys to link a nearest matched parent `StoreProvider` for state usage. It matches the parent `StoreProvider` from inside to outside, if there is no matched store, it throws error.
-
-```ts
-import {
-    useModel, 
-    createStoreKey, 
-    StoreProvider
-} from '@airma/react-state';
-
-const key1 = createStoreKey(model);
-
-const key2 = createStoreKey(model);
-
-const Comp = ()=>{
-    useModel(key1);
-    return ......;
-}
-
-const App = ()=>{
-    // the usage in `Comp` find link in
-    // `<StoreProvider value={key1}>`
-    return (
-        <StoreProvider value={key1}>
-            <StoreProvider value={key2}>
-                <Comp/>
-            </StoreProvider>
-        </StoreProvider>
-    );
-}
-```
-
-The `createStoreKey` API always generates a unique store key. Though the `key1` and `key2` wraps a same model, they are still different.
-
-## More usage
-
-The APIs of `@airma/react-state` are very flexible, you can use them to complete a lot of work. 
-
-For example, we can use `useSelector` to organize asynchronous methods as side effects for model.
+`@airma/react-state` 拥有一套完整的 `typescript` 类型检查声明。使用 `typescript` 可以最大限度发挥该工具的优势。如：
 
 ```ts
-import React, {memo, useEffect} from 'react';
-import {
-    StoreProvider,
-    useSelector, 
-    useRefresh,
-    useModel
-} from '@airma/react-state';
-import {Input, Button, Table, Pagination} from 'antd';
-import {queryModels} from './model';
-import {fetchSource} from './service';
-import type {Query, User} from './type';
+import { useModel } from '@airma/react-state';
 
-......
+const counter = (count: number)=>{
+    return {
+        count,
+        increase: ()=>count + 1,
+        decrease: ()=>count - 1,
+        reset: ()=>'0'
+    }
+}
 
-const Source = memo(()=>{
-
-    const [fetching, setFetching] = useState(false);
-
-    const validQuery = useSelector(
-        queryModels.search, 
-        (i)=>i.validQuery
-    );
-
-    const {
-        datasource,
-        page,
-        pageSize,
-        totalElement,
-        changePage,
-        querySource
-    } = useSelector(queryModels.source,(instance)=>({
-        ...instance,
-        // composite an asynchronous method to update source,
-        // and refresh the fetching state. 
-        async querySource(query: Query){
-            setFetching(true);
-            try{
-                const source = await fetchSource(query);
-                instance.updateSource(source);
-            }finally{
-                setFetching(false);
-            }
-        }
-    }));
-
-    useRefresh(querySource, [validQuery]);
-
-    return (
-        <div>
-            <Table
-                dataSource={datasource}
-                loading={fetching}
-                bordered
-                pagination={false}
-            >
-                <Table.Column title="username" dataIndex="username">
-                <Table.Column title="name" dataIndex="name">
-            </Table>
-            <Pagination 
-                current={page} 
-                pageSize={pageSize} 
-                total={totalElement}
-                onChange={changePage}
-            />
-        </div>
-    );
-});
-
-......
+useModel(counter, 0);
+// TS Error. 
+// reset 方法返回类型不符合 counter 入参类型
 ```
 
-Let's take the final section about [API](/react-state/api.md).
+`@airma/react-state` 规定行为方法返回类型必须与模型参数类型保持一致。
+
+接下来，我们可以进入最终环节 [API](/zh/react-state/api?id=api) 部分了。

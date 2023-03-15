@@ -331,19 +331,19 @@ React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider
 
 目前很多状态管理工具都只提供了全局上下文状态管理模式，将 store 数据库维护在一个全局常量中。经过大量实践，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
 
-`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 `StoreProvider` 组件实例中存放的是使用键生成的整个`模型实例`）。
+`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 [Provider](/zh/react-state/api?id=provider) API 组件实例中存放的是使用键[模型](/zh/react-state/concepts?id=模型)生成的[模型实例](/zh/react-state/concepts?id=实例)）。
 
 这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局库。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
 
 ### 键
 
- `createStoreKey` API 可用于将模型函数包装成`键`。`键`也是模型，`键`模型是`被包装模型`的复刻，它的入参返回与`被包装模型`保持一致，但却拥有连接`库`的能力。
+ [createKey](/zh/react-state/api?id=createkey) API 可以把模型包装成`键`。`键`也是模型，`键`模型是`被包装模型`的复刻，它的入参返回与`被包装模型`保持一致，但却拥有连接`库`的能力。
 
  ```ts
  // global/model.ts
 
  import { 
-    createStoreKey 
+    createKey 
 } from '@airma/react-state';
  import type { User, Config } from './type';
 
@@ -370,16 +370,18 @@ React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider
     }
  }
 
-// 使用 createStoreKey 生成 `键`模型
-export const currentUserKey = createStoreKey(
+// 使用 createKey 生成 `键`模型，
+// 通过 传入第二个参数 可以进行预先初始化，
+// 在生产库实例的同时会使用该默认值
+export const currentUserKey = createKey(
     // 被包装模型
     currentUserModel,
     // 默认值
     null
 );
 
-// 使用 createStoreKey 生成 `键`模型
-export const systemConfigKey = createStoreKey(
+// 使用 createKey 生成 `键`模型
+export const systemConfigKey = createKey(
     // 被包装模型。
     // 因为模型函数的参数已经设置了默认值，
     // 故可以忽略这里的 `默认值` 参数。
@@ -397,14 +399,14 @@ export const storeKeys = {
 
 `键`有两个重要作用：
 
-1. 提供给 `StoreProvider` 用于生成上下文模型实例状态`库` (store)。
-2. 提供给 `useModel` 和 `useSelector` 用作查找和连接匹配`库`的钥匙，并负责与库建立起同步的桥梁。
+1. 提供给 `Provider` 组件，用于生成上下文模型实例状态`库` (store)。
+2. 提供给 `useModel` 和 `useSelector` 用作链接`库`的钥匙，负责与`库`中的实例建立同步链接。
 
 ```ts
 import React from 'react';
 import {render} from 'react-dom';
 import {
-    StoreProvider,
+    Provider,
     useModel,
     useSelector
 } from '@airma/react-state';
@@ -416,7 +418,7 @@ import type {User, Config} from '@/global/type';
 
 const Login = ()=>{
     // 使用 `键` currentUserKey 连接 store，
-    // 并选 store 模型实例的行为方法。
+    // 并选取 store 模型实例的行为方法。
     // 调用行为方法可引起库中实例对象刷新，
     // 并通知其他同 `键` 使用者同步实例对象。
     const handleLogin = useSelector(
@@ -448,7 +450,7 @@ const App = ()=>{
     // `键` currentUserKey 的其他使用者，
     // 它们获取的实例对象是状态同步的。
     // 我们也可以通过钥匙串访问 `键` currentUserKey，
-    // 如此处的 storeKeys.loginUser
+    // 比如，此处的 storeKeys.loginUser
     const currentUser = useSelector(
         storeKeys.loginUser,
         ({user})=>user
@@ -465,21 +467,225 @@ const App = ()=>{
 
 render(
     // 使用钥匙串对象创建 库
-    <StoreProvider value={storeKeys}>
+    <Provider keys={storeKeys}>
       <App/>
-    </StoreProvider>
+    </Provider>
 );
 ```
 
 * API `useSelector` 可通过`键`查找到库中对应的实例，并选取当前组件需要的数据或行为方法。当有同`键`使用者触发了实例刷新，useSelector 会根据所选对象值是否发生改变来决定是否需要渲染当前组件。通过使用这个 API，我们可以降低使用组件的渲染频率，从而达到优化组件性能的目的。
-* API `useModel` 也可通过`键`查找到库中对应的实例。与 `useSelector` 不同，`useModel` 始终返回完整的`库`实例对象，并响应每次实例刷新。
+* API `useModel` 也可通过`键`查找到库中对应的实例。与 `useSelector` 不同，`useModel` 始终返回匹配到的完整的`库`实例对象，并响应每次实例刷新。
 
 ### 库
 
+[Provider](/zh/react-state/api?id=provider)组件根据我们提供的`键`模型或`键`模型串（可以是单个`键`模型函数，也可以是由多个`键`组成的 object或数组）生成一个内部的实例集合。这个实例集合被称为`库`。
 
-### 例子
+为 `useModel` 或 `useSelector` 这些实例链接点提供`键`模型，可以快速匹配`库`中的实例，并建立同步链接。
 
-老规矩，先定义模型所需的类型。
+### 查找
+
+通过`键`查找库的过程总是沿着 `Provider` 树自近及远的，若最近一层父 `Provider` 的`库`中没有与之匹配的`实例`，则继续往更高层查找，直到顶层 `Provider` 为止。若始终没有找到匹配`实例`，`useSelector` 或 `useModel` 会抛出查找异常错误。
+
+```ts
+import React from 'react';
+import {
+    Provider,
+    useSelector
+} from '@airma/react-state';
+import {globalKeys} from '@/global/models';
+import {pageKeys} from './models';
+
+// const globalKeys = {loginUser: Key, config: Key}
+// const pageKeys = {condition: Key, todoList: Key}
+
+const Condition = ()=>{
+    // useSelector 先到最近的 <Provider keys={pageKeys}> 查找，
+    // 查找无果后向更高层 <Provider keys={globalKeys}> 发起查找，
+    // 最后使用匹配到的 <Provider keys={globalKeys}> store
+    const userId = useSelector(
+        globalKeys.loginUser, 
+        instance => instance.id
+    );
+    // useModel 在最近的 <Provider keys={pageKeys}> store 中匹配成功
+    const {
+        displayQuery, 
+        changeDisplayQuery,
+        submit
+    } = useModel(pageKeys.condition);
+    return ......;
+};
+
+const List = ()=>{
+    const list = useSelector(
+        pageKeys.todoList,
+        instance => instance.list
+    );
+    return ......;
+};
+
+const Page = ()=>{
+    // 使用 pageKeys 创建当前页面的上下文作用域
+    return (
+        <Provider keys={pageKeys}>
+          <Condition/>
+          <List/>
+        </Provider>
+    );
+}
+
+const App = ()=>{
+    // 使用 globalKeys 创建应用全局的上下文作用域
+    return (
+        <Provider keys={globalKeys}>
+          <Page/>
+        </Provider>
+    );
+}
+```
+
+上例展示了一个简单的`键库`匹配规则，即：由近及远，直到匹配成功或全部匹配失败为止。这条规则非常重要，它保证了我们的多库系统能够正常工作，同时避免大一统的应用级全局上下文的尴尬局面。或许大家已经注意到，当 `useModel` 联合 `键` 进行上下文同步操作时是不需要`默认状态值`的，因为`默认状态值`已经在创建`键`的时候填写了：`createKey(model, defaultState)`，那如何在组件内部另外进行初始化默认值操作呢？接下来我们来看一看，`useModel`在上下文状态操作中的初始化操作。
+
+### 初始化
+
+上下文作用域同步实例的初始化方式由两种：
+
+1. 通过 `createKey` API 进行预先初始化，初始化的实际运行过程会在创建库的时候执行。如：`createKey(model, defaultState)`。
+2. 通过 `useModel` API 在 function 组件中进行初始化。
+
+通过 `createKey` API 进行预先初始化，只能为`库`实例提供一个写死的常量默认状态，这没什么好说的，这里我们重点介绍使用 `useModel` 在组件中初始化的方式。
+
+```ts
+import React from 'react';
+import { 
+    createKey,
+    Provider,
+    useModel 
+} from '@airma/react-state';
+
+// 直接使用默认值初始化
+const counterModel = (count: number = 0)=>({
+    count,
+    isNegative: count < 0,
+    increase: ()=>count + 1,
+    decrease: ()=>count - 1
+});
+
+// 创 `键` 初始化
+const counterKey = createKey(counterModel, 0);
+
+const Decrease = ()=>{
+    // 初始化默认状态 2，
+    // 因为该组件的加载顺序在 Counter 组件的 useModel 之后，
+    // 而 Counter 组件中的 useModel 将库实例状态初始化成了 1，
+    // 所以运行时默认状态已经存在，这里的初始化失败。
+    // 最终觉得库实例中的状态为 1。
+    const {decrease} = useModel(counterKey, 2);
+    return (
+        <button onClick={decrease}>-</button>
+    );
+}
+
+const Increase = ()=>{
+    // 不进行运行时初始化
+    const {increase} = useModel(counterKey);
+    return (
+        <button onClick={increase}>+</button>
+    )
+}
+
+const Counter = ()=>{
+    // 初始化默认状态 1
+    const {count} = useModel(counterKey, 1);
+    return (
+        <div>
+          <Decrease />
+          <span>{count}</span>
+          <Increase />
+        </div>
+    );
+}
+
+const App = ()=>{
+    return (
+        <Provider keys={counterKey}>
+          <Counter />
+        </Provider>
+    )
+}
+```
+
+通过上例，我们可以知道，对使用上下文状态的`实例`，进行运行时初始化，其初始状态值是由 `useModel` 的运行顺序决定的。越先运行的 `useModel` 初始化优先级越高。
+
+如果 `useModel` 没有初始化不是最先运行的，会发生状态冲突错误吗？
+
+```ts
+import React from 'react';
+import { 
+    createKey,
+    Provider,
+    useModel 
+} from '@airma/react-state';
+
+// 直接使用默认值初始化
+const counterModel = (count: number = 0)=>({
+    count,
+    isNegative: count < 0,
+    increase: ()=>count + 1,
+    decrease: ()=>count - 1
+});
+
+// 创 `键` 初始化
+const counterKey = createKey(counterModel, 0);
+
+const Decrease = ()=>{
+    // 初始化默认状态 2，
+    // 因为之前没有发生运行时初始化，
+    // 所遇你初始化后 count 为 2
+    const {decrease} = useModel(counterKey, 2);
+    return (
+        <button onClick={decrease}>-</button>
+    );
+}
+
+const Increase = ()=>{
+    // 不进行运行时初始化
+    const {increase} = useModel(counterKey);
+    return (
+        <button onClick={increase}>+</button>
+    )
+}
+
+const Counter = ()=>{
+    // 不进行运行时初始化
+    // 初始默认状态为 0，
+    // 由于 Decrease 组件将 count 初始化成 2，
+    // 故，Counter 组件会被强制重新渲染，count 会被更新为 2
+    const {count} = useModel(counterKey);
+    return (
+        <div>
+          <Decrease />
+          <span>{count}</span>
+          <Increase />
+        </div>
+    );
+}
+
+const App = ()=>{
+    return (
+        <Provider keys={counterKey}>
+          <Counter />
+        </Provider>
+    )
+}
+```
+
+也就是说运行时初始化如果不在最前，则会触发之前的 `useModel` 进行强制渲染更新。虽然，这个过程是靠谱的，但这是对性能的浪费。所以我们建议如果需要对`上下文库实例`使用运行时初始化特性，请将初始化 `useModel` 放在最先运行区域。
+
+### 实战
+
+这里，我们以一个用户查询列表页为例（假分页查询），进行实战演示。为了提高演练的真实性，我们这示例中引用了 [@airma/restful](/restful) 与 [@airma/react-effect](/zh/react-effect) 工具库。
+
+老规矩，万事开头皆类型。让我们先为查询页面定义所需的类型。
 
 ```ts
 // type.ts
@@ -532,10 +738,11 @@ export function fetchSource(query: Query): Promise<User[]>{
 定义查询页面依赖的本地模型.
 
 ```ts
-import {createStoreKey} from '@airma/react-state';
+import {createKey} from '@airma/react-state';
 import _ from 'lodash';
 import type {Query, User, State} from './type';
 
+// 默认值生产方法
 const defaultState = (): State => ({
     validQuery: {},
     displayQuery: {},
@@ -544,68 +751,88 @@ const defaultState = (): State => ({
     pageSize: 10
 });
 
+// 查询页模型
 function model(state: State){
-    const {source, page, pageSize, displayQuery} = state;
+    const {source, page, pageSize, displayQuery, validQuery} = state;
     const total = source.length;
-    const datasource = _.chunk(source, 10)[page - 1];
+    // 对可变状态进行处理，得到当前页展示数据
+    const datasource = _.chunk(source, pageSize)[page - 1];
     return {
         displayQuery,
+        validQuery,
         page,
         pageSize,
+        /** 自原型透出处理所得的渲染数据 **/
+        // 当前页面展示数据
         datasource,
+        // 原始数据的总条数
         total,
+        /** 定义改变状态的行为方法 **/
+        // 修改未提交的查询条件
         changeDisplayQuery(displayQuery: Query): State{
             return {
                 ...state, 
                 displayQuery
             };
         },
+        // 提交查询条件
         submit(): State{
             const {displayQuery} = state;
+            // 将`未提交查询条件`提交为`最新提交查询条件`，
+            // 为什么需要浅克隆？
+            // 因为我们希望通过 validQuery 的改变引发查询。
             return {...state, validQuery: {...displayQuery}};
         },
+        // 更新查询返回结果
         updateSource(users: User[]): State{
+            // 因为查询结果来自异步请求，而我们的页面是假分页查询页，
+            // 所以相当于点击“查询”按钮进行查询返回的结果，
+            // 这时，我们需要将当前页码更新为第 1 页
             return {...state, source: users, page: 1};
         },
+        // 翻页行为方法
         changePage(p: number, s: number): State{
             return {...state, page:p, pageSize: s};
         }
     }
 }
 
-export const modelKey = createStoreKey(model, defaultState());
+// 创建“键”，因为我们只需要同步一个模型实例，所以不需要使用“钥匙串”结构，
+// 即：“object”结构，{model:modelKey}
+export const modelKey = createKey(model, defaultState());
 ```
 
-我们使用 `createStoreKey` 创建了一个全局键，之后将用于 `StoreProvider` 创建上下文状态库，并在子组件中链接该状态库，进而达到数据同步的效果。
+我们使用 `createKey` 创建了一个全局键，之后将用于在 `Provider` 中创建上下文状态库，并在子组件中链接该状态库，进而达到实例数据同步的效果。
 
-现在开始创建查询页面。
+现在开始构建查询页面。
 
 ```ts
+// layout.tsx
+
 import React, {memo, useEffect} from 'react';
 import {
-    StoreProvider,
+    Provider,
     useSelector, 
     useRefresh,
     useModel
 } from '@airma/react-state';
 import {useQuery} from '@airma/react-effect';
 import {Input, Button, Table, Pagination} from 'antd';
-import {queryModels} from './model';
+import {modelKey} from './model';
 import {fetchSource} from './service';
 import type {Query, User} from './type';
 
-const Search = memo(()=>{
-    // link searchModel state in store, 
-    // and create or refresh instance.
+const Condition = memo(()=>{
+    // 连接 <Provider keys={modelKey}>
     const {
         displayQuery,
-        changeUsername,
-        submit,
-        reset
-    } = useModel(queryModels.search);
+        changeDisplayQuery,
+        // 提交查询条件
+        submit
+    } = useModel(modelKey);
 
     const handleChangeUsername = (e)=>{
-        changeUsername(e.target.value);
+        changeDisplayQuery({username: e.target.value});
     };
 
     return (
@@ -613,41 +840,41 @@ const Search = memo(()=>{
             <Input 
                 value={displayQuery.username} 
                 onChange={handleChangeUsername}
+                placeholder="请输入用户名"
             />
-            <Button type="primary" onClick={submit}>submit</Button>
-            <Button onClick={reset}>reset</Button>
+            <Button 
+              style={{marginLeft:8}} 
+              type="primary" 
+              onClick={submit}
+            >
+              查询
+            </Button>
         </div>
     );
 });
 
-const Source = memo(()=>{
-    // link searchModel state in store,
-    // and select the `validQuery` from created instance,
-    // when the `validQuery` changes it renders.
-    const validQuery = useSelector(
-        queryModels.search, 
-        (i)=>i.validQuery
-    );
-    // link sourceModel state in store to create or refresh instance.
+const SourceContent = memo(()=>{
+    // 连接并同步更新实例
     const {
+        validQuery,
         datasource,
         page,
         pageSize,
-        totalElement,
+        total,
         changePage,
         updateSource
-    } = useModel(queryModels.source);
+    } = useModel(modelKey);
 
-    // useQuery for fetching data
+    // 用于查询数据
     const [{isFetching, data: source}] = useQuery(fetchSource, {
         variables: [validQuery],
+        // 设置默认查询返回值，
+        // 在查询结果返回前
         defaultData: []
     });
 
-    // when the source(users) changes,
-    // the `updateSource` method from `queryModels.source` instance
-    // catches the change, 
-    // and submit a next state to store to refresh all same key links.
+    // 使用 useRefresh，通过监听 source 变化，
+    // 执行 updateSource(source) 为模型实例更新数据源
     useRefresh(updateSource, [source]);
 
     return (
@@ -672,156 +899,14 @@ const Source = memo(()=>{
 });
 
 export default function Page(){
-    // before use storeKeys to link store states,
-    // we need to provide them to `StoreProvider` for store creation.
+    // 使用 modelKey 建立实例库
     return (
-        <StoreProvider value={queryModels}>
-            <Search/>
-            <Source/>
-        </StoreProvider>
+        <Provider keys={modelKey}>
+            <Condition />
+            <SourceContent />
+        </Provider>
     );
 }
 ```
 
-The `@airma/react-state` scope state usage steps are:
-
-1. Create store key by API `createStoreKey`.
-2. Provide store keys to a parent `StoreProvider`.
-3. Use `useModel` or `useSelector` in the children of `StoreProvider` to link store for usage.
-
-Sometimes, we want to initialize a default state to store in render time, we can use `useModel(storeKey, defaultState)` to do that. If the store key is matched, and the store state is not changed by action method operations, the default state can be initialized into store once.
-
-```ts
-import React, {memo} from 'react';
-import {
-    ModelProvider,
-    useModel
-} from '@airma/react-state';
-import {queryModels} from './model';
-
-const defaultSearch = {
-    validQuery:{username: 'username'},
-    displayQuery:{username: 'username'}
-}
-
-const Search = memo(()=>{
-    // we can use default parameter for initializing in render time
-    useModel(queryModels.search, defaultSearch);
-
-    ......
-
-});
-
-......
-
-export default function Page(){
-    return (
-        <ModelProvider value={queryModels}>
-            <Search/>
-            <Source/>
-        </ModelProvider>
-    );
-}
-```
-
-#### AutoLink
-
-If the store key can not match a store in parent `StoreProvider`s, the `useModel` API throws an error to tell that the key can not matched a store. That often happens when we want to reuse component or customized hook with scope state to a out Provider component. In that case, we can set a `autoLink` optional config to tell `useModel` use a local state instead, if there is no match store in parent.
-
-```ts
-import React, {memo} from 'react';
-import {
-    StoreProvider,
-    useModel
-} from '@airma/react-state';
-import {queryModels} from './model';
-
-const defaultSearch = {
-    validQuery:{username: 'username'},
-    displayQuery:{username: 'username'}
-}
-
-const Search = memo(()=>{
-    // `autoLink` option makes `useModel` to
-    // create a local state with `defaultSearch`,
-    // if no store matched with `queryModels.search`. 
-    // Be careful, if the `autoLink` is opening,
-    // the initializing about default state for store state
-    // is auto disabled. 
-    useModel(queryModels.search, defaultSearch, {autoLink:true});
-
-    ......
-
-});
-
-......
-
-export default function Page(){
-    return (
-        <div>
-            {/* no matched store has been hound, */} 
-            {/* useModel creates a private state instead */}
-            <Search/>
-            <StoreProvider value={queryModels}>
-                <Search/>
-                <Source/>
-            </StoreProvider>
-        </div>
-    );
-}
-```
-
-Set `autoLink` option to `useModel` can create a private state when there is no matched store for store key. But, it also disables the default state initializing for the opposite case.
-
-#### Pipe
-
-The store key has a `pipe` method, you can use it to link the matched store state with another model.
-
-```ts
-import React, {memo} from 'react';
-import {StoreProvider, createStoreKey, useModel} from '@airma/react-state';
-
-const counter = (count:number = 0)=> ({
-    count,
-    increase:()=>count + 1,
-    decrease:()=>count - 1
-});
-
-const countStoreKey = createStoreKey(counter);
-
-const Counter = memo(()=>{
-    const {count, increase, decrease} = useModel(countStoreKey);
-
-    return ......
-});
-
-const Cleaner = memo(()=>{
-    // use `pipe` method can change a model, and links it to
-    // the matched store state.
-    // when we click `clean` button,
-    // the count in `Counter` component changes to 0.
-    const {clear} = useModel(countStoreKey.pipe((c:number)=>{
-        clear():number{
-            return 0;
-        }
-    }));
-
-    return <button onClick={clear}>clean</button>
-});
-
-export default function Page(){
-    return (
-        <div>
-            <StoreProvider value={countStoreKey}>
-                <Counter/>
-                <Cleaner/>
-            </StoreProvider>
-        </div>
-    );
-}
-```
-
-If you want to learn more about scope state, you can take the next [section](/react-state/feature.md) about features of `@airma/react-state`.
-
-
-
+至此，你已经能使用`@airma/react-state`模型系统进行开发了，如果希望更深入了解该工具，可继续参考[特性](/zh/react-state/feature?id=特性)篇的说明。当然你也可以直接绕过特性，进入 [API](/zh/react-state/api?id=api) 篇做最后参考。

@@ -1,4 +1,4 @@
-import { StoreKeys, StoreKey } from '@airma/react-state';
+import { Keys, Key } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
@@ -42,7 +42,7 @@ export declare type StrategyType<T = any> = (value: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-declare type SessionKey<E extends PromiseCallback<any>> = StoreKey<
+declare type SessionKey<E extends PromiseCallback<any>> = Key<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -166,7 +166,7 @@ export declare function useIsFetching(
 ): boolean;
 
 export declare const SessionProvider: FC<{
-  value: StoreKeys;
+  keys: Keys;
   children?: ReactNode;
 }>;
 
@@ -179,22 +179,16 @@ export declare type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export declare const GlobalProvider: FC<{
-  value?: GlobalConfig;
-  children?: ReactNode;
-}>;
-
 export declare const GlobalSessionProvider: FC<{
   config?: GlobalConfig;
-  value?: StoreKeys;
+  keys?: Keys;
   children?: ReactNode;
 }>;
 
-export declare function withSessionProvider(
-  models: StoreKeys
-): <P extends Record<string, any>>(
+export declare function withSessionProvider<P extends Record<string, any>>(
+  keys: Keys,
   component: FunctionComponent<P> | NamedExoticComponent<P>
-) => typeof component;
+): typeof component;
 
 export declare const Strategy: {
   debounce: (op: { duration: number } | number) => StrategyType;
