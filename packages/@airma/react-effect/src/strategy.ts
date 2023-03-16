@@ -5,22 +5,47 @@ function debounce(op: { duration: number } | number): StrategyType {
   return function db(value: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: { current?: { id: any; resolve: (d: any) => void } };
+    store: {
+      current?: {
+        id: any;
+        resolve: (d: any) => void;
+        promise: Promise<SessionState>;
+      };
+    };
   }): Promise<SessionState> {
     const { current, runner, store } = value;
     if (store.current) {
       const { id, resolve } = store.current;
-      store.current = undefined;
       clearTimeout(id);
-      const currentState = current();
-      resolve({ ...currentState, abandon: true });
-    }
-    return new Promise<SessionState>(resolve => {
-      const id = setTimeout(() => {
+      store.current.id = setTimeout(() => {
+        store.current = undefined;
         resolve(runner());
       }, time);
-      store.current = { id, resolve };
+      return store.current.promise.then(d => ({ ...d, abandon: true }));
+    }
+    const defaultPromise = new Promise<SessionState>(resolve => {
+      const currentState = current();
+      resolve({ ...currentState, abandon: true });
     });
+    const storeRef: {
+      id: any;
+      resolve: (d: any) => void;
+      promise: Promise<SessionState>;
+    } = {
+      id: null,
+      resolve: () => undefined,
+      promise: defaultPromise
+    };
+    const promise = new Promise<SessionState>(resolve => {
+      storeRef.id = setTimeout(() => {
+        store.current = undefined;
+        resolve(runner());
+      }, time);
+      storeRef.resolve = resolve;
+    });
+    storeRef.promise = promise;
+    store.current = storeRef;
+    return promise;
   };
 }
 
@@ -28,22 +53,19 @@ function once(): StrategyType {
   return function oc(value: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: { current?: boolean };
+    store: { current?: Promise<SessionState> };
   }) {
-    const { current, runner, store } = value;
+    const { runner, store } = value;
     if (store.current) {
-      return new Promise(resolve => {
-        const currentState = current();
-        resolve({ ...currentState, abandon: true });
-      });
+      return store.current.then(d => ({ ...d, abandon: true }));
     }
-    store.current = true;
-    return runner().then(d => {
+    store.current = runner().then(d => {
       if (d.isError) {
-        store.current = false;
+        store.current = undefined;
       }
       return d;
     });
+    return store.current;
   };
 }
 

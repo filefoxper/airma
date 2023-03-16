@@ -91,14 +91,20 @@ const Creating = memo(
 
     const [, trigger] = useMutation(
       (u: Omit<User, 'id'>) =>
-        rest('/api/user')
-          .setBody(u)
-          .post<null>()
-          .then(() => true),
+        new Promise(r => {
+          setTimeout(() => {
+            r(
+              rest('/api/user')
+                .setBody(u)
+                .post<null>()
+                .then(() => true)
+            );
+          }, 1000);
+        }),
       {
         variables: [user],
         strategy: [
-          Strategy.once(),
+          // Strategy.once(),
           Strategy.success(() => {
             launch();
             // onSubmit();
@@ -106,6 +112,11 @@ const Creating = memo(
         ]
       }
     );
+
+    const handleTrigger = async () => {
+      const res = await trigger();
+      console.log(res);
+    };
 
     return (
       <div>
@@ -126,7 +137,11 @@ const Creating = memo(
           />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
+          <button
+            type="button"
+            style={{ marginLeft: 12 }}
+            onClick={handleTrigger}
+          >
             submit
           </button>
           <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
@@ -179,12 +194,6 @@ const Condition = memo(() => {
 
   // useQuery(fetchFactory, [useMemo(() => ({ name: 'M', username: '' }), [])]);
 
-  const [{ isFetching, data }] = useSession(fetchFactory);
-
-  useEffect(() => {
-    console.log('effect data change...', data);
-  }, [data]);
-
   return (
     <div>
       <span>name:</span>
@@ -229,18 +238,27 @@ export default withProvider({ condition }, function App() {
 
   const d = useQuery(fetchFactory, {
     variables: [validQuery],
-    defaultData: []
+    defaultData: [],
+    strategy: Strategy.debounce(800)
   });
 
-  const [result] = d;
+  const [result, trigger] = d;
 
   const { data, error, isFetching } = result;
+
+  const handleTrigger = async () => {
+    const d = await trigger();
+    console.log(d);
+  };
 
   // const isFetching = useIsFetching();
 
   return (
     <div style={{ padding: '12px 24px' }}>
       <Condition />
+      <button type="button" onClick={handleTrigger}>
+        trigger
+      </button>
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
         {creating ? (
           <Creating onSubmit={cancel} onCancel={cancel} />

@@ -492,19 +492,15 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     strategies.map(() => ({ current: undefined }))
   );
 
-  const mountRef = useRef(true);
   const keyRef = useRef({});
-  const savingRef = useRef(false);
+  const savingRef = useRef<undefined | Promise<SessionState>>(undefined);
   const caller = function caller(
     triggerType: TriggerType,
     vars?: Parameters<C>
   ): Promise<SessionState<T>> {
     if (savingRef.current) {
-      return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true, triggerType });
-      });
+      return savingRef.current.then(d => ({ ...d, abandon: true }));
     }
-    savingRef.current = true;
     const { state: current, setState } = instance;
     startFetching(keyRef.current);
     setState({
@@ -513,8 +509,8 @@ export function useMutation<T, C extends PromiseCallback<T>>(
       fetchingKey: keyRef.current,
       triggerType
     });
-    return runner(vars).then(data => {
-      savingRef.current = false;
+    savingRef.current = runner(vars).then(data => {
+      savingRef.current = undefined;
       return {
         ...instance.state,
         ...data,
@@ -523,6 +519,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
         triggerType
       } as SessionState<T>;
     });
+    return savingRef.current;
   };
 
   const callWithStrategy = function callWithStrategy(

@@ -27,8 +27,8 @@ render(
 );
 
 // render(
-//   <GlobalRefreshProvider value={config}>
+//   <GlobalSessionProvider config={config} keys={keys}>
 //     <App />
-//   </GlobalRefreshProvider>,
+//   </GlobalSessionProvider>,
 //   root
 // );
