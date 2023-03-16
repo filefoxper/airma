@@ -10,92 +10,168 @@
 
 # @airma/react-effect
 
-`@airma/react-effect` is designed for managing the asynchronous effect state for react components.
+`@airma/react-effect` 是一款用于管理 React 副作用状态（state）的库，目前只涉及异步请求相关的状态管理。
 
-## Why effects
+## 为什么需要管理副作用状态
 
-Do asynchronous operations in `effects` is more effective.
+React hook 是一套基于函数式编程为中心思想设计的系统，在普通回调函数中大量使用副作用会破坏了函数式编程的稳定性，使得输入输出之间没有稳定的关系。
 
-1. You can pre-render a default result for asynchronous operation before it is really resolved.
-2. It makes component render with less asynchronous effects spread in event handle callbacks.
-3. React `useEffect` callback is drived by the changes of its dependencies, it can do asynchronous operations more accurately then calling them manually in event handle callbacks.  
-
-Use effect to do asynchronous operations with less `async ... await`:
+为了更好理解副作用对组件更新的破环性，我们以例子进行一个简单说明：
 
 ```ts
-import {useEffect, useState} from 'react';
-import {query} from './service';
+import React from 'react';
 
-const useQueryEffect = (
-  callback:(...args: any[])=>Promise<any>, 
-  variables: any[]
-)=>{
-  const [data, setData] = useState(undefined);
-  const [isFetching, setFetching] = useState(false);
-  const [error, setError] = useState(undefined);
+const App = ()=>{
 
-  useEffect(()=>{
-      setFetching(true);
-      // The asynchronous operation
-      callback(variables).then((d)=>{
-          // Set query result into state
-          setData(d);
-          setError(undefined);
-          setFetching(false);
-      },(e)=>{
-          setError(e);
-          setFetching(false);
-      });
-  }, variables); 
-  // The variables change drives asynchronous operation
+    const [count, setCount] = useState(0);
 
-  // return query state information for render usage
-  return {data, isFetching, error};
-};
+    // 先点击 “异步 + 1” 按钮
+    const handleAsyncIncrease = async ()=>{
+        // 异步等待，3秒后运行 setCount(count + result);
+        const result = await new Promise((resolve)=>{
+            setTimeout(()=>{
+                resolve(1);
+            }, 3000);
+        });
+        // result 值为 1，
+        // 因为之前同步点击已经运行了 setCount(count + 1),
+        // 所这时的 count 是 1 ？
+        // 1 + 1 = 2，
+        // 所以运行完毕后 useState 元组中的 count 为 2 ？
+        setCount(count + result);
+    };
 
-const App = memo(()=>{
-    ......
-    const [variable, changeVariable] = useState({...});
-    // use `useQueryEffect` as a library API.
-    const {data, isFetching, error} = useQueryEffect(query, [variable]);
+    // 然后立即点击 “同步 + 1” 按钮。
+    const handleSyncIncrease = ()=>{
+        setCount(count+1);
+    };
 
-    return ......;
-});
+    return (
+        <div>
+          <button onClick={handleAsyncIncrease}>异步 + 1</button>
+          <button onClick={handleSyncIncrease}>同步 + 1</button>
+          <span>{ count }</span>
+        </div>
+    )
+}
 ```
 
-The example code above is simple enough for understanding the principle of effect asynchronous operations. But, we need a more intelligent effect tool for more complex practical usages.
+上例中，我们先点击 “异步 + 1” 按钮，然后立即点击 “同步 + 1” 按钮，这时 count 值显示为 1，我们根据异步结果 result 也是 1，推测 3 秒后将运行 setCount(1 + 1) ，也就是说 count 最终显示为 2。
 
-## Introduce
+```
+1 second later count: 1
+2 seconds later count: 1
+3 seconds later count: 1
+...
+2000 years later count: 1
+```
 
-The target of `@airma/react-effect` is build a more intelligent effect tool for practical usages with less config. We split practical usages to two different application scenarios.
+不用等了，count 依然是 1，不会是 2。因为 count 早就与初次渲染的 handleAsyncIncrease 形成了闭包，3秒后运行 setCount 使用的是初次渲染的 count 值 0，结果就是 0 + 1 = 1。
 
-1. For query data, we need API `useQuery`. It should accepts a promise callback, and parameters for this callback. It should returns a promise description state for immediately render. When the parameters are changed or setted, it should call promise callback and response promise resolving to generate next state.
-2. For mutate data, we need API `useMutation`. It should accepts a promise callback, and parameters for this callback. It should returns a promise description state for immediately render. The different with `useQuery` is that the operation callback of `useMutation` should be drived manually.
+是的，我们常见的闭包旧数据问题往往就是由副作用破坏函数式编程稳定性产生的。为此我们需要使用 `setCount((current)=> current + result)` 的方式获取最新 count 值来解决问题。但不断使用回调更新并非长久之计，我们需要从根本上解决问题，按 react 设计思想来使用副作用。
+
+将副作用输入数据独立出来，并接受 react 渲染管理就显得特别有必要了。
+
+```ts
+import React, {useEffect, useState} from 'react';
+
+const usePromise = <T>(
+    promiseCallback: ()=>Promise<T>
+): [T|undefined, ()=>void] =>{
+    // 我们设计了一个稳定的 promise 状态接口，未运行，默认值为 undefined，
+    // 这样我们将异步输入结果托管到 React 生命周期的任务就完成了。
+    const [result, setResult] = useState<T|undefined>(undefined);
+    const [triggerVersion, setTriggerVersion] = useState(0);
+
+    useEffect(()=>{
+        if (!triggerVersion) {
+            return;
+        }
+        promiseCallback(params).then((data:T)=>{
+            // 只更新 promise resolve 结果
+            setResult(data);
+        });
+    },[triggerVersion]);
+
+    const trigger = ()=>{
+        setTriggerVersion(v => v+1);
+    };
+
+    return [result, trigger];
+}
+
+const App = ()=>{
+    const [count, setCount] = useState(0);
+
+    // 先点击 “异步 + 1” 按钮
+    const [result, asyncIncrease] = usePromise(
+        () => {
+           return new Promise((resolve)=>{
+                setTimeout(()=>{
+                    resolve(1);
+                }, 3000);
+            }); 
+        }
+    );
+
+    useEffect(()=>{
+        // 通过监听 promise result 变化来更新数据，
+        if(result == null){
+            return;
+        }
+        setCount(count + result);
+    },[result])
+
+    // 然后立即点击 “同步 + 1” 按钮。
+    const handleSyncIncrease = ()=>{
+        setCount(count+1);
+    };
+
+    return (
+        <div>
+          <button onClick={asyncIncrease}>异步 + 1</button>
+          <button onClick={handleSyncIncrease}>同步 + 1</button>
+          <span>{ count }</span>
+        </div>
+    )
+}
+```
+
+我们使用封装的 usePromise 来统一管理异步副作用输入数据，并将单一的副作用输入当作状态托管给了 React 组件更迭系统（hook），让后通过监听副作用状态的变化来驱动我们的 `setCount` 运行。这样就符合函数式编程的稳定输入输出结构了。让我们再次重复上述操作，我们发现 3 秒后，值被更新成 2，符合我们的预期。因为 useEffect 在监听到 result 变化时会使用当前最新迭代的闭包数据 count，这时 count 确实为 1，于是运行的就是 `setCount(1 + 1)`。
+
+## 介绍
+
+针对前端开发的日常业务，我们开发了一套比上述 `usePromise` 更符合大多业务场景的副作用状态管理工具 `@airma/react-effect`。当前库中包含了 `useQuery` 和 `useMutation` API，分别用于`查询`和`修改（增、删、该）`的异步逻辑。
+
+我们需要为它们提供 promise 回调函数用于实际运行，为了之后方便描述，我们称这个回调函数为`请求函数`。
 
 ### UseQuery
 
-The code below shows how to use `useQuery` intelligently.
+默认通过监听加载以及依赖参数变化引发查询，因为大多查询场景都需要在页面（或组件）加载时直接运行，而监听参数变化引发查询也是常有的需求。
 
 ```ts
 import React from 'react';
 import {useQuery} from '@airma/react-effect';
 import {User} from './type';
 
+// 查询参数类型
 type UserQuery = {
     name: string;
     username: string;
 }
-// Prepare a callback which returns a promise.
-// We call it a query callback. 
+// 查询请求，必须符合返回值为 promise 的先决条件
 const fetchUsers = (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]);
 
 const App = ()=>{
+    // 我们将回调参数设置为 state 状态数据
     const [query, setQuery] = useState({name:'', username:''});
+
+    // useQuery 通过监听参数状态的变更调用查询回调函数
     const [state, trigger, execute] = useQuery(
-        // Use query callback
+        // 设置查询请求函数
         fetchUsers,
-        // Set parameters for query callback
+        // 请求参数
         [query]
     );
     const {
@@ -115,36 +191,32 @@ const App = ()=>{
 }
 ```
 
-The most common field usages about promise state are:
+上例是 `useQuery` 的一个简单应用场景。`useQuery` 会在组件 App 加载或监听到参数变化时，调用查询函数，并在 promise 成功或失败后修改状态。
 
-* data - Last successful query promise result. It only can be overrided by next successful query. Before query works, it is `undefined`.
-* error - Last failed query promise rejection. It can be overrided to be `undefined` by a next successful query, or be overrided by a next failed query promise rejection.
-* isFetching - When the query callback is launched, it turns to be `true`. When the query promise returned by callback is resolved or rejected, it turns to be `false`.
-* isError - Use the `error` field value is `undefined` to estimate if the query promise is rejected is not credible. It is much better to use `isError` to estimate if the last query promise is rejected.
-* loaded - It shows if the data had been resolved yet. If it is `true`, that means there is at least one successful query happened.
-
-When `useQuery` is mounted, or the elements of parameters are changed, it call the promise callback.
+`useQuery` 的返回结果是一个元组数据，并稳定存在于组件中，由 `[state, trigger, execute]` 三部分组成。其中元组的 `[state, trigger]` 部分被称为`会话`，稍后我们会在概念篇中进行详细介绍。这里我们只需要了解 `state` 为查询状态（包含查询回调 promise resolve 或 reject 的数据），`trigger` 为无参手动触发函数，`execute` 为有参触发函数。
 
 ### UseMutation
 
-The usage of `useMutation` is similar with `useQuery`, but it is not drived
-by parameter changes, you need to trigger it manually.
+`useMutation` 常用于修改数据，大多场景是需要手动触发的，所以该 API 在默认情况下，并没有采取 `useQuery` 的监听策略，我们需要通过会话元组中的 `trigger` 或 `execute` 函数去触发它。
 
 ```ts
 import React from 'react';
 import {useMutation} from '@airma/react-effect';
 import {User} from './type';
 
+// 保存请求函数
 const saveUser = (user: User): Promise<User> => 
     Promise.resolve(user);
 
 const App = ()=>{
+    // 需要保存的 user 数据
     const [user, setUser] = useState<User>({...});
+
+    // 需手动触发
     const [state, trigger] = useMutation(
-        // Set mutation callback,
-        // it is a promise callback.
+        // 设置保存请求函数
         saveUser,
-        // Set mutation parameters.
+        // 设置保存参数
         [ user ]
     );
     const {
@@ -158,7 +230,8 @@ const App = ()=>{
         isError
     } = result;
 
-    const handleClick = ()=>{
+    const handleSubmit = ()=>{
+        // 通过元组中的 trigger 手动触发
         trigger();
     }
 
@@ -166,6 +239,6 @@ const App = ()=>{
 }
 ```
 
-The state of `useMutation` has same fields with `useQuery`. You can trigger it to make a `mutation` happen.
+`useMutation` 与 `useQuery` 返回数据结构相同，都是`会话`。
 
-Take next section about [installing and browser supports](/react-effect/install.md) or go to [concepts](/react-effect/concepts.md) directly.
+如果 `@airma/react-effect` 已经足够成为你开发项目，解决副作用问题的选项了，请一键三连，略表...，不，错了，再来，请移步至[安装与支持](/zh/react-effect/install.md)。如果希望了解更多相关信息，请参考[概念篇](/zh/react-effect/concepts.md)深入学习。

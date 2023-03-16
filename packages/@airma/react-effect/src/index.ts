@@ -9,6 +9,7 @@ import {
 import {
   factory,
   Provider,
+  shallowEqual,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
@@ -101,6 +102,44 @@ function parseEffect<
     effectCallback,
     (cg || config) as C | undefined
   ];
+}
+
+const noop = () => undefined;
+
+function useMount(callback: () => (() => void) | void) {
+  const mountRef = useRef(false);
+  useEffect(() => {
+    const mounted = mountRef.current;
+    mountRef.current = true;
+    if (mounted) {
+      return noop;
+    }
+    const result = callback();
+    if (typeof result === 'function') {
+      return result;
+    }
+    return noop;
+  }, []);
+}
+
+function useUpdate(callback: () => (() => void) | void, deps?: any[]) {
+  const depsRef = useRef<undefined | { deps: any[] }>(undefined);
+
+  useEffect(() => {
+    const { current } = depsRef;
+    depsRef.current = { deps: deps || [] };
+    if (!current) {
+      return noop;
+    }
+    if (shallowEqual(current.deps, deps || [])) {
+      return noop;
+    }
+    const result = callback();
+    if (typeof result === 'function') {
+      return result;
+    }
+    return noop;
+  }, deps);
 }
 
 function usePromiseCallback<T, C extends (vars?: any[]) => Promise<T>>(
@@ -268,7 +307,6 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(vars =>
     effectCallback(...(vars || variables || []))
   );
-  const mountRef = useRef(true);
   const keyRef = useRef({});
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
@@ -360,15 +398,13 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useEffect(() => {
-    const isOnMount = mountRef.current;
-    mountRef.current = false;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    effectQuery(isOnMount);
-  }, [...effectDeps]);
+  useMount(() => {
+    effectQuery(true);
+  });
+
+  useUpdate(() => {
+    effectQuery(false);
+  }, effectDeps);
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
@@ -549,15 +585,13 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useEffect(() => {
-    const isOnMount = mountRef.current;
-    mountRef.current = false;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    effectQuery(isOnMount);
-  }, [...effectDeps]);
+  useMount(() => {
+    effectQuery(true);
+  });
+
+  useUpdate(() => {
+    effectQuery(false);
+  }, effectDeps);
 
   useEffect(() => {
     if (triggerVersionRef.current === stableInstance.version) {

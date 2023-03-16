@@ -82,16 +82,19 @@ function error(
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value) {
-    const { runner, runtimeCache } = value;
+    const { runner, runtimeCache, store } = value;
     const hasHigherErrorProcessor = runtimeCache.fetch(error);
     runtimeCache.cache(error, true);
+    store.current = process;
     return runner().then(d => {
+      const currentProcess = store.current;
       if (
         d.isError &&
         !hasHigherErrorProcessor &&
+        currentProcess &&
         (!d.abandon || withAbandoned)
       ) {
-        process(d.error);
+        currentProcess(d.error);
       }
       return d;
     });
@@ -106,12 +109,14 @@ function success<T>(
   return function sc(value: {
     current: () => SessionState<T>;
     runner: () => Promise<SessionState<T>>;
-    store: { current?: boolean };
+    store: { current?: (data: T) => any };
   }) {
-    const { runner } = value;
+    const { runner, store } = value;
+    store.current = process;
     return runner().then(d => {
-      if (!d.isError && (!d.abandon || withAbandoned)) {
-        process(d.data as T);
+      const currentProcess = store.current;
+      if (!d.isError && currentProcess && (!d.abandon || withAbandoned)) {
+        currentProcess(d.data as T);
       }
       return d;
     });

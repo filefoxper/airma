@@ -1,28 +1,209 @@
-# Concepts
+# 概念
 
-There are some concepts for helping you to understand `@airma/react-effect` more quickly.
+本章节提及的是 `useQuery` 与 `useMutation` 的通用概念，可以帮助你快速理解 `@airma/react-effect`。
 
-1. [promise callback](/react-effect/concepts?id=promise-callback)
-2. [variables](/react-effect/concepts?id=variables)
-3. [state](/react-effect/concepts?id=state)
-4. [trigger](/react-effect/concepts?id=trigger)
-5. [execution](/react-effect/concepts?id=execution)
-6. [strategy](/react-effect/concepts?id=strategy)
+1. [依赖](/zh/react-effect/concepts?id=依赖)
+2. [触发](/zh/react-effect/concepts?id=触发)
+3. [会话](/zh/react-effect/concepts?id=会话)
+4. [策略](/zh/react-effect/concepts?id=策略)
 
-## Promise callback
+## 依赖
 
-Promise callback is a function which always returns a promise. API `useQuery` or `useMutation` calls it, and generates next state with the promise resolved data or rejected error.
+依赖是驱动 `useQuery` 和 `useMutation` 运行的数据元，它是一个`数组`。当数组中的某个元素在组件更迭过程中产生了变化，`useQuery` 和 `useMutation` 就有可能被触发运行查询或修改。
 
-To distinguish the different usage, we call them:
+是的，你没有看错， `useMutation` 也可能受依赖驱动的影响，在之后的[触发](/zh/react-effect/concepts?id=触发)小节，我们将进行详细说明。
 
-1. query callback - It is for `useQuery`.
-2. mutation callback - It is for `useMutation`.
+依赖数据元可以被分为`变量依赖`和`自定义依赖`两种类型。
 
-## Variables
+### 变量依赖
+
+一个`查询`操作的最佳状态就是条件（变量）驱动，即变量就是`依赖`，我们称之为`变量依赖`。大部分情况下，我们只需要提供变量数组就可以实现`查询`功能。如：
+
+```ts
+import React from 'react';
+import {useQuery} from '@airma/react-effect';
+import {User} from './type';
+
+......
+
+const fetchUsers = ......;
+
+const App = ()=>{
+    // 提供变量
+    const [query, setQuery] = useState({name:'', username:''});
+
+    const [state, trigger, execute] = useQuery(
+        // 查询请求函数
+        fetchUsers,
+        // 使用变量依赖驱动查询
+        [query]
+    );
+
+    ......
+}
+```
+
+或者使用 `config` 模式：
+
+```ts
+import React from 'react';
+import {useQuery} from '@airma/react-effect';
+import {User} from './type';
+
+......
+
+const fetchUsers = ......;
+
+const App = ()=>{
+    // 提供变量
+    const [query, setQuery] = useState({name:'', username:''});
+
+    const [state, trigger, execute] = useQuery(
+        // 查询请求函数
+        fetchUsers,
+        // config 模式
+        {
+          // 使用变量依赖驱动查询
+          variables: [query]
+        }
+    );
+
+    ......
+}
+```
+
+有时，`变量依赖`并不足以满足我们的需求，如：在依赖变量没有变化的时候，我们依然需要强制驱动`查询`，这时我们有两种驱动模式：`手动触发`或`自定义依赖`，这里我们仅介绍`自定义依赖`驱动方式。
+
+### 自定义依赖
+
+在使用`自定义依赖`进行驱动时，`变量依赖`将处于失效状态，也就是说这时的`变量依赖`仅仅只有充当查询条件的作用。
+
+```ts
+import React from 'react';
+import {useQuery} from '@airma/react-effect';
+import {User} from './type';
+
+......
+
+const fetchUsers = ......;
+
+const App = ()=>{
+    // 提供变量
+    const [query, setQuery] = useState({name:'', username:''});
+
+    // 提供自定义依赖
+    const [queryVersion, setQueryVersion] = useState(0);
+
+    const [state, trigger, execute] = useQuery(
+        // 查询请求函数
+        fetchUsers,
+        // config 模式
+        {
+          // 变量依赖失效，仅作查询条件
+          variables: [query],
+          // 自定义依赖驱动，
+          // 无论 query 还是 queryVersion 发生迭代变更，都会再次触发查询
+          deps: [query, queryVersion]
+        }
+    );
+
+    ......
+}
+```
+
+`自定义依赖`驱动模式，只能通过 `config.deps` 配置启动。
+
+## 触发
+
+现在我们知道了 `useQuery` 和 `useMutation` 可以通过`会话加载`、`依赖驱动`和`手工启动`三种方式`触发`查询或修改数据。
+
+这不得不归功于我们的`触发器`工作机制。触发器共有三种工作模式 `mount`、 `update`、 `manual`，分别对应 `会话加载时`、`依赖更新时`、`手动触发时` 三种状态。触发器工作模式限定了 `useQuery` 和 `useMutation` 拥有的启动方式，只有经过触发器的允许才能触发相应的工作模式。`useQuery` 和 `useMutation` 拥有各自默认的触发器模式。
+
+`useQuery` 的默认触发模式为 `['mount', 'update', 'manual']`，所以在上述三种情况下，它都能被触发工作；而 `useMutation` 的默认触发模式仅为 `['manual']`，所以它只能通过手动触发的方式进行工作。
+
+但触发器是可以被重新设置的：
+
+```ts
+import React from 'react';
+import {useMutation} from '@airma/react-effect';
+import {User} from './type';
+
+// 保存回调函数
+const saveUser = (user: User): Promise<User> => 
+    Promise.resolve(user);
+
+const App = ()=>{
+    // 需要保存的 user 数据
+    const [user, setUser] = useState<User>({...});
+
+    // 需手动触发
+    const [state, trigger] = useMutation(
+        // 设置保存请求函数
+        saveUser,
+        {
+          // 设置保存参数
+          variables: [ user ],
+          // 将触发器设置为 update 模式。
+          // 这时，变量依赖驱动被启动，人工触发被关闭，
+          // 只有变量 user 的改变才能触发保存操作。
+          triggerOn: ['update']
+        }
+    );
+    const {
+        // User | undefined
+        data,
+        // boolean
+        isFetching,
+        // any
+        error,
+        // boolean
+        isError
+    } = result;
+
+    const handleSubmit = (submitingUser: User)=>{
+        // 通过改变变量 user 引发保存操作
+        setUser(submitingUser);
+    }
+
+    ......
+}
+```
+
+触发器可以触发请求函数工作，请求的结果最终将记入会话。接下来让我们来看看会话的概念。
+
+## 会话
+
+会话是指通过 `useQuery` 或 `useMutation` 建立的异步副作用单元，这个单元由一个会话状态值和一个会话触发器函数组成：`[state, trigger]`。
+
+### 会话状态
+
+会话状态 `state` 自 `useQuery` 或 `useMutation` 调用开始就存在了，不受 promise 回调函数运行与否的影响。`state` 结构如下：
+
+```ts
+type SessionState<T> = {
+  data: T | undefined,
+  error?: any;
+  isError: boolean;
+  isFetching: boolean;
+  abandon: boolean;
+  triggerType: undefined | TriggerType;
+  loaded: boolean;
+}
+```
+
+字段含义：
+
+* data - 最近一次请求成功返回的数据，在下次请求成功前会一致存在，默认为 undefined。
+* error - 最近一次请求失败的错误信息，会被成功的请求清理为 undefined，默认为 undefined。
+* isError - 最近一次请求是否失败，若失败为 true，否则为 false。会被成功的请求重置为 false，默认值为 false。
+* isFetching - 请求是否正在进行中，在请求开始时会被设置为 true，结束时无论失败与否都会被重置为 false，默认为 false。
+* abandon - 
+
+### 会话触发器
 
 The parameters for `promise callback`, we call it variables, it should be an array. When the `promise callback` is called by dependencies change, or triggered manually, it is used as parameters for `promise callback` function.
 
-## State
+## 策略
 
 API `useQuery` and `useMutation` returns a tuple array, the first element is the state. A state contains some helpful information:
 

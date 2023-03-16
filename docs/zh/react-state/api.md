@@ -315,158 +315,166 @@ export default ()=>{
 
 ## useRealtimeInstance
 
+React hook
+
 ```ts
 export declare function useRealtimeInstance<T>(instance: T): T;
 ```
 
-Parameter
+参数：
 
-* instance - A instance, it can be a [stable instance](/react-state/concepts?id=stable-instance) or a [realtime instance](/react-state/concepts?id=realtime-instance).
+* instance - 模型[实例](/zh/react-state/concepts?id=实例)
 
-Returns
+返回：
 
-A [realtime instance](/react-state/concepts?id=realtime-instance).
+非稳定[实例](/zh/react-state/concepts?id=非稳定实例)
 
 ## useIsModelMatchedInStore
 
+React hook
+
 ```ts
 export declare function useIsModelMatchedInStore(
-  model: AirReducer<any, any> | StoreKey<any>
+  key: Key<any>
 ): boolean;
 ```
+参数：
 
-Parameters
+* key - [键](/zh/react-state/guides?id=键)模型
 
-* model - A model or a store key
+返回
 
-Returns
-
-If the model is a store key, and if the store key is matched with a store.
+判断[键](/zh/react-state/guides?id=键)模型是否可以匹配上层 Provider 中的 store。
 
 ## Provider
 
-It has another name [ModelProvider](/react-state/api?id=modelprovider).
+React 组件
 
 ```ts
-type StoreKey=((state:any)=>Record<number|string, any>)&{
+type Key=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-const StoreProvider: FC<{
-  value:  Array<StoreKey> | StoreKey | Record<string, StoreKey>;
+const Provider: FC<{
+  keys:  Array<Key> | Key | Record<string, Key>;
   children: ReactNode;
 }>;
 ```
 
 Props
 
-* value - Store keys.
-* children - react nodes
+* keys - [键](/zh/react-state/guides?id=键)集合，可以是单个`键`模型，也可以是`键`模型数组或对象。
+* children - react elements
 
 Returns
 
-* react nodes
+* react elements
 
-## ModelProvider
+## withProvider
 
-It has another name [StoreProvider](/react-state/api?id=storeprovider).
-
-## withStoreProvider
+React 高阶组件
 
 ```ts
-type StoreKey=((state:any)=>Record<number|string, any>)&{
+type Key=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-function withStoreProvider(
-  keys: Array<StoreKey> | StoreKey | Record<string, StoreKey>
-): <P extends object>(component: ComponentType<P>) => typeof component;
+function withProvider<P extends object>(
+  keys: Array<Key> | Key | Record<string, Key>,
+  component: ComponentType<P>
+): typeof component;
 ```
 
-Parameters
+参数：
 
-* keys - Store keys.
+* keys - [键](/zh/react-state/guides?id=键)集合，可以是单个`键`模型，也可以是`键`模型数组或对象。
+* component - React 组件
 
-Returns
+返回
 
-* A callback which accepts a React Component, and returns a `HOC` of the parameter Component with a out `StoreProvider` wrap.
+* 与传入 component 拥有相同 props 接口的组件。相当于对该组件包装了一层 `Provider` 父节点。
 
 
-Explain
-
-It is a `HOC` usage for `StoreProvider`.
-
-Example
+例子：
 
 ```ts
 import React from 'react';
 import { 
-    withStoreProvider, 
-    createStoreKey, 
+    withProvider, 
+    createKey, 
     useModel, 
     useSelector 
 } from '@airma/react-state';
 import model from './model';
 
-const models = createStoreKey(model);
+const models = createKey(model);
 
-const App = withStoreProvider(models)(()=>{
+const App = withProvider(
+  models,
+  ()=>{
     const {...} = useModel(models);
     const data = useSelector(models, s=>s.data);
+    return <div>......</div>
 });
 ```
 
-## withModelProvider
-
-It is another name of [withStoreProvider](/react-state/api?id=withstoreprovider).
-
 ## createKey
 
+函数 API
+
 ```ts
-type StoreKey=((state:any)=>Record<number|string, any>)&{
+type Key=((state:any)=>Record<number|string, any>)&{
     pipe<S,T extends (Record<number|string, any>)>(
         model:(s:S)=>T
     ): typeof model
 }
 
-function createStoreKey<S,T extends Record<string|number,any>>(
+function createKey<S,T extends Record<string|number,any>>(
     model: (state:S)=>T,
     defaultState?: S
-):StoreKey;
+):Key;
 ```
 
-Parameters
+参数：
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
-* defaultState - Optional, provide a default state for store initial.
+* model - [模型](/zh/react-state/concepts?id=模型)函数
 
-Explain
+解释：
 
-If you want to learn how to use `pipe`, please review the [guide detail](/react-state/guides?id=pipe).
+`createKey`通过包装模型函数，生成的`键`模型，可用于 `Provider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`访问 `Provider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
 
-Returns
+如果希望了解[键](/zh/react-state/guides?id=键)模型的 pipe 方法的用途，请参考[神奇的管道](/zh/react-state/feature?id=神奇的管道)。
 
-* A store key model, which can be provided to `StoreProvider` for generating a store, and be provided as key to link the store state for `useModel` or `useSelector`.
+返回：
 
-## factory
-
-It is another name of [createStoreKey](/react-state/api?id=createstorekey).
+[键](/zh/react-state/guides?id=键)模型
 
 ## shallowEqual
+
+函数 API
 
 ```ts
 function shallowEqual<R>(prev: R, current: R): boolean;
 ```
 
-Explain
+参数：
 
-This API is for `useSelector` equalFn to compare the selected result changes.
+* prev - 更新前数据
+* current - 当前数据
 
-Example
+解释：
+
+通常用于 [useSelector](/zh/react-state/api?id=useselector) 的 `equalFn` 参数，以优化渲染性能。
+
+返回：
+
+通过浅对比，观察更新前后数据是否有变化。
+
+例子：
 
 ```ts
 import React from 'react';
@@ -478,7 +486,9 @@ import {
 } from '@airma/react-state';
 
 const Counter = ()=>{
-    // compare the shallow properties one by one.
+    // select 结果是一个复杂对象，
+    // 这会导致 useSelector 每次更新时的默认对比失败，
+    // 使用浅对比，可以解决该问题，并提神渲染效率
     const {count, isNegative} = useSelector(counter, instance=>({
         count:instance.count,
         isNegative: instance.isNegative

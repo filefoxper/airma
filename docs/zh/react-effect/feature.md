@@ -1,4 +1,4 @@
-# Features
+# 特性
 
 There are some useful features you should know about `useQuery`, `useMutation` and `state sharing`.
 
