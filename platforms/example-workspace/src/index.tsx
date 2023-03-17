@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from 'react-dom';
-import App, { fetchFactory } from '@/app';
+import App from '@/app';
 import {
   GlobalConfig,
   GlobalSessionProvider,
@@ -13,13 +13,9 @@ const config: GlobalConfig = {
   strategy: s => [...s, Strategy.error(e => console.log('final...', e))]
 };
 
-const keys = {
-  fetchFactory
-};
-
 render(
   <React.StrictMode>
-    <GlobalSessionProvider config={config} keys={keys}>
+    <GlobalSessionProvider config={config}>
       <App />
     </GlobalSessionProvider>
   </React.StrictMode>,

@@ -67,7 +67,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     if (!disabled) {
       current.update(model, { state });
     }
-    current.connect(persistDispatch);
+    current.connect(persistDispatch, true);
     return () => {
       current.disconnect(persistDispatch);
     };
@@ -237,7 +237,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     const prevState = prevStateRef.current;
     prevStateRef.current = { state };
     if (refresh && (!prevState || prevState.state !== state)) {
-      current.connect(persistDispatch);
+      current.connect(persistDispatch, true);
       current.update(model, { state, cache: true });
     }
   }, [state]);
@@ -246,7 +246,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!connection && !refresh) {
       current.update(model, { state: s });
     }
-    current.connect(persistDispatch);
+    current.connect(persistDispatch, true);
     return () => {
       current.disconnect(persistDispatch);
     };
@@ -387,7 +387,7 @@ export function useSelector<
   connection.connect(dispatch);
 
   useEffect(() => {
-    connection.connect(dispatch);
+    connection.connect(dispatch, true);
     return () => {
       connection.disconnect(dispatch);
     };

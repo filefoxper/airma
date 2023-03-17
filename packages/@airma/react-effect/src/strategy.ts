@@ -50,12 +50,12 @@ function debounce(op: { duration: number } | number): StrategyType {
 }
 
 function once(): StrategyType {
-  return function oc(value: {
+  return function oc(runtime: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
     store: { current?: Promise<SessionState> };
   }) {
-    const { runner, store } = value;
+    const { runner, store } = runtime;
     if (store.current) {
       return store.current.then(d => ({ ...d, abandon: true }));
     }
@@ -95,6 +95,39 @@ function memo<T>(
       }
       return d;
     });
+  };
+}
+
+function throttle(op: { duration: number } | number): StrategyType {
+  const duration = typeof op === 'number' ? op : op.duration;
+
+  function hasChanged(cacheVariables: any[] | undefined, variables: any[]) {
+    if (cacheVariables == null) {
+      return true;
+    }
+    const equality = stringifyComparator(cacheVariables, variables);
+    return !equality;
+  }
+
+  return function th(value) {
+    const { current, runner, store, variables = [] } = value;
+    store.current = store.current || { timeoutId: null, variables: undefined };
+    const storedVariables = store.current.variables;
+    const { timeoutId } = store.current;
+    if (!hasChanged(storedVariables, variables) && timeoutId != null) {
+      return new Promise(resolve => {
+        resolve(current());
+      });
+    }
+    store.current.variables = variables;
+    if (timeoutId != null) {
+      clearTimeout(timeoutId);
+    }
+    store.current.timeoutId = setTimeout(() => {
+      store.current = store.current || {};
+      store.current.timeoutId = null;
+    }, duration);
+    return runner();
   };
 }
 
@@ -147,6 +180,7 @@ function success<T>(
 
 export const Strategy = {
   debounce,
+  throttle,
   once,
   error,
   success,

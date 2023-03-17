@@ -29,7 +29,7 @@ export declare type SessionState<T> =
   | LoadedSessionState<T>
   | UnloadedSessionState;
 
-export declare type StrategyType<T = any> = (value: {
+export declare type StrategyType<T = any> = (runtime: {
   current: () => SessionState<T>;
   variables: any[];
   runner: () => Promise<SessionState<T>>;
@@ -192,6 +192,7 @@ export declare function withSessionProvider<P extends Record<string, any>>(
 
 export declare const Strategy: {
   debounce: (op: { duration: number } | number) => StrategyType;
+  throttle: (op: { duration: number } | number) => StrategyType;
   once: () => StrategyType;
   error: (
     process: (e: unknown) => any,

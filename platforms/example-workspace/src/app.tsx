@@ -1,17 +1,13 @@
-import React, { memo, useEffect, useMemo, useState } from 'react';
-import {
-  createKey,
-  useModel,
-  useRealtimeInstance,
-  withProvider
-} from '@airma/react-state';
+import React, { memo } from 'react';
+import { createKey, useModel } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
   createSessionKey,
   Strategy,
   useMutation,
   useQuery,
-  useSession
+  useSession,
+  withSessionProvider
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -45,113 +41,90 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  new Promise<User[]>(resolve => {
-    setTimeout(() => {
-      resolve(
-        rest('/api/user').path('list').setParams(validQuery).get<User[]>()
-      );
-    }, 400);
-  });
+  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
 
-export const fetchFactory = createSessionKey(userQuery);
+export const fetchSessionKey = createSessionKey(userQuery);
 
-const createModel = (userData: Omit<User, 'id'>) => {
-  return {
-    user: userData,
-    changeUsername(username: string) {
-      return { ...userData, username };
-    },
-    changeName(name: string) {
-      return { ...userData, name };
-    },
-    update() {
-      return { ...userData };
-    }
-  };
-};
-
-const Info = memo(
-  ({ isFetching, error }: { isFetching: boolean; error: any }) => {
-    if (isFetching) {
-      return <span>fetching...</span>;
-    }
-    return error ? <span style={{ color: 'red' }}>{error}</span> : null;
+const Info = memo(() => {
+  const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
+  if (isFetching) {
+    return <span>fetching...</span>;
   }
-);
+  return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
+});
 
-const Creating = memo(
-  ({ onSubmit, onCancel }: { onSubmit: () => any; onCancel: () => any }) => {
-    const { user, changeUsername, changeName } = useModel(createModel, {
+const Creating = memo(({ onClose }: { onClose: () => any }) => {
+  const { user, changeUsername, changeName } = useModel(
+    (userData: Omit<User, 'id'>) => {
+      return {
+        user: userData,
+        changeUsername(username: string) {
+          return { ...userData, username };
+        },
+        changeName(name: string) {
+          return { ...userData, name };
+        },
+        update() {
+          return { ...userData };
+        }
+      };
+    },
+    {
       name: '',
       username: '',
       age: 10
-    });
+    }
+  );
 
-    const [, launch] = useSession(fetchFactory);
+  const [, query] = useSession(fetchSessionKey);
 
-    const [, trigger] = useMutation(
-      (u: Omit<User, 'id'>) =>
-        new Promise(r => {
-          setTimeout(() => {
-            r(
-              rest('/api/user')
-                .setBody(u)
-                .post<null>()
-                .then(() => true)
-            );
-          }, 1000);
-        }),
-      {
-        variables: [user],
-        strategy: [
-          // Strategy.once(),
-          Strategy.success(() => {
-            launch();
-            // onSubmit();
-          })
-        ]
-      }
-    );
+  const [, save] = useMutation(
+    (u: Omit<User, 'id'>) =>
+      rest('/api/user')
+        .setBody(u)
+        .post<null>()
+        .then(() => true),
+    {
+      variables: [user],
+      strategy: [
+        Strategy.once(),
+        Strategy.success(() => {
+          query();
+          onClose();
+        })
+      ]
+    }
+  );
 
-    const handleTrigger = async () => {
-      const res = await trigger();
-      console.log(res);
-    };
-
-    return (
+  return (
+    <div>
       <div>
-        <div>
-          <input
-            type="text"
-            value={user.name}
-            placeholder="input name"
-            onChange={e => changeName(e.target.value)}
-          />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <input
-            type="text"
-            value={user.username}
-            placeholder="input username"
-            onChange={e => changeUsername(e.target.value)}
-          />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            style={{ marginLeft: 12 }}
-            onClick={handleTrigger}
-          >
-            submit
-          </button>
-          <button type="button" style={{ marginLeft: 8 }} onClick={onCancel}>
-            cancel
-          </button>
-        </div>
+        <input
+          type="text"
+          value={user.name}
+          placeholder="input name"
+          onChange={e => changeName(e.target.value)}
+        />
       </div>
-    );
-  }
-);
+      <div style={{ marginTop: 12 }}>
+        <input
+          type="text"
+          value={user.username}
+          placeholder="input username"
+          onChange={e => changeUsername(e.target.value)}
+        />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+          submit
+        </button>
+        <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
+          cancel
+        </button>
+      </div>
+    </div>
+  );
+});
 
 const conditionModel = (query: Query) => {
   const handleQuery = () => {
@@ -177,22 +150,16 @@ const conditionModel = (query: Query) => {
   };
 };
 
-const condition = createKey(conditionModel, {
+const conditionKey = createKey(conditionModel, {
   valid: defaultCondition,
   display: defaultCondition,
   creating: false
 });
 
 const Condition = memo(() => {
-  const instance = useModel(
-    (v: boolean) => [v, () => !v] as [boolean, () => boolean],
-    false
-  );
-  const [v] = useRealtimeInstance(instance);
-  const [visible, toggle] = instance;
-  const { displayQuery, create, changeDisplay, query } = useModel(condition);
+  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
 
-  // useQuery(fetchFactory, [useMemo(() => ({ name: 'M', username: '' }), [])]);
+  const [{ isFetching }] = useSession(fetchSessionKey);
 
   return (
     <div>
@@ -217,64 +184,45 @@ const Condition = memo(() => {
       <button type="button" style={{ marginLeft: 12 }} onClick={query}>
         query
       </button>
-      <button type="button" style={{ marginLeft: 8 }} onClick={create}>
+      <button
+        type="button"
+        disabled={isFetching}
+        style={{ marginLeft: 8 }}
+        onClick={create}
+      >
         create
       </button>
-      <button type="button" style={{ marginLeft: 8 }} onClick={toggle}>
-        {visible ? 'visible' : 'invisible'}
-      </button>
     </div>
   );
 });
 
-export default withProvider({ condition }, function App() {
-  const [defaultState, setDefaultState] = useState({
-    valid: defaultCondition,
-    display: defaultCondition,
-    creating: false
-  });
+export default withSessionProvider(
+  { conditionKey, fetchSessionKey },
+  function App() {
+    const { validQuery, creating, cancel } = useModel(conditionKey);
 
-  const { validQuery, creating, cancel } = useModel(condition, defaultState);
+    const [{ data }] = useQuery(fetchSessionKey, {
+      variables: [validQuery],
+      defaultData: [],
+      strategy: Strategy.debounce(300)
+    });
 
-  const d = useQuery(fetchFactory, {
-    variables: [validQuery],
-    defaultData: [],
-    strategy: Strategy.debounce(800)
-  });
-
-  const [result, trigger] = d;
-
-  const { data, error, isFetching } = result;
-
-  const handleTrigger = async () => {
-    const d = await trigger();
-    console.log(d);
-  };
-
-  // const isFetching = useIsFetching();
-
-  return (
-    <div style={{ padding: '12px 24px' }}>
-      <Condition />
-      <button type="button" onClick={handleTrigger}>
-        trigger
-      </button>
-      <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-        {creating ? (
-          <Creating onSubmit={cancel} onCancel={cancel} />
-        ) : (
-          <Info isFetching={isFetching} error={error} />
-        )}
+    return (
+      <div style={{ padding: '12px 24px' }}>
+        <Condition />
+        <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
+          {creating ? <Creating onClose={cancel} /> : <Info />}
+        </div>
+        <div>
+          {data.map(user => (
+            <div key={user.id} style={{ padding: '4px 0' }}>
+              <span style={{ marginRight: 12 }}>name: {user.name}</span>
+              <span style={{ marginRight: 12 }}>username: {user.username}</span>
+              <span style={{ marginRight: 12 }}>age: {user.age}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div>
-        {data.map(user => (
-          <div key={user.id} style={{ padding: '4px 0' }}>
-            <span style={{ marginRight: 12 }}>name: {user.name}</span>
-            <span style={{ marginRight: 12 }}>username: {user.username}</span>
-            <span style={{ marginRight: 12 }}>age: {user.age}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
