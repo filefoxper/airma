@@ -328,7 +328,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     });
     startFetching(keyRef.current);
     return runner(vars).then(data => {
-      const abandon = version !== versionRef.current;
+      const abandon =
+        version !== versionRef.current ||
+        (instance.state.fetchingKey != null &&
+          keyRef.current !== instance.state.fetchingKey);
       return {
         ...instance.state,
         ...data,
@@ -511,12 +514,16 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     });
     savingRef.current = runner(vars).then(data => {
       savingRef.current = undefined;
+      const abandon =
+        instance.state.fetchingKey != null &&
+        keyRef.current !== instance.state.fetchingKey;
       return {
         ...instance.state,
         ...data,
         isFetching: false,
         fetchingKey: undefined,
-        triggerType
+        triggerType,
+        abandon
       } as SessionState<T>;
     });
     return savingRef.current;
