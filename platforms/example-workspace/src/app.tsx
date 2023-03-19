@@ -3,11 +3,11 @@ import { createKey, useModel } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
   createSessionKey,
+  provide,
   Strategy,
   useMutation,
   useQuery,
-  useSession,
-  withSessionProvider
+  useSession
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -196,33 +196,30 @@ const Condition = memo(() => {
   );
 });
 
-export default withSessionProvider(
-  { conditionKey, fetchSessionKey },
-  function App() {
-    const { validQuery, creating, cancel } = useModel(conditionKey);
+export default provide({ conditionKey, fetchSessionKey })(function App() {
+  const { validQuery, creating, cancel } = useModel(conditionKey);
 
-    const [{ data }] = useQuery(fetchSessionKey, {
-      variables: [validQuery],
-      defaultData: [],
-      strategy: Strategy.debounce(300)
-    });
+  const [{ data }] = useQuery(fetchSessionKey, {
+    variables: [validQuery],
+    defaultData: [],
+    strategy: Strategy.debounce(300)
+  });
 
-    return (
-      <div style={{ padding: '12px 24px' }}>
-        <Condition />
-        <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-          {creating ? <Creating onClose={cancel} /> : <Info />}
-        </div>
-        <div>
-          {data.map(user => (
-            <div key={user.id} style={{ padding: '4px 0' }}>
-              <span style={{ marginRight: 12 }}>name: {user.name}</span>
-              <span style={{ marginRight: 12 }}>username: {user.username}</span>
-              <span style={{ marginRight: 12 }}>age: {user.age}</span>
-            </div>
-          ))}
-        </div>
+  return (
+    <div style={{ padding: '12px 24px' }}>
+      <Condition />
+      <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
+        {creating ? <Creating onClose={cancel} /> : <Info />}
       </div>
-    );
-  }
-);
+      <div>
+        {data.map(user => (
+          <div key={user.id} style={{ padding: '4px 0' }}>
+            <span style={{ marginRight: 12 }}>name: {user.name}</span>
+            <span style={{ marginRight: 12 }}>username: {user.username}</span>
+            <span style={{ marginRight: 12 }}>age: {user.age}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});

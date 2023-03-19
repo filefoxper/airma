@@ -11,7 +11,7 @@
 
 # @airma/react-state
 
-`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index) for details.
+`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index) ([中文文档](https://filefoxper.github.io/airma/#/zh/react-state/index))  for details.
 
 It works like that:
 
@@ -58,7 +58,7 @@ import {
   StoreProvider,
   useModel,
   useSelector,
-  createStoreKey
+  createKey
 } from '@airma/react-state';
 
 const counter = (count:number = 0) =>{
@@ -70,9 +70,9 @@ const counter = (count:number = 0) =>{
   };
 };
 
-// Use API `createStoreKey` to build a store key.
+// Use API `createKey` to build a store key.
 // It can be used as a key to link store state.
-const couterFactory =  createStoreKey(counter);
+const couterFactory =  createKey(counter);
 
 const Increase = memo(()=>{
   // use API `useSelector` to fetch the `increase` method.
@@ -107,7 +107,7 @@ function Counter({index}:{index:number}){
         {/* StoreProvider can hold store keys, */}
         {/* and create a inside store, */}
         {/* then we can use store key to link store state */}
-        <StoreProvider value={couterFactory}>
+        <StoreProvider keys={couterFactory}>
           <div>
             <Decrease/>
             <CountValue/>

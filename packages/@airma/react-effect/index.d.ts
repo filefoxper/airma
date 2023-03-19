@@ -165,10 +165,16 @@ export declare function useIsFetching(
   ...sessionStates: SessionState[]
 ): boolean;
 
-export declare const SessionProvider: FC<{
-  keys: Keys;
-  children?: ReactNode;
-}>;
+export declare const SessionProvider: FC<
+  | {
+      keys: Keys;
+      children?: ReactNode;
+    }
+  | {
+      value: Keys;
+      children?: ReactNode;
+    }
+>;
 
 declare type QueryType = 'query' | 'mutation';
 
@@ -185,10 +191,15 @@ export declare const GlobalSessionProvider: FC<{
   children?: ReactNode;
 }>;
 
-export declare function withSessionProvider<P extends Record<string, any>>(
-  keys: Keys,
+/**
+ * @deprecated
+ * @param keys
+ */
+export declare function withSessionProvider(
+  keys: Keys
+): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
-): typeof component;
+) => typeof component;
 
 export declare const Strategy: {
   debounce: (op: { duration: number } | number) => StrategyType;
@@ -206,3 +217,9 @@ export declare const Strategy: {
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
 };
+
+export declare function provide(
+  keys: Keys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;

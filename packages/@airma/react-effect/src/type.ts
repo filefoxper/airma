@@ -8,6 +8,9 @@ export type SessionKey<E extends PromiseCallback<any>> = Key<
     state: SessionState;
     version: number;
     setState: (s: SessionState) => SessionState & { version?: number };
+    setFetchingKey: (
+      fetchingKey: unknown
+    ) => SessionState & { version?: number };
     trigger: () => SessionState & { version?: number };
   }
 > & {
@@ -29,6 +32,7 @@ type LoadedSessionState<T> = {
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
   loaded: true;
@@ -40,6 +44,7 @@ type UnloadedSessionState = {
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
   loaded: false;

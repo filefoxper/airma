@@ -1,21 +1,7 @@
-# Change Logs
+# 变更日志
 
-## v 16.0.0 2023-03-05
+## v 17.1.0
 
-* optimize `useMutation`.
-* add `triggerOn` to config.
-* add `useStatus` API.
-* make `useMutation` config more similar with `useQuery`.
-
-## v 17.0.0 2023-03-12
-
-* remove API `useStatus`.
-* rename API `client` to `createSessionKey`.
-* rename API `useClient` to `useSession`.
-* rename API `GlobalConfigProvider` to `GlobalRefreshProvider`.
-* rename API `ClientProvider` to `SessionProvider`.
-* add API `useIsFetching`.
-
-# v 17.0.1 2023-03-12
-
-* rename API `GlobalRefreshProvider` to `GlobalProvider`.
+* 增加 provide API，未来将彻底代替 withSessionProvider
+* SessionProvider props 增加 keys 字段，在未来将彻底取代 value 的作用
+* GlobalProvider 被替代称 GlobalSessionProvider。

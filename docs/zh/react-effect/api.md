@@ -2,7 +2,7 @@
 
 ## useQuery
 
-It is used to maintain a query state.
+React hook
 
 ```ts
 function useQuery(callback, variables){
@@ -10,61 +10,26 @@ function useQuery(callback, variables){
 }
 ```
 
-### Parameters
+### 作用
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
-* variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
+用于维护查询功能的[会话状态](/zh/react-effect/concepts?id=会话状态)。
 
-Variables config:
+### 参数
 
-```ts
-{
-    // the variables for callback,
-    // if there is no deps,
-    // the change of variables can drive `useQuery` works
-    variables?: Parameters<callback>,
-    // the deps to drive `useQuery` works,
-    deps?: any[],
-    // set trigger on `manual` mode forcely
-    manual?: boolean,
-    // a default data before state is loaded
-    defaultData?: any,
-    // strategy callbacks to optimize query
-    strategy?: Strategy | (Strategy[]),
-    // limit the working trigger type in `mount`, `update`, `manual`
-    // default with ['mount', 'update', 'manual']
-    triggerOn?: TriggerType[]
-}
-```
+* callback - 返回一个 promise 对象的函数，或以该函数为主体的[会话键](/zh/react-effect/guides?id=基本用法)。
+* variables - callback 函数的参数列表，或[会话配置](/zh/react-effect/feature?id=会话配置)。
 
-### Returns
+### 返回
 
-* state - The promise state of useQuery.
-* trigger - A callback to trigger useQuery work manually with the current variables you set to useQuery. It returns a promise resolving a `state`.
-* execute - A callback to trigger useQuery work manually with local parameters. It returns a promise resolving a `state`.
+元组: `[state, trigger, execute]`，state 与 trigger 可参考[会话](/zh/react-effect/concepts?id=会话)概念。
 
-State:
-
-```ts
-type State<T> = {
-    // The data promise resolved
-    data: T,
-    // If the query or mutation is not finished
-    isFetching: boolean,
-    // The error promise rejected
-    error: any,
-    // If the promise has rejected 
-    isError: boolean,
-    // If there is one promise resolve happened.
-    loaded: boolean,
-    // If this promise state is abandoned
-    abandon: boolean
-} 
-```
+* state - [会话状态](/zh/react-effect/concepts?id=会话状态)
+* trigger - [会话触发器](/zh/react-effect/concepts?id=会话触发器)
+* execute - [可入参手动触发函数](/zh/react-effect/guides?id=传参触发函数)
 
 ## useMutation
 
-It is used to maintain a mutation state.
+React hook
 
 ```ts
 function useMutation(callback, variables){
@@ -72,59 +37,26 @@ function useMutation(callback, variables){
 }
 ```
 
-### Parameters
+### 作用
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
-* variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
+用于维护修改功能的[会话状态](/zh/react-effect/concepts?id=会话状态)。
 
-Variables config:
+### 参数
 
-```ts
-{
-    // the variables for callback,
-    // if there is no deps,
-    // the change of variables can drive `useQuery` works
-    variables?: Parameters<callback>,
-    // the deps to drive `useQuery` works,
-    deps?: any[],
-    // a default data before state is loaded
-    defaultData?: any,
-    // strategy callbacks to optimize query
-    strategy?: Strategy | (Strategy[]),
-    // limit the working trigger type in `mount`, `update`, `manual`
-    // default with ['manual']
-    triggerOn?: TriggerType[]
-}
-```
+* callback - 返回一个 promise 对象的函数，或以该函数为主体的[会话键](/zh/react-effect/guides?id=基本用法)。
+* variables - callback 函数的参数列表，或[会话配置](/zh/react-effect/feature?id=会话配置)。
 
-### Returns
+### 返回
 
-* state - The promise state of useQuery.
-* trigger - A callback to trigger useQuery work manually with the current variables you set to useQuery. It returns a promise resolving a `state`.
-* execute - A callback to trigger useQuery work manually with local parameters. It returns a promise resolving a `state`.
+元组: `[state, trigger, execute]`，state 与 trigger 可参考[会话](/zh/react-effect/concepts?id=会话)概念。
 
-State:
-
-```ts
-type State<T> = {
-    // The data promise resolved
-    data: T,
-    // If the query or mutation is not finished
-    isFetching: boolean,
-    // The error promise rejected
-    error: any,
-    // If the promise has rejected 
-    isError: boolean,
-    // If there is one promise resolve happened.
-    loaded: boolean,
-    // If this promise state is abandoned
-    abandon: boolean
-} 
-```
+* state - [会话状态](/zh/react-effect/concepts?id=会话状态)
+* trigger - [会话触发器](/zh/react-effect/concepts?id=会话触发器)
+* execute - [可入参手动触发函数](/zh/react-effect/guides?id=传参触发函数)
 
 ## createSessionKey
 
-It is used to create a session key for a promise callback.
+函数方法
 
 ```ts
 function createSessionKey(promiseCallback){
@@ -132,44 +64,52 @@ function createSessionKey(promiseCallback){
 }
 ```
 
-### Parameters
+### 作用
 
-* promiseCallback - It should be a callback returns a promise.
+为一个返回 promise 的函数创造一个会话键。
 
-### Returns
+### 参数
 
-* SessionKey - It is a session key function. It can be provided to SessionProvider for creating a store. And with this key inside SessionProvider, you can broadcast or accept state changes. 
+* promiseCallback - 返回一个 promise 对象的函数。
+
+### 返回
+
+会话键。可提供给 `SessionProvider` 用于生成会话库，同时由[工作者和调度者](/zh/react-effect/guides?id=调度者与工作者)通过键来匹配库，同步会话状态。
 
 ## SessionProvider
 
-It is a React Context Provider component. It is used for creating a scope store by using session keys.
+provider 组件
 
 ```ts
 SessionProvider props:{
-    value: <session keys>,
+    keys: <session keys>,
     children?: ReactNode
 }
 ```
 
-### Parameters
+### 作用
 
-* value - It should be session keys.
-* children - React Nodes
+通过会话键生成会话库。并提供会话库的上下文状态管理环境。
+
+### 参数
+
+* keys - [会话键集合](/zh/react-effect/guides?id=基本用法)，可以是单个会话键，也可以是由会话键组成的 object 或数组。
+* children - React Node
 
 ### Returns
 
 It returns a React element.
 
-## withSessionProvider
+## provide
 
-It is a HOC mode for SessionProvider.
+SessionProvider 的高阶组件模式
 
 ```ts
-function withSessionProvider(clientKeys){
+function provide(sessionKeys){
     return function connect(Component){
         return function HocComponent(componentProps){
             return (
-                <SessionProvider value={clientKeys}>
+                <SessionProvider keys={sessionKeys}>
                   <Component {...componentProps}/>
                 </SessionProvider>
             );
@@ -178,24 +118,25 @@ function withSessionProvider(clientKeys){
 }
 ```
 
-### Example
+### 例子
 
 ```ts
 import React from 'react';
 import {
-    withSessionProvider, 
+    provide, 
     useQuery, 
     useSession
+    createSessionKey
 } from '@airma/react-effect';
 
-const clientKey = ...;
+const clientKey = createSessionKey(...);
 
 const Child = ()=>{
     const [ {data} ] = useSession(clientKey);
     return ......;
 }
 
-const App = withSessionProvider(clientKey)(()=>{
+const App = provide(clientKey)(()=>{
 
     useQuery(clientKey, []);
 
@@ -209,138 +150,69 @@ const App = withSessionProvider(clientKey)(()=>{
 
 ## useSession
 
-It is a react hook used to accept state changes from the nearest mathced [SessionProvider](/react-effect/api?id=sessionprovider).
+React hook
 
 ```ts
-function useClient(sessionKey){
+function useSession(sessionKey){
     return [state, trigger];
 }
 ```
 
-### Parameters
+### 作用
 
-* sessionKey - A session key created by [createSessionKey](/react-effect/api?id=createsessionkey) API.
+用于同步会话状态，调度会话[工作者](/zh/react-effect/guides?id=调度者与工作者)运行，即[调度者](/zh/react-effect/guides?id=调度者与工作者)。
 
-### Returns
+### 参数
 
-* state - The promise state from nearest SessionProvider store matched with the session key.
-* trigger - It is a no parameter callback, returns void. It can be used to trigger query or mutation which is using the same session key manually.
+* sessionKey - 由 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建的会话键。
+
+### 返回
+
+元组 `[state, trigger]`，即[会话](/zh/react-effect/concepts?id=会话)。
 
 ## Strategy
 
-It is a set for often used [strategies](/react-effect/concepts?id=strategy).
+`@airma/react-effect` 提供的[常用策略集合](/zh/react-effect/concepts?id=常用策略)。
 
-```ts
-const Strategy: {
-  // Provide a debounce running strategy
-  debounce: (op: { duration: number } | number) => StrategyType;
-  // Provide a once running strategy
-  once: () => StrategyType;
-  error: (
-    process: (e: unknown) => any,
-    option?: { withAbandoned?: boolean }
-  ) => StrategyType;
-  success: <T>(
-    process: (data: T) => any,
-    option?: { withAbandoned?: boolean }
-  ) => StrategyType<T>;
-  memo: <T>(
-    equalFn?: (source: T | undefined, target: T) => boolean
-  ) => StrategyType<T>;
-};
-```
+## GlobalSessionProvider
 
-* Strategy.debounce - It returns a debounce strategy. You can set a duration time to make promise callback work debounce with this duration time.
-* Strategy.once - It returns a strategy. With it, when your promise callback has resolved a promise, it can not be called again.
-* Strategy.error - It returns a strategy. You can provide a error process callback for it. When the promise is rejected, it calls the process callback with error parameter.
-* Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
-* Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
-
-## GlobalProvider
-
-It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
+ provider 组件
 
 ```ts
 GlobalProvider props:{
-    value: GlobalConfig,
+    config?: GlobalConfig,
+    keys?: SessonKeys,
     children?: ReactNode
 }
 ```
 
+### 作用
+
+通过会话键生成一个全局会话库，并提供会话库的上下文状态管理环境。同时还具备全局会话配置功能。详情可参考[全局会话](/zh/react-effect/guides?id=全局会话)。
+
 ### Parameters
 
-* value - It should be global config.
+* config - 可选的全局会话配置。
+* keys - 可选的全局会话键。
 * children - React Nodes
-
-### Example
-
-```ts
-import React from 'react';
-import {
-  GlobalProvider,
-  Strategy,
-  useQuery
-} from '@airma/react-effect';
-import type {GlobalConfig} from '@airma/react-effect';
-
-// The GlobalConfig only support rebuild strategy currently.
-const config: GlobalConfig = {
-  // The strategy is a callback,
-  // it accepts a running effect strategy array,
-  // and a effect type: 'query' | 'mutation'.
-  // You can complete the running strategies
-  // with padding strategies,
-  // so, the running effect will work with these new strategies.
-  // It can be ignored by a local effect config option:
-  // `exact: true`
-  strategy:(
-    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
-  )=>[...s, Strategy.error((e)=>console.log(e))]
-}
-
-const App = ()=>{
-  // if the `fetchUsers` is failed,
-  // the global config strategy `Strategy.error` works.
-  useQuery(fetchUsers, [data]);
-  useQuery(fetchGroups, {
-    variables: [...ids],
-    strategy: [
-      Strategy.debounce(300), 
-      Strategy.error(...)
-    ],
-    // tell useQuery to use the current config exactly.
-    exact: true
-  });
-  ......
-}
-
-......
-{/* Set a ClientConfig */}
-<GlobalProvider 
-  value={Strategy.error(e => console.log(e))}
->
-  <App/>
-</GlobalProvider>
-```
 
 ## useIsFetching
 
-It is a hook to detect if there are some `useQuery` or `useMutation` are still fetching.
+React hook
 
 ```ts
 export declare function useIsFetching(
   ...sessionStates: SessionState[]
 ): boolean;
 ```
+### 作用
 
-Parameters
+用于统计是否还有正在工作的会话。
 
-* sessionStates - The states of `useQuery` or `useMutation` for detecting.
+### 参数
 
-Returns
+* sessionStates - 可选参数，会话状态集合。如集合为空，即没有参数，则统计 GlobalSessionProvider 中的所有会话状态；否则，只统计指定的状态集合。
 
-A boolean data, if any of sessionStates is in `fetching`, it returns true.
+### 返回
 
-Explain
-
-If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalProvider`.
+boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。如果没有指定任何参数，同时也不在 `GlobalSessionProvider` 范围内，则报出异常。

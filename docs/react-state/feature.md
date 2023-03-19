@@ -80,13 +80,13 @@ The scope state in `@airma/react-state` is persisted in a store created by `Stor
 ```ts
 import {
     useModel, 
-    createStoreKey, 
+    createKey, 
     StoreProvider
 } from '@airma/react-state';
 
-const key1 = createStoreKey(model);
+const key1 = createKey(model);
 
-const key2 = createStoreKey(model);
+const key2 = createKey(model);
 
 const Comp = ()=>{
     useModel(key1);
@@ -95,10 +95,10 @@ const Comp = ()=>{
 
 const App = ()=>{
     // the usage in `Comp` find link in
-    // `<StoreProvider value={key1}>`
+    // `<StoreProvider keys={key1}>`
     return (
-        <StoreProvider value={key1}>
-            <StoreProvider value={key2}>
+        <StoreProvider keys={key1}>
+            <StoreProvider keys={key2}>
                 <Comp/>
             </StoreProvider>
         </StoreProvider>
@@ -106,7 +106,7 @@ const App = ()=>{
 }
 ```
 
-The `createStoreKey` API always generates a unique store key. Though the `key1` and `key2` wraps a same model, they are still different.
+The `createKey` API always generates a unique store key. Though the `key1` and `key2` wraps a same model, they are still different.
 
 ## More usage
 

@@ -79,23 +79,16 @@ export declare const ModelProvider: FC<{
   children?: ReactNode;
 }>;
 
-/**
- * @deprecated
- */
-export declare const StoreProvider: FC<{
-  value: Keys;
-  children?: ReactNode;
-}>;
-
-export declare const Provider: FC<{
-  keys: Keys;
-  children?: ReactNode;
-}>;
-
-export declare function withProvider<P extends Record<string, any>>(
-  keys: Keys,
-  component: FunctionComponent<P> | NamedExoticComponent<P>
-): typeof component;
+export declare const StoreProvider: FC<
+  | {
+      value: Keys;
+      children?: ReactNode;
+    }
+  | {
+      keys: Keys;
+      children?: ReactNode;
+    }
+>;
 
 /**
  * @deprecated
@@ -109,10 +102,16 @@ export declare function withModelProvider(
 
 /**
  * @deprecated
- * @param models
+ * @param keys
  */
 export declare function withStoreProvider(
-  models: Keys
+  keys: Keys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
+
+export declare function provide(
+  keys: Keys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -153,6 +152,34 @@ export declare function createKey<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
 ): Key<typeof model>;
+
+/**
+ * @deprecated
+ * @param model
+ */
+export declare function createStoreKey<S, T extends AirModelInstance>(
+  model: AirReducer<S | undefined, T>
+): Key<typeof model>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S, T>, defaultState: D): Key<typeof model>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S | undefined, T>, defaultState?: D): Key<typeof model>;
 
 export declare function useRealtimeInstance<T>(instance: T): T;
 

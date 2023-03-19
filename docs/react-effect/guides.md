@@ -535,10 +535,10 @@ const Entry = ()=>{
 }
 
 render(
-    // use client keys to create a store in ClientProvider
-    <StoreProvider value={clientKeys}>
+    // use client keys to create a store in SessionProvider
+    <SessionProvider keys={clientKeys}>
         <Entry/>
-    </StoreProvider>,
+    </SessionProvider>,
     document.getElementById('root')
 );
 ```
@@ -581,14 +581,14 @@ const TodoList = ()=>{
 
 const Page = ()=>{
     // useSession can not match the key loginUser
-    // in <SessionProvider value={pageKeys} />, 
-    // it will auto go up to <SessionProvider value={globalKeys} />,
+    // in <SessionProvider keys={pageKeys} />, 
+    // it will auto go up to <SessionProvider keys={globalKeys} />,
     // and it will match state there.
     const [ {data: user} ] = useSession(loginUser, {loaded:true});
     const [ {data: userConfig} ] = useSession(config, {loaded: true});
 
     // useQuery matches its key pageKeys.todos
-    // in <SessionProvider value={pageKeys} />.
+    // in <SessionProvider keys={pageKeys} />.
     useQuery(pageKeys.todos,[]);
 
     return ......;
@@ -617,7 +617,7 @@ const Entry = ()=>{
     }
     // Use a child SessionProvider
     return (
-        <SessionProvider value={pageKeys}>
+        <SessionProvider keys={pageKeys}>
           <Page/>
         </SessionProvider>
     );
@@ -625,7 +625,7 @@ const Entry = ()=>{
 
 render(
     // Use a global SessionProvider
-    <SessionProvider value={globalKeys}>
+    <SessionProvider keys={globalKeys}>
         <Entry/>
     </SessionProvider>,
     document.getElementById('root')

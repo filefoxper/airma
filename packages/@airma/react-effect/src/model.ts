@@ -18,6 +18,14 @@ export function effectModel(state: SessionState & { version?: number }) {
       }
       return mergeVersion(s(state));
     },
+    setFetchingKey(fetchingKey: unknown): SessionState & { version?: number } {
+      return mergeVersion({
+        ...state,
+        fetchingKey,
+        finalFetchingKey:
+          fetchingKey != null ? fetchingKey : state.finalFetchingKey
+      });
+    },
     trigger(): SessionState & { version?: number } {
       return { ...state, version: (version || 0) + 1 };
     }

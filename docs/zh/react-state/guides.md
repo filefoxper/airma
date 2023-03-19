@@ -331,7 +331,7 @@ React 上下文状态是指利用 `React.Context` 技术，在 `Context.Provider
 
 目前很多状态管理工具都只提供了全局上下文状态管理模式，将 store 数据库维护在一个全局常量中。经过大量实践，我们发现全局上下文状态并不利于组织和复用我们的组件。如：我们为一个复杂组件设计了一个独立的全局 store 来维护上下文状态，当我们需要在同一页面的不同区域多次使用该组件的实例时，我们发现这些实例的上下文状态是始终同步的，很难对它们进行上下文作用域隔离。
 
-`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 [Provider](/zh/react-state/api?id=provider) API 组件实例中存放的是使用键[模型](/zh/react-state/concepts?id=模型)生成的[链接](/zh/react-state/concepts?id=链接)）。
+`@airma/react-state` 提供了一套将上下文状态维护在 `Provider` 实例中的思路。使用者向 `Provider` 提供全局的键，由 `Provider` 按键生成存放状态的库（事实上 [StoreProvider](/zh/react-state/api?id=storeprovider) API 组件实例中存放的是使用键[模型](/zh/react-state/concepts?id=模型)生成的[链接](/zh/react-state/concepts?id=链接)）。
 
 这种做法，相当于把上下文状态的作用域重新交给了使用者，而非大一统无脑的提供一个全局库。通过控制 `Provider` 的位置，我们可以很容易拿捏上下文状态的作用范围。
 
@@ -398,14 +398,14 @@ export const storeKeys = {
 
 `键`有两个重要作用：
 
-1. 提供给 `Provider` 组件，用于生成上下文链接`库` (store)。
+1. 提供给 `StoreProvider` 组件，用于生成上下文链接`库` (store)。
 2. 提供给 `useModel` 和 `useSelector` 用作打开`库`链接的钥匙，并负责匹配的链接建立同步。
 
 ```ts
 import React from 'react';
 import {render} from 'react-dom';
 import {
-    Provider,
+    StoreProvider,
     useModel,
     useSelector
 } from '@airma/react-state';
@@ -466,9 +466,9 @@ const App = ()=>{
 
 render(
     // 使用钥匙串对象创建 库
-    <Provider keys={storeKeys}>
+    <StoreProvider keys={storeKeys}>
       <App/>
-    </Provider>
+    </StoreProvider>
 );
 ```
 
@@ -477,7 +477,7 @@ render(
 
 ### 库
 
-[Provider](/zh/react-state/api?id=provider)组件根据我们提供的`键`模型或`键`模型串（可以是单个`键`模型函数，也可以是由多个`键`组成的 object或数组）生成一个内部的`链接`集合。这个集合被称为`库`。
+[StoreProvider](/zh/react-state/api?id=storeprovider)组件根据我们提供的`键`模型或`键`模型串（可以是单个`键`模型函数，也可以是由多个`键`组成的 object或数组）生成一个内部的`链接`集合。这个集合被称为`库`。
 
 为 `useModel` 或 `useSelector` 提供正确的`键`模型，可以快速匹配`库`中的链接，并建立同步机制。
 
@@ -496,7 +496,7 @@ render(
 import React from 'react';
 import { 
     createKey,
-    Provider,
+    StoreProvider,
     useModel 
 } from '@airma/react-state';
 
@@ -545,14 +545,14 @@ const Counter = ()=>{
 
 const App = ()=>{
     return (
-        <Provider keys={counterKey}>
+        <StoreProvider keys={counterKey}>
           <Counter />
-        </Provider>
+        </StoreProvider>
     )
 }
 ```
 
-通过上例分析，我们知道，对`Provider库链接`进行运行时初始化，`链接`状态值是由 `useModel` 的运行顺序决定的。越先运行的 `useModel` 初始化优先级越高。
+通过上例分析，我们知道，对 `StoreProvider 库链接` 进行运行时初始化，`链接`状态值是由 `useModel` 的运行顺序决定的。越先运行的 `useModel` 初始化优先级越高。
 
 如果最先运行的 `useModel` 没有初始化，后续的 `useModel` 做了运行时初始化的工作，会发生状态冲突错误吗？
 
@@ -560,7 +560,7 @@ const App = ()=>{
 import React from 'react';
 import { 
     createKey,
-    Provider,
+    StoreProvider,
     useModel 
 } from '@airma/react-state';
 
@@ -611,9 +611,9 @@ const Counter = ()=>{
 
 const App = ()=>{
     return (
-        <Provider keys={counterKey}>
+        <StoreProvider keys={counterKey}>
           <Counter />
-        </Provider>
+        </StoreProvider>
     )
 }
 ```
@@ -741,7 +741,7 @@ function model(state: State){
 export const modelKey = createKey(model, defaultState());
 ```
 
-我们使用 `createKey` 创建了一个全局键，之后将用于在 `Provider` 中创建上下文状态链接库，并在子组件中访问该库，从而达到实例状态同步的效果。
+我们使用 `createKey` 创建了一个全局键，之后将用于在 `StoreProvider` 中创建上下文状态链接库，并在子组件中访问该库，从而达到实例状态同步的效果。
 
 现在开始构建查询页面。
 
@@ -750,7 +750,7 @@ export const modelKey = createKey(model, defaultState());
 
 import React, {memo, useEffect} from 'react';
 import {
-    Provider,
+    StoreProvider,
     useSelector, 
     useRefresh,
     useModel
@@ -762,7 +762,7 @@ import {fetchSource} from './service';
 import type {Query, User} from './type';
 
 const Condition = memo(()=>{
-    // 连接 <Provider keys={modelKey}>
+    // 连接 <StoreProvider keys={modelKey}>
     const {
         displayQuery,
         changeDisplayQuery,
@@ -840,10 +840,10 @@ const SourceContent = memo(()=>{
 export default function Page(){
     // 使用 modelKey 建立链接库
     return (
-        <Provider keys={modelKey}>
+        <StoreProvider keys={modelKey}>
             <Condition />
             <SourceContent />
-        </Provider>
+        </StoreProvider>
     );
 }
 ```

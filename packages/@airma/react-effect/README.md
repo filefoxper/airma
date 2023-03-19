@@ -247,7 +247,7 @@ const App = memo(()=>{
   // Set session key `loginUser` into `SessionProvider`,
   // and create a store inside.
   return (
-      <SessionProvider value={loginUser}>
+      <SessionProvider keys={loginUser}>
         <Child1/>
         <Child2/>
       </SessionProvider>

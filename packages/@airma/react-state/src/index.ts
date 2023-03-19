@@ -140,18 +140,21 @@ export const ModelProvider: FC<{
   );
 };
 
-export const StoreProvider = ModelProvider;
-
-export const Provider: FC<{
-  keys: Array<any> | ((...args: any) => any) | Record<string, any>;
+export const StoreProvider: FC<{
+  keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
+  value?: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
-}> = function RequiredModelProvider({ keys, children }) {
+}> = function RequiredModelProvider({ keys, value, children }) {
+  const storeKeys = keys != null ? keys : value;
+  if (storeKeys == null) {
+    throw new Error('You need to provide keys to `StoreProvider`');
+  }
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(keys), []);
+  const storeMemo = useMemo(() => createStore(storeKeys), []);
   const selector = useMemo(() => {
-    const store = storeMemo.update(keys);
+    const store = storeMemo.update(storeKeys);
     return { ...store, parent: context };
-  }, [context, keys]);
+  }, [context, storeKeys]);
   return createElement(
     ReactStateContext.Provider,
     { value: selector },
@@ -396,24 +399,8 @@ export function useSelector<
   return s.data;
 }
 
-export function withProvider<
-  P extends Record<string, any>,
-  C extends ComponentType<P>
->(
-  keys: Array<any> | ((...args: any) => any) | Record<string, any>,
-  Comp: C
-): ComponentType<P> {
-  return function WithModelProviderComponent(props: P) {
-    return createElement(
-      Provider,
-      { keys },
-      createElement<P>(Comp as FunctionComponent<P>, props)
-    );
-  };
-}
-
-export function withStoreProvider(
-  models: Array<any> | ((...args: any) => any) | Record<string, any>
+export function provide(
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>
 ) {
   return function connect<
     P extends Record<string, any>,
@@ -422,7 +409,24 @@ export function withStoreProvider(
     return function WithModelProviderComponent(props: P) {
       return createElement(
         ModelProvider,
-        { value: models },
+        { value: keys },
+        createElement<P>(Comp as FunctionComponent<P>, props)
+      );
+    };
+  };
+}
+
+export function withStoreProvider(
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>
+) {
+  return function connect<
+    P extends Record<string, any>,
+    C extends ComponentType<P>
+  >(Comp: C): ComponentType<P> {
+    return function WithModelProviderComponent(props: P) {
+      return createElement(
+        ModelProvider,
+        { value: keys },
         createElement<P>(Comp as FunctionComponent<P>, props)
       );
     };
@@ -454,5 +458,7 @@ export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
 export const shallowEqual = shallowEq;
 
 export const factory = createFactory;
+
+export const createStoreKey = createFactory;
 
 export const createKey = createFactory;

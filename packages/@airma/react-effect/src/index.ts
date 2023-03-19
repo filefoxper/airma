@@ -8,13 +8,13 @@ import {
 } from 'react';
 import {
   factory,
-  Provider,
+  StoreProvider,
   shallowEqual,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
   useSelector,
-  withProvider
+  provide as provideKeys
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -72,7 +72,7 @@ export function GlobalSessionProvider({
         children
       )
     : createElement(
-        Provider,
+        StoreProvider,
         { keys },
         createElement(
           GlobalConfigContext.Provider,
@@ -323,21 +323,19 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     setState({
       ...current,
       isFetching: true,
-      fetchingKey: keyRef.current,
       triggerType
     });
     startFetching(keyRef.current);
     return runner(vars).then(data => {
       const abandon =
         version !== versionRef.current ||
-        (instance.state.fetchingKey != null &&
-          keyRef.current !== instance.state.fetchingKey);
+        (instance.state.finalFetchingKey != null &&
+          keyRef.current !== instance.state.finalFetchingKey);
       return {
         ...instance.state,
         ...data,
         abandon,
         isFetching: false,
-        fetchingKey: undefined,
         triggerType
       } as SessionState<T>;
     });
@@ -370,6 +368,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     if (triggerTypes.indexOf(triggerType) < 0) {
       return;
     }
+    instance.setFetchingKey(keyRef.current);
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -386,6 +385,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
       });
     }
+    instance.setFetchingKey(keyRef.current);
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -409,6 +409,13 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     effectQuery(false);
   }, effectDeps);
 
+  useUpdate(() => {
+    if (stableInstance.state.fetchingKey !== keyRef.current) {
+      return;
+    }
+    instance.setFetchingKey(undefined);
+  }, [stableInstance.state.fetchingKey]);
+
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
     if (triggerVersionRef.current === stableInstance.version) {
@@ -425,6 +432,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   useEffect(
     () => () => {
       endFetching(keyRef.current);
+      if (instance.state.fetchingKey !== keyRef.current) {
+        return;
+      }
+      instance.setFetchingKey(undefined);
     },
     []
   );
@@ -509,19 +520,17 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     setState({
       ...current,
       isFetching: true,
-      fetchingKey: keyRef.current,
       triggerType
     });
     savingRef.current = runner(vars).then(data => {
       savingRef.current = undefined;
       const abandon =
-        instance.state.fetchingKey != null &&
-        keyRef.current !== instance.state.fetchingKey;
+        instance.state.finalFetchingKey != null &&
+        keyRef.current !== instance.state.finalFetchingKey;
       return {
         ...instance.state,
         ...data,
         isFetching: false,
-        fetchingKey: undefined,
         triggerType,
         abandon
       } as SessionState<T>;
@@ -556,6 +565,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     if (triggerTypes.indexOf(triggerType) < 0) {
       return;
     }
+    instance.setFetchingKey(keyRef.current);
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -572,6 +582,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
         resolve({ ...instance.state, abandon: true });
       });
     }
+    instance.setFetchingKey(keyRef.current);
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -597,6 +608,13 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     effectQuery(false);
   }, effectDeps);
 
+  useUpdate(() => {
+    if (stableInstance.state.fetchingKey !== keyRef.current) {
+      return;
+    }
+    instance.setFetchingKey(undefined);
+  }, [stableInstance.state.fetchingKey]);
+
   useEffect(() => {
     if (triggerVersionRef.current === stableInstance.version) {
       return;
@@ -612,6 +630,10 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   useEffect(
     () => () => {
       endFetching(keyRef.current);
+      if (instance.state.fetchingKey !== keyRef.current) {
+        return;
+      }
+      instance.setFetchingKey(undefined);
     },
     []
   );
@@ -658,9 +680,11 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
   return isLocalFetching;
 }
 
-export const SessionProvider = Provider;
+export const SessionProvider = StoreProvider;
 
-export const withSessionProvider = withProvider;
+export const withSessionProvider = provideKeys;
+
+export const provide = provideKeys;
 
 export { createSessionKey } from './model';
 

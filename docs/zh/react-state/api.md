@@ -66,7 +66,7 @@ import React from 'react';
 import {
     useModel, 
     createKey,
-    Provider
+    StoreProvider
 } from '@airma/react-state';
 
 // 建立 `键` 模型
@@ -88,12 +88,12 @@ const Counter = ({name}:{name:string})=>{
 };
 
 export const App = ()=>{
-    // Provider 通过 `键` 创建并维护实例库
+    // StoreProvider 通过 `键` 创建并维护实例库
     return (
-        <Provider keys={counter}>
+        <StoreProvider keys={counter}>
             <Counter name="count_1">
             <Counter name="count_2">
-        </Provider>
+        </StoreProvider>
     );
 }
 ```
@@ -270,7 +270,7 @@ selector 回调函数返回值。
 ```ts
 import React from 'react';
 import {
-  Provider, 
+  StoreProvider, 
   createKey, 
   useSelector
 } from '@airma/react-state';
@@ -304,11 +304,11 @@ const Counter = ()=>{
 
 export default ()=>{
     return (
-        <Provider keys={counter}>
+        <StoreProvider keys={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
-        </Provider>
+        </StoreProvider>
     );
 }
 ```
@@ -344,9 +344,9 @@ export declare function useIsModelMatchedInStore(
 
 返回
 
-判断[键](/zh/react-state/guides?id=键)模型是否可以匹配上层 Provider 中的 store。
+判断[键](/zh/react-state/guides?id=键)模型是否可以匹配上层 StoreProvider 中的 store。
 
-## Provider
+## StoreProvider
 
 React 组件
 
@@ -357,7 +357,7 @@ type Key=((state:any)=>Record<number|string, any>)&{
     ): typeof model
 }
 
-const Provider: FC<{
+const StoreProvider: FC<{
   keys:  Array<Key> | Key | Record<string, Key>;
   children: ReactNode;
 }>;
@@ -372,7 +372,7 @@ Returns
 
 * react elements
 
-## withProvider
+## provide
 
 React 高阶组件
 
@@ -383,10 +383,11 @@ type Key=((state:any)=>Record<number|string, any>)&{
     ): typeof model
 }
 
-function withProvider<P extends object>(
-  keys: Array<Key> | Key | Record<string, Key>,
-  component: ComponentType<P>
-): typeof component;
+function provide(
+  keys: Keys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
 ```
 
 参数：
@@ -396,7 +397,7 @@ function withProvider<P extends object>(
 
 返回
 
-* 与传入 component 拥有相同 props 接口的组件。相当于对该组件包装了一层 `Provider` 父节点。
+* 与传入 component 拥有相同 props 接口的组件。相当于对该组件包装了一层 `StoreProvider` 父节点。
 
 
 例子：
@@ -404,7 +405,7 @@ function withProvider<P extends object>(
 ```ts
 import React from 'react';
 import { 
-    withProvider, 
+    provide, 
     createKey, 
     useModel, 
     useSelector 
@@ -413,13 +414,13 @@ import model from './model';
 
 const models = createKey(model);
 
-const App = withProvider(
-  models,
+const App = provide(models)(
   ()=>{
     const {...} = useModel(models);
     const data = useSelector(models, s=>s.data);
     return <div>......</div>
-});
+  }
+);
 ```
 
 ## createKey
@@ -445,7 +446,7 @@ function createKey<S,T extends Record<string|number,any>>(
 
 解释：
 
-`createKey`通过包装模型函数，生成的`键`模型，可用于 `Provider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`访问 `Provider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
+`createKey`通过包装模型函数，生成的`键`模型，可用于 `StoreProvider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`访问 `StoreProvider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
 
 如果希望了解[键](/zh/react-state/guides?id=键)模型的 pipe 方法的用途，请参考[神奇的管道](/zh/react-state/feature?id=神奇的管道)。
 
@@ -479,7 +480,7 @@ function shallowEqual<R>(prev: R, current: R): boolean;
 ```ts
 import React from 'react';
 import {
-    ModelProvider, 
+    StoreProvider, 
     factory, 
     useSelector,
     shallowEqual

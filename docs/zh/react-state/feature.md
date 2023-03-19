@@ -80,12 +80,12 @@ const App = memo(()=>{
 
 ## 上下文查找库方式
 
-通过`键`查找库的过程总是沿着 `Provider` 树自近及远的，若最近一层父级 `Provider 库` 没有与之匹配的`链接`，则继续往更高层查找，直到最顶层的 `Provider` 为止。若始终没有匹配，`useSelector` 或 `useModel` 会抛出查找异常错误。
+通过`键`查找库的过程总是沿着 `StoreProvider` 树自近及远的，若最近一层父级 `StoreProvider 库` 没有与之匹配的`链接`，则继续往更高层查找，直到最顶层的 `StoreProvider` 为止。若始终没有匹配，`useSelector` 或 `useModel` 会抛出查找异常错误。
 
 ```ts
 import React from 'react';
 import {
-    Provider,
+    StoreProvider,
     useSelector
 } from '@airma/react-state';
 import {globalKeys} from '@/global/models';
@@ -95,14 +95,14 @@ import {pageKeys} from './models';
 // const pageKeys = {condition: Key, todoList: Key}
 
 const Condition = ()=>{
-    // useSelector 先到最近的 <Provider keys={pageKeys}> 查找，
-    // 查找无果后向更高层 <Provider keys={globalKeys}> 发起查找，
-    // 最后使用匹配 <Provider keys={globalKeys}> store
+    // useSelector 先到最近的 <StoreProvider keys={pageKeys}> 查找，
+    // 查找无果后向更高层 <StoreProvider keys={globalKeys}> 发起查找，
+    // 最后使用匹配 <StoreProvider keys={globalKeys}> store
     const userId = useSelector(
         globalKeys.loginUser, 
         instance => instance.id
     );
-    // useModel 在最近的 <Provider keys={pageKeys}> store 中匹配成功
+    // useModel 在最近的 <StoreProvider keys={pageKeys}> store 中匹配成功
     const {
         displayQuery, 
         changeDisplayQuery,
@@ -122,19 +122,19 @@ const List = ()=>{
 const Page = ()=>{
     // 使用 pageKeys 创建当前页面的上下文作用域
     return (
-        <Provider keys={pageKeys}>
+        <StoreProvider keys={pageKeys}>
           <Condition/>
           <List/>
-        </Provider>
+        </StoreProvider>
     );
 }
 
 const App = ()=>{
     // 使用 globalKeys 创建应用全局的上下文作用域
     return (
-        <Provider keys={globalKeys}>
+        <StoreProvider keys={globalKeys}>
           <Page/>
-        </Provider>
+        </StoreProvider>
     );
 }
 ```
@@ -153,7 +153,7 @@ const App = ()=>{
 import React from 'react';
 import { 
     createKey,
-    Provider,
+    StoreProvider,
     useModel,
     useSelector, 
 } from '@airma/react-state';
@@ -221,9 +221,9 @@ const Counter = ()=>{
 
 const App = ()=>{
     return (
-        <Provider keys={counterKey}>
+        <StoreProvider keys={counterKey}>
           <Counter />
-        </Provider>
+        </StoreProvider>
     )
 }
 ```

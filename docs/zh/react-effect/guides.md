@@ -4,7 +4,7 @@
 
 The usage about `@airma/react-effect` is simple enough. We will introduce some practical usage in this section.
 
-## 本地回话
+## 本地会话
 
 本地会话涉及的查询和修改操作十分简单。通过合理区分每种不同异步操作的类型，配合正确的策略，就能简单满足我们的大部分需求。
 
@@ -763,6 +763,10 @@ render(
   root
 );
 ```
+
+### SessionProvider 与 StoreProvider
+
+如果你在使用 `@airma/react-effect` 的同时也在使用 [@airma/react-state](/zh/react-state/index)，那么这里有一条值得你注意的消息，`SessionProvider` 就是 `@airma/react-state` 中的 [StoreProvider](/zh/react-state/guides?id=库)。也就是说两者是完全可以通用，因此我们可以把会话`键`用于 [StoreProvider](/zh/react-state/guides?id=库)，也可以把 模型[键](/zh/react-state/guides?id=键) 用于 `SessionProvider`，`createSessionKey` 产生的会话`键`其实就是一种特殊的模型[键](/zh/react-state/guides?id=键)。
 
 ## 本地状态管理
 
