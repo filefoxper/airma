@@ -67,9 +67,13 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
 ): void;
 
 export declare type Keys =
-  | Key<(s: any) => any>
-  | Array<Key<(s: any) => any>>
-  | Record<string, Keys>;
+  | {
+      [key: string]: Key<(s: any) => any> | Keys;
+    }
+  | {
+      [key: number]: Key<(s: any) => any> | Keys;
+    }
+  | Key<(s: any) => any>;
 
 /**
  * @deprecated

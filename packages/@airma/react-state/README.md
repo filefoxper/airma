@@ -11,7 +11,12 @@
 
 # @airma/react-state
 
-`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index) ([中文文档](https://filefoxper.github.io/airma/#/zh/react-state/index))  for details.
+`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index)  for details.
+
+## Document
+
+* [English](https://filefoxper.github.io/airma/#/react-state/index)
+* [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
 
 It works like that:
 
