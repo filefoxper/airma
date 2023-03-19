@@ -1,13 +1,16 @@
-import { StoreKey, StoreKeys } from '@airma/react-state';
+import { Key, Keys } from '@airma/react-state';
 import { ReactNode } from 'react';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export type SessionKey<E extends PromiseCallback<any>> = StoreKey<
+export type SessionKey<E extends PromiseCallback<any>> = Key<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
     setState: (s: SessionState) => SessionState & { version?: number };
+    setFetchingKey: (
+      fetchingKey: unknown
+    ) => SessionState & { version?: number };
     trigger: () => SessionState & { version?: number };
   }
 > & {
@@ -29,6 +32,7 @@ type LoadedSessionState<T> = {
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
   loaded: true;
@@ -40,6 +44,7 @@ type UnloadedSessionState = {
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
   loaded: false;
@@ -97,7 +102,7 @@ export type GlobalConfigProviderProps = {
 
 export type GlobalSessionProviderProps = {
   config?: GlobalConfig;
-  value?: StoreKeys;
+  keys?: Keys;
   children?: ReactNode;
 };
 
@@ -108,6 +113,6 @@ export type Status = {
 };
 
 export type SessionProviderProps = {
-  value: StoreKeys;
+  value: Keys;
   children?: ReactNode;
 };

@@ -12,6 +12,11 @@
 
 `@airma/react-effect` is designed for managing the asynchronous effect state for react components.
 
+## Document
+
+* [English](https://filefoxper.github.io/airma/#/react-effect/index)
+* [中文](https://filefoxper.github.io/airma/#/zh/react-effect/index)
+
 ## Why effects
 
 Do asynchronous operations in `effects` is more effective.
@@ -19,7 +24,7 @@ Do asynchronous operations in `effects` is more effective.
 1. You can pre-render a default result for asynchronous operation before it is really resolved.
 2. It makes component render with less asynchronous effects spread in event handle callbacks.
 
-If you are ready to improve your react app codes with less asynchronous operation effects, please take minutes to read the [documents](https://filefoxper.github.io/airma/#/react-effect/index) of this tool. 
+If you are ready to improve your react app codes with less asynchronous operation effects, please take minutes to read the [documents](https://filefoxper.github.io/airma/#/react-effect/index) ([中文文档](https://filefoxper.github.io/airma/#/zh/react-effect/index)) of this tool. 
 
 ## Basic Usage
 
@@ -247,7 +252,7 @@ const App = memo(()=>{
   // Set session key `loginUser` into `SessionProvider`,
   // and create a store inside.
   return (
-      <SessionProvider value={loginUser}>
+      <SessionProvider keys={loginUser}>
         <Child1/>
         <Child2/>
       </SessionProvider>

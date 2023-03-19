@@ -86,7 +86,7 @@ const App = ()=>{
     // The query in Child1 and Child2 triggered in component mount
     // at the same time.
     return (
-        <SessionProvider value={query}>
+        <SessionProvider keys={query}>
           <Child1/>
           <Child2/>
         </SessionProvider>

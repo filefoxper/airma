@@ -61,6 +61,6 @@ const App = ()=>{
 render(<App/>, document.getElementById('root'));
 ```
 
-If you want to manage a scope (or global) state with `@airma/react-state`, please take APIs like `factory`, `RequiredModelProvider`, `useSelector` to do it.
+If you want to manage a scope (or global) state with `@airma/react-state`, please take APIs like `createKey`, `StoreProvider`, `useSelector` to do it.
 
 `@airma/react-state` has some very useful functions like `useControlledModel`, `useRefreshModel`, `useRefresh` for usage. Take the [introduce document](/react-state/index.md) to learn how to use it.

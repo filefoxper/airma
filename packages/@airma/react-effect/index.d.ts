@@ -1,4 +1,4 @@
-import { StoreKeys, StoreKey } from '@airma/react-state';
+import { Keys, Key } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
@@ -29,7 +29,7 @@ export declare type SessionState<T> =
   | LoadedSessionState<T>
   | UnloadedSessionState;
 
-export declare type StrategyType<T = any> = (value: {
+export declare type StrategyType<T = any> = (runtime: {
   current: () => SessionState<T>;
   variables: any[];
   runner: () => Promise<SessionState<T>>;
@@ -42,7 +42,7 @@ export declare type StrategyType<T = any> = (value: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-declare type SessionKey<E extends PromiseCallback<any>> = StoreKey<
+declare type SessionKey<E extends PromiseCallback<any>> = Key<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -165,10 +165,16 @@ export declare function useIsFetching(
   ...sessionStates: SessionState[]
 ): boolean;
 
-export declare const SessionProvider: FC<{
-  value: StoreKeys;
-  children?: ReactNode;
-}>;
+export declare const SessionProvider: FC<
+  | {
+      keys: Keys;
+      children?: ReactNode;
+    }
+  | {
+      value: Keys;
+      children?: ReactNode;
+    }
+>;
 
 declare type QueryType = 'query' | 'mutation';
 
@@ -179,25 +185,25 @@ export declare type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export declare const GlobalProvider: FC<{
-  value?: GlobalConfig;
-  children?: ReactNode;
-}>;
-
 export declare const GlobalSessionProvider: FC<{
   config?: GlobalConfig;
-  value?: StoreKeys;
+  keys?: Keys;
   children?: ReactNode;
 }>;
 
+/**
+ * @deprecated
+ * @param keys
+ */
 export declare function withSessionProvider(
-  models: StoreKeys
+  keys: Keys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
 
 export declare const Strategy: {
   debounce: (op: { duration: number } | number) => StrategyType;
+  throttle: (op: { duration: number } | number) => StrategyType;
   once: () => StrategyType;
   error: (
     process: (e: unknown) => any,
@@ -211,3 +217,9 @@ export declare const Strategy: {
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
 };
+
+export declare function provide(
+  keys: Keys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;

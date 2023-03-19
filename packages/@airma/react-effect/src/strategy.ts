@@ -5,45 +5,67 @@ function debounce(op: { duration: number } | number): StrategyType {
   return function db(value: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: { current?: { id: any; resolve: (d: any) => void } };
+    store: {
+      current?: {
+        id: any;
+        resolve: (d: any) => void;
+        promise: Promise<SessionState>;
+      };
+    };
   }): Promise<SessionState> {
     const { current, runner, store } = value;
     if (store.current) {
       const { id, resolve } = store.current;
-      store.current = undefined;
       clearTimeout(id);
-      const currentState = current();
-      resolve({ ...currentState, abandon: true });
-    }
-    return new Promise<SessionState>(resolve => {
-      const id = setTimeout(() => {
+      store.current.id = setTimeout(() => {
+        store.current = undefined;
         resolve(runner());
       }, time);
-      store.current = { id, resolve };
+      return store.current.promise.then(d => ({ ...d, abandon: true }));
+    }
+    const defaultPromise = new Promise<SessionState>(resolve => {
+      const currentState = current();
+      resolve({ ...currentState, abandon: true });
     });
+    const storeRef: {
+      id: any;
+      resolve: (d: any) => void;
+      promise: Promise<SessionState>;
+    } = {
+      id: null,
+      resolve: () => undefined,
+      promise: defaultPromise
+    };
+    const promise = new Promise<SessionState>(resolve => {
+      storeRef.id = setTimeout(() => {
+        store.current = undefined;
+        resolve(runner());
+      }, time);
+      storeRef.resolve = resolve;
+    });
+    storeRef.promise = promise;
+    store.current = storeRef;
+    return promise;
   };
 }
 
 function once(): StrategyType {
-  return function oc(value: {
+  return function oc(runtime: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: { current?: boolean };
+    store: { current?: Promise<SessionState> };
   }) {
-    const { current, runner, store } = value;
+    const { runner, store } = runtime;
     if (store.current) {
-      return new Promise(resolve => {
-        const currentState = current();
-        resolve({ ...currentState, abandon: true });
-      });
+      return store.current.then(d => ({ ...d, abandon: true }));
     }
-    store.current = true;
-    return runner().then(d => {
+    store.current = runner().then(d => {
       if (d.isError) {
-        store.current = false;
+        store.current = undefined;
       }
       return d;
     });
+    return store.current;
   };
 }
 
@@ -76,22 +98,58 @@ function memo<T>(
   };
 }
 
+function throttle(op: { duration: number } | number): StrategyType {
+  const duration = typeof op === 'number' ? op : op.duration;
+
+  function hasChanged(cacheVariables: any[] | undefined, variables: any[]) {
+    if (cacheVariables == null) {
+      return true;
+    }
+    const equality = stringifyComparator(cacheVariables, variables);
+    return !equality;
+  }
+
+  return function th(value) {
+    const { current, runner, store, variables = [] } = value;
+    store.current = store.current || { timeoutId: null, variables: undefined };
+    const storedVariables = store.current.variables;
+    const { timeoutId } = store.current;
+    if (!hasChanged(storedVariables, variables) && timeoutId != null) {
+      return new Promise(resolve => {
+        resolve(current());
+      });
+    }
+    store.current.variables = variables;
+    if (timeoutId != null) {
+      clearTimeout(timeoutId);
+    }
+    store.current.timeoutId = setTimeout(() => {
+      store.current = store.current || {};
+      store.current.timeoutId = null;
+    }, duration);
+    return runner();
+  };
+}
+
 function error(
   process: (e: unknown) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value) {
-    const { runner, runtimeCache } = value;
+    const { runner, runtimeCache, store } = value;
     const hasHigherErrorProcessor = runtimeCache.fetch(error);
     runtimeCache.cache(error, true);
+    store.current = process;
     return runner().then(d => {
+      const currentProcess = store.current;
       if (
         d.isError &&
         !hasHigherErrorProcessor &&
+        currentProcess &&
         (!d.abandon || withAbandoned)
       ) {
-        process(d.error);
+        currentProcess(d.error);
       }
       return d;
     });
@@ -106,12 +164,14 @@ function success<T>(
   return function sc(value: {
     current: () => SessionState<T>;
     runner: () => Promise<SessionState<T>>;
-    store: { current?: boolean };
+    store: { current?: (data: T) => any };
   }) {
-    const { runner } = value;
+    const { runner, store } = value;
+    store.current = process;
     return runner().then(d => {
-      if (!d.isError && (!d.abandon || withAbandoned)) {
-        process(d.data as T);
+      const currentProcess = store.current;
+      if (!d.isError && currentProcess && (!d.abandon || withAbandoned)) {
+        currentProcess(d.data as T);
       }
       return d;
     });
@@ -120,6 +180,7 @@ function success<T>(
 
 export const Strategy = {
   debounce,
+  throttle,
   once,
   error,
   success,

@@ -146,30 +146,30 @@ It is a React Context Provider component. It is used for creating a scope store 
 
 ```ts
 SessionProvider props:{
-    value: <session keys>,
+    keys: <session keys>,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* value - It should be session keys.
+* keys - It should be session keys.
 * children - React Nodes
 
 ### Returns
 
 It returns a React element.
 
-## withSessionProvider
+## provide
 
 It is a HOC mode for SessionProvider.
 
 ```ts
-function withSessionProvider(clientKeys){
+function provide(sessionKeys){
     return function connect(Component){
         return function HocComponent(componentProps){
             return (
-                <SessionProvider value={clientKeys}>
+                <SessionProvider keys={sessionKeys}>
                   <Component {...componentProps}/>
                 </SessionProvider>
             );
@@ -183,19 +183,20 @@ function withSessionProvider(clientKeys){
 ```ts
 import React from 'react';
 import {
-    withSessionProvider, 
+    provide, 
     useQuery, 
-    useSession
+    useSession,
+    createSessionKey
 } from '@airma/react-effect';
 
-const clientKey = ...;
+const clientKey = createSessionKey(...);
 
 const Child = ()=>{
     const [ {data} ] = useSession(clientKey);
     return ......;
 }
 
-const App = withSessionProvider(clientKey)(()=>{
+const App = provide(clientKey)(()=>{
 
     useQuery(clientKey, []);
 
@@ -256,20 +257,22 @@ const Strategy: {
 * Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 
-## GlobalProvider
+## GlobalSessionProvider
 
 It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
 
 ```ts
-GlobalProvider props:{
-    value: GlobalConfig,
+GlobalSessionProvider props:{
+    keys?: SessionKeys,
+    config?: GlobalConfig,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* value - It should be global config.
+* keys - It is optional, you can set session keys for creating a session store in it.
+* config - It is optional, and it should be global config.
 * children - React Nodes
 
 ### Example
@@ -277,7 +280,7 @@ GlobalProvider props:{
 ```ts
 import React from 'react';
 import {
-  GlobalProvider,
+  GlobalSessionProvider,
   Strategy,
   useQuery
 } from '@airma/react-effect';
@@ -316,11 +319,11 @@ const App = ()=>{
 
 ......
 {/* Set a ClientConfig */}
-<GlobalProvider 
-  value={Strategy.error(e => console.log(e))}
+<GlobalSessionProvider 
+  config={Strategy.error(e => console.log(e))}
 >
   <App/>
-</GlobalProvider>
+</GlobalSessionProvider>
 ```
 
 ## useIsFetching

@@ -293,7 +293,7 @@ export declare function useSelector<
 
 Parameters
 
-* storeKey - A store key, it should be a result of calling [createStoreKey](/react-state/api?id=createstorekey).
+* storeKey - A store key, it should be a result of calling [createKey](/react-state/api?id=createkey).
 * selector - A callback to select properties from instance which is refreshed by the matched store state.
 * equalFn - Optional callback, it is used to provide a comparator for comparing if the result of `selector` has been changed. Only when the result of `selector` has been changed, it drive the component which uses it to render. In default, it compares the result change by using `===` expression.
 
@@ -311,12 +311,12 @@ Example
 import React from 'react';
 import {
   StoreProvider, 
-  createStoreKey, 
+  createKey, 
   useSelector
 } from '@airma/react-state';
 
-// use createStoreKey API to make a key to store
-const counter = createStoreKey((state:number)=>({
+// use createKey API to make a key to store
+const counter = createKey((state:number)=>({
     count: state,
     isNegative: state<0,
     increase:()=> state + 1,
@@ -346,7 +346,7 @@ const Counter = ()=>{
 
 export default ()=>{
     return (
-        <StoreProvider value={counter}>
+        <StoreProvider keys={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
@@ -397,25 +397,21 @@ type StoreKey=((state:any)=>Record<number|string, any>)&{
 }
 
 const StoreProvider: FC<{
-  value:  Array<StoreKey> | StoreKey | Record<string, StoreKey>;
+  keys:  Array<StoreKey> | StoreKey | Record<string, StoreKey>;
   children: ReactNode;
 }>;
 ```
 
 Props
 
-* value - Store keys.
+* keys - Store keys.
 * children - react nodes
 
 Returns
 
 * react nodes
 
-## ModelProvider
-
-It has another name [StoreProvider](/react-state/api?id=storeprovider).
-
-## withStoreProvider
+## provide
 
 ```ts
 type StoreKey=((state:any)=>Record<number|string, any>)&{
@@ -424,7 +420,7 @@ type StoreKey=((state:any)=>Record<number|string, any>)&{
     ): typeof model
 }
 
-function withStoreProvider(
+function provide(
   keys: Array<StoreKey> | StoreKey | Record<string, StoreKey>
 ): <P extends object>(component: ComponentType<P>) => typeof component;
 ```
@@ -447,26 +443,22 @@ Example
 ```ts
 import React from 'react';
 import { 
-    withStoreProvider, 
-    createStoreKey, 
+    provide, 
+    createKey, 
     useModel, 
     useSelector 
 } from '@airma/react-state';
 import model from './model';
 
-const models = createStoreKey(model);
+const models = createKey(model);
 
-const App = withStoreProvider(models)(()=>{
+const App = provide(models)(()=>{
     const {...} = useModel(models);
     const data = useSelector(models, s=>s.data);
 });
 ```
 
-## withModelProvider
-
-It is another name of [withStoreProvider](/react-state/api?id=withstoreprovider).
-
-## createStoreKey
+## createKey
 
 ```ts
 type StoreKey=((state:any)=>Record<number|string, any>)&{
@@ -475,7 +467,7 @@ type StoreKey=((state:any)=>Record<number|string, any>)&{
     ): typeof model
 }
 
-function createStoreKey<S,T extends Record<string|number,any>>(
+function createKey<S,T extends Record<string|number,any>>(
     model: (state:S)=>T,
     defaultState?: S
 ):StoreKey;
@@ -493,10 +485,6 @@ If you want to learn how to use `pipe`, please review the [guide detail](/react-
 Returns
 
 * A store key model, which can be provided to `StoreProvider` for generating a store, and be provided as key to link the store state for `useModel` or `useSelector`.
-
-## factory
-
-It is another name of [createStoreKey](/react-state/api?id=createstorekey).
 
 ## shallowEqual
 

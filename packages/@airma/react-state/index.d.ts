@@ -5,7 +5,7 @@ declare type PipeCallback<S> = <P extends AirReducer<S, any>>(
   reducer: P
 ) => P & { getSourceFrom: () => any };
 
-export declare type StoreKey<T extends AirReducer<any, any>> = T & {
+export declare type Key<T extends AirReducer<any, any>> = T & {
   pipe: PipeCallback<T extends AirReducer<infer S, any> ? S : never>;
   effect?: [(...params: any[]) => any, Record<string, any>?];
 };
@@ -14,7 +14,7 @@ export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S, T> & { getSourceFrom: () => any }
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
-  model: StoreKey<AirReducer<S, T>>
+  model: Key<AirReducer<S, T>>
 ): T;
 export declare function useModel<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
@@ -66,29 +66,56 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
       }
 ): void;
 
-export declare type StoreKeys =
-  | StoreKey<(s: any) => any>
-  | Array<StoreKey<(s: any) => any>>
-  | Record<string, StoreKeys>;
+export declare type Keys =
+  | {
+      [key: string]: Key<(s: any) => any> | Keys;
+    }
+  | {
+      [key: number]: Key<(s: any) => any> | Keys;
+    }
+  | Key<(s: any) => any>;
 
+/**
+ * @deprecated
+ */
 export declare const ModelProvider: FC<{
-  value: StoreKeys;
+  value: Keys;
   children?: ReactNode;
 }>;
 
-export declare const StoreProvider: FC<{
-  value: StoreKeys;
-  children?: ReactNode;
-}>;
+export declare const StoreProvider: FC<
+  | {
+      value: Keys;
+      children?: ReactNode;
+    }
+  | {
+      keys: Keys;
+      children?: ReactNode;
+    }
+>;
 
+/**
+ * @deprecated
+ * @param models
+ */
 export declare function withModelProvider(
-  models: StoreKeys
+  models: Keys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
 
+/**
+ * @deprecated
+ * @param keys
+ */
 export declare function withStoreProvider(
-  models: StoreKeys
+  keys: Keys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
+
+export declare function provide(
+  keys: Keys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -102,39 +129,66 @@ export declare function useSelector<
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
+/**
+ * @deprecated
+ * @param model
+ */
 export declare function factory<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): StoreKey<AirReducer<S | undefined, T>>;
+): Key<AirReducer<S | undefined, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
-): StoreKey<AirReducer<S, T>>;
+): Key<AirReducer<S, T>>;
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): StoreKey<AirReducer<S | undefined, T>>;
+): Key<AirReducer<S | undefined, T>>;
 
-export declare function createStoreKey<S, T extends AirModelInstance>(
+export declare function createKey<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
-): StoreKey<typeof model>;
-export declare function createStoreKey<
-  S,
-  T extends AirModelInstance,
-  D extends S
->(model: AirReducer<S, T>, defaultState: D): StoreKey<typeof model>;
-export declare function createStoreKey<
-  S,
-  T extends AirModelInstance,
-  D extends S
->(
+): Key<typeof model>;
+export declare function createKey<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S, T>,
+  defaultState: D
+): Key<typeof model>;
+export declare function createKey<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D
-): StoreKey<typeof model>;
+): Key<typeof model>;
+
+/**
+ * @deprecated
+ * @param model
+ */
+export declare function createStoreKey<S, T extends AirModelInstance>(
+  model: AirReducer<S | undefined, T>
+): Key<typeof model>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S, T>, defaultState: D): Key<typeof model>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
+export declare function createStoreKey<
+  S,
+  T extends AirModelInstance,
+  D extends S
+>(model: AirReducer<S | undefined, T>, defaultState?: D): Key<typeof model>;
 
 export declare function useRealtimeInstance<T>(instance: T): T;
 
 export declare function useIsModelMatchedInStore(
-  model: AirReducer<any, any> | StoreKey<any>
+  model: AirReducer<any, any> | Key<any>
 ): boolean;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;

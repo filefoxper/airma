@@ -8,12 +8,13 @@ import {
 } from 'react';
 import {
   factory,
-  ModelProvider,
+  StoreProvider,
+  shallowEqual,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
   useSelector,
-  withModelProvider
+  provide as provideKeys
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -22,7 +23,6 @@ import type {
   MutationConfig,
   StrategyType,
   PromiseData,
-  GlobalConfigProviderProps,
   GlobalConfig,
   TriggerType,
   SessionKey,
@@ -54,28 +54,9 @@ const isFetchingModel = factory((fetchingKeys: any[]) => {
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
-export function GlobalProvider({ value, children }: GlobalConfigProviderProps) {
-  const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
-  return isMatchedInStore
-    ? createElement(
-        GlobalConfigContext.Provider,
-        { value: value || null },
-        children
-      )
-    : createElement(
-        ModelProvider,
-        { value: isFetchingModel },
-        createElement(
-          GlobalConfigContext.Provider,
-          { value: value || null },
-          children
-        )
-      );
-}
-
 export function GlobalSessionProvider({
   config,
-  value,
+  keys: value,
   children
 }: GlobalSessionProviderProps) {
   const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
@@ -91,8 +72,8 @@ export function GlobalSessionProvider({
         children
       )
     : createElement(
-        ModelProvider,
-        { value: keys },
+        StoreProvider,
+        { keys },
         createElement(
           GlobalConfigContext.Provider,
           { value: config || null },
@@ -121,6 +102,44 @@ function parseEffect<
     effectCallback,
     (cg || config) as C | undefined
   ];
+}
+
+const noop = () => undefined;
+
+function useMount(callback: () => (() => void) | void) {
+  const mountRef = useRef(false);
+  useEffect(() => {
+    const mounted = mountRef.current;
+    mountRef.current = true;
+    if (mounted) {
+      return noop;
+    }
+    const result = callback();
+    if (typeof result === 'function') {
+      return result;
+    }
+    return noop;
+  }, []);
+}
+
+function useUpdate(callback: () => (() => void) | void, deps?: any[]) {
+  const depsRef = useRef<undefined | { deps: any[] }>(undefined);
+
+  useEffect(() => {
+    const { current } = depsRef;
+    depsRef.current = { deps: deps || [] };
+    if (!current) {
+      return noop;
+    }
+    if (shallowEqual(current.deps, deps || [])) {
+      return noop;
+    }
+    const result = callback();
+    if (typeof result === 'function') {
+      return result;
+    }
+    return noop;
+  }, deps);
 }
 
 function usePromiseCallback<T, C extends (vars?: any[]) => Promise<T>>(
@@ -288,7 +307,6 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(vars =>
     effectCallback(...(vars || variables || []))
   );
-  const mountRef = useRef(true);
   const keyRef = useRef({});
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
@@ -305,18 +323,19 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     setState({
       ...current,
       isFetching: true,
-      fetchingKey: keyRef.current,
       triggerType
     });
     startFetching(keyRef.current);
     return runner(vars).then(data => {
-      const abandon = version !== versionRef.current;
+      const abandon =
+        version !== versionRef.current ||
+        (instance.state.finalFetchingKey != null &&
+          keyRef.current !== instance.state.finalFetchingKey);
       return {
         ...instance.state,
         ...data,
         abandon,
         isFetching: false,
-        fetchingKey: undefined,
         triggerType
       } as SessionState<T>;
     });
@@ -349,6 +368,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     if (triggerTypes.indexOf(triggerType) < 0) {
       return;
     }
+    instance.setFetchingKey(keyRef.current);
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -365,6 +385,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
       });
     }
+    instance.setFetchingKey(keyRef.current);
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -380,15 +401,20 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useEffect(() => {
-    const isOnMount = mountRef.current;
-    mountRef.current = false;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+  useMount(() => {
+    effectQuery(true);
+  });
+
+  useUpdate(() => {
+    effectQuery(false);
+  }, effectDeps);
+
+  useUpdate(() => {
+    if (stableInstance.state.fetchingKey !== keyRef.current) {
       return;
     }
-    effectQuery(isOnMount);
-  }, [...effectDeps]);
+    instance.setFetchingKey(undefined);
+  }, [stableInstance.state.fetchingKey]);
 
   const triggerVersionRef = useRef(instance.version);
   useEffect(() => {
@@ -406,6 +432,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   useEffect(
     () => () => {
       endFetching(keyRef.current);
+      if (instance.state.fetchingKey !== keyRef.current) {
+        return;
+      }
+      instance.setFetchingKey(undefined);
     },
     []
   );
@@ -476,37 +506,36 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     strategies.map(() => ({ current: undefined }))
   );
 
-  const mountRef = useRef(true);
   const keyRef = useRef({});
-  const savingRef = useRef(false);
+  const savingRef = useRef<undefined | Promise<SessionState>>(undefined);
   const caller = function caller(
     triggerType: TriggerType,
     vars?: Parameters<C>
   ): Promise<SessionState<T>> {
     if (savingRef.current) {
-      return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true, triggerType });
-      });
+      return savingRef.current.then(d => ({ ...d, abandon: true }));
     }
-    savingRef.current = true;
     const { state: current, setState } = instance;
     startFetching(keyRef.current);
     setState({
       ...current,
       isFetching: true,
-      fetchingKey: keyRef.current,
       triggerType
     });
-    return runner(vars).then(data => {
-      savingRef.current = false;
+    savingRef.current = runner(vars).then(data => {
+      savingRef.current = undefined;
+      const abandon =
+        instance.state.finalFetchingKey != null &&
+        keyRef.current !== instance.state.finalFetchingKey;
       return {
         ...instance.state,
         ...data,
         isFetching: false,
-        fetchingKey: undefined,
-        triggerType
+        triggerType,
+        abandon
       } as SessionState<T>;
     });
+    return savingRef.current;
   };
 
   const callWithStrategy = function callWithStrategy(
@@ -536,6 +565,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     if (triggerTypes.indexOf(triggerType) < 0) {
       return;
     }
+    instance.setFetchingKey(keyRef.current);
     callWithStrategy(caller, triggerType).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -552,6 +582,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
         resolve({ ...instance.state, abandon: true });
       });
     }
+    instance.setFetchingKey(keyRef.current);
     return callWithStrategy(caller, triggerType, vars).then(data => {
       if (!data.abandon) {
         instance.setState(data);
@@ -569,15 +600,20 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
-  useEffect(() => {
-    const isOnMount = mountRef.current;
-    mountRef.current = false;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+  useMount(() => {
+    effectQuery(true);
+  });
+
+  useUpdate(() => {
+    effectQuery(false);
+  }, effectDeps);
+
+  useUpdate(() => {
+    if (stableInstance.state.fetchingKey !== keyRef.current) {
       return;
     }
-    effectQuery(isOnMount);
-  }, [...effectDeps]);
+    instance.setFetchingKey(undefined);
+  }, [stableInstance.state.fetchingKey]);
 
   useEffect(() => {
     if (triggerVersionRef.current === stableInstance.version) {
@@ -594,6 +630,10 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   useEffect(
     () => () => {
       endFetching(keyRef.current);
+      if (instance.state.fetchingKey !== keyRef.current) {
+        return;
+      }
+      instance.setFetchingKey(undefined);
     },
     []
   );
@@ -640,9 +680,11 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
   return isLocalFetching;
 }
 
-export const SessionProvider = ModelProvider;
+export const SessionProvider = StoreProvider;
 
-export const withSessionProvider = withModelProvider;
+export const withSessionProvider = provideKeys;
+
+export const provide = provideKeys;
 
 export { createSessionKey } from './model';
 

@@ -300,9 +300,9 @@ The outside global store is terrible. It makes components difficult to be reused
 
 There are 4 important APIs to work the scope states.
 
-1. `createStoreKey`, it wraps a model, and generate a new model as a key to store.
+1. `createKey`, it wraps a model, and generate a new model as a key to store.
 2. `StoreProvider`, it is a Context.Provider, which provides a scope store for child usages.
-3. `useModel`, if we have provide a factory model for `useModel`, it uses this factory as a key to link a matched store state.
+3. `useModel`, if we have provide a key model for `useModel`, it uses this model as a key to link a matched store state.
 4. `useSelector`, it is a child usage like `useModel`, but can select data or methods from instance, and only when the selected result change can make it rerender. This API is often used to reduce the render frequency of component.
 
 Let's take a page query example to see how to use it.
@@ -340,7 +340,7 @@ export function fetchSource(query:Query):Promise<User[]>{
 model.ts
 
 ```ts
-import {createStoreKey} from '@airma/react-state';
+import {createKey} from '@airma/react-state';
 import _ from 'lodash';
 import type {Query, User} from './type';
 
@@ -427,8 +427,8 @@ function sourceModel(changes: SourceChanges){
 // we will use `useModel(queryModels.search)`
 // to link searchModel state from a matched Provider store
 const queryModels = {
-    search: createStoreKey(searchModel, defaultSearch()),
-    source: createStoreKey(sourceModel, defaultSource())
+    search: createKey(searchModel, defaultSearch()),
+    source: createKey(sourceModel, defaultSource())
 }
 
 export {
@@ -540,7 +540,7 @@ export default function Page(){
     // before use storeKeys to link store states,
     // we need to provide them to `StoreProvider` for store creation.
     return (
-        <StoreProvider value={queryModels}>
+        <StoreProvider keys={queryModels}>
             <Search/>
             <Source/>
         </StoreProvider>
@@ -550,7 +550,7 @@ export default function Page(){
 
 The `@airma/react-state` scope state usage steps are:
 
-1. Create store key by API `createStoreKey`.
+1. Create store key by API `createKey`.
 2. Provide store keys to a parent `StoreProvider`.
 3. Use `useModel` or `useSelector` in the children of `StoreProvider` to link store for usage.
 
@@ -559,7 +559,7 @@ Sometimes, we want to initialize a default state to store in render time, we can
 ```ts
 import React, {memo} from 'react';
 import {
-    ModelProvider,
+    StoreProvider,
     useModel
 } from '@airma/react-state';
 import {queryModels} from './model';
@@ -581,10 +581,10 @@ const Search = memo(()=>{
 
 export default function Page(){
     return (
-        <ModelProvider value={queryModels}>
+        <StoreProvider keys={queryModels}>
             <Search/>
             <Source/>
-        </ModelProvider>
+        </StoreProvider>
     );
 }
 ```
@@ -627,7 +627,7 @@ export default function Page(){
             {/* no matched store has been hound, */} 
             {/* useModel creates a private state instead */}
             <Search/>
-            <StoreProvider value={queryModels}>
+            <StoreProvider keys={queryModels}>
                 <Search/>
                 <Source/>
             </StoreProvider>
@@ -644,7 +644,7 @@ The store key has a `pipe` method, you can use it to link the matched store stat
 
 ```ts
 import React, {memo} from 'react';
-import {StoreProvider, createStoreKey, useModel} from '@airma/react-state';
+import {StoreProvider, createKey, useModel} from '@airma/react-state';
 
 const counter = (count:number = 0)=> ({
     count,
@@ -652,7 +652,7 @@ const counter = (count:number = 0)=> ({
     decrease:()=>count - 1
 });
 
-const countStoreKey = createStoreKey(counter);
+const countStoreKey = createKey(counter);
 
 const Counter = memo(()=>{
     const {count, increase, decrease} = useModel(countStoreKey);
@@ -677,7 +677,7 @@ const Cleaner = memo(()=>{
 export default function Page(){
     return (
         <div>
-            <StoreProvider value={countStoreKey}>
+            <StoreProvider keys={countStoreKey}>
                 <Counter/>
                 <Cleaner/>
             </StoreProvider>

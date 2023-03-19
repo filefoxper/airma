@@ -4,7 +4,8 @@ import type {
   AirReducer,
   Updater,
   Connection,
-  FactoryInstance
+  FactoryInstance,
+  Dispatch
 } from './type';
 import { createProxy, toMapObject } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
@@ -134,6 +135,9 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       });
       return result;
     },
+    getListeners(): Dispatch[] {
+      return updater.dispatches;
+    },
     update,
     updateState(state: S): void {
       update(updater.reducer, { state, cache: true });
@@ -141,12 +145,16 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     notice(): void {
       generateDispatch(updater)({ state: updater.state, type: '' });
     },
-    connect(dispatchCall) {
+    connect(dispatchCall, confirmed) {
       const { dispatches } = updater;
-      if (!dispatchCall || dispatches.indexOf(dispatchCall) >= 0) {
+      const copied = [...dispatches];
+      if (!dispatchCall || copied.indexOf(dispatchCall) >= 0) {
         return;
       }
-      dispatches.push(dispatchCall);
+      if (confirmed) {
+        dispatchCall.confirmed = true;
+      }
+      updater.dispatches = copied.concat(dispatchCall);
     },
     disconnect(dispatchCall) {
       if (!dispatchCall) {
@@ -154,11 +162,10 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         return;
       }
       const { dispatches } = updater;
-      const index = dispatches.indexOf(dispatchCall);
-      if (index < 0) {
-        return;
-      }
-      dispatches.splice(index, 1);
+      const copied = [...dispatches];
+      updater.dispatches = copied.filter(
+        d => d !== dispatchCall && d.confirmed
+      );
     }
   };
 }

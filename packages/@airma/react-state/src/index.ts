@@ -67,7 +67,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     if (!disabled) {
       current.update(model, { state });
     }
-    current.connect(persistDispatch);
+    current.connect(persistDispatch, true);
     return () => {
       current.disconnect(persistDispatch);
     };
@@ -123,7 +123,7 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
-export const StoreProvider: FC<{
+export const ModelProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
@@ -140,7 +140,27 @@ export const StoreProvider: FC<{
   );
 };
 
-export const ModelProvider = StoreProvider;
+export const StoreProvider: FC<{
+  keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
+  value?: Array<any> | ((...args: any) => any) | Record<string, any>;
+  children?: ReactNode;
+}> = function RequiredModelProvider({ keys, value, children }) {
+  const storeKeys = keys != null ? keys : value;
+  if (storeKeys == null) {
+    throw new Error('You need to provide keys to `StoreProvider`');
+  }
+  const context = useContext(ReactStateContext);
+  const storeMemo = useMemo(() => createStore(storeKeys), []);
+  const selector = useMemo(() => {
+    const store = storeMemo.update(storeKeys);
+    return { ...store, parent: context };
+  }, [context, storeKeys]);
+  return createElement(
+    ReactStateContext.Provider,
+    { value: selector },
+    children
+  );
+};
 
 function findConnection<S, T extends AirModelInstance>(
   c: Selector,
@@ -220,7 +240,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     const prevState = prevStateRef.current;
     prevStateRef.current = { state };
     if (refresh && (!prevState || prevState.state !== state)) {
-      current.connect(persistDispatch);
+      current.connect(persistDispatch, true);
       current.update(model, { state, cache: true });
     }
   }, [state]);
@@ -229,7 +249,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!connection && !refresh) {
       current.update(model, { state: s });
     }
-    current.connect(persistDispatch);
+    current.connect(persistDispatch, true);
     return () => {
       current.disconnect(persistDispatch);
     };
@@ -370,7 +390,7 @@ export function useSelector<
   connection.connect(dispatch);
 
   useEffect(() => {
-    connection.connect(dispatch);
+    connection.connect(dispatch, true);
     return () => {
       connection.disconnect(dispatch);
     };
@@ -379,8 +399,8 @@ export function useSelector<
   return s.data;
 }
 
-export function withStoreProvider(
-  models: Array<any> | ((...args: any) => any) | Record<string, any>
+export function provide(
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>
 ) {
   return function connect<
     P extends Record<string, any>,
@@ -389,7 +409,24 @@ export function withStoreProvider(
     return function WithModelProviderComponent(props: P) {
       return createElement(
         ModelProvider,
-        { value: models },
+        { value: keys },
+        createElement<P>(Comp as FunctionComponent<P>, props)
+      );
+    };
+  };
+}
+
+export function withStoreProvider(
+  keys: Array<any> | ((...args: any) => any) | Record<string, any>
+) {
+  return function connect<
+    P extends Record<string, any>,
+    C extends ComponentType<P>
+  >(Comp: C): ComponentType<P> {
+    return function WithModelProviderComponent(props: P) {
+      return createElement(
+        ModelProvider,
+        { value: keys },
         createElement<P>(Comp as FunctionComponent<P>, props)
       );
     };
@@ -423,3 +460,5 @@ export const shallowEqual = shallowEq;
 export const factory = createFactory;
 
 export const createStoreKey = createFactory;
+
+export const createKey = createFactory;

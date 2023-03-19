@@ -4,19 +4,15 @@ import {
     useModel,
     useControlledModel,
     useSelector,
-    shallowEqual,
-    ModelProvider,
-    withModelProvider,
-    useRefresh,
-    useRefreshModel
+    shallowEqual
 } from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
-    client,
+    createSessionKey, provide,
     Strategy,
     useMutation,
     useQuery,
-    useClient
+    useSession
 } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -58,7 +54,7 @@ const userQuery = (validQuery: Condition) =>
         }, 400);
     });
 
-const fetchFactory = client(
+const fetchFactory = createSessionKey(
     userQuery
 );
 
@@ -91,7 +87,7 @@ const Creating = memo(
             age: 10
         });
 
-        const [{ data }, launch] = useClient(fetchFactory);
+        const [{ data }, launch] = useSession(fetchFactory);
 
         const [r, , call] = useMutation(
             (u: Omit<User, 'id'>) =>
@@ -184,7 +180,7 @@ const Condition = memo(() => {
         shallowEqual
     );
 
-    const [{ isFetching }] = useClient(fetchFactory);
+    const [{ isFetching }] = useSession(fetchFactory);
 
     const [count, setCount] = useState(0);
 
@@ -234,7 +230,7 @@ const Condition = memo(() => {
     );
 });
 
-export default withModelProvider({ fetchFactory, condition })(function App() {
+export default provide({ fetchFactory, condition })(function App() {
     const [defaultState, setDefaultState] = useState({
         valid: defaultCondition,
         display: defaultCondition,
