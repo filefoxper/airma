@@ -20,14 +20,14 @@ function useModel<
 
 参数：
 
-* model - 模型函数，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* model - 模型函数或[键](/zh/react-state/guides?id=键) 模型。
 * state - 默认状态值，当 model 为 [键](/zh/react-state/guides?id=键) 模型时为可选项。
 * option - 可选配置，可配置 `refresh`，`autoLink`，`realtimeInstance` 项，开启不同的功能。
 
 解释：
 
 1. `option.refresh`：当该配置项为 `true` 时，`useModel` 会跟随默认状态值的变化刷新实例。
-2. `option.autoLink`：当该配置项为 `true` 时，如果 `useModel` 使用的 `键` 无法访问到匹配的 `库`，则将 `键` 模型当作本地模型使用，实例维护在 `useModel` 中。成功匹配上下文实例库的 `useModel`，在开启 `autoLink` 的情况下，不具备[运行时初始化](/zh/react-state/guides?id=初始化)的能力。
+2. `option.autoLink`：当该配置项为 `true` 时，如果 `useModel` 使用的 `键` 无法匹配到 `库`，则将 `键` 模型当作本地模型使用，实例维护在 `useModel` 中。成功匹配上下文实例库的 `useModel`，在开启 `autoLink` 的情况下，不具备[运行时初始化](/zh/react-state/guides?id=初始化)的能力。
 3. `option.realtimeInstance`：当该配置项为 `true` 时，返回的实例对象为[非稳定实例](/zh/react-state/concepts?id=非稳定实例)。
 
 返回：
@@ -58,7 +58,7 @@ const useCounter = ()=>{
 };
 ```
 
-or 
+或 
 
 ```ts
 // 上下文状态
@@ -77,7 +77,7 @@ const counter = createKey((state:number)=>({
 }));
 
 const Counter = ({name}:{name:string})=>{
-    // 使用 `键` 模型链接上下文状态库中的实例
+    // 使用 `键` 模型匹配上下文状态库中的实例
     const {
         count,
         increase,
@@ -88,7 +88,7 @@ const Counter = ({name}:{name:string})=>{
 };
 
 export const App = ()=>{
-    // StoreProvider 通过 `键` 创建并维护实例库
+    // StoreProvider 通过 `键` 创建并维护链接库
     return (
         <StoreProvider keys={counter}>
             <Counter name="count_1">
@@ -120,7 +120,7 @@ function useControlledModel<
 
 解释：
 
-该 API 有助于将模型复用至受控模式，`useControlledModel` 不维护内部状态，完全传入 state 外部状态值的变化，这与 `useModel` 的 `refresh` 模式以及 `useRefreshModel` 不同。可参考引导的[受控模型](zh/react-state/guides?id=受控模型)部分。
+该 API 有助于将模型复用至受控模式，`useControlledModel` 不维护内部状态，完全受控于传入的外部状态值 state，这与 `useModel` 的 `refresh` 模式以及 `useRefreshModel` 不同。可参考引导中关于[受控模型](zh/react-state/guides?id=受控模型)这部分。
 
 返回：
 
@@ -172,13 +172,13 @@ function useRefreshModel<
 
 参数：
 
-* model - 模型函数，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* model - 模型函数或`键` 模型，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
 * state - 状态值，`useRefreshModel` 监听该值的变化刷新实例。
 * option - 可选配置，可配置 `autoLink`，`realtimeInstance` 项，开启不同的功能。
 
 解释：
 
-API `useRefreshModel` 相当于 [useModel(model, state, {refresh: true})](/zh/react-state/api?id=usemodel) 的快捷使用方式，内部有自己的 state 或有链接的实例库 state。当传参 state 发生变化时，`useRefreshModel` 会刷新实例，当实例行为方法被调用时，也会刷新实例。
+API `useRefreshModel` 相当于 [useModel(model, state, {refresh: true})](/zh/react-state/api?id=usemodel) 的快捷使用方式，内部有自己的 state 或有匹配的链接实例。当传参 state 发生变化时，`useRefreshModel` 会刷新实例，当实例行为方法被调用时，也会刷新实例。
 
 返回：
 
@@ -194,9 +194,10 @@ import {counter} from './model';
 const App = ()=>{
     const [state, setState] = useState(0);
 
-    // 跟随 state 变化渲染，当并不完全受控于 state
+    // 跟随 state 变化刷新实例，当并不完全受控于 state
     const {
         count,
+        // 调用行为方法刷新实例
         increase,
         decrease,
     } = useRefreshModel(counter, state); 
@@ -252,12 +253,12 @@ export declare function useSelector<
 参数：
 
 * key - [键](/zh/react-state/guides?id=键)模型。
-* selector - 选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
+* selector - 回调函数，可选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
 * equalFn - 可选对比函数，用于对比`库链接`实例刷新时，上次选取数据与本次选取值是否相等。默认以 `===` 作为对比方案。
 
 解释：
 
-`useSelector` 用于选取`库链接`实例中的部分数据，当实例刷新时，若判断上次选取数据与本次选取值相等，则不触发渲染，继续沿用上次选中值。否则相应实例刷新，触发使用组件渲染。对比标准 `equalFn`。
+`useSelector` 用于选取`库链接`实例中的部分数据，当实例刷新时，若判断上次选取数据与本次选取值相等，则不触发渲染，继续沿用上次选中值。否则刷新选取值，触发使用组件渲染。对比标准 `equalFn`。
 
 该 API 大最大作用就是降低渲染频率，提高渲染性能。
 
@@ -368,7 +369,11 @@ Props
 * keys - [键](/zh/react-state/guides?id=键)集合，可以是单个`键`模型，也可以是`键`模型数组或对象。
 * children - react elements
 
-Returns
+作用
+
+根据`键`创建链接库，提供上下文环境。
+
+返回
 
 * react elements
 
@@ -446,7 +451,7 @@ function createKey<S,T extends Record<string|number,any>>(
 
 解释：
 
-`createKey`通过包装模型函数，生成的`键`模型，可用于 `StoreProvider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`访问 `StoreProvider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
+`createKey`通过包装模型函数，生成`键`模型。`键`模型可用于 `StoreProvider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`模型访问 `StoreProvider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
 
 如果希望了解[键](/zh/react-state/guides?id=键)模型的 pipe 方法的用途，请参考[神奇的管道](/zh/react-state/feature?id=神奇的管道)。
 
