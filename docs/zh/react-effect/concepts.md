@@ -1,6 +1,6 @@
 # 概念
 
-本章节提及的是 `useQuery` 与 `useMutation` 的通用概念，可以帮助你快速理解 `@airma/react-effect`。
+本章节提及的是 `useQuery` 与 `useMutation` 的通用概念，可以帮助使用者快速理解 `@airma/react-effect`。
 
 1. [依赖](/zh/react-effect/concepts?id=依赖)
 2. [触发模式](/zh/react-effect/concepts?id=触发模式)
@@ -17,7 +17,7 @@
 
 ### 变量依赖
 
-一个`查询`操作的最佳状态就是条件（变量）驱动，即变量就是`依赖`，我们称之为`变量依赖`。大部分情况下，我们只需要提供变量数组就可以实现`查询`功能。如：
+一个`查询`操作的最佳状态就是请求参数（变量）驱动，即变量就是`依赖`，我们称之为`变量依赖`。大部分情况下，我们只需要提供变量数组就可以实现`查询`功能。如：
 
 ```ts
 import React from 'react';
@@ -72,11 +72,11 @@ const App = ()=>{
 }
 ```
 
-有时，`变量依赖`并不足以满足我们的需求，如：在依赖变量没有变化的时候，我们依然需要强制驱动`查询`，这时我们有两种驱动模式：`手动触发`或`自定义依赖`，这里我们仅介绍`自定义依赖`驱动方式。
+有时，`变量依赖`并不足以满足我们的需求，如：在依赖变量没有变化的时候，我们依然需要强制驱动`查询`，这时我们有两种可选驱动方式：`手动触发`或`自定义依赖`，这里我们仅介绍`自定义依赖`驱动方式。
 
 ### 自定义依赖
 
-在使用`自定义依赖`进行驱动时，`变量依赖`将处于失效状态，也就是说这时的`变量依赖`仅仅只有充当查询条件的作用。
+在使用`自定义依赖`进行驱动时，`变量依赖`将处于失效状态，也就是说这时的`变量依赖`仅仅只剩下充当查询条件的作用。
 
 ```ts
 import React from 'react';
@@ -117,11 +117,11 @@ const App = ()=>{
 
 现在我们知道了 `useQuery` 和 `useMutation` 可以通过`会话加载`、`依赖驱动`和`手工启动`三种方式`触发`查询或修改数据。
 
-这不得不归功于我们的`触发模式`。触发器共有三种工作模式 `mount`、 `update`、 `manual`，分别对应 `会话加载时`、`依赖更新时`、`手动触发时` 三种状态。触发模式限定了 `useQuery` 和 `useMutation` 拥有的启动方式，只有经过触发模式的允许才能在相应的时机进行相应的工作。`useQuery` 和 `useMutation` 拥有各自默认的触发器模式。
+这不得不归功于我们的`触发模式`。触发器共有三种工作模式 `mount`、 `update`、 `manual`，分别对应 `会话加载时`、`依赖更新时`、`手动触发时` 三种状态。触发模式限定了 `useQuery` 和 `useMutation` 拥有的启动方式，只有经过触发模式的允许才能在相应的时机进行相应的工作。`useQuery` 和 `useMutation` 拥有各自默认的触发模式。
 
 `useQuery` 的默认触发模式为 `['mount', 'update', 'manual']`，所以在上述三种情况下，它都能进行相应工作；而 `useMutation` 的默认触发模式仅为 `['manual']`，所以它只能通过手动触发的方式进行工作。
 
-我们可以通过配置触发模式，改变会话的触发行为：
+我们可以通过配置触发模式，改变会话的默认触发行为：
 
 ```ts
 import React from 'react';
@@ -136,14 +136,13 @@ const App = ()=>{
     // 需要保存的 user 数据
     const [user, setUser] = useState<User>({...});
 
-    // 需手动触发
-    const [state, trigger] = useMutation(
+    const [state] = useMutation(
         // 设置保存请求函数
         saveUser,
         {
           // 设置保存参数
           variables: [ user ],
-          // 将触发器设置为 update 模式。
+          // 将触发模式设置为 update 模式。
           // 这时，变量依赖驱动被启动，人工触发被关闭，
           // 只有变量 user 的改变才能触发保存操作。
           triggerOn: ['update']
@@ -161,7 +160,7 @@ const App = ()=>{
     } = result;
 
     const handleSubmit = (submitingUser: User)=>{
-        // 通过改变变量 user 引发保存操作
+        // 通过改变变量 user 触发保存操作
         setUser(submitingUser);
     }
 
@@ -169,7 +168,7 @@ const App = ()=>{
 }
 ```
 
-上例通过配置触发模式 `triggerOn`，改变了 `useMutation` 的默认模式。接下来让我们来看看会话的概念。
+上例通过配置触发模式 `triggerOn`，改变了 `useMutation` 的默认触发模式。接下来让我们来看看会话的概念。
 
 ## 会话
 
@@ -193,17 +192,17 @@ type SessionState<T> = {
 
 字段含义：
 
-* data - 最近一次请求成功返回的数据，在下次请求成功前会一致存在，默认为 undefined。
+* data - 最近一次请求成功返回的数据，在下次请求成功前会一直存在，默认为 undefined。
 * error - 最近一次请求失败的错误信息，会被成功的请求清理为 undefined，默认为 undefined。
 * isError - 最近一次请求是否失败，若失败为 true，否则为 false。会被成功的请求重置为 false，默认值为 false。
 * isFetching - 请求是否正在进行中，在请求开始时会被设置为 true，结束时无论失败与否都会被重置为 false，默认为 false。
-* abandon - 标识本请求产生的`会话结果`是否被废弃，被废弃的会话结果不能被渲染为`会话状态`，所以在`会话状态`（`state`）中，该值永远为 `false`，只有在策略环境中，该值才可能为 `true`。
+* abandon - 标识请求产生的`会话结果`是否被废弃，被废弃的会话结果不能被渲染为`会话状态`，所以在`会话状态`（`state`）中，该值永远为 `false`，只有在策略环境中，该值才可能为 `true`。
 * triggerType - 触发类型，`'mount' | 'update' | 'manual'` 分别对应触发模式的三种类型。每种触发模式都会让`会话结果`带上相应的触发类型。
-* loaded - 表示是有有过一次成功，且未被 `abandon` 废弃的回话结果，其含义即：会话是否已经加载过。
+* loaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。
 
 ### 会话触发器
 
-一个会话由一个 `state` 和一个 `trigger` 构成，而这个 `trigger` 函数就是所谓的 `会话触发器`。它的作用就是手动触发会话以当前的变量为基础再次运行。作为触发器，`trigger` 不需要任何额外的参数，所以它是个无参函数，虽然 `useQuery` 与 `useMutation` 的触发器 `trigger` 会返回了一个 promise 结果，但我们不推荐使用，该结果仅供`观察分析`。
+一个会话由一个 `state` 和一个 `trigger` 构成，而这个 `trigger` 函数就是所谓的 `会话触发器`。它的作用就是手动触发会话再次运行。作为触发器，`trigger` 不需要任何额外的参数，因为参数始终存放在会话创建 API `useQuery` 和 `useMutation` 中，所以它是个无参函数，虽然 `useQuery` 与 `useMutation` 的触发器 `trigger` 会返回了一个 promise 结果，但我们不推荐使用，该 promise 结果仅供`观察分析`。
 
 `trigger` 触发器触发的是手动运行，所以产生结果中的 `triggerType` 为 `manual`。如果人为配置的 `triggerOn` 触发模式中，没有 `manual` 选项，`trigger` 将不再发起请求，而直接采用当前`会话状态`。
 
@@ -232,7 +231,7 @@ runtime 是策略系统提供的运行时参数：
 
 * current - 函数，通过在需要的地方调用 current 函数，可以获取当前最新生效的`会话状态`。
 * variables - 本次请求使用的变量参数
-* runner - 请求函数的无参形态，变量参数在 runner 内部以闭包的形式存在。该函数返回的 promise 结果为`会话结果`。当同时使用多个`策略`串联形式时，runner 表示下一个策略函数。
+* runner - 请求函数的无参形态，变量参数在 runner 内部以闭包的形式存在。该函数返回的 promise 结果为`会话结果`。当同时使用多`策略`串联时，runner 代表下一个策略函数。
 * store - 每个策略在使用时可以得到一个数据存储单元，用于长期存取策略状态。
 * runtimeCache - 运行时缓存，与 store 不同的是，该缓存只能存放请求过程中的临时状态，每次请求都会开辟一个新的运行时缓存空间。
   
@@ -256,13 +255,14 @@ function once(): StrategyType {
     // 根据声明此策略存放的是一个结果为`会话结果`类型的 promise
     if (store.current) {
       // 如果存储单元中存放的 promise 存在，
-      // 证明会话已经发起，不必再发起多余请求，
-      // 本次发起请求的会话结果应该于已发起请求保持一致，
-      // 且不应该渲染至`会话状态`，故使用 `abandon` 将其标记为废弃结果。
+      // 证明会话已经发起，不应发起多余请求，
+      // 因此直接返回存储单元中的 promise,
+      // 并使用 `abandon` 字段把它标记为被废弃的会话结果。
+      // 被废弃的会话结果不会触发组件再渲染。
       return store.current.then(d => ({ ...d, abandon: true }));
     }
     // 如果存储单元为空，证明请求没有发起，故直接发起请求，
-    // 并返回请求。
+    // 并返回请求结果。
     store.current = runner().then(d => {
       // d 的类型为 SessionState，会话结果类型
       if (d.isError) {
@@ -314,7 +314,7 @@ const Dialog = ()=>{
 
 ### 常用策略
 
-`Strategy` API 是策略的集合。`@airma/react-effect` 提供了一套常用策略。
+`Strategy` API 是 `@airma/react-effect` 提供的常用策略集合对象。
 
 #### Strategy.once
 
@@ -336,7 +336,7 @@ Strategy.debounce( op: { duration: number } | number )
 
 配置参数：
 
-* op - `op` 为数字，表示防抖间隔时间，可以 `op.duration` 的配置形式进行等价配置。
+* op - `op` 为数字，表示防抖间隔时间，也可使用 `op.duration` 的形式进行等价配置。
 
 #### Strategy.throttle
 
@@ -348,7 +348,7 @@ Strategy.throttle( op: { duration: number } | number )
 
 配置参数：
 
-* op - `op` 为数字，表示节流间隔时间，可以 `op.duration` 的配置形式进行等价配置。
+* op - `op` 为数字，表示节流间隔时间，可使用 `op.duration` 的形式进行等价配置。
 
 #### Strategy.memo
 
@@ -356,7 +356,7 @@ Strategy.throttle( op: { duration: number } | number )
 Strategy.memo( equalFn?: (source: T | undefined, target: T) => boolean )
 ```
 
-会话数据记忆策略。当请求返回会话结果中的数据 `data` 与当前会话状态数据的序列化字符串（`JSON.stringify`）保持值相等，则直接使用会话状态中的数据 `data`。保持数据的不变性，这对优化 React 渲染有非常大的好处。
+会话数据记忆策略。当请求返回会话结果中的数据 `data` 与当前会话状态数据的序列化字符串（`JSON.stringify`）保持值相等，则直接使用会话状态中的数据 `data`。保持数据的不变性，这对优化 React 渲染有非常大的帮助。
 
 配置参数：
 
@@ -376,7 +376,7 @@ Strategy.error(
 配置参数：
 
 * process - 错误处理回调函数，可接收一个异常数据。
-* option - 处理配置，`withAbandoned` 选项为 `true`，表示同时处理被`废弃`的会话结果异常信息。
+* option - 处理配置，`withAbandoned` 选项为 `true`，表示同时处理被`废弃`的会话结果中的异常信息。
 
 #### Strategy.success
 
@@ -391,7 +391,7 @@ Strategy.success: <T>(
 
 配置参数：
 
-* process - 正常返回数据处理回调函数，可接收一个正常返回的请求数据。
+* process - 处理正常请求结果的回调函数，可接收一个正常返回的请求数据。
 * option - 处理配置，`withAbandoned` 选项为 `true`，表示同时处理被`废弃`会话结果中的正常请求数据。
 
 

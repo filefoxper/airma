@@ -3,6 +3,8 @@ import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
+declare type SessionType = 'query' | 'mutation';
+
 declare type LoadedSessionState<T> = {
   data: T;
   error?: any;
@@ -145,21 +147,38 @@ export declare function useMutation<
   (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
 ];
 
+declare interface UseSessionConfig {
+  sessionType?: SessionType;
+}
+
+declare interface LoadedUseSessionConfig extends UseSessionConfig {
+  loaded: true;
+}
+
+declare interface UnloadedUseSessionConfig extends UseSessionConfig {
+  loaded?: false;
+}
+
 export declare function useSession<D extends SessionKey<any>>(
   factory: D,
-  config: { loaded: true }
+  config: LoadedUseSessionConfig
 ): [LoadedSessionState<PCR<D>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
-  factory: D
+  factory: D,
+  config: SessionType
 ): [SessionState<PCR<D>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
   factory: D,
-  config?: { loaded?: boolean }
+  config?: UnloadedUseSessionConfig
+): [SessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [SessionState<PCR<D>>, () => void];
 
 export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
->(effectCallback: E): SessionKey<E>;
+>(effectCallback: E, sessionType?: SessionType): SessionKey<E>;
 
 export declare function useIsFetching(
   ...sessionStates: SessionState[]
@@ -176,12 +195,10 @@ export declare const SessionProvider: FC<
     }
 >;
 
-declare type QueryType = 'query' | 'mutation';
-
 export declare type GlobalConfig = {
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
-    type: QueryType
+    type: SessionType
   ) => (StrategyType | null | undefined)[];
 };
 

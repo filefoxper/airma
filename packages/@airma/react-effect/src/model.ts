@@ -1,5 +1,5 @@
 import { createKey } from '@airma/react-state';
-import type { SessionState } from './type';
+import type { SessionState, SessionType } from './type';
 import { SessionKey } from './type';
 
 export function effectModel(state: SessionState & { version?: number }) {
@@ -48,14 +48,15 @@ export const defaultPromiseResult = (config?: {
 export function createSessionKey<
   E extends (...params: any[]) => Promise<any>,
   T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E): SessionKey<E> {
+>(effectCallback: E, sessionType?: SessionType): SessionKey<E> {
   const context = { implemented: false };
   const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
   model.effect = [
     function effectCallbackReplace(...params: any[]) {
       return effectCallback(...params);
-    } as E
-  ] as [E];
+    } as E,
+    sessionType ? { sessionType } : {}
+  ] as [E, { sessionType?: SessionType }];
   model.implement = function impl(callback: E) {
     if (context.implemented) {
       return;
