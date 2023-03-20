@@ -14,7 +14,8 @@ import {
   useModel,
   useRealtimeInstance,
   useSelector,
-  provide as provideKeys
+  provide as provideKeys,
+  Keys
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -26,7 +27,8 @@ import type {
   GlobalConfig,
   TriggerType,
   SessionKey,
-  GlobalSessionProviderProps
+  GlobalSessionProviderProps,
+  SessionType
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 
@@ -60,9 +62,9 @@ export function GlobalSessionProvider({
   children
 }: GlobalSessionProviderProps) {
   const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
-  const keys = useMemo(() => {
+  const keys: Array<Keys> = useMemo(() => {
     return [isMatchedInStore ? undefined : isFetchingModel, value].filter(
-      d => d
+      (d): d is Keys => !!d
     );
   }, [isMatchedInStore, value]);
   return !keys.length
@@ -89,19 +91,26 @@ function useGlobalConfig(): GlobalConfig | null {
 function parseEffect<
   E extends (...p: any[]) => any,
   C extends Record<string, any> = Record<string, any>
->(callback: E | SessionKey<E>, config?: C): [SessionKey<E>, E, C?] {
+>(
+  callback: E | SessionKey<E>,
+  sessionType: SessionType,
+  config?: C
+): [SessionKey<E>, E, C | undefined, boolean] {
   const { pipe } = callback as SessionKey<E>;
-  const isModel = typeof pipe === 'function';
-  if (!isModel) {
-    return [effectModel as SessionKey<E>, callback as E, config];
+  const isSessionKey = typeof pipe === 'function';
+  if (!isSessionKey) {
+    return [effectModel as SessionKey<E>, callback as E, config, false];
   }
   const { effect } = callback as SessionKey<E>;
-  const [effectCallback, cg] = effect;
-  return [
-    callback as SessionKey<E>,
-    effectCallback,
-    (cg || config) as C | undefined
-  ];
+  const [effectCallback, { sessionType: keyType }] = effect;
+  if (keyType != null && keyType !== sessionType) {
+    throw new Error(
+      `The sessionType is not matched, can not use '${keyType} type' sessionKey with '${
+        sessionType === 'query' ? 'useQuery' : 'useMutation'
+      }'`
+    );
+  }
+  return [callback as SessionKey<E>, effectCallback, config, true];
 }
 
 const noop = () => undefined;
@@ -254,10 +263,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const cg = Array.isArray(config) ? { variables: config } : config;
-  const [model, effectCallback, con] = parseEffect<C, QueryConfig<T, C>>(
-    callback,
-    cg
-  );
+  const [model, effectCallback, con, isSessionKey] = parseEffect<
+    C,
+    QueryConfig<T, C>
+  >(callback, 'query', cg);
   const {
     variables,
     deps,
@@ -273,7 +282,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   );
 
   const params: [typeof model, SessionState<T>?] = (function computeParams() {
-    if (model === effectModel) {
+    if (!isSessionKey) {
       return [
         model,
         defaultPromiseResult(
@@ -452,10 +461,10 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const cg = Array.isArray(config) ? { variables: config } : config;
-  const [model, effectCallback, con] = parseEffect<C, MutationConfig<T, C>>(
-    callback,
-    cg
-  );
+  const [model, effectCallback, con, isSessionKey] = parseEffect<
+    C,
+    MutationConfig<T, C>
+  >(callback, 'mutation', cg);
   const {
     variables,
     strategy,
@@ -470,7 +479,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   );
 
   const params: [typeof model, SessionState<T>?] = (function computeParams() {
-    if (model === effectModel) {
+    if (!isSessionKey) {
       return [
         model,
         defaultPromiseResult(
@@ -643,14 +652,24 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
 export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
-  config?: { loaded?: boolean }
+  config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [SessionState<T>, () => void] {
+  const [, padding] = sessionKey.effect;
+  const { sessionType: sessionKeyType } = padding;
   const session = useSelector(
     sessionKey,
     s => [s.state, s.trigger] as [SessionState<T>, () => void]
   );
-  const { loaded: shouldLoaded } = config || {};
+  const { loaded: shouldLoaded, sessionType } =
+    typeof config === 'string'
+      ? { sessionType: config, loaded: undefined }
+      : config || {};
   const [{ loaded }] = session;
+  if (sessionType && sessionKeyType && sessionType !== sessionKeyType) {
+    throw new Error(
+      `The sessionType is not matched, can not use '${sessionKeyType} type' sessionKey with '${sessionType} type' useSession.`
+    );
+  }
   if (shouldLoaded && !loaded) {
     throw new Error(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'

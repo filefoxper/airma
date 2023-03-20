@@ -521,8 +521,11 @@ import type { UserQuery, User } from './type';
 // function fetchUsers(query: UserQuery): Promise<User[]>;
 
 // 给 createSessionKey 提供一个请求函数，可以创建一个会话`键`。
-// 相当于一把钥匙
-const fetchUsersSessionKey = createSessionKey(fetchUsers);
+// 相当于一把钥匙。
+// 注意：这里我们为会话键配置了一个 `query` 的会话类型，
+// 如果我们把这个明确为 `query` 会话类型的会话键提供给了 `useMutation`，
+// 就会发生运行时报错。
+const fetchUsersSessionKey = createSessionKey(fetchUsers, 'query');
 
 const Submit = ()=>{
     // 调度者
@@ -572,8 +575,9 @@ const Datasource = ()=>{
           loaded
         }
         // 调度者
-        // 只共享了会话状态
-    ] = useSession(fetchUsersSessionKey);
+        // 只共享了会话状态，
+        // 开启 `query` 会话类型检查
+    ] = useSession(fetchUsersSessionKey, 'query');
 
     return ......;
 }
@@ -591,6 +595,8 @@ const App = ()=>{
 ```
 
 `@airma/react-effect` 支持多对多的 `调读者` 和 `工作者` 关系，但这并不是理想状态，最佳方案是多个`调度者`对应一个`工作者`。那么，如果同时存在多个`键`相同的`工作者`会发生什么？如果这些`工作者`是被同时触发工作的，那只有最先被触发的`工作者`才能正常工作，其他工作者将处于等待会话同步的状态，我们稍后会在特性中看到详细解释。
+
+注意：上例中，我们在创建会话键时，提供了会话类型限制 `query`，这意味着，只有 `useQuery` 和 `useSession`  才能使用这把钥匙。会话类型🈶️：`'query' | 'mutation'`。同理，`useSession` 也可以进行会话类型限制。使用类型限制创建会话键可以让你的应用更安全。
 
 让我们看看剩下的常见问题，如错误兜底功能。
 

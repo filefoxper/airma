@@ -3,6 +3,8 @@ import { ReactNode } from 'react';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
+export type SessionType = 'query' | 'mutation';
+
 export type SessionKey<E extends PromiseCallback<any>> = Key<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
@@ -14,7 +16,7 @@ export type SessionKey<E extends PromiseCallback<any>> = Key<
     trigger: () => SessionState & { version?: number };
   }
 > & {
-  effect: [E];
+  effect: [E, { sessionType?: SessionType }];
   implement: (c: E) => void;
 };
 

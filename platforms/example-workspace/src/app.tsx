@@ -159,7 +159,7 @@ const conditionKey = createKey(conditionModel, {
 const Condition = memo(() => {
   const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
 
-  const [{ isFetching }] = useSession(fetchSessionKey);
+  const [{ isFetching }] = useSession(fetchSessionKey, 'query');
 
   return (
     <div>

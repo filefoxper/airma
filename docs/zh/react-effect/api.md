@@ -59,7 +59,7 @@ function useMutation(callback, variables){
 函数方法
 
 ```ts
-function createSessionKey(promiseCallback){
+function createSessionKey(promiseCallback, sessionType?){
     return SessionKey;
 }
 ```
@@ -71,6 +71,7 @@ function createSessionKey(promiseCallback){
 ### 参数
 
 * promiseCallback - 返回一个 promise 对象的函数。
+* sessionType - 可选，会话类型，`'query' | 'mutation'`。通过固定会话类型，可防止我们对`工作者`使用了错误的会话键。
 
 ### 返回
 
@@ -132,7 +133,7 @@ import {
 const clientKey = createSessionKey(...);
 
 const Child = ()=>{
-    const [ {data} ] = useSession(clientKey);
+    const [ {data} ] = useSession(clientKey, 'query');
     return ......;
 }
 
@@ -153,7 +154,12 @@ const App = provide(clientKey)(()=>{
 React hook
 
 ```ts
-function useSession(sessionKey){
+type Config = {
+    loaded?: boolean,
+    sessionType?: 'query' | 'mutation'
+}
+
+function useSession(sessionKey, config?: Config){
     return [state, trigger];
 }
 ```
@@ -165,6 +171,12 @@ function useSession(sessionKey){
 ### 参数
 
 * sessionKey - 由 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建的会话键。
+* config - 可选配置。
+  
+### 解释：
+
+* loaded - 可选，当值为 `true`，表示预判会话状态中的会话数据是已加载的，这时，typescript 类型限制会放宽类型检查，使 `data` 类型与请求 promise 返回类型保持一致；否则认为 `data` 可能为 `undefined` 类型。
+* sessionType - 可选，值范围：`'query' | 'mutation'`，配置该项会对会话`键`启用会话类型检查，若不匹配，则报错。
 
 ### 返回
 

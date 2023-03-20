@@ -71,7 +71,7 @@ import {
 } from '@airma/react-effect';
 import {fetchData} from './service';
 
-const fetchDataKey = createSessionKey(fetchData);
+const fetchDataKey = createSessionKey(fetchData, 'query');
 
 const Content = ()=>{
     // 调度者触发两个同`键`工作者，只有一个能正常工作。
@@ -109,7 +109,7 @@ import {
 } from '@airma/react-effect';
 import {fetchData} from './service';
 
-const fetchDataKey = createSessionKey(fetchData);
+const fetchDataKey = createSessionKey(fetchData, 'query');
 
 const Content = ()=>{
     return ......;
