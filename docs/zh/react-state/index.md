@@ -53,8 +53,6 @@ const App = ()=>{
 render(<App/>, document.getElementById('root'));
 ```
 
-The example above is using `useModel` to create a `count model instance`. By calling method `increase`/`decrease` from this instance, we can increase or decrease the `count` from `model instance`.
-
 上例通过建立一个计数器模型创建了一个计数器组件。我们为 `useModel` API 提供了一个 function 函数模型，该模型返回了一个带有行为方法（修改 state 方法）和渲染数据的对象。我们通过调用来自 `useModel` 返回对象实例上的方法即可渲染新的实例数据。
 
 如：调用 `increase` 方法，`useModel`会自动使用方法返回值 `count+1` 作为最新参数再次调用模型函数，更新实例对象，这时 `instance.count` 比调用前的值大 `1` 。
