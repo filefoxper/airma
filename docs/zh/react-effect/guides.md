@@ -1,8 +1,6 @@
 # 引导
 
-`@airma/react-effect` 同时管理[本地会话]()与[上下文会话]()两种情形。本章节，我们将着重介绍如何使用本地会话进行简单的本地请求操作；如何使用上下文会话进行较为复杂的请求数据同步，及跨组件操作等内容。
-
-The usage about `@airma/react-effect` is simple enough. We will introduce some practical usage in this section.
+本章节，我们将着重介绍如何使用本地会话进行简单的本地请求操作；如何使用上下文会话进行较为复杂的请求数据同步，及跨组件操作等内容。
 
 ## 本地会话
 
@@ -14,7 +12,7 @@ The usage about `@airma/react-effect` is simple enough. We will introduce some p
 
 #### 依赖查询
 
-最常见的查询就是依赖查询，而依赖查询中的变量依赖最为常见。
+最常见的查询就是依赖查询，而依赖查询中变量依赖驱动方式最为普遍。
 
 ```ts
 import React from 'react';
@@ -41,7 +39,7 @@ const App = ()=>{
             // 根据变量依赖查询
             variables: [query],
             strategy: [
-                // 设置 30 秒内，若变量序列化字符串没有，不发起请求的节流策略
+                // 设置，在 30 秒内，若变量序列化字符串没变，则不发起请求的节流策略
                 Strategy.throttle(30000),
                 // 设置结果数据序列化字符串没有变化，直接使用当前会话数据的策略
                 Strategy.memo(),
@@ -67,7 +65,7 @@ const App = ()=>{
 
 #### 级联查询
 
-有时，我们需要使用互相依赖等待的 `useQuery` 进行级联查询，这时我们可以利用 `triggerOn` 来控制我们下行 `useQuery` 在上行数据更新成功后进行。
+有时，我们需要使用互相依赖的 `useQuery` 进行级联查询，这时我们可以利用 `triggerOn` 来控制我们下行 `useQuery` 在上行数据更新成功后进行。
 
 ```ts
 import React from 'react';
@@ -84,7 +82,7 @@ type UserQuery = {
 const fetchLoginUser = ():Promise<User> =>
         Promise.resolve([{id:'1', username:'xxx', name:'xxx'});
 
-// 通过 id 获取用户详细信息
+// 通过 id 获取用户详细信息的请求
 const fetchUserDetail = (id: number|undefined):Promise<User> =>{
     if (id == null) {
         throw new Error('xxx');
@@ -96,17 +94,13 @@ const App = ()=>{
     const [ userState ] = useQuery(fetchLoginUser,[]);
 
     const [ detailState ] = useQuery(
-        // 设置查询请求函数
         fetchUserDetail,
         {
-            // 根据变量依赖查询
+            // 以 userState 中的 data.id 作为依赖变量
             variables: [userState?.data?.id],
             strategy: [
-                // 设置 30 秒内，若变量序列化字符串没有，不发起请求的节流策略
                 Strategy.throttle(30000),
-                // 设置结果数据序列化字符串没有变化，直接使用当前会话数据的策略
                 Strategy.memo(),
-                // 设置错误处理策略
                 Strategy.error(message.error)
             ],
             // 使用更新触发模式
@@ -164,11 +158,9 @@ const App = ()=>{
         {
             variables: [query],
             strategy: [
-                // 设置 30 秒内，若变量序列化字符串没有，不发起请求的节流策略
                 Strategy.throttle(30000),
-                // 设置结果数据序列化字符串没有变化，直接使用当前会话数据的策略
                 Strategy.memo(),
-                // 设置成功后直接把结果设置到 useState 的策略
+                // 成功后直接把结果设置到 useState 
                 Strategy.success(setUsers),
                 // 设置错误处理策略
                 Strategy.error(message.error)
@@ -195,7 +187,7 @@ const App = ()=>{
 
 ### useMutation
 
-修改的异步操作通常通过手动触发的形式使其工作，如：
+异步修改操作通常通过手动触发的形式进行，如：
 
 ```ts
 import React from 'react';
@@ -239,7 +231,7 @@ const App = ()=>{
 
 #### 传参触发函数
 
-我们注意到，无论 `useQuery` 还是 `useMutation` 的返回元组中都有一个会话外的触发函数 `execute`，它允许我们使用传入新参数的模式触发 `useQuery` 或 `useMutation` 工作，之所以放在 `useMutation` 中进行说明是因为对 `useMutation` 来说传参触发使用的概率会大一些。
+我们注意到，无论 `useQuery` 还是 `useMutation` 返回元组中都有一个会话外的触发函数 `execute`，它允许我们传入临时参数触发工作，之所以放在 `useMutation` 中进行说明是因为 `useMutation` 使用传参触发的概率会更高一些。
 
 ```ts
 import React from 'react';
@@ -286,7 +278,7 @@ const App = ()=>{
 
 ## 上下文会话
 
-本地会话基本可以足够一个简单页面的增删改查需求了。但如果查询数据可以通过上下文状态的方式，在需要的深层子组件中直接获取，而非 props 层层传递，那会更加方便。
+本地会话基本可以满足一个简单页面的增删改查需求了。但如果查询数据可以通过上下文状态的方式，在需要的深层子组件中直接获取，而非 props 层层传递，那会更加方便。
 
 ### 基本用法
 
@@ -294,8 +286,8 @@ const App = ()=>{
 
 1. 使用 `createSessionKey` API 创建一个会话`键`。
 2. 将创建好的会话`键`集合（可以是独立的`键`，也可以是由`键`组成的对象或数组）提供给 `SessionProvider` 组件，用于生成会话`库`（store）。
-3. 通过 `useQuery` 或 `useMutation` 关联会话`键`来连接 `SessionProvider` 组件实例中的 `库`。请求所得的会话结果最终会发往与`键`匹配的`库`，从而支持上下文关联。需要知道的是所有使用同一会话`键`的 `useQuery` 或 `useMutation` 共享通一个上下文会话。
-4. 通过 API `useSession` 关联会话`键`来连接 `SessionProvider` 组件实例中的 `库`。与 `useQuery` 或 `useMutation` 不同，`useSession` 的主要用途是用来被动接收来自 `useQuery` 或 `useMutation` 创建好的会话变更，所以不具备除了手动触发以外的触发模式。
+3. 通过 `useQuery` 或 `useMutation` 使用会话`键`来连接 `SessionProvider` 组件实例中的 会话`库`。请求所得的会话结果最终会发往与`键`匹配的`库`，从而支持上下文关联。需要知道的是所有使用同一会话`键`的 `useQuery` 或 `useMutation` 共享通一个上下文会话。
+4. 通过 API `useSession` 使用会话`键`来连接 `SessionProvider` 组件实例中的 会话`库`。与 `useQuery` 或 `useMutation` 不同，`useSession` 的主要用途是用来被动接收来自 `useQuery` 或 `useMutation` 创建好的会话变更，所以不具备除了手动触发以外的触发模式。
 
 基础样例：
 
@@ -324,7 +316,7 @@ const Condition = ()=>{
     const [validQuery, setValidQuery] = useState<UserQuery>(displayQuery);
 
     // 通过会话`键`匹配通过该`键`建立的会话库，
-    // useQuery直接使用匹配上的库中会话。
+    // useQuery直接使用匹配库中会话。
     // 查询产生的会话结果将被更新到匹配库的会话状态中。
     useQuery(fetchUsersSessionKey, [validQuery]);
 
@@ -359,7 +351,7 @@ const Datasource = ()=>{
           error,
           loaded
         }
-        // 使用 useSession 可以直接获取会话库中`键`匹配的会话，
+        // 使用 useSession 可以直接获取会话库中与`键`匹配的会话，
         // 根据目前的需求，我们只需要获取会话状态即可。
     ] = useSession(fetchUsersSessionKey);
 
@@ -407,7 +399,7 @@ const App = ()=>{
 }
 ```
 
-通过 API `createSessionKey`，我们可以把请求包装成一个会话`键`。一个会话`键`相当于一把钥匙，把同一把钥匙提供给会话库的创建者 `SessionProvider` 和使用者 `useQuery`、`useMutation`、`useSession` 就能为它们建立起会话同步链接。每个 `SessionProvider` 都会在组件实例内部维护会话库，这意味着内部使用 `SessionProvider` 的相同组件的不同实例拥有的会话库是不同的，会话状态也是不同步的。
+通过 API `createSessionKey`，我们可以把请求包装成一个会话`键`。一个会话`键`相当于一把钥匙，把同一把钥匙提分别供给会话库的创建者 `SessionProvider` 和使用者 `useQuery`、`useMutation`、`useSession` 就能为它们建立起会话同步链接。每个 `SessionProvider` 都会在组件实例内部维护会话库，这意味着内部使用 `SessionProvider` 的相同组件的不同实例拥有的会话库是不同的，会话状态也是不同步的。
 
 ```ts
 const App = ()=>{
@@ -432,9 +424,9 @@ const Layout = ()=>{
 }
 ```
 
-使用键库配对的上下文状态管理要比只有全局库的方式来的更灵活。比如我们需要设计一个可能在一个页面多次使用的复杂组件，该组件需要根据通过 props 传入参数查询同样的接口请求，这时，只有全局库的弊端就出来了，因为使用的是同一库对象，所以这些组件的最终会话状态都是相同的，这明显不符合我们的需求。如果简单使用 React.Context.Provider 来同步数据，则会引发另外一个问题，同一种 Context 的 Provider 会阻止更高层 Provider 提供的会话状态，这可能导致真正的全局会话状态无法直接从复杂组件中通过 useContext 获取出来。这也引出了一个话题，`SessionProvider` 会阻止访问更高层 `SessionProvider` 提供的会话库吗？答案是显然的，不然我发这个问有啥意义。
+使用键库配对的上下文状态管理要比只有全局库的方式来的更灵活。比如我们需要设计一个可能在一个页面多次复用的复杂组件，该组件需要根据 props 传入参数查询请求，这时，只有全局库的弊端就出来了，因为使用的是同一库对象，所以这些组件的最终会话状态都是相同的，这明显不符合我们的需求。如果简单使用 React.Context.Provider 来同步数据，则会引发另外一个问题，同一种 Context 的 Provider 会阻止更高层 Provider 提供的会话状态，这可能导致真正的全局会话状态无法直接从复杂组件中通过 useContext 获取出来。这也引出了一个话题，`SessionProvider` 会阻止访问更高层 `SessionProvider` 提供的会话库吗？答案显然是不会的，不然我发这个问有啥意义。
 
-通过 `SessionProvider` 的键库匹配原则，我们可以在内层 `SessionProvider` 子组件中通过`键`匹配到更高层的库。
+通过键库匹配原则，我们可以在内层 `SessionProvider` 的子组件中使用高层`键`匹配到高层库。
 
 所谓的键库匹配规则就是，当我们使用`键`去查找库时，会按就近原则匹配最近一层父级 `SessionProvider`，如匹配失败（没在库里找到），则继续向更高层 `SessionProvider` 发起匹配，直至匹配成功或者匹配结束为止。如所有的 `SessionProvider` 都没有提供使用者持有的`键`，持有者会抛出异常。
 
@@ -497,7 +489,7 @@ const Layout = ()=>{
 }
 ```
 
-上例展示了键库匹配原则的基本运用。同时我们也观察到了 `SessionProvider` 可以接收的`键`形式可以是由`键`组成的 object 这一现象（可以认为是钥匙串）。
+上例展示了键库匹配原则的基本运用。同时我们也观察到了 `SessionProvider` 接收的`键`形式可以是由`键`组成的 object 这一现象（可以认为是钥匙串）。
 
 ### 调度者与工作者
 
@@ -612,7 +604,7 @@ const App = ()=>{
 
 #### 全局配置
 
-全局配置 config 作用于所有 `GlobalSessionProvider` 内的 `useQuery` 和 `useMutation`。
+全局配置 config 作用于所有包含再 `GlobalSessionProvider` 组件内的 `useQuery` 和 `useMutation`。
 
 ```ts
 import React from 'react';
@@ -683,7 +675,7 @@ GlobalConfig.strategy：
 
 `GlobalSessionProvider` 还有一个作用，就是管理旗下所有 `useQuery` 和 `useMutation` 的辅助状态：`isFetching`，`isError`。
 
-根据使用度高低，我们只提供了获取全局 `isFetching` 的途径，我们可以通过使用无参的 `useIsFetching` hook API 来获取是否有请求依然还处于工作状态的信息。
+目前我们只提供了获取全局 `isFetching` 的途径，我们可以通过使用无参的 `useIsFetching` hook API 来获取是否有请求依然还处于工作状态的信息。
 
 ```ts
 import React from 'react';

@@ -14,9 +14,9 @@
 
 ## 为什么需要管理副作用状态
 
-React hook 是一套基于函数式编程为中心思想设计的系统，在普通回调函数中大量使用副作用会破坏了函数式编程的稳定性，使得输入输出之间没有稳定的关系。
+React hook 是一套基于函数式编程思想设计的系统，在普通回调函数中大量使用副作用会破坏了函数式编程的稳定性，使得输入输出之间没有稳定的关系。
 
-为了更好理解副作用对组件更新的破环性，我们以例子进行一个简单说明：
+为了更好地理解副作用对组件更新带来的破环性，我们以下面的例子来做个简单说明：
 
 ```ts
 import React from 'react';
@@ -56,7 +56,7 @@ const App = ()=>{
 }
 ```
 
-上例中，我们先点击 “异步 + 1” 按钮，然后立即点击 “同步 + 1” 按钮，这时 count 值显示为 1，我们根据异步结果 result 也是 1，推测 3 秒后将运行 setCount(1 + 1) ，也就是说 count 最终显示为 2。
+上例中，我们先点击 “异步 + 1” 按钮，然后立即点击 “同步 + 1” 按钮，这时 count 值显示为 1，我们根据异步结果 result 也是 1，推测 3 秒后将运行 setCount(1 + 1) ，也就是说 count 最终应该显示为 2。
 
 ```
 1 second later count: 1
@@ -66,9 +66,9 @@ const App = ()=>{
 2000 years later count: 1
 ```
 
-不用等了，count 依然是 1，不会是 2。因为 count 早就与初次渲染的 handleAsyncIncrease 形成了闭包，3秒后运行 setCount 使用的是初次渲染的 count 值 0，结果就是 0 + 1 = 1。
+不用等了，count 依然是 1，不会是 2。handleAsyncIncrease 中的 count 是初次渲染的 useState 元组投射变量的闭包值，3秒后运行 setCount 时，该闭包值 count 始终为 0，结果就是 0 + 1 = 1。
 
-是的，我们常见的闭包旧数据问题往往就是由副作用破坏函数式编程稳定性产生的。为此我们需要使用 `setCount((current)=> current + result)` 的方式获取最新 count 值来解决问题。但不断使用回调更新并非长久之计，我们需要从根本上解决问题，按 react 设计思想来使用副作用。
+是的，我们常见的闭包旧数据问题往往就是由副作用破坏函数式编程稳定性产生的。为此我们需要使用 `setCount((current)=> current + result)` 回调方式来解决问题。但不断使用回调更新并非长久之计，我们需要从根本上解决问题，按 react 设计思想来使用副作用。
 
 将副作用输入数据独立出来，并接受 react 渲染管理就显得特别有必要了。
 
@@ -78,8 +78,8 @@ import React, {useEffect, useState} from 'react';
 const usePromise = <T>(
     promiseCallback: ()=>Promise<T>
 ): [T|undefined, ()=>void] =>{
-    // 我们设计了一个稳定的 promise 状态接口，未运行，默认值为 undefined，
-    // 这样我们将异步输入结果托管到 React 生命周期的任务就完成了。
+    // 我们设计了一个拥有稳定 state 状态的接口，用于管理 promise 回调状态，默认值为 undefined，
+    // 这是一个把异步输入托管到 React 状态更迭系统中的接口。
     const [result, setResult] = useState<T|undefined>(undefined);
     const [triggerVersion, setTriggerVersion] = useState(0);
 
@@ -137,17 +137,17 @@ const App = ()=>{
 }
 ```
 
-我们使用封装的 usePromise 来统一管理异步副作用输入数据，并将单一的副作用输入当作状态托管给了 React 组件更迭系统（hook），让后通过监听副作用状态的变化来驱动我们的 `setCount` 运行。这样就符合函数式编程的稳定输入输出结构了。让我们再次重复上述操作，我们发现 3 秒后，值被更新成 2，符合我们的预期。因为 useEffect 在监听到 result 变化时会使用当前最新迭代的闭包数据 count，这时 count 确实为 1，于是运行的就是 `setCount(1 + 1)`。
+使用 usePromise 来统一管理异步副作用输入数据，并将单一的副作用输入当作状态托管给 React 组件更迭系统（hook），然后通过监听副作用状态的变化来驱动 `setCount` 运行。这样就符合函数式编程的稳定输入输出结构了。让我们再次重复上述操作，我们发现 3 秒后，值被更新成 2，符合我们的预期。因为 useEffect 在监听到 result 变化时会使用当前最新迭代的闭包数据 count，这时 count 确实为 1，于是运行的就是 `setCount(1 + 1)`。
 
 ## 介绍
 
 针对前端开发的日常业务，我们开发了一套比上述 `usePromise` 更符合大多业务场景的副作用状态管理工具 `@airma/react-effect`。当前库中包含了 `useQuery` 和 `useMutation` API，分别用于`查询`和`修改（增、删、该）`的异步逻辑。
 
-我们需要为它们提供 promise 回调函数用于实际运行，为了之后方便描述，我们称这个回调函数为`请求函数`。
+我们需要为这两个 API 提供返回 promise 结果的回调函数用于实际运行。为了方便描述，我们把这个回调函数称作`请求函数`。
 
 ### UseQuery
 
-默认通过监听加载以及依赖参数变化引发查询，因为大多查询场景都需要在页面（或组件）加载时直接运行，而监听参数变化引发查询也是常有的需求。
+加载时或依赖参数变化时，会调用`请求函数`。因为大多查询场景都需要在页面（或组件）加载时直接运行，依赖参数发生变化时再次运行。
 
 ```ts
 import React from 'react';
@@ -164,10 +164,10 @@ const fetchUsers = (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]);
 
 const App = ()=>{
-    // 我们将回调参数设置为 state 状态数据
+    // 我们将请求参数设置为 state 状态数据
     const [query, setQuery] = useState({name:'', username:''});
 
-    // useQuery 通过监听参数状态的变更调用查询回调函数
+    // useQuery 通过监听参数状态的变化调用查询请求函数
     const [state, trigger, execute] = useQuery(
         // 设置查询请求函数
         fetchUsers,
@@ -241,4 +241,4 @@ const App = ()=>{
 
 `useMutation` 与 `useQuery` 返回数据结构相同，都是`会话`。
 
-如果 `@airma/react-effect` 已经足够成为你开发项目，解决副作用问题的选项了，请一键三连，略表...，不，错了，再来，请移步至[安装与支持](/zh/react-effect/install.md)。如果希望了解更多相关信息，请参考[概念篇](/zh/react-effect/concepts.md)深入学习。
+如果 `@airma/react-effect` 已经足够成为你开发项目，解决副作用问题的选项，请移步至[安装与支持](/zh/react-effect/install.md)先睹为快。如果希望了解更多相关信息，请参考[概念篇](/zh/react-effect/concepts.md)深入学习。
