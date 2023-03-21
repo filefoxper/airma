@@ -44,7 +44,7 @@ export declare type StrategyType<T = any> = (runtime: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-declare type SessionKey<E extends PromiseCallback<any>> = Key<
+export declare type SessionKey<E extends PromiseCallback<any>> = Key<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -56,12 +56,12 @@ declare type SessionKey<E extends PromiseCallback<any>> = Key<
   implement: (c: E) => void;
 };
 
-declare interface QuerySessionKey<E extends PromiseCallback<any>>
+export declare interface QuerySessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
   effect: [E, { sessionType?: 'query' }];
 }
 
-declare interface MutationSessionKey<E extends PromiseCallback<any>>
+export declare interface MutationSessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
   effect: [E, { sessionType?: 'mutation' }];
 }
