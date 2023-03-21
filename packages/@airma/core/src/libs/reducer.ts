@@ -145,14 +145,12 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     notice(): void {
       generateDispatch(updater)({ state: updater.state, type: '' });
     },
-    connect(dispatchCall, confirmed) {
+    connect(dispatchCall) {
       const { dispatches } = updater;
       const copied = [...dispatches];
-      if (!dispatchCall || copied.indexOf(dispatchCall) >= 0) {
+      const exist = copied.indexOf(dispatchCall) >= 0;
+      if (exist) {
         return;
-      }
-      if (confirmed) {
-        dispatchCall.confirmed = true;
       }
       updater.dispatches = copied.concat(dispatchCall);
     },
@@ -163,9 +161,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       }
       const { dispatches } = updater;
       const copied = [...dispatches];
-      updater.dispatches = copied.filter(
-        d => d !== dispatchCall && d.confirmed
-      );
+      updater.dispatches = copied.filter(d => d !== dispatchCall);
     }
   };
 }

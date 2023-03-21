@@ -39,7 +39,7 @@ export interface Connection<
   ) => void;
   updateState: (state: S) => void;
   notice: () => void;
-  connect: (dispatch?: Dispatch, confirmed?: boolean) => void;
+  connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
 
