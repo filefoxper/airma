@@ -20,6 +20,16 @@ export type SessionKey<E extends PromiseCallback<any>> = Key<
   implement: (c: E) => void;
 };
 
+export interface QuerySessionKey<E extends PromiseCallback<any>>
+  extends SessionKey<E> {
+  effect: [E, { sessionType?: 'query' }];
+}
+
+export interface MutationSessionKey<E extends PromiseCallback<any>>
+  extends SessionKey<E> {
+  effect: [E, { sessionType?: 'mutation' }];
+}
+
 export type TriggerType = 'mount' | 'update' | 'manual';
 
 export type PromiseData<T = any> = {

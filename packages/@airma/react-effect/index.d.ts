@@ -52,9 +52,19 @@ declare type SessionKey<E extends PromiseCallback<any>> = Key<
     trigger: () => SessionState & { version?: number };
   }
 > & {
-  effect: [E];
+  effect: [E, { sessionType?: SessionType }];
   implement: (c: E) => void;
 };
+
+declare interface QuerySessionKey<E extends PromiseCallback<any>>
+  extends SessionKey<E> {
+  effect: [E, { sessionType?: 'query' }];
+}
+
+declare interface MutationSessionKey<E extends PromiseCallback<any>>
+  extends SessionKey<E> {
+  effect: [E, { sessionType?: 'mutation' }];
+}
 
 declare type StrategyCollectionType<T> =
   | undefined
@@ -110,42 +120,50 @@ export declare function useQuery<
 >(
   callback: D,
   config: DefaultQueryConfig<PCR<D>, MCC<D>>
-): [
-  LoadedSessionState<PCR<D>>,
-  () => Promise<LoadedSessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-];
+): D extends MutationSessionKey<any>
+  ? never
+  : [
+      LoadedSessionState<PCR<D>>,
+      () => Promise<LoadedSessionState<PCR<D>>>,
+      (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+    ];
 export declare function useQuery<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): [
-  SessionState<PCR<D>>,
-  () => Promise<SessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-];
+): D extends MutationSessionKey<any>
+  ? never
+  : [
+      SessionState<PCR<D>>,
+      () => Promise<SessionState<PCR<D>>>,
+      (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+    ];
 
 export declare function useMutation<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config: DefaultMutationConfig<PCR<D>, MCC<D>>
-): [
-  LoadedSessionState<PCR<D>>,
-  () => Promise<LoadedSessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-];
+): D extends QuerySessionKey<any>
+  ? never
+  : [
+      LoadedSessionState<PCR<D>>,
+      () => Promise<LoadedSessionState<PCR<D>>>,
+      (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+    ];
 export declare function useMutation<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): [
-  SessionState<PCR<D>>,
-  () => Promise<SessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-];
+): D extends QuerySessionKey<any>
+  ? never
+  : [
+      SessionState<PCR<D>>,
+      () => Promise<SessionState<PCR<D>>>,
+      (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+    ];
 
 declare interface UseSessionConfig {
   sessionType?: SessionType;
@@ -178,7 +196,13 @@ export declare function useSession<D extends SessionKey<any>>(
 
 export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
->(effectCallback: E, sessionType?: SessionType): SessionKey<E>;
+>(effectCallback: E): SessionKey<E>;
+export declare function createSessionKey<
+  E extends (...params: any[]) => Promise<any>
+>(effectCallback: E, sessionType: 'query'): QuerySessionKey<E>;
+export declare function createSessionKey<
+  E extends (...params: any[]) => Promise<any>
+>(effectCallback: E, sessionType: 'mutation'): MutationSessionKey<E>;
 
 export declare function useIsFetching(
   ...sessionStates: SessionState[]
