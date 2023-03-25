@@ -254,6 +254,7 @@ export declare const Strategy: {
     process: (data: T) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
+  validate: (process: () => boolean) => StrategyType;
   memo: <T>(
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;

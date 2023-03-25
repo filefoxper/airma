@@ -178,11 +178,25 @@ function success<T>(
   };
 }
 
+function validate(callback: () => boolean): StrategyType {
+  return function validStrategy({ runner, current }) {
+    const result = callback();
+    if (!result) {
+      const state = current();
+      return new Promise(resolve => {
+        resolve({ ...state, abandon: true });
+      });
+    }
+    return runner();
+  };
+}
+
 export const Strategy = {
   debounce,
   throttle,
   once,
   error,
   success,
+  validate,
   memo
 };

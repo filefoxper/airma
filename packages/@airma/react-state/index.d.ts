@@ -136,10 +136,20 @@ export declare function useSelector<
 export declare function factory<S, T extends AirModelInstance>(
   model: AirReducer<S | undefined, T>
 ): Key<AirReducer<S | undefined, T>>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   defaultState: D
 ): Key<AirReducer<S, T>>;
+/**
+ * @deprecated
+ * @param model
+ * @param defaultState
+ */
 export declare function factory<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   defaultState?: D

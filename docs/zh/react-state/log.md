@@ -8,3 +8,7 @@
 ## v17.3.2
 
 * 修复多点使用时，useModel或useSelector 无法链接的问题。
+
+## v17.3.3
+
+* 标记 factory 为废弃 API（在 v18.0.0 之前可继续使用）。
