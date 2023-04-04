@@ -15,7 +15,8 @@ export function rest(url: string | HttpProperties): HttpType {
   const defaultHttpProperties = {
     parentUrl: '/',
     urls: [''],
-    restConfig: defaultRestConfig
+    restConfig: defaultRestConfig,
+    meta: { config: defaultRestConfig }
   };
   const properties: HttpProperties =
     typeof url === 'string'
@@ -32,9 +33,11 @@ export function rest(url: string | HttpProperties): HttpType {
 
   const run = <T>(requestConfig: RequestConfig): PromiseValue<T> => {
     let ignoreDataPromise = false;
-    const { restConfig } = properties;
+    const { restConfig, meta } = properties;
     const responsePromise: Promise<ResponseData<T>> = (
-      restConfig.request || request
+      restConfig.request ||
+      meta.config.request ||
+      request
     )(getPath(), requestConfig);
     const promise: Promise<T> & { response?: () => Promise<ResponseData<T>> } =
       Promise.resolve(responsePromise).then(res => {
@@ -77,21 +80,33 @@ export function rest(url: string | HttpProperties): HttpType {
       const { urls } = properties;
       return rest({ ...properties, urls: urls.concat(child.split('/')) });
     },
+    setMeta(meta: { config: RestConfig }): HttpType {
+      return rest({
+        ...properties,
+        restConfig: { ...properties.restConfig, ...meta.config },
+        meta
+      });
+    },
     setConfig(
       restConfig: RestConfig | ((c: RestConfig) => RestConfig)
     ): HttpType {
+      const currentConfig = {
+        ...defaultRestConfig,
+        ...properties.meta.config,
+        ...properties.restConfig
+      };
       if (typeof restConfig === 'function') {
         return rest({
           ...properties,
           restConfig: {
-            ...defaultRestConfig,
-            ...restConfig(properties.restConfig)
+            ...currentConfig,
+            ...restConfig(currentConfig)
           }
         });
       }
       return rest({
         ...properties,
-        restConfig: { ...defaultRestConfig, ...restConfig }
+        restConfig: { ...currentConfig, ...restConfig }
       });
     },
     setBody<B extends Record<string, any>>(requestBody: B): HttpType {
@@ -120,16 +135,18 @@ export function client(
 ): Client {
   const restConfig =
     typeof config === 'function' ? config(defaultRestConfig) : config;
+  const meta = { config: restConfig };
   return {
     rest(basePath: string): HttpType {
-      return rest(basePath).setConfig(restConfig);
+      return rest(basePath).setMeta(meta);
     },
     config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void {
+      const restfulConfig = meta.config;
       if (typeof cg === 'function') {
-        Object.assign(restConfig, cg(restConfig));
+        meta.config = Object.assign(restfulConfig, cg(restfulConfig));
         return;
       }
-      Object.assign(restConfig, cg);
+      meta.config = Object.assign(restfulConfig, cg);
     }
   };
 }

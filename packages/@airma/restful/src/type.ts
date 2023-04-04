@@ -35,6 +35,8 @@ export type HttpProperties = {
   requestParams?: Record<string | number, unknown>;
 
   restConfig: RestConfig;
+
+  meta: { config: RestConfig };
 };
 
 export type Request = (
@@ -95,6 +97,8 @@ export type HttpType = {
   path(url: string): HttpType;
 
   setConfig(restConfig: RestConfig): HttpType;
+
+  setMeta(meta: { config: RestConfig }): HttpType;
 
   setBody<B extends Record<string | number, any>>(requestBody: B): HttpType;
 
