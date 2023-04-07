@@ -9,3 +9,7 @@
 ## v 17.1.5
 
 * 增加 Strategy.validate 策略。
+
+## v 17.1.7
+
+* 跟随 @airma/react-state 问题修复升级。

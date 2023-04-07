@@ -12,3 +12,9 @@
 ## v17.3.3
 
 * 标记 factory 为废弃 API（在 v18.0.0 之前可继续使用）。
+
+## v17.3.4
+
+* 修复 行为方法 在子组件的 useEffect 中调用无效的问题。
+* 修复 useRefreshModel 无法初始化 connection 链接的问题。
+* 修复 React.Strict 模式下注册监听管道内存泄漏的问题。
