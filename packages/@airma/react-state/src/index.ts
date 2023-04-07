@@ -56,6 +56,9 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   }
 
   const dispatch = ({ state: actionState }: Action) => {
+    if (state === actionState) {
+      return;
+    }
     if (!disabled) {
       onChange(actionState);
     }
@@ -64,15 +67,21 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   current.connect(persistDispatch);
 
   useEffect(() => {
-    if (!disabled) {
-      current.update(model, { state });
-    }
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
     };
   }, []);
-  return current.agent;
+
+  return createProxy(current.getCurrent(), {
+    get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
+      const v = target[p];
+      if (p === realtimeInstanceMountProperty) {
+        return current.agent;
+      }
+      return v;
+    }
+  });
 }
 
 export function useControlledModel<S, T extends AirModelInstance, D extends S>(
@@ -202,7 +211,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
     );
   }
-  const prevStateRef = useRef<null | { state: D | undefined }>(null);
+
   const modelRef = useRef<AirReducer<S, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -217,8 +226,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const needInitializeScopeConnection =
     connection != null &&
     !!useDefaultState &&
-    connection.getCacheState() == null &&
-    !refresh;
+    connection.getCacheState() == null;
   if (needInitializeScopeConnection) {
     connection.update(model, { state, cache: true, ignoreDispatch: true });
   }
@@ -230,25 +238,24 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const [s, setS] = useState<S | undefined>(initialState);
   const [agent, setAgent] = useState(current.getCurrent());
   const dispatch = ({ state: actionState }: Action) => {
+    if (s === actionState) {
+      return;
+    }
     setAgent(current.getCurrent());
     setS(actionState);
   };
   const persistDispatch = usePersistFn(dispatch);
-  current.connect(persistDispatch);
-
+  const prevStateRef = useRef<{ state: D | undefined }>({ state });
   useEffect(() => {
     const prevState = prevStateRef.current;
     prevStateRef.current = { state };
-    if (refresh && (!prevState || prevState.state !== state)) {
-      current.connect(persistDispatch);
+    if (refresh && prevState.state !== state) {
       current.update(model, { state, cache: true });
+      current.connect(persistDispatch);
     }
   }, [state]);
 
   useEffect(() => {
-    if (!connection && !refresh) {
-      current.update(model, { state: s });
-    }
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
@@ -387,7 +394,7 @@ export function useSelector<
     setS({ data: next });
   });
 
-  connection.connect(dispatch);
+  // connection.connect(dispatch);
 
   useEffect(() => {
     connection.connect(dispatch);

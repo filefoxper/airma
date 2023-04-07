@@ -146,13 +146,18 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       generateDispatch(updater)({ state: updater.state, type: '' });
     },
     connect(dispatchCall) {
-      const { dispatches } = updater;
+      const { dispatches, controlled } = updater;
       const copied = [...dispatches];
       const exist = copied.indexOf(dispatchCall) >= 0;
       if (exist) {
         return;
       }
+      if (controlled) {
+        updater.dispatches = [dispatchCall];
+        return;
+      }
       updater.dispatches = copied.concat(dispatchCall);
+      dispatchCall({ state: updater.state, type: '' });
     },
     disconnect(dispatchCall) {
       if (!dispatchCall) {

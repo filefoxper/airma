@@ -1,5 +1,11 @@
-import React, { memo } from 'react';
-import { createKey, useModel } from '@airma/react-state';
+import React, { memo, useEffect, useState } from 'react';
+import {
+  createKey,
+  useControlledModel,
+  useModel,
+  useRefreshModel,
+  useSelector
+} from '@airma/react-state';
 import { client as cli } from '@airma/restful';
 import {
   createSessionKey,
@@ -9,6 +15,7 @@ import {
   useQuery,
   useSession
 } from '@airma/react-effect';
+import { pick } from 'lodash';
 
 const { rest } = cli(c => ({
   ...c,
@@ -44,6 +51,18 @@ const userQuery = (validQuery: Condition) =>
   rest('/api/user').path('list').setParams(validQuery).get<User[]>();
 
 export const fetchSessionKey = createSessionKey(userQuery);
+
+const test = (state: number) => {
+  return {
+    state,
+    add() {
+      console.log('run', state + 1);
+      return state + 1;
+    }
+  };
+};
+
+const testKey = createKey(test, 0);
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
@@ -157,7 +176,15 @@ const conditionKey = createKey(conditionModel, {
 });
 
 const Condition = memo(() => {
-  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
+  const q = { ...defaultCondition, name: 'Mr' };
+  const { displayQuery, create, changeDisplay, query } = useModel(
+    conditionKey,
+    {
+      valid: q,
+      display: q,
+      creating: false
+    }
+  );
 
   const [{ isFetching }] = useSession(fetchSessionKey, 'query');
 
@@ -196,30 +223,65 @@ const Condition = memo(() => {
   );
 });
 
-export default provide({ conditionKey, fetchSessionKey })(function App() {
-  const { validQuery, creating, cancel } = useModel(conditionKey);
+function Child() {
+  const add = useSelector(testKey, s => s.add);
+  useEffect(() => {
+    add();
+  }, []);
+  return <button onClick={add}>test</button>;
+}
 
-  const [{ data }] = useQuery(fetchSessionKey, {
-    variables: [validQuery],
-    defaultData: [],
-    strategy: Strategy.debounce(300)
-  });
+function Child1({ reset }: { reset: () => number }) {
+  useEffect(() => {
+    reset();
+  }, []);
+  return <button onClick={reset}>test</button>;
+}
 
-  return (
-    <div style={{ padding: '12px 24px' }}>
-      <Condition />
-      <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-        {creating ? <Creating onClose={cancel} /> : <Info />}
+export default provide({ conditionKey, fetchSessionKey, testKey })(
+  function App() {
+    const { validQuery, creating, cancel } = useSelector(conditionKey, s =>
+      pick(s, 'validQuery', 'creating', 'cancel')
+    );
+
+    const [{ data }] = useQuery(fetchSessionKey, {
+      variables: [validQuery],
+      defaultData: [],
+      strategy: Strategy.debounce(300)
+    });
+
+    const [s, setState] = useState(3);
+
+    const { state, reset } = useRefreshModel(
+      testKey.pipe((d: number) => ({
+        state: d,
+        reset() {
+          return 0;
+        }
+      })),
+      s
+    );
+
+    return (
+      <div style={{ padding: '12px 24px' }}>
+        <Condition />
+        <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
+          {creating ? <Creating onClose={cancel} /> : <Info />}
+        </div>
+        <div>
+          {data.map(user => (
+            <div key={user.id} style={{ padding: '4px 0' }}>
+              <span style={{ marginRight: 12 }}>name: {user.name}</span>
+              <span style={{ marginRight: 12 }}>username: {user.username}</span>
+              <span style={{ marginRight: 12 }}>age: {user.age}</span>
+            </div>
+          ))}
+        </div>
+        <div>{state}</div>
+        <button onClick={() => setState(s => s + 1)}>controll</button>
+        <Child />
+        <Child1 reset={reset} />
       </div>
-      <div>
-        {data.map(user => (
-          <div key={user.id} style={{ padding: '4px 0' }}>
-            <span style={{ marginRight: 12 }}>name: {user.name}</span>
-            <span style={{ marginRight: 12 }}>username: {user.username}</span>
-            <span style={{ marginRight: 12 }}>age: {user.age}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
