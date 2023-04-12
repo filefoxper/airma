@@ -57,20 +57,26 @@ export function rest(url: string | HttpProperties): HttpType {
     return promise as PromiseValue<T>;
   };
 
+  const getCurrentRequestConfig = () => {
+    const { restConfig, meta } = properties;
+    const metaConfig = meta.config;
+    return restConfig === defaultRestConfig
+      ? metaConfig
+      : { ...metaConfig, ...restConfig };
+  };
+
   const setRequestConfig = (
     method: Method,
     config?: RestConfig
   ): RequestConfig => {
-    const { requestBody, requestParams, restConfig, meta } = properties;
-    const { request: metaOmit, ...metaConfig } = meta.config;
-    const { request: omit, ...c } = restConfig;
+    const { requestBody, requestParams } = properties;
+    const { request: omit, ...c } = getCurrentRequestConfig();
     const base: RequestConfig = {
       method,
       params: requestParams,
       body: requestBody
     };
     return {
-      ...metaConfig,
       ...c,
       ...config,
       ...base
@@ -85,14 +91,13 @@ export function rest(url: string | HttpProperties): HttpType {
     setMeta(meta: { config: RestConfig }): HttpType {
       return rest({
         ...properties,
-        restConfig: { ...properties.restConfig, ...meta.config },
         meta
       });
     },
     setConfig(
       restConfig: RestConfig | ((c: RestConfig) => RestConfig)
     ): HttpType {
-      const currentConfig = properties.restConfig;
+      const currentConfig = getCurrentRequestConfig();
       if (typeof restConfig === 'function') {
         return rest({
           ...properties,
