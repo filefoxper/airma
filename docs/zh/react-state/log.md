@@ -18,3 +18,7 @@
 * 修复 行为方法 在子组件的 useEffect 中调用无效的问题。
 * 修复 useRefreshModel 无法初始化 connection 链接的问题。
 * 修复 React.Strict 模式下注册监听管道内存泄漏的问题。
+
+## v17.3.6
+
+* 修复 useModel useRefreshModel 关于 Modelkey 使用的 类型问题。

@@ -15,7 +15,7 @@ import {
   useRealtimeInstance,
   useSelector,
   provide as provideKeys,
-  Keys
+  ModelKeys
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -62,9 +62,9 @@ export function GlobalSessionProvider({
   children
 }: GlobalSessionProviderProps) {
   const isMatchedInStore = useIsModelMatchedInStore(isFetchingModel);
-  const keys: Array<Keys> = useMemo(() => {
+  const keys: Array<ModelKeys> = useMemo(() => {
     return [isMatchedInStore ? undefined : isFetchingModel, value].filter(
-      (d): d is Keys => !!d
+      (d): d is ModelKeys => !!d
     );
   }, [isMatchedInStore, value]);
   return !keys.length

@@ -1,4 +1,4 @@
-import { Keys, Key } from '@airma/react-state';
+import { ModelKeys, ModelKey } from '@airma/react-state';
 import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
@@ -44,7 +44,7 @@ export declare type StrategyType<T = any> = (runtime: {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export declare type SessionKey<E extends PromiseCallback<any>> = Key<
+export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -210,11 +210,11 @@ export declare function useIsFetching(
 
 export declare const SessionProvider: FC<
   | {
-      keys: Keys;
+      keys: ModelKeys;
       children?: ReactNode;
     }
   | {
-      value: Keys;
+      value: ModelKeys;
       children?: ReactNode;
     }
 >;
@@ -228,7 +228,7 @@ export declare type GlobalConfig = {
 
 export declare const GlobalSessionProvider: FC<{
   config?: GlobalConfig;
-  keys?: Keys;
+  keys?: ModelKeys;
   children?: ReactNode;
 }>;
 
@@ -237,7 +237,7 @@ export declare const GlobalSessionProvider: FC<{
  * @param keys
  */
 export declare function withSessionProvider(
-  keys: Keys
+  keys: ModelKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;
@@ -261,7 +261,7 @@ export declare const Strategy: {
 };
 
 export declare function provide(
-  keys: Keys
+  keys: ModelKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;

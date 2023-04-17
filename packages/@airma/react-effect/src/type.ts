@@ -1,11 +1,11 @@
-import { Key, Keys } from '@airma/react-state';
+import { ModelKey, ModelKeys } from '@airma/react-state';
 import { ReactNode } from 'react';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export type SessionType = 'query' | 'mutation';
 
-export type SessionKey<E extends PromiseCallback<any>> = Key<
+export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   (st: SessionState & { version?: number }) => {
     state: SessionState;
     version: number;
@@ -114,7 +114,7 @@ export type GlobalConfigProviderProps = {
 
 export type GlobalSessionProviderProps = {
   config?: GlobalConfig;
-  keys?: Keys;
+  keys?: ModelKeys;
   children?: ReactNode;
 };
 
@@ -125,6 +125,6 @@ export type Status = {
 };
 
 export type SessionProviderProps = {
-  value: Keys;
+  value: ModelKeys;
   children?: ReactNode;
 };
