@@ -13,3 +13,7 @@
 ## v 17.1.7
 
 * 跟随 @airma/react-state 问题修复升级。
+
+## v 17.1.8
+
+* 跟随 @airma/react-state 问题修复升级。
