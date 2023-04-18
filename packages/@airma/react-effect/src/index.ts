@@ -7,7 +7,6 @@ import {
   useRef
 } from 'react';
 import {
-  factory,
   StoreProvider,
   shallowEqual,
   useIsModelMatchedInStore,
@@ -15,7 +14,8 @@ import {
   useRealtimeInstance,
   useSelector,
   provide as provideKeys,
-  ModelKeys
+  ModelKeys,
+  createKey
 } from '@airma/react-state';
 import type {
   SessionState,
@@ -34,7 +34,7 @@ import { defaultPromiseResult, effectModel } from './model';
 
 const defaultIsFetchingState: any[] = [];
 
-const isFetchingModel = factory((fetchingKeys: any[]) => {
+const isFetchingModel = createKey((fetchingKeys: any[]) => {
   return {
     isFetching: fetchingKeys.length > 0,
     startFetching(fetchingKey: any) {
