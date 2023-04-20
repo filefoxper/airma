@@ -7,6 +7,7 @@ declare type SessionType = 'query' | 'mutation';
 
 declare type LoadedSessionState<T> = {
   data: T;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -18,6 +19,7 @@ declare type LoadedSessionState<T> = {
 
 declare type UnloadedSessionState = {
   data: undefined;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -247,11 +249,11 @@ export declare const Strategy: {
   throttle: (op: { duration: number } | number) => StrategyType;
   once: () => StrategyType;
   error: (
-    process: (e: unknown) => any,
+    process: (e: unknown, sessionData: SessionState) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType;
   success: <T>(
-    process: (data: T) => any,
+    process: (data: T, sessionData: SessionState<T>) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
   validate: (process: () => boolean) => StrategyType;

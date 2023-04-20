@@ -34,12 +34,14 @@ export type TriggerType = 'mount' | 'update' | 'manual';
 
 export type PromiseData<T = any> = {
   data?: T | undefined;
+  variables: any[];
   error?: any;
   isError?: boolean;
 };
 
 type LoadedSessionState<T> = {
   data: T;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -52,6 +54,7 @@ type LoadedSessionState<T> = {
 
 type UnloadedSessionState = {
   data: undefined;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;

@@ -151,9 +151,9 @@ function useUpdate(callback: () => (() => void) | void, deps?: any[]) {
   }, deps);
 }
 
-function usePromiseCallback<T, C extends (vars?: any[]) => Promise<T>>(
+function usePromiseCallback<T, C extends (vars: any[]) => Promise<T>>(
   callback: C
-): (vars?: any[]) => Promise<PromiseData<T>> {
+): (vars: any[]) => Promise<PromiseData<T>> {
   return (vars): Promise<PromiseData<T>> => {
     const result = callback(vars);
     if (!result || typeof result.then !== 'function') {
@@ -163,12 +163,14 @@ function usePromiseCallback<T, C extends (vars?: any[]) => Promise<T>>(
       d => {
         return {
           data: d,
+          variables: vars,
           error: undefined,
           isError: false
         };
       },
       e => {
         return {
+          variables: vars,
           error: e,
           isError: true
         };
@@ -313,8 +315,8 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'query')
     : currentStrategies;
-  const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(vars =>
-    effectCallback(...(vars || variables || []))
+  const runner = usePromiseCallback<T, (vars: any[]) => Promise<T>>(vars =>
+    effectCallback(...(vars || []))
   );
   const keyRef = useRef({});
   const strategyStoreRef = useRef<{ current: any }[]>(
@@ -324,7 +326,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const versionRef = useRef(0);
   const caller = function caller(
     triggerType: TriggerType,
-    vars?: Parameters<C>
+    vars: any[]
   ): Promise<SessionState<T>> {
     const version = versionRef.current + 1;
     versionRef.current = version;
@@ -353,15 +355,16 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const callWithStrategy = function callWithStrategy(
     call: (
       triggerType: TriggerType,
-      variables?: Parameters<C>
+      variables: any[]
     ) => Promise<SessionState<T>>,
     triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
+    const runtimeVariables = vars || variables || [];
     const requires = {
       current: () => instance.state,
-      variables: vars || variables || [],
-      runner: () => call(triggerType, vars),
+      variables: runtimeVariables,
+      runner: () => call(triggerType, runtimeVariables),
       store: strategyStoreRef,
       runtimeCache: createRuntimeCache()
     };
@@ -507,8 +510,8 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
     : currentStrategies;
-  const runner = usePromiseCallback<T, (vars?: any[]) => Promise<T>>(
-    (vars?: any[]) => effectCallback(...(vars || variables || []))
+  const runner = usePromiseCallback<T, (vars: any[]) => Promise<T>>(
+    (vars: any[]) => effectCallback(...(vars || []))
   );
 
   const strategyStoreRef = useRef<{ current: any }[]>(
@@ -519,7 +522,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const savingRef = useRef<undefined | Promise<SessionState>>(undefined);
   const caller = function caller(
     triggerType: TriggerType,
-    vars?: Parameters<C>
+    vars: any[]
   ): Promise<SessionState<T>> {
     if (savingRef.current) {
       return savingRef.current.then(d => ({ ...d, abandon: true }));
@@ -548,17 +551,15 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   };
 
   const callWithStrategy = function callWithStrategy(
-    call: (
-      triggerType: TriggerType,
-      vars?: Parameters<C>
-    ) => Promise<SessionState<T>>,
+    call: (triggerType: TriggerType, vars: any[]) => Promise<SessionState<T>>,
     triggerType: TriggerType,
     vars?: Parameters<C>
   ) {
+    const runtimeVariables = vars || variables || [];
     const requires = {
       current: () => instance.state,
-      variables: vars || variables || [],
-      runner: () => call(triggerType, vars),
+      variables: runtimeVariables,
+      runner: () => call(triggerType, runtimeVariables),
       store: strategyStoreRef,
       runtimeCache: createRuntimeCache()
     };

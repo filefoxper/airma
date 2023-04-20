@@ -37,6 +37,7 @@ export const defaultPromiseResult = (config?: {
   loaded: true;
 }): SessionState => ({
   data: undefined,
+  variables: undefined,
   isError: false,
   isFetching: false,
   abandon: false,

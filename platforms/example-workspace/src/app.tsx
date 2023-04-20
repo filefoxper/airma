@@ -247,7 +247,7 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
     const [{ data }] = useQuery(fetchSessionKey, {
       variables: [validQuery],
       defaultData: [],
-      strategy: Strategy.debounce(300)
+      strategy: Strategy.success((a, s) => console.log(a, s))
     });
 
     const [s, setState] = useState(3);
