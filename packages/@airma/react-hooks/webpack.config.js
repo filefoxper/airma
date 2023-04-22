@@ -5,10 +5,8 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 module.exports = function config() {
   return {
     externals: {
-      react:'react',
-      'react-dom': 'react-dom',
-      '@airma/react-hooks':'@airma/react-hooks',
-      '@airma/react-state':'@airma/react-state'
+      '@airma/core': '@airma/core',
+      react:'react'
     },
     entry: {
       bundle: path.join(__dirname, 'src', 'index.ts')
@@ -16,7 +14,7 @@ module.exports = function config() {
     output: {
       path: path.join(__dirname, 'dist'),
       filename: 'index.js',
-      library:"@airma/react-effect",
+      library:"@airma/react-hooks",
       libraryTarget: 'umd'
     },
     optimization: {

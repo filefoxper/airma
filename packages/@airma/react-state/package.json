@@ -25,8 +25,7 @@
   "typings": "index.d.ts",
   "dependencies": {
     "@airma/core": "^17.2.5",
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
+    "react": ">=16.8.0"
   },
   "devDependencies": {
     "esbuild": "^0.16.6",

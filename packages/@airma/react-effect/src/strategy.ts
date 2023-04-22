@@ -1,4 +1,47 @@
-import { SessionState, StrategyType } from './type';
+import {
+  SessionState,
+  StrategyRequires,
+  StrategyType,
+  TriggerType
+} from './type';
+
+export function composeStrategies(
+  strategies: (StrategyType | undefined | null)[]
+): StrategyType {
+  const defaultStrategy: StrategyType = value => value.runner();
+  return function strategy(v) {
+    const storeSlots = v.store.current as { current: any }[];
+    const callback = [...strategies]
+      .reverse()
+      .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
+        const storage = storeSlots[i] || { current: undefined };
+        return function middle(value) {
+          if (c == null) {
+            return r(value);
+          }
+          const nextRunner = () => r(value);
+          return c({ ...value, store: storage, runner: nextRunner });
+        };
+      }, defaultStrategy);
+    return callback(v).then(d => {
+      const { loaded } = v.current();
+      const { abandon, isError, isFetching } = d;
+      const currentLoaded = loaded || (!abandon && !isError && !isFetching);
+      return {
+        ...d,
+        loaded: currentLoaded
+      };
+    });
+  };
+}
+
+export function generateStrategyCaller<T>(requires: StrategyRequires<T>) {
+  return function caller(
+    strategies: (StrategyType | null | undefined)[]
+  ): Promise<SessionState> {
+    return composeStrategies(strategies)(requires);
+  };
+}
 
 function debounce(op: { duration: number } | number): StrategyType {
   const time = typeof op === 'number' ? op : op.duration;
@@ -138,8 +181,8 @@ function error(
   const { withAbandoned } = option || {};
   return function er(value) {
     const { runner, runtimeCache, store } = value;
-    const hasHigherErrorProcessor = runtimeCache.fetch(error);
-    runtimeCache.cache(error, true);
+    const hasHigherErrorProcessor = runtimeCache.get(error);
+    runtimeCache.set(error, true);
     store.current = process;
     return runner().then(d => {
       const currentProcess = store.current;

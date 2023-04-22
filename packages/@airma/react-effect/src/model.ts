@@ -32,6 +32,26 @@ export function effectModel(state: SessionState & { version?: number }) {
   };
 }
 
+export function globalController(fetchingKeys: any[]) {
+  return {
+    isFetching: fetchingKeys.length > 0,
+    setGlobalFetchingKey(fetchingKey: any) {
+      const isFetching = fetchingKeys.some(k => k === fetchingKey);
+      if (isFetching) {
+        return fetchingKeys;
+      }
+      return fetchingKeys.concat(fetchingKey);
+    },
+    removeGlobalFetchingKey(fetchingKey: any) {
+      const isFetching = fetchingKeys.some(k => k === fetchingKey);
+      if (!isFetching) {
+        return fetchingKeys;
+      }
+      return fetchingKeys.filter(k => k !== fetchingKey);
+    }
+  };
+}
+
 export const defaultPromiseResult = (config?: {
   data: any;
   loaded: true;

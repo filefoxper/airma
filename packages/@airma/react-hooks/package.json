@@ -1,11 +1,11 @@
 {
   "private": false,
-  "name": "@airma/react-effect",
-  "version": "17.1.8",
-  "description": "This is a react async state management tool",
+  "name": "@airma/react-hooks",
+  "version": "15.0.0",
+  "description": "This is a common react hook package",
   "license": "MIT",
   "author": "Jimmy.Harding",
-  "homepage": "https://filefoxper.github.io/airma/#/react-effect/index",
+  "homepage": "https://filefoxper.github.io/airma/#/react-hooks/index",
   "repository": {
     "type": "git",
     "url": "https://github.com/filefoxper/airma"
@@ -25,9 +25,8 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-hooks":"^15.0.0",
-    "@airma/react-state": "^17.3.6",
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "@airma/core": "^17.3.0"
   },
   "devDependencies": {
     "esbuild": "^0.16.6",

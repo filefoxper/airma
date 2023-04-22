@@ -87,3 +87,5 @@ export declare function createProxy<T extends Record<string, any>>(
 ): T;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;
+
+export declare function noop(): void;

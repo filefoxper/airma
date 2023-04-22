@@ -39,8 +39,8 @@ export declare type StrategyType<T = any> = (runtime: {
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
   runtimeCache: {
-    cache: (key: any, value: any) => void;
-    fetch: (key: any) => any;
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
   };
 }) => Promise<SessionState<T>>;
 

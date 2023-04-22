@@ -75,10 +75,21 @@ export type StrategyType<T = any> = (value: {
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
   runtimeCache: {
-    cache: (key: any, value: any) => void;
-    fetch: (key: any) => any;
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
   };
 }) => Promise<SessionState<T>>;
+
+export type StrategyRequires<T = any> = {
+  current: () => SessionState<T>;
+  variables: any[];
+  runner: () => Promise<SessionState<T>>;
+  store: { current: { current: any }[] };
+  runtimeCache: {
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
+  };
+};
 
 export type StrategyCollectionType<T> =
   | undefined
