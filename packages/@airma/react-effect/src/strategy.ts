@@ -1,9 +1,4 @@
-import {
-  SessionState,
-  StrategyRequires,
-  StrategyType,
-  TriggerType
-} from './type';
+import { SessionState, StrategyType } from './type';
 
 export function composeStrategies(
   strategies: (StrategyType | undefined | null)[]
@@ -35,11 +30,36 @@ export function composeStrategies(
   };
 }
 
-export function generateStrategyCaller<T>(requires: StrategyRequires<T>) {
-  return function caller(
-    strategies: (StrategyType | null | undefined)[]
-  ): Promise<SessionState> {
-    return composeStrategies(strategies)(requires);
+export function latest(): StrategyType {
+  return function latestStrategy(requires): Promise<SessionState> {
+    const { runner, store } = requires;
+    store.current = store.current || 0;
+    const version = store.current + 1;
+    store.current = version;
+    return runner().then(sessionData => {
+      if (store.current !== version) {
+        return { ...sessionData, abandon: true };
+      }
+      return sessionData;
+    });
+  };
+}
+
+export function block(): StrategyType {
+  return function blockStrategy(requires): Promise<SessionState> {
+    const { runner, store } = requires;
+    if (store.current) {
+      return store.current.then((sessionData: SessionState) => ({
+        ...sessionData,
+        abandon: true
+      }));
+    }
+    const promise = runner();
+    store.current = promise.then((sessionData: SessionState) => {
+      store.current = undefined;
+      return sessionData;
+    });
+    return promise;
   };
 }
 

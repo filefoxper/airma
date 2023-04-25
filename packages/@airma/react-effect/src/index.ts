@@ -17,8 +17,7 @@ import type {
   PromiseData,
   TriggerType,
   SessionKey,
-  SessionType,
-  StrategyCollectionType
+  SessionType
 } from './type';
 import { defaultPromiseResult, effectModel } from './model';
 import {
@@ -26,7 +25,7 @@ import {
   globalControllerKey,
   useGlobalConfig
 } from './global';
-import { composeStrategies, generateStrategyCaller } from './strategy';
+import { block, composeStrategies, latest } from './strategy';
 
 function parseEffect<
   E extends (...p: any[]) => any,
@@ -84,6 +83,79 @@ function toNoRejectionPromiseCallback<
   };
 }
 
+function toStrategies(
+  strategy:
+    | undefined
+    | null
+    | StrategyType
+    | (StrategyType | null | undefined)[]
+): (StrategyType | null | undefined)[] {
+  return Array.isArray(strategy) ? strategy : [strategy];
+}
+
+function createRuntimeCache() {
+  const runtimeCacheStore: Array<[any, any]> = [];
+  const fetchTuple = (key: any) => {
+    const data = runtimeCacheStore.find(([k]) => k === key);
+    if (!Array.isArray(data)) {
+      return undefined;
+    }
+    return data;
+  };
+  return {
+    set(key: any, value: any) {
+      const data = fetchTuple(key);
+      if (data) {
+        data[1] = value;
+        return;
+      }
+      runtimeCacheStore.push([key, value]);
+    },
+    get(key: any) {
+      const tuple = fetchTuple(key);
+      if (!tuple) {
+        return undefined;
+      }
+      return tuple[1];
+    }
+  };
+}
+
+function useSessionBuildModel<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>,
+  config?: QueryConfig<T, C> | Parameters<C>
+): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
+  const cg = Array.isArray(config) ? { variables: config } : config;
+  const [model, effectCallback, con, isSessionKey] = parseEffect<
+    C,
+    QueryConfig<T, C>
+  >(callback, 'query', cg);
+  const hasDefaultData = Object.prototype.hasOwnProperty.call(
+    con || {},
+    'defaultData'
+  );
+  const configuration = con || {};
+  const { defaultData } = configuration;
+  const modelParams: [typeof model, SessionState<T>?] =
+    (function computeParams() {
+      if (!isSessionKey) {
+        return [
+          model,
+          defaultPromiseResult(
+            hasDefaultData ? { data: defaultData, loaded: true } : undefined
+          )
+        ];
+      }
+      return hasDefaultData
+        ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+        : [model];
+    })();
+  const stableInstance = useModel(
+    ...(modelParams as [typeof model, SessionState<T>])
+  );
+  return [stableInstance, configuration, effectCallback];
+}
+
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -114,7 +186,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     { autoLink: true }
   );
   const noRejectionPromiseCallback = toNoRejectionPromiseCallback(
-    (variables: any[]) => promiseCallback(...variables)
+    (params: any[]) => promiseCallback(...params)
   );
   const keyRef = useRef({});
 
@@ -244,123 +316,6 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   return [stableInstance.state, trigger, execute];
 }
 
-function usePromiseCallback<T, C extends (vars: any[]) => Promise<T>>(
-  callback: C
-): (vars: any[]) => Promise<PromiseData<T>> {
-  return (vars): Promise<PromiseData<T>> => {
-    const result = callback(vars);
-    if (!result || typeof result.then !== 'function') {
-      throw new Error('The callback have to return a promise object.');
-    }
-    return result.then(
-      d => {
-        return {
-          data: d,
-          variables: vars,
-          error: undefined,
-          isError: false
-        };
-      },
-      e => {
-        return {
-          variables: vars,
-          error: e,
-          isError: true
-        };
-      }
-    );
-  };
-}
-
-function toStrategies(
-  strategy:
-    | undefined
-    | null
-    | StrategyType
-    | (StrategyType | null | undefined)[]
-): (StrategyType | null | undefined)[] {
-  return Array.isArray(strategy) ? strategy : [strategy];
-}
-
-function createRuntimeCache() {
-  const runtimeCacheStore: Array<[any, any]> = [];
-  const fetchTuple = (key: any) => {
-    const data = runtimeCacheStore.find(([k]) => k === key);
-    if (!Array.isArray(data)) {
-      return undefined;
-    }
-    return data;
-  };
-  return {
-    set(key: any, value: any) {
-      const data = fetchTuple(key);
-      if (data) {
-        data[1] = value;
-        return;
-      }
-      runtimeCacheStore.push([key, value]);
-    },
-    get(key: any) {
-      const tuple = fetchTuple(key);
-      if (!tuple) {
-        return undefined;
-      }
-      return tuple[1];
-    }
-  };
-}
-
-function useSessionBuildModel<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
-  config?: QueryConfig<T, C> | Parameters<C>
-): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
-  const cg = Array.isArray(config) ? { variables: config } : config;
-  const [model, effectCallback, con, isSessionKey] = parseEffect<
-    C,
-    QueryConfig<T, C>
-  >(callback, 'query', cg);
-  const hasDefaultData = Object.prototype.hasOwnProperty.call(
-    con || {},
-    'defaultData'
-  );
-  const configuration = con || {};
-  const { defaultData } = configuration;
-  const modelParams: [typeof model, SessionState<T>?] =
-    (function computeParams() {
-      if (!isSessionKey) {
-        return [
-          model,
-          defaultPromiseResult(
-            hasDefaultData ? { data: defaultData, loaded: true } : undefined
-          )
-        ];
-      }
-      return hasDefaultData
-        ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
-        : [model];
-    })();
-  const stableInstance = useModel(
-    ...(modelParams as [typeof model, SessionState<T>])
-  );
-  return [stableInstance, configuration, effectCallback];
-}
-
-function useStrategies<T>(
-  strategy: StrategyCollectionType<T>,
-  sessionType: SessionType
-): [(StrategyType | null | undefined)[], { current: { current: any }[] }] {
-  const scopeEffectConfig = useGlobalConfig() || {};
-  const { strategy: strategyCallback } = scopeEffectConfig;
-  const currentStrategies = toStrategies(strategy);
-  const strategies = strategyCallback
-    ? strategyCallback(currentStrategies, sessionType)
-    : currentStrategies;
-  const strategyStoreRef = useRef<{ current: any }[]>(
-    strategies.map(() => ({ current: undefined }))
-  );
-  return [strategies, strategyStoreRef];
-}
-
 export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -369,164 +324,33 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const [stableInstance, con, effectCallback] = useSessionBuildModel(
-    callback,
-    config
-  );
+  const [, con] = useSessionBuildModel(callback, config);
   const {
     variables,
     deps,
-    triggerOn = ['mount', 'update', 'manual'],
     manual: man,
+    triggerOn = ['mount', 'update', 'manual'],
     strategy
   } = con;
 
-  const instance = useRealtimeInstance(stableInstance);
-
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    { autoLink: true }
-  );
-
   const manual = !deps && !variables ? true : man;
   const triggerTypes: TriggerType[] = manual ? ['manual'] : triggerOn;
-  const [strategies, strategyStoreRef] = useStrategies(strategy, 'query');
-  const runner = usePromiseCallback<T, (vars: any[]) => Promise<T>>(vars =>
-    effectCallback(...(vars || []))
-  );
-  const keyRef = useRef({});
+  const scopeEffectConfig = useGlobalConfig() || {};
+  const { strategy: strategyCallback } = scopeEffectConfig;
+  const currentStrategies = toStrategies(strategy);
+  const strategies = strategyCallback
+    ? strategyCallback(currentStrategies, 'query')
+    : currentStrategies;
 
-  const versionRef = useRef(0);
-  const caller = function caller(
-    triggerType: TriggerType,
-    vars: any[]
-  ): Promise<SessionState<T>> {
-    const version = versionRef.current + 1;
-    versionRef.current = version;
-    const { state: current, setState } = instance;
-    setState({
-      ...current,
-      isFetching: true,
-      triggerType
-    });
-    setGlobalFetchingKey(keyRef.current);
-    return runner(vars).then(data => {
-      const abandon =
-        version !== versionRef.current ||
-        (instance.state.finalFetchingKey != null &&
-          keyRef.current !== instance.state.finalFetchingKey);
-      return {
-        ...instance.state,
-        ...data,
-        abandon,
-        isFetching: false,
-        triggerType
-      } as SessionState<T>;
-    });
+  const promiseConfig = {
+    ...con,
+    triggerOn: triggerTypes,
+    strategy: ([latest()] as (StrategyType | null | undefined)[]).concat(
+      strategies
+    )
   };
 
-  const callWithStrategy = function callWithStrategy(
-    call: (
-      triggerType: TriggerType,
-      variables: any[]
-    ) => Promise<SessionState<T>>,
-    triggerType: TriggerType,
-    vars?: Parameters<C>
-  ) {
-    const runtimeVariables = vars || variables || [];
-    const requires = {
-      current: () => instance.state,
-      variables: runtimeVariables,
-      runner: () => call(triggerType, runtimeVariables),
-      store: strategyStoreRef,
-      runtimeCache: createRuntimeCache()
-    };
-    return composeStrategies(strategies)(requires);
-  };
-
-  const effectQuery = function effectQuery(isOnMount: boolean) {
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    const triggerType = isOnMount ? 'mount' : 'update';
-    if (triggerTypes.indexOf(triggerType) < 0) {
-      return;
-    }
-    instance.setFetchingKey(keyRef.current);
-    callWithStrategy(caller, triggerType).then(data => {
-      if (!data.abandon) {
-        instance.setState(data);
-        removeGlobalFetchingKey(keyRef.current);
-      }
-      return data;
-    });
-  };
-
-  const query = function query(vars?: Parameters<C>) {
-    const triggerType = 'manual';
-    if (triggerTypes.indexOf(triggerType) < 0) {
-      return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as SessionState<T>);
-      });
-    }
-    instance.setFetchingKey(keyRef.current);
-    return callWithStrategy(caller, triggerType, vars).then(data => {
-      if (!data.abandon) {
-        instance.setState(data);
-        removeGlobalFetchingKey(keyRef.current);
-      }
-      return data;
-    });
-  };
-
-  const execute = usePersistFn(() => query());
-
-  const queryCallback = usePersistFn((...vars: Parameters<C>) => query(vars));
-
-  const effectDeps = deps || variables || [];
-
-  useMount(() => {
-    effectQuery(true);
-  });
-
-  useUpdate(() => {
-    effectQuery(false);
-  }, effectDeps);
-
-  useUpdate(() => {
-    if (stableInstance.state.fetchingKey !== keyRef.current) {
-      return;
-    }
-    instance.setFetchingKey(undefined);
-  }, [stableInstance.state.fetchingKey]);
-
-  const triggerVersionRef = useRef(instance.version);
-  useEffect(() => {
-    if (triggerVersionRef.current === stableInstance.version) {
-      return;
-    }
-    triggerVersionRef.current = stableInstance.version;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    query();
-  }, [stableInstance.version]);
-
-  useEffect(
-    () => () => {
-      removeGlobalFetchingKey(keyRef.current);
-      if (instance.state.fetchingKey !== keyRef.current) {
-        return;
-      }
-      instance.setFetchingKey(undefined);
-    },
-    []
-  );
-
-  return [stableInstance.state, execute, queryCallback];
+  return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
@@ -537,192 +361,25 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const cg = Array.isArray(config) ? { variables: config } : config;
-  const [model, effectCallback, con, isSessionKey] = parseEffect<
-    C,
-    MutationConfig<T, C>
-  >(callback, 'mutation', cg);
-  const {
-    variables,
-    strategy,
-    defaultData,
-    deps,
-    triggerOn = ['manual']
-  } = con || {};
-  const triggerTypes = triggerOn;
-  const hasDefaultData = Object.prototype.hasOwnProperty.call(
-    con || {},
-    'defaultData'
-  );
+  const [, con] = useSessionBuildModel(callback, config);
+  const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
-  const params: [typeof model, SessionState<T>?] = (function computeParams() {
-    if (!isSessionKey) {
-      return [
-        model,
-        defaultPromiseResult(
-          hasDefaultData ? { data: defaultData, loaded: true } : undefined
-        )
-      ];
-    }
-    return hasDefaultData
-      ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
-      : [model];
-  })();
-
-  const stableInstance = useModel(
-    ...(params as [typeof model, SessionState<T>])
-  );
-  const instance = useRealtimeInstance(stableInstance);
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    { autoLink: true }
-  );
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
     : currentStrategies;
-  const runner = usePromiseCallback<T, (vars: any[]) => Promise<T>>(
-    (vars: any[]) => effectCallback(...(vars || []))
-  );
 
-  const strategyStoreRef = useRef<{ current: any }[]>(
-    strategies.map(() => ({ current: undefined }))
-  );
-
-  const keyRef = useRef({});
-  const savingRef = useRef<undefined | Promise<SessionState>>(undefined);
-  const caller = function caller(
-    triggerType: TriggerType,
-    vars: any[]
-  ): Promise<SessionState<T>> {
-    if (savingRef.current) {
-      return savingRef.current.then(d => ({ ...d, abandon: true }));
-    }
-    const { state: current, setState } = instance;
-    setGlobalFetchingKey(keyRef.current);
-    setState({
-      ...current,
-      isFetching: true,
-      triggerType
-    });
-    savingRef.current = runner(vars).then(data => {
-      savingRef.current = undefined;
-      const abandon =
-        instance.state.finalFetchingKey != null &&
-        keyRef.current !== instance.state.finalFetchingKey;
-      return {
-        ...instance.state,
-        ...data,
-        isFetching: false,
-        triggerType,
-        abandon
-      } as SessionState<T>;
-    });
-    return savingRef.current;
+  const promiseConfig = {
+    ...con,
+    triggerOn: triggerTypes,
+    strategy: ([block()] as (StrategyType | null | undefined)[]).concat(
+      strategies
+    )
   };
 
-  const callWithStrategy = function callWithStrategy(
-    call: (triggerType: TriggerType, vars: any[]) => Promise<SessionState<T>>,
-    triggerType: TriggerType,
-    vars?: Parameters<C>
-  ) {
-    const runtimeVariables = vars || variables || [];
-    const requires = {
-      current: () => instance.state,
-      variables: runtimeVariables,
-      runner: () => call(triggerType, runtimeVariables),
-      store: strategyStoreRef,
-      runtimeCache: createRuntimeCache()
-    };
-    return composeStrategies(strategies)(requires);
-  };
-
-  const effectQuery = function effectQuery(isOnMount: boolean) {
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    const triggerType = isOnMount ? 'mount' : 'update';
-    if (triggerTypes.indexOf(triggerType) < 0) {
-      return;
-    }
-    instance.setFetchingKey(keyRef.current);
-    callWithStrategy(caller, triggerType).then(data => {
-      if (!data.abandon) {
-        instance.setState(data);
-        removeGlobalFetchingKey(keyRef.current);
-      }
-      return data;
-    });
-  };
-
-  const mutate = function mutate(vars?: Parameters<C>) {
-    const triggerType = 'manual';
-    if (triggerTypes.indexOf(triggerType) < 0) {
-      return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true });
-      });
-    }
-    instance.setFetchingKey(keyRef.current);
-    return callWithStrategy(caller, triggerType, vars).then(data => {
-      if (!data.abandon) {
-        instance.setState(data);
-        removeGlobalFetchingKey(keyRef.current);
-      }
-      return data;
-    });
-  };
-
-  const execute = usePersistFn(() => mutate());
-
-  const mutateCallback = usePersistFn((...vars: Parameters<C>) => mutate(vars));
-
-  const triggerVersionRef = useRef(stableInstance.version);
-
-  const effectDeps = deps || variables || [];
-
-  useMount(() => {
-    effectQuery(true);
-  });
-
-  useUpdate(() => {
-    effectQuery(false);
-  }, effectDeps);
-
-  useUpdate(() => {
-    if (stableInstance.state.fetchingKey !== keyRef.current) {
-      return;
-    }
-    instance.setFetchingKey(undefined);
-  }, [stableInstance.state.fetchingKey]);
-
-  useEffect(() => {
-    if (triggerVersionRef.current === stableInstance.version) {
-      return;
-    }
-    triggerVersionRef.current = stableInstance.version;
-    const currentFetchingKey = instance.state.fetchingKey;
-    if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return;
-    }
-    mutate();
-  }, [stableInstance.version]);
-
-  useEffect(
-    () => () => {
-      removeGlobalFetchingKey(keyRef.current);
-      if (instance.state.fetchingKey !== keyRef.current) {
-        return;
-      }
-      instance.setFetchingKey(undefined);
-    },
-    []
-  );
-
-  return [stableInstance.state, execute, mutateCallback];
+  return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
