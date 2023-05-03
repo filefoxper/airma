@@ -6,7 +6,7 @@ import {
 } from '@airma/react-state';
 import { createContext, createElement, useContext, useMemo } from 'react';
 import { globalController } from './model';
-import { GlobalConfig, GlobalSessionProviderProps } from './type';
+import type { GlobalConfig, GlobalSessionProviderProps } from './type';
 
 export const defaultIsFetchingState: any[] = [];
 

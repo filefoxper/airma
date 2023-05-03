@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   createKey,
   useControlledModel,
@@ -175,18 +175,22 @@ const conditionKey = createKey(conditionModel, {
   creating: false
 });
 
-const Condition = memo(() => {
-  const q = { ...defaultCondition, name: 'Mr' };
-  const { displayQuery, create, changeDisplay, query } = useModel(
-    conditionKey,
-    {
-      valid: q,
-      display: q,
-      creating: false
-    }
-  );
+const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
+  const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
+  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
 
-  const [{ isFetching }] = useSession(fetchSessionKey, 'query');
+  const [{ data }, conditionTrigger] = useQuery(fetchSessionKey, {
+    variables: [q],
+    defaultData: [],
+    strategy: Strategy.success((a, s) => console.log(a, s))
+  });
+
+  const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
+
+  const handleTrigger = () => {
+    conditionTrigger();
+    parentTrigger();
+  };
 
   return (
     <div>
@@ -211,6 +215,12 @@ const Condition = memo(() => {
       <button type="button" style={{ marginLeft: 12 }} onClick={query}>
         query
       </button>
+      <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
+        trigger
+      </button>
+      <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
+        manual
+      </button>
       <button
         type="button"
         disabled={isFetching}
@@ -223,28 +233,13 @@ const Condition = memo(() => {
   );
 });
 
-function Child() {
-  const add = useSelector(testKey, s => s.add);
-  useEffect(() => {
-    add();
-  }, []);
-  return <button onClick={add}>test</button>;
-}
-
-function Child1({ reset }: { reset: () => number }) {
-  useEffect(() => {
-    reset();
-  }, []);
-  return <button onClick={reset}>test</button>;
-}
-
 export default provide({ conditionKey, fetchSessionKey, testKey })(
   function App() {
     const { validQuery, creating, cancel } = useSelector(conditionKey, s =>
       pick(s, 'validQuery', 'creating', 'cancel')
     );
 
-    const [{ data }] = useQuery(fetchSessionKey, {
+    const [{ data }, t] = useQuery(fetchSessionKey, {
       variables: [validQuery],
       defaultData: [],
       strategy: Strategy.success((a, s) => console.log(a, s))
@@ -264,7 +259,7 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
 
     return (
       <div style={{ padding: '12px 24px' }}>
-        <Condition />
+        <Condition parentTrigger={t} />
         <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
           {creating ? <Creating onClose={cancel} /> : <Info />}
         </div>
@@ -278,9 +273,6 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
           ))}
         </div>
         <div>{state}</div>
-        <button onClick={() => setState(s => s + 1)}>controll</button>
-        <Child />
-        <Child1 reset={reset} />
       </div>
     );
   }

@@ -1,6 +1,11 @@
-import { createKey } from '@airma/react-state';
-import type { SessionState, SessionType } from './type';
-import { SessionKey } from './type';
+import { createKey, useModel } from '@airma/react-state';
+import type {
+  SessionState,
+  SessionType,
+  SessionKey,
+  PromiseCallback,
+  QueryConfig
+} from './type';
 
 export function effectModel(state: SessionState & { version?: number }) {
   const { version, ...rest } = state;
@@ -24,6 +29,17 @@ export function effectModel(state: SessionState & { version?: number }) {
         fetchingKey,
         finalFetchingKey:
           fetchingKey != null ? fetchingKey : state.finalFetchingKey
+      });
+    },
+    removeFetchingKey(
+      fetchingKey: unknown
+    ): SessionState & { version?: number } {
+      if (state.fetchingKey !== fetchingKey) {
+        return state;
+      }
+      return mergeVersion({
+        ...state,
+        fetchingKey: undefined
       });
     },
     trigger(): SessionState & { version?: number } {
@@ -65,6 +81,66 @@ export const defaultPromiseResult = (config?: {
   loaded: false,
   ...config
 });
+
+function parseEffect<
+  E extends (...p: any[]) => any,
+  C extends Record<string, any> = Record<string, any>
+>(
+  callback: E | SessionKey<E>,
+  sessionType: SessionType,
+  config?: C
+): [SessionKey<E>, E, C | undefined, boolean] {
+  const { pipe } = callback as SessionKey<E>;
+  const isSessionKey = typeof pipe === 'function';
+  if (!isSessionKey) {
+    return [effectModel as SessionKey<E>, callback as E, config, false];
+  }
+  const { effect } = callback as SessionKey<E>;
+  const [effectCallback, { sessionType: keyType }] = effect;
+  if (keyType != null && keyType !== sessionType) {
+    throw new Error(
+      `The sessionType is not matched, can not use '${keyType} type' sessionKey with '${
+        sessionType === 'query' ? 'useQuery' : 'useMutation'
+      }'`
+    );
+  }
+  return [callback as SessionKey<E>, effectCallback, config, true];
+}
+
+export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>,
+  config?: QueryConfig<T, C> | Parameters<C>
+): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
+  const cg = Array.isArray(config) ? { variables: config } : config;
+  const [model, effectCallback, con, isSessionKey] = parseEffect<
+    C,
+    QueryConfig<T, C>
+  >(callback, 'query', cg);
+  const hasDefaultData = Object.prototype.hasOwnProperty.call(
+    con || {},
+    'defaultData'
+  );
+  const configuration = con || {};
+  const { defaultData } = configuration;
+  const modelParams: [typeof model, SessionState<T>?] =
+    (function computeParams() {
+      if (!isSessionKey) {
+        return [
+          model,
+          defaultPromiseResult(
+            hasDefaultData ? { data: defaultData, loaded: true } : undefined
+          )
+        ];
+      }
+      return hasDefaultData
+        ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+        : [model];
+    })();
+  const stableInstance = useModel(
+    ...(modelParams as [typeof model, SessionState<T>])
+  );
+  return [stableInstance, configuration, effectCallback];
+}
 
 export function createSessionKey<
   E extends (...params: any[]) => Promise<any>,

@@ -13,6 +13,9 @@ export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
     setFetchingKey: (
       fetchingKey: unknown
     ) => SessionState & { version?: number };
+    removeFetchingKey: (
+      fetchingKey: unknown
+    ) => SessionState & { version?: number };
     trigger: () => SessionState & { version?: number };
   }
 > & {
@@ -91,7 +94,7 @@ export type StrategyRequires<T = any> = {
   };
 };
 
-export type StrategyCollectionType<T> =
+export type StrategyCollectionType<T = any> =
   | undefined
   | null
   | StrategyType<T>

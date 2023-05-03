@@ -46,4 +46,19 @@ function useUpdate(callback: () => (() => void) | void, deps?: any[]) {
   }, deps);
 }
 
-export { usePersistFn, useMount, useUpdate };
+function useUnmount(destroy: () => void): void {
+  const mountRef = useRef(false);
+  useEffect(() => {
+    mountRef.current = true;
+    return function des() {
+      const mounted = mountRef.current;
+      mountRef.current = false;
+      if (!mounted) {
+        return;
+      }
+      destroy();
+    };
+  }, []);
+}
+
+export { usePersistFn, useMount, useUnmount, useUpdate };

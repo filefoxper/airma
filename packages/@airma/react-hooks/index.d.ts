@@ -8,3 +8,5 @@ export declare function useUpdate(
   callback: () => (() => void) | void,
   deps?: any[]
 ): void;
+
+export declare function useUnmount(destroy: () => void): void;
