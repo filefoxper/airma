@@ -96,6 +96,36 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     }
     generateDispatch(updater)({ state: updater.state, type: '' });
   }
+
+  function subscribe(dispatchCall: Dispatch): boolean {
+    const { dispatches, controlled: isControlled } = updater;
+    const copied = [...dispatches];
+    const exist = copied.indexOf(dispatchCall) >= 0;
+    if (exist) {
+      return false;
+    }
+    if (isControlled) {
+      updater.dispatches = [dispatchCall];
+      return false;
+    }
+    updater.dispatches = copied.concat(dispatchCall);
+    return true;
+  }
+
+  function notice(dispatchCall: Dispatch) {
+    dispatchCall({ state: updater.state, type: '' });
+  }
+
+  function disconnect(dispatchCall: Dispatch | undefined) {
+    if (!dispatchCall) {
+      updater.dispatches = [];
+      return;
+    }
+    const { dispatches } = updater;
+    const copied = [...dispatches];
+    updater.dispatches = copied.filter(d => d !== dispatchCall);
+  }
+
   const agent = createProxy(defaultModel, {
     get(target: T, p: string): unknown {
       const value = updater.current[p];
@@ -143,31 +173,30 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       update(updater.reducer, { state, cache: true });
     },
     notice(): void {
-      generateDispatch(updater)({ state: updater.state, type: '' });
+      notice(generateDispatch(updater));
+    },
+    tunnel(dispatchCall) {
+      return {
+        connect() {
+          const needNotice = subscribe(dispatchCall);
+          if (!needNotice) {
+            return;
+          }
+          notice(dispatchCall);
+        },
+        disconnect() {
+          disconnect(dispatchCall);
+        }
+      };
     },
     connect(dispatchCall) {
-      const { dispatches, controlled } = updater;
-      const copied = [...dispatches];
-      const exist = copied.indexOf(dispatchCall) >= 0;
-      if (exist) {
+      const needNotice = subscribe(dispatchCall);
+      if (!needNotice) {
         return;
       }
-      if (controlled) {
-        updater.dispatches = [dispatchCall];
-        return;
-      }
-      updater.dispatches = copied.concat(dispatchCall);
-      dispatchCall({ state: updater.state, type: '' });
+      notice(dispatchCall);
     },
-    disconnect(dispatchCall) {
-      if (!dispatchCall) {
-        updater.dispatches = [];
-        return;
-      }
-      const { dispatches } = updater;
-      const copied = [...dispatches];
-      updater.dispatches = copied.filter(d => d !== dispatchCall);
-    }
+    disconnect
   };
 }
 

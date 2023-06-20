@@ -49,6 +49,10 @@ export declare interface Connection<
   ) => void;
   updateState: (state: S) => void;
   notice: () => void;
+  tunnel: (dispatch: Dispatch) => {
+    connect: () => void;
+    disconnect: () => void;
+  };
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }

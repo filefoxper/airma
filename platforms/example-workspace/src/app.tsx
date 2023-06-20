@@ -64,6 +64,36 @@ const test = (state: number) => {
 
 const testKey = createKey(test, 0);
 
+const conditionModel = (query: Query) => {
+  const handleQuery = () => {
+    return { ...query, valid: { ...query.display } };
+  };
+  return {
+    displayQuery: query.display,
+    validQuery: query.valid,
+    creating: query.creating,
+    create() {
+      return { ...query, creating: true };
+    },
+    submit() {
+      return { ...query, ...handleQuery(), creating: false };
+    },
+    cancel() {
+      return { ...query, creating: false };
+    },
+    changeDisplay(display: Partial<Condition>) {
+      return { ...query, display: { ...query.display, ...display } };
+    },
+    query: handleQuery
+  };
+};
+
+const conditionKey = createKey(conditionModel, {
+  valid: defaultCondition,
+  display: defaultCondition,
+  creating: false
+});
+
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
   if (isFetching) {
@@ -73,6 +103,7 @@ const Info = memo(() => {
 });
 
 const Creating = memo(({ onClose }: { onClose: () => any }) => {
+  const creating = useSelector(conditionKey, s => s.creating);
   const { user, changeUsername, changeName } = useModel(
     (userData: Omit<User, 'id'>) => {
       return {
@@ -94,6 +125,13 @@ const Creating = memo(({ onClose }: { onClose: () => any }) => {
       age: 10
     }
   );
+
+  useEffect(() => {
+    console.log('updating...', creating);
+    return () => {
+      console.log('unmounting...', creating);
+    };
+  }, [creating]);
 
   const [, query] = useSession(fetchSessionKey);
 
@@ -143,36 +181,6 @@ const Creating = memo(({ onClose }: { onClose: () => any }) => {
       </div>
     </div>
   );
-});
-
-const conditionModel = (query: Query) => {
-  const handleQuery = () => {
-    return { ...query, valid: { ...query.display } };
-  };
-  return {
-    displayQuery: query.display,
-    validQuery: query.valid,
-    creating: query.creating,
-    create() {
-      return { ...query, creating: true };
-    },
-    submit() {
-      return { ...query, ...handleQuery(), creating: false };
-    },
-    cancel() {
-      return { ...query, creating: false };
-    },
-    changeDisplay(display: Partial<Condition>) {
-      return { ...query, display: { ...query.display, ...display } };
-    },
-    query: handleQuery
-  };
-};
-
-const conditionKey = createKey(conditionModel, {
-  valid: defaultCondition,
-  display: defaultCondition,
-  creating: false
 });
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
