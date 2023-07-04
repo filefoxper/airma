@@ -228,3 +228,84 @@ export declare function useIsFetching(
 ### 返回
 
 boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。如果没有指定任何参数，同时也不在 `GlobalSessionProvider` 范围内，则报出异常。
+
+## useLazyComponent
+
+```ts
+function useLazyComponent<T extends ComponentType<any> | ExoticComponent<any>>(
+  componentLoader: () => Promise<T>,
+  ...deps: (AbstractSessionState | AbstractSessionResult)[]
+): LazyExoticComponent<T>;
+```
+
+### 参数
+
+* componentLoader - 加载组件的回调函数。该函数返回一个以组件为 resolve 值的 promise 对象。
+* deps - `useQuery` 或 `useMutation` 返回的会话状态集合.
+
+### 返回
+
+一个 React.lazy 组件。
+
+### 作用
+
+使用 `useQuery`、 `useMutation` 或 `useSession` 的加载结果来初始化组件。
+
+### 例子
+
+```ts
+import React, {Suspense} from 'react';
+import {
+  GlobalSessionProvider,
+  Strategy,
+  useQuery,
+  useLazyComponent
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+import {currentUserKey, fetchUsersKey, fetchGroupsKey} from './globalSessions'; 
+
+const config: GlobalConfig = {
+  strategy:(
+    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
+  )=>[...s, Strategy.error((e)=>console.log(e))]
+}
+
+const App = ()=>{
+  const userSession = useQuery(currentUserKey, []);
+  const [{data}] = userSession;
+  const usersSession = useQuery(fetchUsersKey, {
+    variables:[data],
+    triggerOn: [ 'update' ],
+  });
+  const groupSession = useQuery(fetchGroupsKey, {
+    variables:[data],
+    triggerOn: [ 'update' ],
+  });
+
+  // 在制定会话及组件都加载后返回一个 React.lazy 组件
+  const Container = useLazyComponent(()=>import('./container'), 
+    userSession,
+    usersSession,
+    groupSession
+  )
+  ......
+  // 最好使用 Suspense 组件协助加载
+  return (
+    <div>
+      ......
+      <Suspense fallback={...}>
+        <Container/>
+      </Suspense>
+    </div>
+  )
+}
+
+......
+{/* Set a ClientConfig */}
+<GlobalSessionProvider 
+  config={Strategy.error(e => console.log(e))}
+  keys = {{fetchUsersKey, fetchGroupsKey}}
+>
+  <App/>
+</GlobalSessionProvider>
+```

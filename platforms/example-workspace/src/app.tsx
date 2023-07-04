@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   createKey,
   useControlledModel,
@@ -11,6 +11,8 @@ import {
   createSessionKey,
   provide,
   Strategy,
+  useIsFetching,
+  useLazyComponent,
   useMutation,
   useQuery,
   useSession
@@ -48,7 +50,18 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
+  rest('/api/user')
+    .path('list')
+    .setParams(validQuery)
+    .get<User[]>()
+    .then(
+      d =>
+        new Promise<User[]>(resolve => {
+          setTimeout(() => {
+            resolve(d);
+          }, 2000);
+        })
+    );
 
 export const fetchSessionKey = createSessionKey(userQuery);
 
@@ -91,7 +104,7 @@ const conditionModel = (query: Query) => {
 const conditionKey = createKey(conditionModel, {
   valid: defaultCondition,
   display: defaultCondition,
-  creating: false
+  creating: true
 });
 
 const Info = memo(() => {
@@ -187,13 +200,17 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
 
-  const [{ data }, conditionTrigger] = useQuery(fetchSessionKey, {
+  const session = useQuery(fetchSessionKey, {
     variables: [q],
     defaultData: [],
     strategy: Strategy.success((a, s) => console.log(a, s))
   });
 
+  const [state, conditionTrigger] = session;
+
   const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
+
+  useIsFetching(state);
 
   const handleTrigger = () => {
     conditionTrigger();
@@ -247,11 +264,18 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
       pick(s, 'validQuery', 'creating', 'cancel')
     );
 
-    const [{ data }, t] = useQuery(fetchSessionKey, {
+    const querySession = useQuery(fetchSessionKey, {
       variables: [validQuery],
       defaultData: [],
       strategy: Strategy.success((a, s) => console.log(a, s))
     });
+
+    const [{ data }, t] = querySession;
+
+    const Creator = useLazyComponent(
+      () => Promise.resolve(Creating) as Promise<typeof Creating>,
+      querySession
+    );
 
     const [s, setState] = useState(3);
 
@@ -269,7 +293,13 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
       <div style={{ padding: '12px 24px' }}>
         <Condition parentTrigger={t} />
         <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-          {creating ? <Creating onClose={cancel} /> : <Info />}
+          {creating ? (
+            <Suspense>
+              <Creator onClose={cancel} />
+            </Suspense>
+          ) : (
+            <Info />
+          )}
         </div>
         <div>
           {data.map(user => (

@@ -67,3 +67,7 @@
 * optimize `instance` to `stable instance` and `realtime instance`.
 * add API `useRealtimeInstance`.
 * add API `useIsModelMatchedInStore`
+
+## v 18.0.0 2023-07-03
+
+* refact how to `dispatch` state.

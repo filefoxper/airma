@@ -6,7 +6,6 @@ module.exports = function config() {
   return {
     externals: {
       react:'react',
-      'react-dom': 'react-dom',
       '@airma/react-hooks':'@airma/react-hooks',
       '@airma/react-state':'@airma/react-state'
     },

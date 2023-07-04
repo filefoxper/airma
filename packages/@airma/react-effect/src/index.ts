@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react';
+import {
+  ComponentType,
+  ExoticComponent,
+  lazy,
+  LazyExoticComponent,
+  useEffect,
+  useMemo,
+  useRef
+} from 'react';
 import {
   StoreProvider,
   useIsModelMatchedInStore,
@@ -22,9 +30,12 @@ import type {
   PromiseData,
   TriggerType,
   SessionKey,
-  SessionType
+  SessionType,
+  AbstractSessionState,
+  AbstractSessionResult,
+  PromiseHolder
 } from './libs/type';
-import { useSessionBuildModel } from './libs/model';
+import { parseConfig, useSessionBuildModel } from './libs/model';
 import {
   defaultIsFetchingState,
   globalControllerKey,
@@ -199,7 +210,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const [, con] = useSessionBuildModel(callback, config);
+  const con = parseConfig(callback, config);
   const {
     variables,
     deps,
@@ -236,7 +247,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const [, con] = useSessionBuildModel(callback, config);
+  const con = parseConfig(callback, config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
   const scopeEffectConfig = useGlobalConfig() || {};
@@ -285,9 +296,18 @@ export function useSession<T, C extends PromiseCallback<T>>(
   return session;
 }
 
-export function useIsFetching(...sessionStates: SessionState[]): boolean {
+export function useIsFetching(
+  ...sessionStates: (AbstractSessionState | AbstractSessionResult)[]
+): boolean {
   const isLocalFetching = useMemo(() => {
-    return sessionStates.some(d => d.isFetching);
+    const states = sessionStates.map(d => {
+      if (!Array.isArray(d)) {
+        return d;
+      }
+      const [s] = d;
+      return s;
+    });
+    return states.some(d => d.isFetching);
   }, sessionStates);
   const isMatchedInStore = useIsModelMatchedInStore(globalControllerKey);
   const { isFetching: isGlobalFetching } = useModel(
@@ -304,6 +324,56 @@ export function useIsFetching(...sessionStates: SessionState[]): boolean {
     return isGlobalFetching;
   }
   return isLocalFetching;
+}
+
+export function useLazyComponent<
+  T extends ComponentType<any> | ExoticComponent<any>
+>(
+  componentLoader: () => Promise<T | { default: T }>,
+  ...deps: (AbstractSessionState | AbstractSessionResult)[]
+): LazyExoticComponent<T> {
+  const holders = useMemo(() => {
+    return deps.map(d => {
+      const promiseHolder: PromiseHolder = { loaded: false } as PromiseHolder;
+      promiseHolder.promise = new Promise((resolve, reject) => {
+        promiseHolder.resolve = resolve;
+        promiseHolder.reject = reject;
+      });
+      return promiseHolder;
+    });
+  }, []);
+  const holdersRef = useRef(holders);
+
+  useEffect(() => {
+    const { current: hs } = holdersRef;
+    deps.forEach((value, index) => {
+      const state = Array.isArray(value) ? value[0] : value;
+      const holder = hs[index];
+      if (state.isError && !holder.loaded) {
+        holder.loaded = true;
+        holder.reject(state.error);
+        return;
+      }
+      if (state.sessionLoaded && !holder.loaded) {
+        holder.loaded = true;
+        holder.resolve(true);
+      }
+    });
+  }, [...deps]);
+
+  return useMemo(() => {
+    const { current: hs } = holdersRef;
+    const promises = hs.map(({ promise }) => promise);
+    return lazy(
+      () =>
+        Promise.all([componentLoader(), ...promises]).then(([comp]) => {
+          if ((comp as { default: T }).default) {
+            return comp as { default: T };
+          }
+          return { default: comp };
+        }) as Promise<{ default: T }>
+    );
+  }, []);
 }
 
 export const SessionProvider = StoreProvider;

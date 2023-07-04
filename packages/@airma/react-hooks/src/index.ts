@@ -26,19 +26,23 @@ function useMount(callback: () => (() => void) | void) {
   }, []);
 }
 
-function useUpdate(callback: () => (() => void) | void, deps?: any[]) {
-  const depsRef = useRef<undefined | { deps: any[] }>(undefined);
+function useUpdate<T extends any[]>(
+  callback: (prevDeps: undefined | T) => (() => void) | void,
+  deps?: T
+) {
+  const depsRef = useRef<undefined | { deps: T }>(undefined);
 
   useEffect(() => {
     const { current } = depsRef;
-    depsRef.current = { deps: deps || [] };
+    depsRef.current = { deps: deps || ([] as unknown as T) };
     if (!current) {
       return noop;
     }
-    if (shallowEqual(current.deps, deps || [])) {
+    const prevDeps = current.deps;
+    if (shallowEqual(prevDeps, deps || [])) {
       return noop;
     }
-    const result = callback();
+    const result = callback(prevDeps);
     if (typeof result === 'function') {
       return result;
     }

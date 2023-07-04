@@ -1,5 +1,6 @@
 import { ModelKey, ModelKeys } from '@airma/react-state';
 import { ReactNode } from 'react';
+import { MCC, PCR } from '../../index';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
@@ -42,31 +43,31 @@ export type PromiseData<T = any> = {
   isError?: boolean;
 };
 
-type LoadedSessionState<T> = {
+export interface AbstractSessionState {
+  data: unknown;
+  variables: any[] | undefined;
+  error?: any;
+  isError: boolean;
+  isFetching: boolean;
+  fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
+  abandon: boolean;
+  triggerType: undefined | TriggerType;
+  loaded: boolean;
+  sessionLoaded: boolean;
+}
+
+interface LoadedSessionState<T> extends AbstractSessionState {
   data: T;
   variables: any[] | undefined;
-  error?: any;
-  isError: boolean;
-  isFetching: boolean;
-  fetchingKey?: unknown;
-  finalFetchingKey?: unknown;
-  abandon: boolean;
-  triggerType: undefined | TriggerType;
   loaded: true;
-};
+}
 
-type UnloadedSessionState = {
+interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
   variables: any[] | undefined;
-  error?: any;
-  isError: boolean;
-  isFetching: boolean;
-  fetchingKey?: unknown;
-  finalFetchingKey?: unknown;
-  abandon: boolean;
-  triggerType: undefined | TriggerType;
   loaded: false;
-};
+}
 
 export type SessionState<T = any> =
   | LoadedSessionState<T>
@@ -144,4 +145,31 @@ export type Status = {
 export type SessionProviderProps = {
   value: ModelKeys;
   children?: ReactNode;
+};
+
+export type LoadedSessionResult<
+  D extends PromiseCallback<any> | SessionKey<any>
+> = [
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+];
+
+export type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+];
+
+export type AbstractSessionResult = [
+  SessionState,
+  () => Promise<SessionState>,
+  ((...variables: any[]) => Promise<SessionState>)?
+];
+
+export type PromiseHolder = {
+  promise: Promise<any>;
+  resolve: (data: any) => void;
+  reject: (data: any) => void;
+  loaded: boolean;
 };

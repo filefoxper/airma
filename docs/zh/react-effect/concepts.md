@@ -187,6 +187,8 @@ type SessionState<T> = {
   abandon: boolean;
   triggerType: undefined | TriggerType;
   loaded: boolean;
+  sessionLoaded: boolean;
+  variables: any[] | undefined;
 }
 ```
 
@@ -198,7 +200,9 @@ type SessionState<T> = {
 * isFetching - 请求是否正在进行中，在请求开始时会被设置为 true，结束时无论失败与否都会被重置为 false，默认为 false。
 * abandon - 标识请求产生的`会话结果`是否被废弃，被废弃的会话结果不能被渲染为`会话状态`，所以在`会话状态`（`state`）中，该值永远为 `false`，只有在策略环境中，该值才可能为 `true`。
 * triggerType - 触发类型，`'mount' | 'update' | 'manual'` 分别对应触发模式的三种类型。每种触发模式都会让`会话结果`带上相应的触发类型。
-* loaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。
+* loaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。 (注意，当设置 defaultData 属性后，该值默认为 true)
+* sessionLoaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。 (该参数不受任何配置信息影响)
+* variables - 产生当前会话结果的变量数组，在第一次运行前，该值为 undefined。
 
 ### 会话触发器
 

@@ -79,6 +79,7 @@ export const defaultPromiseResult = (config?: {
   abandon: false,
   triggerType: undefined,
   loaded: false,
+  sessionLoaded: false,
   ...config
 });
 
@@ -107,6 +108,15 @@ function parseEffect<
   return [callback as SessionKey<E>, effectCallback, config, true];
 }
 
+export function parseConfig<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>,
+  config?: QueryConfig<T, C> | Parameters<C>
+): QueryConfig<T, C> {
+  const cg = Array.isArray(config) ? { variables: config } : config;
+  const [, , con] = parseEffect<C, QueryConfig<T, C>>(callback, 'query', cg);
+  return con || {};
+}
+
 export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -116,12 +126,12 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
     C,
     QueryConfig<T, C>
   >(callback, 'query', cg);
-  const hasDefaultData = Object.prototype.hasOwnProperty.call(
-    con || {},
-    'defaultData'
-  );
   const configuration = con || {};
   const { defaultData } = configuration;
+  const hasDefaultData = Object.prototype.hasOwnProperty.call(
+    configuration,
+    'defaultData'
+  );
   const modelParams: [typeof model, SessionState<T>?] =
     (function computeParams() {
       if (!isSessionKey) {

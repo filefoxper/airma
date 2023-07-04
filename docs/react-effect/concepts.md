@@ -30,9 +30,11 @@ API `useQuery` and `useMutation` returns a tuple array, the first element is the
 * error - Last failed promise rejection. It can be overrided to be `undefined` by a next promise resolving, or be overrided by a next failed promise rejection.
 * isFetching - When the promise callback is launched, it turns to be `true`. When the promise returned by callback is resolved or rejected, it turns to be `false`.
 * isError - Use a `undefined error` field value to estimate if the query promise is rejected is incredible. It is much better to use `isError` to estimate if the last promise is rejected.
-* loaded - It shows if the data had been resolved yet. If it is `true`, that means there is at least one successful promise happened.
+* loaded - It shows if the data had been resolved yet. If it is `true`, that means there is at least one successful promise happened. (Be careful, if you have set `defaultData` in config, it should always be `true`)
+* sessionLoaded - It shows if the data had been resolved yet. If it is `true`, that means there is at least one successful promise happened.
 * abandon - It marks if a promise result should be set into state. It should always be `false` in state. It is more useful in a strategy setting.
 * triggerType - It is `undefined` before callback launched. It has 3 types: `mount`, `update`, `manual`. And you can use it to learn how the current state is generated.
+* variables - It is a variables array which generates the current session result.
 
 Example for state:
 
@@ -69,6 +71,8 @@ const App = ()=>{
         isError,
         // boolean
         loaded,
+        // boolean
+        sessionLoaded,
         // undefined | 'mount' | 'update' | 'manual'
         triggerType,
         // false

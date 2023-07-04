@@ -285,6 +285,7 @@ import {
   useQuery
 } from '@airma/react-effect';
 import type {GlobalConfig} from '@airma/react-effect';
+import {fetchUsers, fetchGroups} from './globalSessions'; 
 
 // The GlobalConfig only support rebuild strategy currently.
 const config: GlobalConfig = {
@@ -304,7 +305,7 @@ const config: GlobalConfig = {
 const App = ()=>{
   // if the `fetchUsers` is failed,
   // the global config strategy `Strategy.error` works.
-  useQuery(fetchUsers, [data]);
+  useQuery(fetchUsers, []);
   useQuery(fetchGroups, {
     variables: [...ids],
     strategy: [
@@ -347,3 +348,80 @@ A boolean data, if any of sessionStates is in `fetching`, it returns true.
 Explain
 
 If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalProvider`.
+
+## useLazyComponent
+
+```ts
+function useLazyComponent<T extends ComponentType<any> | ExoticComponent<any>>(
+  componentLoader: () => Promise<T>,
+  ...deps: (AbstractSessionState | AbstractSessionResult)[]
+): LazyExoticComponent<T>;
+```
+
+Parameters
+
+* componentLoader - A callback returns a promise which always resolve a componment.
+* deps - The states of `useQuery` or `useMutation` for detecting.
+
+Explain
+
+This hook API is used for loading component with its dependecy sessions. It accepts a callback which returns a promise with a component result, and sessionStates from `useQuery`, `useMutation` or `useSession`.
+
+Example
+
+```ts
+import React, {Suspense} from 'react';
+import {
+  GlobalSessionProvider,
+  Strategy,
+  useQuery,
+  useLazyComponent
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+import {currentUserKey, fetchUsersKey, fetchGroupsKey} from './globalSessions'; 
+
+// The GlobalConfig only support rebuild strategy currently.
+const config: GlobalConfig = {
+  strategy:(
+    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
+  )=>[...s, Strategy.error((e)=>console.log(e))]
+}
+
+const App = ()=>{
+  const userSession = useQuery(currentUserKey, []);
+  const [{data}] = userSession;
+  const usersSession = useQuery(fetchUsersKey, {
+    variables:[data],
+    triggerOn: [ 'update' ],
+  });
+  const groupSession = useQuery(fetchGroupsKey, {
+    variables:[data],
+    triggerOn: [ 'update' ],
+  });
+
+  // It can help you to load component with its dependency sessions.
+  const Container = useLazyComponent(()=>import('./container'), 
+    userSession,
+    usersSession,
+    groupSession
+  )
+  ......
+  return (
+    <div>
+      ......
+      <Suspense fallback={...}>
+        <Container/>
+      </Suspense>
+    </div>
+  )
+}
+
+......
+{/* Set a ClientConfig */}
+<GlobalSessionProvider 
+  config={Strategy.error(e => console.log(e))}
+  keys = {{fetchUsersKey, fetchGroupsKey}}
+>
+  <App/>
+</GlobalSessionProvider>
+```

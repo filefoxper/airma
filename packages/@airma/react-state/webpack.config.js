@@ -7,7 +7,7 @@ module.exports = function config() {
     externals: {
       '@airma/core': '@airma/core',
       react:'react',
-      'react-dom': 'react-dom'
+      '@airma/react-hooks':'@airma/react-hooks'
     },
     entry: {
       bundle: path.join(__dirname, 'src', 'index.ts')

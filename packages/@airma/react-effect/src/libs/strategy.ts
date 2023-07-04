@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import {
-  PromiseData,
   SessionState,
   StrategyCollectionType,
   StrategyType,
@@ -27,12 +26,15 @@ export function composeStrategies(
         };
       }, defaultStrategy);
     return callback(v).then(d => {
-      const { loaded } = v.current();
+      const { loaded, sessionLoaded } = v.current();
       const { abandon, isError, isFetching } = d;
       const currentLoaded = loaded || (!abandon && !isError && !isFetching);
+      const currentIsSessionLoaded =
+        sessionLoaded || (!abandon && !isError && !isFetching);
       return {
         ...d,
-        loaded: currentLoaded
+        loaded: currentLoaded,
+        sessionLoaded: currentIsSessionLoaded
       };
     });
   };

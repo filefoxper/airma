@@ -184,7 +184,9 @@ const App = ()=>{
         // boolean
         isError,
         // boolean
-        loaded
+        loaded,
+        // boolean
+        sessionLoaded
     } = state;
 
     ......
