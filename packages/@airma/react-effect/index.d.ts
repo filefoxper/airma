@@ -219,7 +219,7 @@ export function useIsFetching(
 export function useLazyComponent<
   T extends ComponentType<any> | ExoticComponent<any>
 >(
-  componentLoader: () => Promise<T>,
+  componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): LazyExoticComponent<T>;
 
