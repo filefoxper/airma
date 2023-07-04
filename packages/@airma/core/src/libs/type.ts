@@ -39,12 +39,27 @@ export interface Connection<
   ) => void;
   updateState: (state: S) => void;
   notice: () => void;
+  tunnel: (dispatch: Dispatch) => {
+    connect: () => void;
+    disconnect: () => void;
+  };
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
 
+export interface ActionWrap {
+  prev?: ActionWrap;
+  value: Action;
+  next?: ActionWrap;
+}
+
+export interface FirstActionWrap extends ActionWrap {
+  tail: ActionWrap;
+}
+
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
+  dispatching?: FirstActionWrap;
   current: T;
   controlled: boolean;
   reducer: AirReducer<S, T>;

@@ -5,7 +5,9 @@ import type {
   Updater,
   Connection,
   FactoryInstance,
-  Dispatch
+  Dispatch,
+  ActionWrap,
+  FirstActionWrap
 } from './type';
 import { createProxy, toMapObject } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
@@ -13,12 +15,58 @@ import { Collection, Creation, ModelFactoryStore } from './type';
 function generateDispatch<S, T extends AirModelInstance>(
   updater: Updater<S, T>
 ) {
+  function pendAction(value: Action) {
+    const { dispatching } = updater;
+    if (!dispatching) {
+      const wrap = { value } as FirstActionWrap;
+      wrap.tail = wrap;
+      updater.dispatching = wrap;
+      return;
+    }
+    const { tail } = dispatching;
+    const current: ActionWrap = { prev: tail, value };
+    tail.next = current;
+    dispatching.tail = current;
+  }
+
+  function unshiftAction() {
+    const { dispatching } = updater;
+    if (!dispatching) {
+      return undefined;
+    }
+    const { next, tail } = dispatching;
+    if (tail === dispatching || !next) {
+      updater.dispatching = undefined;
+      return dispatching;
+    }
+    next.prev = undefined;
+    const newFirst = next as FirstActionWrap;
+    newFirst.tail = tail;
+    updater.dispatching = newFirst;
+    return dispatching;
+  }
+
   return function dispatch(action: Action): void {
-    const { dispatches } = updater;
-    const dispatchCallbacks = [...dispatches];
-    dispatchCallbacks.forEach(callback => {
-      callback(action);
-    });
+    const { dispatching } = updater;
+    pendAction(action);
+    if (dispatching) {
+      return;
+    }
+    while (updater.dispatching) {
+      const wrap = unshiftAction();
+      if (wrap) {
+        const { dispatches } = updater;
+        const dispatchCallbacks = [...dispatches];
+        try {
+          dispatchCallbacks.forEach(callback => {
+            callback(wrap.value);
+          });
+        } catch (e) {
+          updater.dispatching = undefined;
+          throw e;
+        }
+      }
+    }
   };
 }
 
@@ -37,8 +85,9 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
     const { reducer, controlled } = updater;
+    const methodAction = { type, state: result };
     if (controlled) {
-      dispatch({ type, state: result });
+      dispatch(methodAction);
       return result;
     }
     updater.current = reducer(result);
@@ -96,6 +145,36 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     }
     generateDispatch(updater)({ state: updater.state, type: '' });
   }
+
+  function subscribe(dispatchCall: Dispatch): boolean {
+    const { dispatches, controlled: isControlled } = updater;
+    const copied = [...dispatches];
+    const exist = copied.indexOf(dispatchCall) >= 0;
+    if (exist) {
+      return false;
+    }
+    if (isControlled) {
+      updater.dispatches = [dispatchCall];
+      return false;
+    }
+    updater.dispatches = copied.concat(dispatchCall);
+    return true;
+  }
+
+  function notice(dispatchCall: Dispatch) {
+    dispatchCall({ state: updater.state, type: '' });
+  }
+
+  function disconnect(dispatchCall: Dispatch | undefined) {
+    if (!dispatchCall) {
+      updater.dispatches = [];
+      return;
+    }
+    const { dispatches } = updater;
+    const copied = [...dispatches];
+    updater.dispatches = copied.filter(d => d !== dispatchCall);
+  }
+
   const agent = createProxy(defaultModel, {
     get(target: T, p: string): unknown {
       const value = updater.current[p];
@@ -143,31 +222,30 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       update(updater.reducer, { state, cache: true });
     },
     notice(): void {
-      generateDispatch(updater)({ state: updater.state, type: '' });
+      notice(generateDispatch(updater));
+    },
+    tunnel(dispatchCall) {
+      return {
+        connect() {
+          const needNotice = subscribe(dispatchCall);
+          if (!needNotice) {
+            return;
+          }
+          notice(dispatchCall);
+        },
+        disconnect() {
+          disconnect(dispatchCall);
+        }
+      };
     },
     connect(dispatchCall) {
-      const { dispatches, controlled } = updater;
-      const copied = [...dispatches];
-      const exist = copied.indexOf(dispatchCall) >= 0;
-      if (exist) {
+      const needNotice = subscribe(dispatchCall);
+      if (!needNotice) {
         return;
       }
-      if (controlled) {
-        updater.dispatches = [dispatchCall];
-        return;
-      }
-      updater.dispatches = copied.concat(dispatchCall);
-      dispatchCall({ state: updater.state, type: '' });
+      notice(dispatchCall);
     },
-    disconnect(dispatchCall) {
-      if (!dispatchCall) {
-        updater.dispatches = [];
-        return;
-      }
-      const { dispatches } = updater;
-      const copied = [...dispatches];
-      updater.dispatches = copied.filter(d => d !== dispatchCall);
-    }
+    disconnect
   };
 }
 

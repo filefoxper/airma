@@ -19,3 +19,8 @@
 # v 17.0.1 2023-03-12
 
 * rename API `GlobalRefreshProvider` to `GlobalProvider`.
+
+# v 18.0.0 2023-07-03
+
+* add `variables` and `sessionLoaded` to session state.
+* add API `useLazyComponent`.

@@ -24,19 +24,11 @@ import {
   useContext,
   FunctionComponent
 } from 'react';
+import { usePersistFn } from '@airma/react-hooks';
 import type { AirReducerLike, Selector } from './type';
 
 const realtimeInstanceMountProperty =
   '@@_airmaReactStateRealtimeInstancePropertyV17_@@';
-
-function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
-  const dispatchRef = useRef<T>(callback);
-  dispatchRef.current = callback;
-  const persistRef = useRef((...args: any[]): any =>
-    dispatchRef.current(...args)
-  );
-  return persistRef.current as T;
-}
 
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
@@ -251,14 +243,15 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     prevStateRef.current = { state };
     if (refresh && prevState.state !== state) {
       current.update(model, { state, cache: true });
-      current.connect(persistDispatch);
     }
   }, [state]);
 
+  const tunnel = current.tunnel(persistDispatch);
+
   useEffect(() => {
-    current.connect(persistDispatch);
+    tunnel.connect();
     return () => {
-      current.disconnect(persistDispatch);
+      tunnel.disconnect();
     };
   }, []);
 
@@ -395,11 +388,12 @@ export function useSelector<
   });
 
   // connection.connect(dispatch);
+  const tunnel = connection.tunnel(dispatch);
 
   useEffect(() => {
-    connection.connect(dispatch);
+    tunnel.connect();
     return () => {
-      connection.disconnect(dispatch);
+      tunnel.disconnect();
     };
   }, []);
 

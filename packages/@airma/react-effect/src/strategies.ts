@@ -1,4 +1,4 @@
-import { SessionState, StrategyType } from './type';
+import { SessionState, StrategyType } from './libs/type';
 
 function debounce(op: { duration: number } | number): StrategyType {
   const time = typeof op === 'number' ? op : op.duration;
@@ -132,14 +132,14 @@ function throttle(op: { duration: number } | number): StrategyType {
 }
 
 function error(
-  process: (e: unknown) => any,
+  process: (e: unknown, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value) {
     const { runner, runtimeCache, store } = value;
-    const hasHigherErrorProcessor = runtimeCache.fetch(error);
-    runtimeCache.cache(error, true);
+    const hasHigherErrorProcessor = runtimeCache.get(error);
+    runtimeCache.set(error, true);
     store.current = process;
     return runner().then(d => {
       const currentProcess = store.current;
@@ -149,7 +149,7 @@ function error(
         currentProcess &&
         (!d.abandon || withAbandoned)
       ) {
-        currentProcess(d.error);
+        currentProcess(d.error, d);
       }
       return d;
     });
@@ -157,21 +157,21 @@ function error(
 }
 
 function success<T>(
-  process: (data: T) => any,
+  process: (data: T, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType<T> {
   const { withAbandoned } = option || {};
   return function sc(value: {
     current: () => SessionState<T>;
     runner: () => Promise<SessionState<T>>;
-    store: { current?: (data: T) => any };
+    store: { current?: (data: T, sessionData: SessionState<T>) => any };
   }) {
     const { runner, store } = value;
     store.current = process;
     return runner().then(d => {
       const currentProcess = store.current;
       if (!d.isError && currentProcess && (!d.abandon || withAbandoned)) {
-        currentProcess(d.data as T);
+        currentProcess(d.data as T, d);
       }
       return d;
     });

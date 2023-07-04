@@ -17,3 +17,8 @@
 ## v 17.1.8
 
 * 跟随 @airma/react-state 问题修复升级。
+
+## v 18.0.0
+
+* 为 session state 添加了 `sessionLoaded` 和 `variables` 字段
+* 添加 `useLazyComponent` API

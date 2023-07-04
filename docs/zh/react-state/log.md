@@ -22,3 +22,7 @@
 ## v17.3.6
 
 * 修复 useModel useRefreshModel 关于 Modelkey 使用的 类型问题。
+
+## v18.0.0
+
+* 重构了 dispatch 逻辑

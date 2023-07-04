@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   createKey,
   useControlledModel,
@@ -11,6 +11,8 @@ import {
   createSessionKey,
   provide,
   Strategy,
+  useIsFetching,
+  useLazyComponent,
   useMutation,
   useQuery,
   useSession
@@ -48,7 +50,18 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
+  rest('/api/user')
+    .path('list')
+    .setParams(validQuery)
+    .get<User[]>()
+    .then(
+      d =>
+        new Promise<User[]>(resolve => {
+          setTimeout(() => {
+            resolve(d);
+          }, 2000);
+        })
+    );
 
 export const fetchSessionKey = createSessionKey(userQuery);
 
@@ -64,6 +77,36 @@ const test = (state: number) => {
 
 const testKey = createKey(test, 0);
 
+const conditionModel = (query: Query) => {
+  const handleQuery = () => {
+    return { ...query, valid: { ...query.display } };
+  };
+  return {
+    displayQuery: query.display,
+    validQuery: query.valid,
+    creating: query.creating,
+    create() {
+      return { ...query, creating: true };
+    },
+    submit() {
+      return { ...query, ...handleQuery(), creating: false };
+    },
+    cancel() {
+      return { ...query, creating: false };
+    },
+    changeDisplay(display: Partial<Condition>) {
+      return { ...query, display: { ...query.display, ...display } };
+    },
+    query: handleQuery
+  };
+};
+
+const conditionKey = createKey(conditionModel, {
+  valid: defaultCondition,
+  display: defaultCondition,
+  creating: true
+});
+
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
   if (isFetching) {
@@ -73,6 +116,7 @@ const Info = memo(() => {
 });
 
 const Creating = memo(({ onClose }: { onClose: () => any }) => {
+  const creating = useSelector(conditionKey, s => s.creating);
   const { user, changeUsername, changeName } = useModel(
     (userData: Omit<User, 'id'>) => {
       return {
@@ -94,6 +138,13 @@ const Creating = memo(({ onClose }: { onClose: () => any }) => {
       age: 10
     }
   );
+
+  useEffect(() => {
+    console.log('updating...', creating);
+    return () => {
+      console.log('unmounting...', creating);
+    };
+  }, [creating]);
 
   const [, query] = useSession(fetchSessionKey);
 
@@ -145,48 +196,26 @@ const Creating = memo(({ onClose }: { onClose: () => any }) => {
   );
 });
 
-const conditionModel = (query: Query) => {
-  const handleQuery = () => {
-    return { ...query, valid: { ...query.display } };
+const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
+  const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
+  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
+
+  const session = useQuery(fetchSessionKey, {
+    variables: [q],
+    defaultData: [],
+    strategy: Strategy.success((a, s) => console.log(a, s))
+  });
+
+  const [state, conditionTrigger] = session;
+
+  const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
+
+  useIsFetching(state);
+
+  const handleTrigger = () => {
+    conditionTrigger();
+    parentTrigger();
   };
-  return {
-    displayQuery: query.display,
-    validQuery: query.valid,
-    creating: query.creating,
-    create() {
-      return { ...query, creating: true };
-    },
-    submit() {
-      return { ...query, ...handleQuery(), creating: false };
-    },
-    cancel() {
-      return { ...query, creating: false };
-    },
-    changeDisplay(display: Partial<Condition>) {
-      return { ...query, display: { ...query.display, ...display } };
-    },
-    query: handleQuery
-  };
-};
-
-const conditionKey = createKey(conditionModel, {
-  valid: defaultCondition,
-  display: defaultCondition,
-  creating: false
-});
-
-const Condition = memo(() => {
-  const q = { ...defaultCondition, name: 'Mr' };
-  const { displayQuery, create, changeDisplay, query } = useModel(
-    conditionKey,
-    {
-      valid: q,
-      display: q,
-      creating: false
-    }
-  );
-
-  const [{ isFetching }] = useSession(fetchSessionKey, 'query');
 
   return (
     <div>
@@ -211,6 +240,12 @@ const Condition = memo(() => {
       <button type="button" style={{ marginLeft: 12 }} onClick={query}>
         query
       </button>
+      <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
+        trigger
+      </button>
+      <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
+        manual
+      </button>
       <button
         type="button"
         disabled={isFetching}
@@ -223,32 +258,24 @@ const Condition = memo(() => {
   );
 });
 
-function Child() {
-  const add = useSelector(testKey, s => s.add);
-  useEffect(() => {
-    add();
-  }, []);
-  return <button onClick={add}>test</button>;
-}
-
-function Child1({ reset }: { reset: () => number }) {
-  useEffect(() => {
-    reset();
-  }, []);
-  return <button onClick={reset}>test</button>;
-}
-
 export default provide({ conditionKey, fetchSessionKey, testKey })(
   function App() {
     const { validQuery, creating, cancel } = useSelector(conditionKey, s =>
       pick(s, 'validQuery', 'creating', 'cancel')
     );
 
-    const [{ data }] = useQuery(fetchSessionKey, {
+    const querySession = useQuery(fetchSessionKey, {
       variables: [validQuery],
       defaultData: [],
-      strategy: Strategy.debounce(300)
+      strategy: Strategy.success((a, s) => console.log(a, s))
     });
+
+    const [{ data }, t] = querySession;
+
+    const Creator = useLazyComponent(
+      () => Promise.resolve(Creating) as Promise<typeof Creating>,
+      querySession
+    );
 
     const [s, setState] = useState(3);
 
@@ -264,9 +291,15 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
 
     return (
       <div style={{ padding: '12px 24px' }}>
-        <Condition />
+        <Condition parentTrigger={t} />
         <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-          {creating ? <Creating onClose={cancel} /> : <Info />}
+          {creating ? (
+            <Suspense>
+              <Creator onClose={cancel} />
+            </Suspense>
+          ) : (
+            <Info />
+          )}
         </div>
         <div>
           {data.map(user => (
@@ -278,9 +311,6 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
           ))}
         </div>
         <div>{state}</div>
-        <button onClick={() => setState(s => s + 1)}>controll</button>
-        <Child />
-        <Child1 reset={reset} />
       </div>
     );
   }

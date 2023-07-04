@@ -49,6 +49,10 @@ export declare interface Connection<
   ) => void;
   updateState: (state: S) => void;
   notice: () => void;
+  tunnel: (dispatch: Dispatch) => {
+    connect: () => void;
+    disconnect: () => void;
+  };
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -87,3 +91,5 @@ export declare function createProxy<T extends Record<string, any>>(
 ): T;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;
+
+export declare function noop(): void;

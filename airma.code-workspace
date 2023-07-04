@@ -7,6 +7,10 @@
       "path": "packages/@airma/react-effect"
     },
     {
+      "name": "packages/@airma/react-hooks",
+      "path": "packages/@airma/react-hooks"
+    },
+    {
       "name": "packages/@airma/react-state",
       "path": "packages/@airma/react-state"
     },

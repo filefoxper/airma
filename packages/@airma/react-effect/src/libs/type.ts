@@ -1,5 +1,6 @@
 import { ModelKey, ModelKeys } from '@airma/react-state';
 import { ReactNode } from 'react';
+import { MCC, PCR } from '../../index';
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
@@ -11,6 +12,9 @@ export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
     version: number;
     setState: (s: SessionState) => SessionState & { version?: number };
     setFetchingKey: (
+      fetchingKey: unknown
+    ) => SessionState & { version?: number };
+    removeFetchingKey: (
       fetchingKey: unknown
     ) => SessionState & { version?: number };
     trigger: () => SessionState & { version?: number };
@@ -34,12 +38,14 @@ export type TriggerType = 'mount' | 'update' | 'manual';
 
 export type PromiseData<T = any> = {
   data?: T | undefined;
+  variables: any[];
   error?: any;
   isError?: boolean;
 };
 
-type LoadedSessionState<T> = {
-  data: T;
+export interface AbstractSessionState {
+  data: unknown;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -47,20 +53,21 @@ type LoadedSessionState<T> = {
   finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
-  loaded: true;
-};
+  loaded: boolean;
+  sessionLoaded: boolean;
+}
 
-type UnloadedSessionState = {
+interface LoadedSessionState<T> extends AbstractSessionState {
+  data: T;
+  variables: any[] | undefined;
+  loaded: true;
+}
+
+interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
-  error?: any;
-  isError: boolean;
-  isFetching: boolean;
-  fetchingKey?: unknown;
-  finalFetchingKey?: unknown;
-  abandon: boolean;
-  triggerType: undefined | TriggerType;
+  variables: any[] | undefined;
   loaded: false;
-};
+}
 
 export type SessionState<T = any> =
   | LoadedSessionState<T>
@@ -72,12 +79,23 @@ export type StrategyType<T = any> = (value: {
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
   runtimeCache: {
-    cache: (key: any, value: any) => void;
-    fetch: (key: any) => any;
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
   };
 }) => Promise<SessionState<T>>;
 
-export type StrategyCollectionType<T> =
+export type StrategyRequires<T = any> = {
+  current: () => SessionState<T>;
+  variables: any[];
+  runner: () => Promise<SessionState<T>>;
+  store: { current: { current: any }[] };
+  runtimeCache: {
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
+  };
+};
+
+export type StrategyCollectionType<T = any> =
   | undefined
   | null
   | StrategyType<T>
@@ -127,4 +145,31 @@ export type Status = {
 export type SessionProviderProps = {
   value: ModelKeys;
   children?: ReactNode;
+};
+
+export type LoadedSessionResult<
+  D extends PromiseCallback<any> | SessionKey<any>
+> = [
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+];
+
+export type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+];
+
+export type AbstractSessionResult = [
+  SessionState,
+  () => Promise<SessionState>,
+  ((...variables: any[]) => Promise<SessionState>)?
+];
+
+export type PromiseHolder = {
+  promise: Promise<any>;
+  resolve: (data: any) => void;
+  reject: (data: any) => void;
+  loaded: boolean;
 };

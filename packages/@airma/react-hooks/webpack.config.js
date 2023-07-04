@@ -6,8 +6,7 @@ module.exports = function config() {
   return {
     externals: {
       '@airma/core': '@airma/core',
-      react:'react',
-      '@airma/react-hooks':'@airma/react-hooks'
+      react:'react'
     },
     entry: {
       bundle: path.join(__dirname, 'src', 'index.ts')
@@ -15,7 +14,7 @@ module.exports = function config() {
     output: {
       path: path.join(__dirname, 'dist'),
       filename: 'index.js',
-      library:"@airma/react-state",
+      library:"@airma/react-hooks",
       libraryTarget: 'umd'
     },
     optimization: {

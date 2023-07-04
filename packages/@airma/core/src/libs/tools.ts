@@ -98,3 +98,7 @@ export function toMapObject<K extends string, V>(entries: [K, V][]) {
     }
   };
 }
+
+export function noop() {
+  /** This is a noop function */
+}

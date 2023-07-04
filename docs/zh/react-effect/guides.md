@@ -117,8 +117,10 @@ const App = ()=>{
         isFetching,
         // 是否请求出错
         isError,
+        // 是否有过一次正确请求 (如果设置默认值，loaded 必为 true)
+        loaded,
         // 是否有过一次正确请求
-        loaded
+        sessionLoaded
     } = state;
     ......
 }

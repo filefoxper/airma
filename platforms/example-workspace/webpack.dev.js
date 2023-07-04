@@ -17,6 +17,7 @@ module.exports = function config() {
         "@airma/core":"@airma/core/src/index.ts",
         "@airma/react-state":"@airma/react-state/src/index.ts",
         "@airma/restful":"@airma/restful/src/index.ts",
+        "@airma/react-hooks":"@airma/react-hooks/src/index.ts",
         "@airma/react-effect":"@airma/react-effect/src/index.ts"
       }
     },

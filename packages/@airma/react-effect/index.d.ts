@@ -1,31 +1,43 @@
 import { ModelKeys, ModelKey } from '@airma/react-state';
-import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
+import {
+  FunctionComponent,
+  FC,
+  NamedExoticComponent,
+  ReactNode,
+  ComponentType,
+  LazyExoticComponent,
+  ExoticComponent
+} from 'react';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
 declare type SessionType = 'query' | 'mutation';
 
-declare type LoadedSessionState<T> = {
-  data: T;
+declare interface AbstractSessionState {
+  data: unknown;
+  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
   fetchingKey?: unknown;
+  finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
-  loaded: true;
-};
+  loaded: boolean;
+  sessionLoaded: boolean;
+}
 
-declare type UnloadedSessionState = {
+declare interface LoadedSessionState<T> extends AbstractSessionState {
+  data: T;
+  variables: any[] | undefined;
+  loaded: true;
+}
+
+declare interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
-  error?: any;
-  isError: boolean;
-  isFetching: boolean;
-  fetchingKey?: unknown;
-  abandon: boolean;
-  triggerType: undefined | TriggerType;
+  variables: any[] | undefined;
   loaded: false;
-};
+}
 
 export declare type SessionState<T> =
   | LoadedSessionState<T>
@@ -37,8 +49,8 @@ export declare type StrategyType<T = any> = (runtime: {
   runner: () => Promise<SessionState<T>>;
   store: { current: any };
   runtimeCache: {
-    cache: (key: any, value: any) => void;
-    fetch: (key: any) => any;
+    set: (key: any, value: any) => void;
+    get: (key: any) => any;
   };
 }) => Promise<SessionState<T>>;
 
@@ -115,55 +127,51 @@ declare type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
     ? C
     : never;
 
+declare type LoadedSessionResult<
+  D extends PromiseCallback<any> | SessionKey<any>
+> = [
+  LoadedSessionState<PCR<D>>,
+  () => Promise<LoadedSessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+];
+
+declare type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
+  SessionState<PCR<D>>,
+  () => Promise<SessionState<PCR<D>>>,
+  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+];
+
+declare type AbstractSessionResult = [
+  SessionState,
+  () => Promise<SessionState>,
+  ((...variables: any[]) => Promise<SessionState>)?
+];
+
 export declare function useQuery<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config: DefaultQueryConfig<PCR<D>, MCC<D>>
-): D extends MutationSessionKey<any>
-  ? never
-  : [
-      LoadedSessionState<PCR<D>>,
-      () => Promise<LoadedSessionState<PCR<D>>>,
-      (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-    ];
+): D extends MutationSessionKey<any> ? never : LoadedSessionResult<D>;
 export declare function useQuery<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): D extends MutationSessionKey<any>
-  ? never
-  : [
-      SessionState<PCR<D>>,
-      () => Promise<SessionState<PCR<D>>>,
-      (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-    ];
+): D extends MutationSessionKey<any> ? never : SessionResult<D>;
 
 export declare function useMutation<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config: DefaultMutationConfig<PCR<D>, MCC<D>>
-): D extends QuerySessionKey<any>
-  ? never
-  : [
-      LoadedSessionState<PCR<D>>,
-      () => Promise<LoadedSessionState<PCR<D>>>,
-      (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-    ];
+): D extends QuerySessionKey<any> ? never : LoadedSessionResult<D>;
 export declare function useMutation<
   D extends PromiseCallback<any> | SessionKey<any>
 >(
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
-): D extends QuerySessionKey<any>
-  ? never
-  : [
-      SessionState<PCR<D>>,
-      () => Promise<SessionState<PCR<D>>>,
-      (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-    ];
+): D extends QuerySessionKey<any> ? never : SessionResult<D>;
 
 declare interface UseSessionConfig {
   sessionType?: SessionType;
@@ -204,9 +212,16 @@ export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
 >(effectCallback: E, sessionType: 'mutation'): MutationSessionKey<E>;
 
-export declare function useIsFetching(
-  ...sessionStates: SessionState[]
+export function useIsFetching(
+  ...sessionStates: (AbstractSessionState | AbstractSessionResult)[]
 ): boolean;
+
+export function useLazyComponent<
+  T extends ComponentType<any> | ExoticComponent<any>
+>(
+  componentLoader: () => Promise<T>,
+  ...deps: (AbstractSessionState | AbstractSessionResult)[]
+): LazyExoticComponent<T>;
 
 export declare const SessionProvider: FC<
   | {
@@ -247,11 +262,11 @@ export declare const Strategy: {
   throttle: (op: { duration: number } | number) => StrategyType;
   once: () => StrategyType;
   error: (
-    process: (e: unknown) => any,
+    process: (e: unknown, sessionData: SessionState) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType;
   success: <T>(
-    process: (data: T) => any,
+    process: (data: T, sessionData: SessionState<T>) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
   validate: (process: () => boolean) => StrategyType;
