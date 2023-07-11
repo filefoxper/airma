@@ -1,5 +1,3 @@
-import { RuntimeRestConfig } from './src/type';
-
 declare type HttpProperties = {
   parentUrl: string;
 
@@ -113,6 +111,12 @@ declare type HttpType = {
   put<T>(config?: RestConfig): PromiseValue<T>;
 
   delete<T>(config?: RestConfig): PromiseValue<T>;
+};
+
+export declare type RuntimeRestConfig = RestConfig & {
+  params?: Record<string | number, any>;
+  body?: Record<string | number, any>;
+  method?: Method;
 };
 
 export declare type Client = {
