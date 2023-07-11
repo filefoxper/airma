@@ -9,7 +9,7 @@ export type ResponseType =
 
 export type Meta = {
   config: RestConfig;
-  runtimeConfig: null | ((c: RestConfig) => RestConfig);
+  runtimeConfig: null | ((c: RuntimeRestConfig) => RuntimeRestConfig);
 };
 
 export type SuccessResponse<T = any> = {
@@ -94,6 +94,12 @@ export type RequestConfig = BaseRestConfig & {
 
 export type RestConfig = BaseRestConfig & { request?: Request };
 
+export type RuntimeRestConfig = RestConfig & {
+  params?: Record<string | number, any>;
+  body?: Record<string | number, any>;
+  method?: Method;
+};
+
 export type PromiseValue<T = any> = Promise<T> & {
   response: () => Promise<ResponseData<T>>;
 };
@@ -126,4 +132,5 @@ export type Client = {
     cg: RestConfig | ((c: RestConfig) => RestConfig),
     runtime?: boolean
   ): void;
+  configRuntime(cg: (c: RuntimeRestConfig) => RuntimeRestConfig): void;
 };

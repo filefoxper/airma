@@ -7,7 +7,8 @@ import type {
   HttpProperties,
   Client,
   HttpType,
-  Meta
+  Meta,
+  RuntimeRestConfig
 } from './type';
 import { defaultRestConfig } from './constant';
 import { request } from './request';
@@ -32,7 +33,7 @@ export function rest(url: string | HttpProperties): HttpType {
     return pathArray.join('/');
   };
 
-  const run = <T>(rcg: RestConfig): PromiseValue<T> => {
+  const run = <T>(rcg: RuntimeRestConfig): PromiseValue<T> => {
     let ignoreDataPromise = false;
     const { request: currentRequest, ...requestConfig } = rcg;
     const { restConfig } = properties;
@@ -67,7 +68,9 @@ export function rest(url: string | HttpProperties): HttpType {
       : { ...metaConfig, ...restConfig };
   };
 
-  const getCurrentRequestConfigByRuntime = (config: RestConfig) => {
+  const getCurrentRequestConfigByRuntime = (
+    config: RuntimeRestConfig
+  ): RuntimeRestConfig => {
     const { restConfig, meta } = properties;
     const metaConfig = meta.runtimeConfig
       ? meta.runtimeConfig({ ...meta.config, ...restConfig, ...config })
@@ -80,7 +83,7 @@ export function rest(url: string | HttpProperties): HttpType {
   const setRequestConfig = (
     method: Method,
     config?: RestConfig
-  ): RequestConfig => {
+  ): RuntimeRestConfig => {
     const { requestBody, requestParams } = properties;
     const base: RequestConfig = {
       method,
@@ -150,17 +153,16 @@ export function client(
     rest(basePath: string): HttpType {
       return rest(basePath).setMeta(meta);
     },
-    config(
-      cg: RestConfig | ((c: RestConfig) => RestConfig),
-      runtime?: boolean
-    ): void {
+    config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void {
       const restfulConfig = meta.config;
       if (typeof cg === 'function') {
         meta.config = Object.assign(restfulConfig, cg(restfulConfig));
-        meta.runtimeConfig = runtime ? cg : meta.runtimeConfig;
         return;
       }
       meta.config = Object.assign(restfulConfig, cg);
+    },
+    configRuntime(cg: (c: RuntimeRestConfig) => RuntimeRestConfig): void {
+      meta.runtimeConfig = cg;
     }
   };
 }
