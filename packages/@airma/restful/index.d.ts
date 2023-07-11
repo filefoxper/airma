@@ -1,3 +1,5 @@
+import { RuntimeRestConfig } from './src/type';
+
 declare type HttpProperties = {
   parentUrl: string;
 
@@ -115,10 +117,8 @@ declare type HttpType = {
 
 export declare type Client = {
   rest(basePath: string): HttpType;
-  config(
-    cg: RestConfig | ((c: RestConfig) => RestConfig),
-    runtime?: boolean
-  ): void;
+  config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
+  configRuntime(cg: (c: RuntimeRestConfig) => RuntimeRestConfig): void;
 };
 
 export declare function rest(url: string | HttpProperties): HttpType;
