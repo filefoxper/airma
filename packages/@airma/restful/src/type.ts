@@ -7,6 +7,11 @@ export type ResponseType =
   | 'blob'
   | 'arrayBuffer';
 
+export type Meta = {
+  config: RestConfig;
+  runtimeConfig: null | ((c: RestConfig) => RestConfig);
+};
+
 export type SuccessResponse<T = any> = {
   status: number;
   data: T;
@@ -36,7 +41,7 @@ export type HttpProperties = {
 
   restConfig: RestConfig;
 
-  meta: { config: RestConfig };
+  meta: Meta;
 };
 
 export type Request = (
@@ -98,7 +103,7 @@ export type HttpType = {
 
   setConfig(restConfig: RestConfig): HttpType;
 
-  setMeta(meta: { config: RestConfig }): HttpType;
+  setMeta(meta: Meta): HttpType;
 
   setBody<B extends Record<string | number, any>>(requestBody: B): HttpType;
 
@@ -117,5 +122,8 @@ export type HttpType = {
 
 export type Client = {
   rest(basePath: string): HttpType;
-  config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
+  config(
+    cg: RestConfig | ((c: RestConfig) => RestConfig),
+    runtime?: boolean
+  ): void;
 };

@@ -115,7 +115,10 @@ declare type HttpType = {
 
 export declare type Client = {
   rest(basePath: string): HttpType;
-  config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void;
+  config(
+    cg: RestConfig | ((c: RestConfig) => RestConfig),
+    runtime?: boolean
+  ): void;
 };
 
 export declare function rest(url: string | HttpProperties): HttpType;

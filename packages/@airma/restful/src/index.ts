@@ -6,7 +6,8 @@ import type {
   RestConfig,
   HttpProperties,
   Client,
-  HttpType
+  HttpType,
+  Meta
 } from './type';
 import { defaultRestConfig } from './constant';
 import { request } from './request';
@@ -16,7 +17,7 @@ export function rest(url: string | HttpProperties): HttpType {
     parentUrl: '/',
     urls: [''],
     restConfig: defaultRestConfig,
-    meta: { config: defaultRestConfig }
+    meta: { config: defaultRestConfig, runtimeConfig: null }
   };
   const properties: HttpProperties =
     typeof url === 'string'
@@ -31,12 +32,13 @@ export function rest(url: string | HttpProperties): HttpType {
     return pathArray.join('/');
   };
 
-  const run = <T>(requestConfig: RequestConfig): PromiseValue<T> => {
+  const run = <T>(rcg: RestConfig): PromiseValue<T> => {
     let ignoreDataPromise = false;
-    const { restConfig, meta } = properties;
+    const { request: currentRequest, ...requestConfig } = rcg;
+    const { restConfig } = properties;
     const responsePromise: Promise<ResponseData<T>> = (
+      currentRequest ||
       restConfig.request ||
-      meta.config.request ||
       request
     )(getPath(), requestConfig);
     const promise: Promise<T> & { response?: () => Promise<ResponseData<T>> } =
@@ -65,22 +67,27 @@ export function rest(url: string | HttpProperties): HttpType {
       : { ...metaConfig, ...restConfig };
   };
 
+  const getCurrentRequestConfigByRuntime = (config: RestConfig) => {
+    const { restConfig, meta } = properties;
+    const metaConfig = meta.runtimeConfig
+      ? meta.runtimeConfig({ ...meta.config, ...restConfig, ...config })
+      : meta.config;
+    return restConfig === defaultRestConfig
+      ? { ...metaConfig, ...config }
+      : { ...metaConfig, ...restConfig, ...config };
+  };
+
   const setRequestConfig = (
     method: Method,
     config?: RestConfig
   ): RequestConfig => {
     const { requestBody, requestParams } = properties;
-    const { request: omit, ...c } = getCurrentRequestConfig();
     const base: RequestConfig = {
       method,
       params: requestParams,
       body: requestBody
     };
-    return {
-      ...c,
-      ...config,
-      ...base
-    };
+    return getCurrentRequestConfigByRuntime({ ...config, ...base });
   };
 
   return {
@@ -88,7 +95,7 @@ export function rest(url: string | HttpProperties): HttpType {
       const { urls } = properties;
       return rest({ ...properties, urls: urls.concat(child.split('/')) });
     },
-    setMeta(meta: { config: RestConfig }): HttpType {
+    setMeta(meta: Meta): HttpType {
       return rest({
         ...properties,
         meta
@@ -138,15 +145,19 @@ export function client(
 ): Client {
   const restConfig =
     typeof config === 'function' ? config(defaultRestConfig) : config;
-  const meta = { config: restConfig };
+  const meta: Meta = { config: restConfig, runtimeConfig: null };
   return {
     rest(basePath: string): HttpType {
       return rest(basePath).setMeta(meta);
     },
-    config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void {
+    config(
+      cg: RestConfig | ((c: RestConfig) => RestConfig),
+      runtime?: boolean
+    ): void {
       const restfulConfig = meta.config;
       if (typeof cg === 'function') {
         meta.config = Object.assign(restfulConfig, cg(restfulConfig));
+        meta.runtimeConfig = runtime ? cg : meta.runtimeConfig;
         return;
       }
       meta.config = Object.assign(restfulConfig, cg);
