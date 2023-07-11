@@ -37,11 +37,21 @@ export function rest(url: string | HttpProperties): HttpType {
     let ignoreDataPromise = false;
     const { request: currentRequest, ...requestConfig } = rcg;
     const { restConfig } = properties;
+    const interceptor = rcg.responseInterceptor;
     const responsePromise: Promise<ResponseData<T>> = (
       currentRequest ||
       restConfig.request ||
       request
-    )(getPath(), requestConfig);
+    )(getPath(), requestConfig).then(res => {
+      if (typeof interceptor !== 'function') {
+        return res;
+      }
+      const result = interceptor(res);
+      if (result == null) {
+        return res;
+      }
+      return result;
+    });
     const promise: Promise<T> & { response?: () => Promise<ResponseData<T>> } =
       Promise.resolve(responsePromise).then(res => {
         if (ignoreDataPromise) {
