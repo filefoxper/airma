@@ -57,19 +57,7 @@ function request<T>(
     };
   }
 
-  function intercept(
-    d: ResponseData,
-    responseInterceptor: (d: ResponseData) => ResponseData | undefined
-  ) {
-    const result = responseInterceptor(d);
-    if (result == null) {
-      return d;
-    }
-    return result;
-  }
-
-  const { paramsProcessor, responseInterceptor = (d: ResponseData) => d } =
-    config;
+  const { paramsProcessor } = config;
   const { parse, stringify } =
     typeof paramsProcessor === 'function'
       ? paramsProcessor()
@@ -86,19 +74,16 @@ function request<T>(
     parseConfig(config)
   ).then(
     response => {
-      return getResponseData(config)(response).then(data =>
-        intercept(data, responseInterceptor)
-      );
+      return getResponseData(config)(response);
     },
     error => {
-      const networkErrorRes = {
+      return {
         status: null,
         data: error,
         error,
         networkError: true,
         isError: true
       } as ErrorResponse;
-      return intercept(networkErrorRes, responseInterceptor);
     }
   );
 }
