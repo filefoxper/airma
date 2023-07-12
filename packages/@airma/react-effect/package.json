@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/react-effect",
-  "version": "18.0.2",
+  "version": "18.0.3",
   "description": "This is a react async state management tool",
   "license": "MIT",
   "author": "Jimmy.Harding",

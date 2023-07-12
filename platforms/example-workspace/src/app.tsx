@@ -11,6 +11,7 @@ import {
   createSessionKey,
   provide,
   Strategy,
+  ErrorSessionState,
   useIsFetching,
   useLazyComponent,
   useMutation,
@@ -115,86 +116,88 @@ const Info = memo(() => {
   return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
 });
 
-const Creating = memo(({ onClose }: { onClose: () => any }) => {
-  const creating = useSelector(conditionKey, s => s.creating);
-  const { user, changeUsername, changeName } = useModel(
-    (userData: Omit<User, 'id'>) => {
-      return {
-        user: userData,
-        changeUsername(username: string) {
-          return { ...userData, username };
-        },
-        changeName(name: string) {
-          return { ...userData, name };
-        },
-        update() {
-          return { ...userData };
-        }
+const Creating = memo(
+  ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
+    const creating = useSelector(conditionKey, s => s.creating);
+    const { user, changeUsername, changeName } = useModel(
+      (userData: Omit<User, 'id'>) => {
+        return {
+          user: userData,
+          changeUsername(username: string) {
+            return { ...userData, username };
+          },
+          changeName(name: string) {
+            return { ...userData, name };
+          },
+          update() {
+            return { ...userData };
+          }
+        };
+      },
+      {
+        name: '',
+        username: '',
+        age: 10
+      }
+    );
+
+    useEffect(() => {
+      console.log('updating...', creating);
+      return () => {
+        console.log('unmounting...', creating);
       };
-    },
-    {
-      name: '',
-      username: '',
-      age: 10
-    }
-  );
+    }, [creating]);
 
-  useEffect(() => {
-    console.log('updating...', creating);
-    return () => {
-      console.log('unmounting...', creating);
-    };
-  }, [creating]);
+    const [, query] = useSession(fetchSessionKey);
 
-  const [, query] = useSession(fetchSessionKey);
+    const [, save] = useMutation(
+      (u: Omit<User, 'id'>) =>
+        rest('/api/user')
+          .setBody(u)
+          .post<null>()
+          .then(() => true),
+      {
+        variables: [user],
+        strategy: [
+          Strategy.once(),
+          Strategy.success(() => {
+            query();
+            onClose();
+          })
+        ]
+      }
+    );
 
-  const [, save] = useMutation(
-    (u: Omit<User, 'id'>) =>
-      rest('/api/user')
-        .setBody(u)
-        .post<null>()
-        .then(() => true),
-    {
-      variables: [user],
-      strategy: [
-        Strategy.once(),
-        Strategy.success(() => {
-          query();
-          onClose();
-        })
-      ]
-    }
-  );
-
-  return (
-    <div>
+    return (
       <div>
-        <input
-          type="text"
-          value={user.name}
-          placeholder="input name"
-          onChange={e => changeName(e.target.value)}
-        />
+        <div>
+          <input
+            type="text"
+            value={user.name}
+            placeholder="input name"
+            onChange={e => changeName(e.target.value)}
+          />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <input
+            type="text"
+            value={user.username}
+            placeholder="input username"
+            onChange={e => changeUsername(e.target.value)}
+          />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+            submit
+          </button>
+          <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
+            cancel
+          </button>
+        </div>
       </div>
-      <div style={{ marginTop: 12 }}>
-        <input
-          type="text"
-          value={user.username}
-          placeholder="input username"
-          onChange={e => changeUsername(e.target.value)}
-        />
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <button type="button" style={{ marginLeft: 12 }} onClick={save}>
-          submit
-        </button>
-        <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
-          cancel
-        </button>
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);

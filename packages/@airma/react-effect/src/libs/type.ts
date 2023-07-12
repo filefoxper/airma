@@ -1,6 +1,26 @@
 import { ModelKey, ModelKeys } from '@airma/react-state';
-import { ReactNode } from 'react';
-import { MCC, PCR } from '../../index';
+import {
+  ComponentType,
+  ExoticComponent,
+  LazyExoticComponent,
+  ReactNode
+} from 'react';
+
+type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
+  T extends PromiseCallback<infer R>
+    ? R
+    : T extends SessionKey<infer C>
+    ? PCR<C>
+    : never;
+
+type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
+  T extends PromiseCallback<any>
+    ? T
+    : T extends SessionKey<infer C>
+    ? C
+    : never;
+
+export type LazyComponentSupportType<P> = ComponentType<P> | ExoticComponent<P>;
 
 export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
@@ -69,9 +89,21 @@ interface UnloadedSessionState extends AbstractSessionState {
   loaded: false;
 }
 
+interface ErrorSessionState extends AbstractSessionState {
+  isError: true;
+}
+
 export type SessionState<T = any> =
   | LoadedSessionState<T>
   | UnloadedSessionState;
+
+export type CheckLazyComponentSupportType<
+  T extends LazyComponentSupportType<any>
+> = T extends LazyComponentSupportType<infer P>
+  ? P extends { error?: ErrorSessionState }
+    ? LazyExoticComponent<T>
+    : never
+  : never;
 
 export type StrategyType<T = any> = (value: {
   current: () => SessionState<T>;

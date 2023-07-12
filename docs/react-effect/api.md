@@ -213,19 +213,45 @@ const App = provide(clientKey)(()=>{
 It is a react hook used to accept state changes from the nearest mathced [SessionProvider](/react-effect/api?id=sessionprovider).
 
 ```ts
-function useClient(sessionKey){
-    return [state, trigger];
-}
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config: LoadedUseSessionConfig
+): [LoadedSessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config: SessionType
+): [SessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config?: UnloadedUseSessionConfig
+): [SessionState<PCR<D>>, () => void];
+export declare function useSession<D extends SessionKey<any>>(
+  factory: D,
+  config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
+): [SessionState<PCR<D>>, () => void];
 ```
 
 ### Parameters
 
 * sessionKey - A session key created by [createSessionKey](/react-effect/api?id=createsessionkey) API.
+* config - An optional config object or session type, set `{loaded: true}` can force it returns a loaded session state, set `{sessionType: 'query'|'mutation'}` can mark out if you have use a wrong session type. 
 
 ### Returns
 
 * state - The promise state from nearest SessionProvider store matched with the session key.
 * trigger - It is a no parameter callback, returns void. It can be used to trigger query or mutation which is using the same session key manually.
+
+## useLoadedSession
+
+```ts
+export declare function useLoadedSession<D extends SessionKey<any>>(
+  factory: D,
+  config: UseSessionConfig
+): [LoadedSessionState<PCR<D>>, () => void];
+```
+
+It is `useSession` with a `{loaded: true}` config item.
+
 
 ## Strategy
 
@@ -352,22 +378,29 @@ If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, i
 ## useLazyComponent
 
 ```ts
-export function useLazyComponent<
-  T extends ComponentType<any> | ExoticComponent<any>
+declare type LazyComponentSupportType<P> =
+  | ComponentType<P>
+  | ExoticComponent<P>;
+
+declare type CheckLazyComponentSupportType<
+  T extends LazyComponentSupportType<any>
+> = T extends LazyComponentSupportType<infer P>
+  ? P extends { error?: ErrorSessionState }
+    ? LazyExoticComponent<T>
+    : never
+  : never;
+
+export declare function useLazyComponent<
+  T extends LazyComponentSupportType<any>
 >(
-  componentLoader:
-    | (() => Promise<T | { default: T }>)
-    | {
-        expected: () => Promise<T | { default: T }>;
-        unexpected: () => Promise<T | { default: T }>;
-      },
+  componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
-): LazyExoticComponent<T>;
+): CheckLazyComponentSupportType<T>;
 ```
 
 Parameters
 
-* componentLoader - If it is a callback, it should returns a promise which always resolve a React component or `{default: ReactComponent}`. If it is a config object, it should contains an `expected` loader and a `unexpected` loader to respond the success and failure loading result.
+* componentLoader - It is a callback, it should returns a promise which always resolve a React component or `{default: ReactComponent}` with `{ error?: ErrorSessionState }` props. 
 * deps - The states of `useQuery` or `useMutation` for detecting.
 
 Explain
@@ -384,7 +417,7 @@ import {
   useQuery,
   useLazyComponent
 } from '@airma/react-effect';
-import type {GlobalConfig} from '@airma/react-effect';
+import type {GlobalConfig, ErrorSessionState} from '@airma/react-effect';
 import {currentUserKey, fetchUsersKey, fetchGroupsKey} from './globalSessions'; 
 
 // The GlobalConfig only support rebuild strategy currently.
@@ -394,7 +427,7 @@ const config: GlobalConfig = {
   )=>[...s, Strategy.error((e)=>console.log(e))]
 }
 
-const UnexpectedComp = ()=>{
+const UnexpectedComp = (props:{error?:ErrorSessionState})=>{
   return (
     <div>some thing is wrong</div>
   )
@@ -414,16 +447,6 @@ const App = ()=>{
 
   // It can help you to load component with its dependency sessions.
   const Container = useLazyComponent(()=>import('./container'), 
-    userSession,
-    usersSession,
-    groupSession
-  )
-
-  // You can use config style too.
-  const Container = useLazyComponent({
-    expected: ()=>import('./container'),
-    unexpected: ()=>Promise.resolve(UnexpectedComp)
-  }, 
     userSession,
     usersSession,
     groupSession

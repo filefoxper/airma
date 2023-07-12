@@ -182,6 +182,29 @@ function useSession(sessionKey, config?: Config){
 
 元组 `[state, trigger]`，即[会话](/zh/react-effect/concepts?id=会话)。
 
+## useLoadedSession
+
+React hook
+
+```ts
+type Config = {
+    sessionType?: 'query' | 'mutation'
+}
+
+function useLoadedSession(sessionKey, config?: Config){
+    return [state, trigger];
+}
+```
+
+### 解释：
+
+该 hook 相当于设置了 loaded 为 true 的 useSession。typescript 会认为其会话状态已经为加载状态。
+
+
+### 返回
+
+元组 `[state, trigger]`，即[会话](/zh/react-effect/concepts?id=会话)。
+
 ## Strategy
 
 `@airma/react-effect` 提供的[常用策略集合](/zh/react-effect/concepts?id=常用策略)。
@@ -232,22 +255,29 @@ boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。�
 ## useLazyComponent
 
 ```ts
-export function useLazyComponent<
-  T extends ComponentType<any> | ExoticComponent<any>
+declare type LazyComponentSupportType<P> =
+  | ComponentType<P>
+  | ExoticComponent<P>;
+
+declare type CheckLazyComponentSupportType<
+  T extends LazyComponentSupportType<any>
+> = T extends LazyComponentSupportType<infer P>
+  ? P extends { error?: ErrorSessionState }
+    ? LazyExoticComponent<T>
+    : never
+  : never;
+
+export declare function useLazyComponent<
+  T extends LazyComponentSupportType<any>
 >(
-  componentLoader:
-    | (() => Promise<T | { default: T }>)
-    | {
-        expected: () => Promise<T | { default: T }>;
-        unexpected: () => Promise<T | { default: T }>;
-      },
+  componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
-): LazyExoticComponent<T>;
+): CheckLazyComponentSupportType<T>;
 ```
 
 ### 参数
 
-* componentLoader - 加载组件的回调函数或配置。当它为函数时，应该返回一个以组件或 `{default: 组件}` 为 resolve 值的 promise 对象。当它为配置对象时，它支持通过设置 `expected` 和 `unexpected` 组件加载函数来区分正常加载，与异常加载时分别使用的组件。
+* componentLoader - 加载组件的回调函数。该函数应该返回一个以组件或 `{default: 组件}` 为 resolve 值的 promise 对象。（组件的 props 需要满足 `{ error?: ErrorSessionState }` 项）
 * deps - `useQuery` 或 `useMutation` 返回的会话状态集合.
 
 ### 返回
@@ -268,7 +298,7 @@ import {
   useQuery,
   useLazyComponent
 } from '@airma/react-effect';
-import type {GlobalConfig} from '@airma/react-effect';
+import type {GlobalConfig, ErrorSessionState} from '@airma/react-effect';
 import {currentUserKey, fetchUsersKey, fetchGroupsKey} from './globalSessions'; 
 
 const config: GlobalConfig = {
@@ -277,7 +307,7 @@ const config: GlobalConfig = {
   )=>[...s, Strategy.error((e)=>console.log(e))]
 }
 
-const UnexpectedComp = ()=>{
+const UnexpectedComp = (props:{error?:ErrorSessionState})=>{
   return (
     <div>some thing is wrong</div>
   )
@@ -303,16 +333,6 @@ const App = ()=>{
     groupSession
   )
 
-  // useLazyComponent 可以通过使用 expected 和 unexpected 加载器
-  // 分别设置加载正常时的期望组件和错误时的异常处理组件
-  const Container = useLazyComponent({
-    expected: ()=>import('./container'),
-    unexpected: ()=>Promise.resolve(UnexpectedComp)
-  }, 
-    userSession,
-    usersSession,
-    groupSession
-  )
   ......
   // 最好使用 Suspense 组件协助加载
   return (
