@@ -352,15 +352,22 @@ If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, i
 ## useLazyComponent
 
 ```ts
-function useLazyComponent<T extends ComponentType<any> | ExoticComponent<any>>(
-  componentLoader: () => Promise<T>,
+export function useLazyComponent<
+  T extends ComponentType<any> | ExoticComponent<any>
+>(
+  componentLoader:
+    | (() => Promise<T | { default: T }>)
+    | {
+        expected: () => Promise<T | { default: T }>;
+        unexpected: () => Promise<T | { default: T }>;
+      },
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): LazyExoticComponent<T>;
 ```
 
 Parameters
 
-* componentLoader - A callback returns a promise which always resolve a componment.
+* componentLoader - If it is a callback, it should returns a promise which always resolve a React component or `{default: ReactComponent}`. If it is a config object, it should contains an `expected` loader and a `unexpected` loader to respond the success and failure loading result.
 * deps - The states of `useQuery` or `useMutation` for detecting.
 
 Explain
@@ -387,6 +394,12 @@ const config: GlobalConfig = {
   )=>[...s, Strategy.error((e)=>console.log(e))]
 }
 
+const UnexpectedComp = ()=>{
+  return (
+    <div>some thing is wrong</div>
+  )
+}
+
 const App = ()=>{
   const userSession = useQuery(currentUserKey, []);
   const [{data}] = userSession;
@@ -405,6 +418,17 @@ const App = ()=>{
     usersSession,
     groupSession
   )
+
+  // You can use config style too.
+  const Container = useLazyComponent({
+    expected: ()=>import('./container'),
+    unexpected: ()=>Promise.resolve(UnexpectedComp)
+  }, 
+    userSession,
+    usersSession,
+    groupSession
+  )
+
   ......
   return (
     <div>

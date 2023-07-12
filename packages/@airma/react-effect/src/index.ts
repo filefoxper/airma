@@ -329,7 +329,12 @@ export function useIsFetching(
 export function useLazyComponent<
   T extends ComponentType<any> | ExoticComponent<any>
 >(
-  componentLoader: () => Promise<T | { default: T }>,
+  componentLoader:
+    | (() => Promise<T | { default: T }>)
+    | {
+        expected: () => Promise<T | { default: T }>;
+        unexpected: () => Promise<T | { default: T }>;
+      },
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): LazyExoticComponent<T> {
   const holders = useMemo(() => {
@@ -361,18 +366,34 @@ export function useLazyComponent<
     });
   }, [...deps]);
 
+  function fitComponentLoader(comp: T | { default: T }) {
+    if ((comp as { default: T }).default) {
+      return comp as { default: T };
+    }
+    return { default: comp };
+  }
+
   return useMemo(() => {
     const { current: hs } = holdersRef;
     const promises = hs.map(({ promise }) => promise);
-    return lazy(
-      () =>
-        Promise.all([componentLoader(), ...promises]).then(([comp]) => {
-          if ((comp as { default: T }).default) {
-            return comp as { default: T };
-          }
-          return { default: comp };
-        }) as Promise<{ default: T }>
-    );
+    return lazy(() => {
+      const expectedLoader =
+        typeof componentLoader === 'function'
+          ? componentLoader()
+          : componentLoader.expected();
+      const unexpectedLoader =
+        typeof componentLoader === 'function'
+          ? Promise.resolve<T>((() => null) as unknown as T)
+          : componentLoader.unexpected();
+      return Promise.all([expectedLoader, ...promises]).then(
+        ([comp]) => {
+          return fitComponentLoader(comp);
+        },
+        () => {
+          return unexpectedLoader.then(fitComponentLoader);
+        }
+      ) as Promise<{ default: T }>;
+    });
   }, []);
 }
 
