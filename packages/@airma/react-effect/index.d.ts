@@ -27,16 +27,20 @@ declare interface AbstractSessionState {
   sessionLoaded: boolean;
 }
 
-declare interface LoadedSessionState<T> extends AbstractSessionState {
+export declare interface LoadedSessionState<T> extends AbstractSessionState {
   data: T;
   variables: any[] | undefined;
   loaded: true;
 }
 
-declare interface UnloadedSessionState extends AbstractSessionState {
+export declare interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
   variables: any[] | undefined;
   loaded: false;
+}
+
+export declare interface ErrorSessionState extends AbstractSessionState {
+  isError: true;
 }
 
 export declare type SessionState<T> =
@@ -202,6 +206,11 @@ export declare function useSession<D extends SessionKey<any>>(
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [SessionState<PCR<D>>, () => void];
 
+export declare function useLoadedSession<D extends SessionKey<any>>(
+  factory: D,
+  config: UseSessionConfig
+): [LoadedSessionState<PCR<D>>, () => void];
+
 export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
 >(effectCallback: E): SessionKey<E>;
@@ -212,21 +221,28 @@ export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
 >(effectCallback: E, sessionType: 'mutation'): MutationSessionKey<E>;
 
-export function useIsFetching(
+export declare function useIsFetching(
   ...sessionStates: (AbstractSessionState | AbstractSessionResult)[]
 ): boolean;
 
-export function useLazyComponent<
-  T extends ComponentType<any> | ExoticComponent<any>
+declare type LazyComponentSupportType<P> =
+  | ComponentType<P>
+  | ExoticComponent<P>;
+
+declare type CheckLazyComponentSupportType<
+  T extends LazyComponentSupportType<any>
+> = T extends LazyComponentSupportType<infer P>
+  ? P extends { error?: ErrorSessionState }
+    ? LazyExoticComponent<T>
+    : never
+  : never;
+
+export declare function useLazyComponent<
+  T extends LazyComponentSupportType<any>
 >(
-  componentLoader:
-    | (() => Promise<T | { default: T }>)
-    | {
-        expected: () => Promise<T | { default: T }>;
-        unexpected: () => Promise<T | { default: T }>;
-      },
+  componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
-): LazyExoticComponent<T>;
+): CheckLazyComponentSupportType<T>;
 
 export declare const SessionProvider: FC<
   | {

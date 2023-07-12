@@ -1,12 +1,4 @@
-import {
-  ComponentType,
-  ExoticComponent,
-  lazy,
-  LazyExoticComponent,
-  useEffect,
-  useMemo,
-  useRef
-} from 'react';
+import { createElement, lazy, useEffect, useMemo, useRef } from 'react';
 import {
   StoreProvider,
   useIsModelMatchedInStore,
@@ -33,7 +25,9 @@ import type {
   SessionType,
   AbstractSessionState,
   AbstractSessionResult,
-  PromiseHolder
+  PromiseHolder,
+  CheckLazyComponentSupportType,
+  LazyComponentSupportType
 } from './libs/type';
 import { parseConfig, useSessionBuildModel } from './libs/model';
 import {
@@ -47,6 +41,7 @@ import {
   toStrategies,
   useStrategyExecution
 } from './libs/strategy';
+import { LoadedSessionState } from '../index';
 
 function toNoRejectionPromiseCallback<
   T,
@@ -326,17 +321,19 @@ export function useIsFetching(
   return isLocalFetching;
 }
 
-export function useLazyComponent<
-  T extends ComponentType<any> | ExoticComponent<any>
->(
-  componentLoader:
-    | (() => Promise<T | { default: T }>)
-    | {
-        expected: () => Promise<T | { default: T }>;
-        unexpected: () => Promise<T | { default: T }>;
-      },
+function withError<T extends LazyComponentSupportType<any>>(
+  component: T,
+  error?: unknown
+): T {
+  return function ErrorBoundComponent(props: any) {
+    return createElement(component, { ...props, error });
+  } as T;
+}
+
+export function useLazyComponent<T extends LazyComponentSupportType<any>>(
+  componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
-): LazyExoticComponent<T> {
+): CheckLazyComponentSupportType<T> {
   const holders = useMemo(() => {
     return deps.map(d => {
       const promiseHolder: PromiseHolder = { loaded: false } as PromiseHolder;
@@ -356,7 +353,7 @@ export function useLazyComponent<
       const holder = hs[index];
       if (state.isError && !holder.loaded) {
         holder.loaded = true;
-        holder.reject(state.error);
+        holder.reject(state);
         return;
       }
       if (state.sessionLoaded && !holder.loaded) {
@@ -373,28 +370,48 @@ export function useLazyComponent<
     return { default: comp };
   }
 
+  function extractComponent(compLike: T | { default: T }): T {
+    const defaultCompLike = compLike as { default: T };
+    if (
+      defaultCompLike.default &&
+      typeof defaultCompLike.default === 'function'
+    ) {
+      return defaultCompLike.default;
+    }
+    return compLike as T;
+  }
+
   return useMemo(() => {
     const { current: hs } = holdersRef;
     const promises = hs.map(({ promise }) => promise);
     return lazy(() => {
-      const expectedLoader =
-        typeof componentLoader === 'function'
-          ? componentLoader()
-          : componentLoader.expected();
-      const unexpectedLoader =
-        typeof componentLoader === 'function'
-          ? Promise.resolve<T>((() => null) as unknown as T)
-          : componentLoader.unexpected();
-      return Promise.all([expectedLoader, ...promises]).then(
+      const loader = componentLoader();
+      return Promise.all([loader, ...promises]).then(
         ([comp]) => {
           return fitComponentLoader(comp);
         },
-        () => {
-          return unexpectedLoader.then(fitComponentLoader);
+        error => {
+          return loader.then(compLike => {
+            const comp = extractComponent(compLike);
+            const hoc = withError<T>(comp, error);
+            return fitComponentLoader(hoc);
+          });
         }
       ) as Promise<{ default: T }>;
-    });
+    }) as CheckLazyComponentSupportType<T>;
   }, []);
+}
+
+export function useLoadedSession<T, C extends PromiseCallback<T>>(
+  sessionKey: SessionKey<C>,
+  config?: { sessionType?: SessionType } | SessionType
+): [SessionState<T>, () => void] {
+  return useSession(
+    sessionKey,
+    typeof config === 'string'
+      ? { sessionType: config, loaded: true }
+      : { ...config, loaded: true }
+  );
 }
 
 export const SessionProvider = StoreProvider;
