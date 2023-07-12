@@ -232,15 +232,22 @@ boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。�
 ## useLazyComponent
 
 ```ts
-function useLazyComponent<T extends ComponentType<any> | ExoticComponent<any>>(
-  componentLoader: () => Promise<T>,
+export function useLazyComponent<
+  T extends ComponentType<any> | ExoticComponent<any>
+>(
+  componentLoader:
+    | (() => Promise<T | { default: T }>)
+    | {
+        expected: () => Promise<T | { default: T }>;
+        unexpected: () => Promise<T | { default: T }>;
+      },
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): LazyExoticComponent<T>;
 ```
 
 ### 参数
 
-* componentLoader - 加载组件的回调函数。该函数返回一个以组件为 resolve 值的 promise 对象。
+* componentLoader - 加载组件的回调函数或配置。当它为函数时，应该返回一个以组件或 `{default: 组件}` 为 resolve 值的 promise 对象。当它为配置对象时，它支持通过设置 `expected` 和 `unexpected` 组件加载函数来区分正常加载，与异常加载时分别使用的组件。
 * deps - `useQuery` 或 `useMutation` 返回的会话状态集合.
 
 ### 返回
@@ -270,6 +277,12 @@ const config: GlobalConfig = {
   )=>[...s, Strategy.error((e)=>console.log(e))]
 }
 
+const UnexpectedComp = ()=>{
+  return (
+    <div>some thing is wrong</div>
+  )
+}
+
 const App = ()=>{
   const userSession = useQuery(currentUserKey, []);
   const [{data}] = userSession;
@@ -282,8 +295,20 @@ const App = ()=>{
     triggerOn: [ 'update' ],
   });
 
-  // 在制定会话及组件都加载后返回一个 React.lazy 组件
+  // 在制定会话及组件都加载后返回一个 React.lazy 组件，
+  // 失败时返回一个 ()=>null 默认组件
   const Container = useLazyComponent(()=>import('./container'), 
+    userSession,
+    usersSession,
+    groupSession
+  )
+
+  // useLazyComponent 可以通过使用 expected 和 unexpected 加载器
+  // 分别设置加载正常时的期望组件和错误时的异常处理组件
+  const Container = useLazyComponent({
+    expected: ()=>import('./container'),
+    unexpected: ()=>Promise.resolve(UnexpectedComp)
+  }, 
     userSession,
     usersSession,
     groupSession
