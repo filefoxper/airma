@@ -208,7 +208,7 @@ export declare function useSession<D extends SessionKey<any>>(
 
 export declare function useLoadedSession<D extends SessionKey<any>>(
   factory: D,
-  config: UseSessionConfig
+  config?: UseSessionConfig | SessionType
 ): [LoadedSessionState<PCR<D>>, () => void];
 
 export declare function createSessionKey<
