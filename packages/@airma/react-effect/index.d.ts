@@ -147,7 +147,7 @@ declare type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
 
 declare type AbstractSessionResult = [
   SessionState,
-  () => Promise<SessionState>,
+  () => any,
   ((...variables: any[]) => Promise<SessionState>)?
 ];
 
