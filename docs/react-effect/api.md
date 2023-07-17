@@ -274,6 +274,10 @@ const Strategy: {
   memo: <T>(
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
+  validate: (process: () => boolean) => StrategyType;
+  reduce: <T>(
+    call: (previous: T | undefined, currentData: T) => T | undefined
+  ) => StrategyType<T>;
 };
 ```
 
@@ -282,6 +286,8 @@ const Strategy: {
 * Strategy.error - It returns a strategy. You can provide a error process callback for it. When the promise is rejected, it calls the process callback with error parameter.
 * Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
+* Strategy.validate - It returns a strategy. You can set a boolean returning callback, it is always called before promise callback is started. If the setting callback returns `false`, the promise callback will stop work.
+* Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state.
 
 ## GlobalSessionProvider
 
