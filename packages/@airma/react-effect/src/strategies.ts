@@ -131,6 +131,22 @@ function throttle(op: { duration: number } | number): StrategyType {
   };
 }
 
+function reduce<T>(
+  call: (previous: T | undefined, currentData: T) => T | undefined
+): StrategyType {
+  return function reduceStrategy(requires): Promise<SessionState> {
+    const { runner, current } = requires;
+    return runner().then(d => {
+      if (d.isError) {
+        return d;
+      }
+      const state = current();
+      const newData = call(state.data, d.data);
+      return { ...d, data: newData } as SessionState;
+    });
+  };
+}
+
 function error(
   process: (e: unknown, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
@@ -198,5 +214,6 @@ export const Strategy = {
   error,
   success,
   validate,
-  memo
+  memo,
+  reduce
 };

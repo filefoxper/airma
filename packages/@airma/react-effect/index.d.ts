@@ -294,6 +294,9 @@ export declare const Strategy: {
   memo: <T>(
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
+  reduce: <T>(
+    call: (previous: T | undefined, currentData: T) => T | undefined
+  ) => StrategyType<T>;
 };
 
 export declare function provide(

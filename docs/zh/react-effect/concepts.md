@@ -410,6 +410,19 @@ Strategy.validate: (process: () => boolean)
 
 * process - 校验处理函数，通过返回 boolean 值来继续或阻止请求发生。
 
+#### Strategy.reduce
+
+```ts
+reduce: <T>(
+  call: (previous: T | undefined, currentData: T) => T | undefined
+);
+```
+
+请求结果累积策略。允许使用者对正常返回数据进行累积处理，该策略不负责处理错误数据。
+
+配置参数：
+
+* call - 累积函数，参数 `previous` 代表当前会话最新状态， `currentData` 代表请求返回的会话结果。可返回一个累积数据作为下更新后会话状态的数据字段。
 
 ### 多策略联合
 
