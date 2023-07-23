@@ -1,4 +1,4 @@
-import type { AirReducer, ModelFactoryStore } from '@airma/core';
+import type { AirReducer, ModelFactoryStore } from './libs/type';
 
 export type AirReducerLike = AirReducer<any, any> & {
   getSourceFrom?: () => AirReducer<any, any>;

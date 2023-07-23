@@ -1,19 +1,5 @@
-import type {
-  AirModelInstance,
-  AirReducer,
-  Action,
-  Connection,
-  FactoryInstance
-} from '@airma/core';
 import type { ComponentType, FC, ReactNode } from 'react';
 
-import {
-  createStore,
-  factory as createFactory,
-  createModel,
-  shallowEqual as shallowEq,
-  createProxy
-} from '@airma/core';
 import {
   useEffect,
   useMemo,
@@ -25,10 +11,22 @@ import {
   FunctionComponent
 } from 'react';
 import { usePersistFn } from '@airma/react-hooks';
+import type {
+  AirModelInstance,
+  AirReducer,
+  Action,
+  Connection,
+  FactoryInstance
+} from './libs/type';
+import createModel, {
+  createStore,
+  factory as createFactory
+} from './libs/reducer';
+import { shallowEqual as shallowEq, createProxy } from './libs/tools';
 import type { AirReducerLike, Selector } from './type';
 
 const realtimeInstanceMountProperty =
-  '@@_airmaReactStateRealtimeInstancePropertyV17_@@';
+  '@@_airmaReactStateRealtimeInstancePropertyV18_@@';
 
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
@@ -204,7 +202,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     );
   }
 
-  const modelRef = useRef<AirReducer<S, T>>(model);
+  const modelRef = useRef<AirReducer<S | undefined, T>>(model);
   const instanceRef = useRef(
     useMemo(
       () =>
