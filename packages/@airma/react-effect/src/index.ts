@@ -41,7 +41,6 @@ import {
   toStrategies,
   useStrategyExecution
 } from './libs/strategy';
-import { LoadedSessionState } from '../index';
 
 function toNoRejectionPromiseCallback<
   T,

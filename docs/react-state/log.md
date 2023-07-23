@@ -71,3 +71,8 @@
 ## v 18.0.0 2023-07-03
 
 * refact how to `dispatch` state.
+
+## v 18.0.2 2023-07-23
+
+* provide more simple but more effective typescript
+* remove the dependency about `@airma/core`.
