@@ -31,3 +31,8 @@
 
 * 提供了相对更简单有效的 typescript 系统
 * 合并了 @airma/core 代码，并不再依赖这个主包。
+
+## v18.1.0
+
+* 对 dispatch 队列逻辑进行单例化处理。
+* 优化了不必要的 `useState` hook 应用。

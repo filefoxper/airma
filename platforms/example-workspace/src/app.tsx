@@ -19,6 +19,7 @@ import {
   useSession
 } from '@airma/react-effect';
 import { pick } from 'lodash';
+import { useResponse } from '@airma/react-effect/src';
 
 const { rest } = cli(c => ({
   ...c,
@@ -206,12 +207,30 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const session = useQuery(fetchSessionKey, {
     variables: [q],
     defaultData: [],
-    strategy: Strategy.success((a, s) => console.log(a, s))
+    strategy: Strategy.effect.success((a, s) =>
+      console.log('effect strategy', a, s)
+    )
   });
 
   const [state, conditionTrigger] = session;
 
   const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
+
+  useResponse(s => {
+    if (s.isError) {
+      console.log('rsp', s.error);
+      return;
+    }
+    console.log('rsp', s.data?.length);
+  }, state);
+
+  useResponse.success(d => {
+    console.log('rsp s', d);
+  }, state);
+
+  useResponse.error(e => {
+    console.log('rsp e', e);
+  }, state);
 
   useIsFetching(state);
 

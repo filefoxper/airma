@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from 'react-dom';
+import { render, unstable_batchedUpdates } from 'react-dom';
 import App from '@/app';
 import {
   GlobalConfig,
@@ -14,12 +14,13 @@ const config: GlobalConfig = {
   strategy: s => [...s, Strategy.error(e => console.log('final...', e))]
 };
 
-createRoot(root!).render(
+render(
   <React.StrictMode>
     <GlobalSessionProvider config={config}>
       <App />
     </GlobalSessionProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
+  root
 );
 
 // render(

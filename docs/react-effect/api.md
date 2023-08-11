@@ -278,6 +278,15 @@ const Strategy: {
   reduce: <T>(
     call: (previous: T | undefined, currentData: T) => T | undefined
   ) => StrategyType<T>;
+  effect: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
 };
 ```
 
@@ -288,6 +297,11 @@ const Strategy: {
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 * Strategy.validate - It returns a strategy. You can set a boolean returning callback, it is always called before promise callback is started. If the setting callback returns `false`, the promise callback will stop work.
 * Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state.
+* Strategy.effect - It returns a strategy. You can set a process callback for it to process the session state effect.
+* Strategy.effect.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
+* Strategy.effect.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
+
+`Strategy.success` is different with `Strategy.effect.success`, one responses to the promise resolver, another responses to session state effect. The same as `Strategy.error` and `Strategy.effect.error`. 
 
 ## GlobalSessionProvider
 
@@ -478,3 +492,100 @@ const App = ()=>{
   <App/>
 </GlobalSessionProvider>
 ```
+
+## useResponse
+
+```ts
+export declare interface useResponse<T> {
+  (
+    process: (state: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ): void;
+  success: (
+    process: (data: T, sessionState: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ) => void;
+  error: (
+    process: (error: unknown, sessionState: SessionState) => any,
+    sessionState: SessionState
+  ) => void;
+}
+```
+
+Parameters
+
+process - A process callback response for session state changes.
+
+Explain
+
+This hook Api calls process callback when session is responsed. It is a effect for session state.
+
+Example:
+
+```ts
+const [sessionState] = useQuery(sessionCallback, []);
+
+useResponse((s)=>{
+  if(s.isError){
+    processError(s.error)
+  }else{
+    processSuccess(s.data);
+  }
+}, sessionState);
+```
+
+### useResponse.success
+
+```ts
+useResponse.success<T>(
+    process: (data: T, sessionState: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ) => void;
+```
+
+Parameters
+
+process - A process callback response for session state changes.
+
+Explain
+
+This Hook Api calls process callback when the session is responsed successful.
+
+Example
+
+```ts
+const [sessionState] = useQuery(sessionCallback, []);
+
+useResponse.success((data)=>{
+  processSuccess(data);
+}, sessionState);
+```
+
+### useResponse.success
+
+```ts
+useResponse.error(
+    process: (error: unknown, sessionState: SessionState) => any,
+    sessionState: SessionState
+  ) => void;
+```
+
+Parameters
+
+process - A process callback response for session state changes.
+
+Explain
+
+This Hook Api calls process callback when the session is responsed failed.
+
+Example
+
+```ts
+const [sessionState] = useQuery(sessionCallback, []);
+
+useResponse.error((err)=>{
+  processError(err);
+}, sessionState);
+```
+
+Why use `useResponse` hooks? `Strategy.success` and `Strategy.error` only response for the running promise drived by `useQuery`, that means if there are some `useQuery` and `useSession` with same session keys, only one of them can trigger `Strategy.xxx`. But, `useResponse` responses for session state, it can be triggered by every session state from `useQuery` and `useSession` with a same session key. If you still like using a `Strategy` to response session state changes, you can use `Strategy.effect` for a same experience.

@@ -354,3 +354,87 @@ const App = ()=>{
   <App/>
 </GlobalSessionProvider>
 ```
+
+## useResponse
+
+```ts
+export declare interface useResponse<T> {
+  (
+    process: (state: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ): void;
+  success: (
+    process: (data: T, sessionState: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ) => void;
+  error: (
+    process: (error: unknown, sessionState: SessionState) => any,
+    sessionState: SessionState
+  ) => void;
+}
+```
+
+### 作用
+
+用于处理会话状态发生响应变化时产生的副作用。
+
+### 返回
+
+无
+
+### 例子
+
+```ts
+const [users, setUsers] = useState([]);
+const [sessionState] = useQuery(promiseCall, []);
+useResponse((s)=>{
+  if (s.isError) {
+    processError(s.error);
+  }else{
+    processSuccess(s.data);
+  }
+}, sessionState);
+```
+### useResponse.success
+
+#### 作用
+
+用于处理会话状态发生正常响应变化时产生的副作用。
+
+#### 返回
+
+无
+
+#### 例子
+
+```ts
+const [users, setUsers] = useState([]);
+const [sessionState] = useQuery(promiseCall, []);
+useResponse.success((data)=>{
+  processSuccess(data);
+}, sessionState);
+```
+
+### useResponse.error
+
+#### 作用
+
+用于处理会话状态发生错误响应变化时产生的副作用。
+
+#### 返回
+
+无
+
+#### 例子
+
+```ts
+const [users, setUsers] = useState([]);
+const [sessionState] = useQuery(promiseCall, []);
+useResponse.error((err)=>{
+  processError(err);
+}, sessionState);
+```
+
+### 与 Strategy.success \ Strategy.error 的不同
+
+`Strategy.success` 以及 ` Strategy.error` 策略是直接响应 useQuery 请求函数的，即 promise.resolve。而 useResponse 是响应于会话状态副作用的。所以在使用多个 session key 相同的 `useQuery` 时，通常只有一个 `Strategy.success \ Strategy.error` 被触发。而 `useResponse` 不论 `useQuery` 工作与否，只要会话状态发生了响应式改变就会以副作用的形式触发。另外新加入的 `Strategy.effect` 策略系列也又同样的功效，在 render 处理模式中，我们更推荐使用 `useReponse` 及 `Strategy.effect` 系列进行副作用处理。

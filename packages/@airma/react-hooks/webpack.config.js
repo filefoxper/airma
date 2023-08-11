@@ -5,7 +5,6 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 module.exports = function config() {
   return {
     externals: {
-      '@airma/core': '@airma/core',
       react:'react'
     },
     entry: {

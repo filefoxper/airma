@@ -73,6 +73,11 @@ export type Updater<S, T extends AirModelInstance> = {
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;
+  notify: (action: Action) => void;
+};
+
+export type UpdaterConfig = {
+  controlled?: boolean;
 };
 
 export type Creation = {

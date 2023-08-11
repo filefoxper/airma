@@ -207,6 +207,47 @@ function validate(callback: () => boolean): StrategyType {
   };
 }
 
+function effect<T>(callback: (state: SessionState<T>) => void): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner } = value;
+    return runner();
+  };
+  sc.effect = callback;
+  return sc;
+}
+
+effect.success = function effectSuccess<T>(
+  process: (data: T, sessionData: SessionState<T>) => any
+): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner } = value;
+    return runner();
+  };
+  sc.effect = function effectCallback(state) {
+    if (state.isError || state.isFetching || !state.sessionLoaded) {
+      return;
+    }
+    process(state.data, state);
+  };
+  return sc;
+};
+
+effect.error = function effectError<T>(
+  process: (e: unknown, sessionData: SessionState) => any
+): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner } = value;
+    return runner();
+  };
+  sc.effect = function effectCallback(state) {
+    if (!state.isError || state.isFetching) {
+      return;
+    }
+    process(state.error, state);
+  };
+  return sc;
+};
+
 export const Strategy = {
   debounce,
   throttle,
@@ -215,5 +256,6 @@ export const Strategy = {
   success,
   validate,
   memo,
-  reduce
+  reduce,
+  effect
 };

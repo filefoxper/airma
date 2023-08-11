@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import {
   SessionState,
   StrategyCollectionType,
+  StrategyEffect,
   StrategyType,
   TriggerType
 } from './type';
@@ -87,33 +88,42 @@ export function useStrategyExecution<T>(
     strategies.map(() => ({ current: undefined }))
   );
 
-  return function callWithStrategy(
-    triggerType: TriggerType,
-    variables?: any[]
-  ) {
-    const runtimeVariables = variables || [];
-    const requires = {
-      current: () => instance.state,
-      variables: runtimeVariables,
-      runner: () => {
-        const { state: current, setState } = instance;
-        setState({
-          ...current,
-          isFetching: true,
-          triggerType
-        });
-        return sessionRunner(triggerType, runtimeVariables);
-      },
-      store: strategyStoreRef,
-      runtimeCache: createRuntimeCache()
-    };
-    return composeStrategies(strategies)(requires).then(data => {
-      if (!data.abandon) {
-        instance.setState(data);
+  const effects = strategies
+    .map(s => {
+      if (!s) {
+        return undefined;
       }
-      return data;
-    });
-  };
+      return s.effect;
+    })
+    .filter((e): e is StrategyEffect<any> => !!e);
+
+  return [
+    function callWithStrategy(triggerType: TriggerType, variables?: any[]) {
+      const runtimeVariables = variables || [];
+      const requires = {
+        current: () => instance.state,
+        variables: runtimeVariables,
+        runner: () => {
+          const { state: current, setState } = instance;
+          setState({
+            ...current,
+            isFetching: true,
+            triggerType
+          });
+          return sessionRunner(triggerType, runtimeVariables);
+        },
+        store: strategyStoreRef,
+        runtimeCache: createRuntimeCache()
+      };
+      return composeStrategies(strategies)(requires).then(data => {
+        if (!data.abandon) {
+          instance.setState(data);
+        }
+        return data;
+      });
+    },
+    effects
+  ] as const;
 }
 
 export function latest(): StrategyType {

@@ -424,6 +424,42 @@ reduce: <T>(
 
 * call - 累积函数，参数 `previous` 代表当前会话最新状态， `currentData` 代表请求返回的会话结果。可返回一个累积数据作为下更新后会话状态的数据字段。
 
+#### Strategy.effect
+
+```ts
+effect: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
+```
+
+会话状态副作用处理策略。用来处理会话状态产生及变化的副作用。可看作：
+
+```ts
+const [sessionState] = useQuery(promiseCall, []);
+
+useEffect(()=>{
+  processEffectOfSessionState(sessionState);
+}, [sessionState]);
+```
+
+配置参数：
+
+* process - 副作用处理函数，可接受一个 session state 作为入参。
+
+#### Strategy.effect.success
+
+会话状态副作用处理策略。用来处理会话请求正常返回，并改变会话状态时的副作用。与 `Strategy.success` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
+
+#### Strategy.effect.error
+
+会话状态副作用处理策略。用来处理会话请求异常返回，并改变会话状态时的副作用。与 `Strategy.error` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
+
 ### 多策略联合
 
 当我们需要同时使用多种策略时，可以把多个策略串连成一个数组提供给会话配置的 `strategy` 字段。策略系统会按照`套娃`的形式从左往右，从外及里嵌套数组中的策略，最终形成一个新策略。
