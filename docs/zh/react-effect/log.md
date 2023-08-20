@@ -22,3 +22,8 @@
 
 * 为 session state 添加了 `sessionLoaded` 和 `variables` 字段
 * 添加 `useLazyComponent` API
+
+## v 18.1.0
+
+* 添加了 `useResponse` hook 接口，用于副作用处理会话状态变化
+* 添加了 `Strategy.effect` 策略，用于副作用处理会话状态变化

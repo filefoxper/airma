@@ -14,11 +14,10 @@ module.exports = function config() {
     resolve: {
       ...core.resolve,
       alias: {
-        "@airma/core":"@airma/core/src/index.ts",
-        "@airma/react-state":"@airma/react-state/src/index.ts",
-        "@airma/restful":"@airma/restful/src/index.ts",
-        "@airma/react-hooks":"@airma/react-hooks/src/index.ts",
-        "@airma/react-effect":"@airma/react-effect/src/index.ts"
+        "@airma/react-state":"@airma/react-state/src",
+        "@airma/restful":"@airma/restful/src",
+        "@airma/react-hooks":"@airma/react-hooks/src",
+        "@airma/react-effect":"@airma/react-effect/src"
       }
     },
     plugins: [

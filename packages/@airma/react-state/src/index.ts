@@ -36,7 +36,13 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
 ): T {
   const { disabled } = option || {};
   const modelRef = useRef(model);
-  const current = useMemo(() => createModel<S, T, D>(model, state, true), []);
+  const current = useMemo(
+    () =>
+      createModel<S, T, D>(model, state, {
+        controlled: true
+      }),
+    []
+  );
   if (
     !disabled &&
     (state !== current.getState() || model !== modelRef.current)
@@ -122,6 +128,12 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
+/**
+ * @deprecated
+ * @param value
+ * @param children
+ * @constructor
+ */
 export const ModelProvider: FC<{
   value: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
@@ -224,15 +236,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     modelRef.current = model;
     current.update(model);
   }
-  const initialState = current.getState();
-  const [s, setS] = useState<S | undefined>(initialState);
   const [agent, setAgent] = useState(current.getCurrent());
-  const dispatch = ({ state: actionState }: Action) => {
-    if (s === actionState) {
-      return;
-    }
+  const dispatch = () => {
     setAgent(current.getCurrent());
-    setS(actionState);
   };
   const persistDispatch = usePersistFn(dispatch);
   const prevStateRef = useRef<{ state: D | undefined }>({ state });
@@ -407,7 +413,7 @@ export function provide(
   >(Comp: C): ComponentType<P> {
     return function WithModelProviderComponent(props: P) {
       return createElement(
-        ModelProvider,
+        StoreProvider,
         { value: keys },
         createElement<P>(Comp as FunctionComponent<P>, props)
       );
@@ -415,6 +421,10 @@ export function provide(
   };
 }
 
+/**
+ * @deprecated
+ * @param keys
+ */
 export function withStoreProvider(
   keys: Array<any> | ((...args: any) => any) | Record<string, any>
 ) {
@@ -442,6 +452,9 @@ export function useRealtimeInstance<T>(
   return realtimeInstance;
 }
 
+/**
+ * @deprecated
+ */
 export const withModelProvider = withStoreProvider;
 
 export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
@@ -456,8 +469,14 @@ export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
 
 export const shallowEqual = shallowEq;
 
+/**
+ * @deprecated
+ */
 export const factory = createFactory;
 
+/**
+ * @deprecated
+ */
 export const createStoreKey = createFactory;
 
 export const createKey = createFactory;

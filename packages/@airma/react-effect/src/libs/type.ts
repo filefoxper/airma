@@ -105,27 +105,21 @@ export type CheckLazyComponentSupportType<
     : never
   : never;
 
-export type StrategyType<T = any> = (value: {
-  current: () => SessionState<T>;
-  variables: any[];
-  runner: () => Promise<SessionState<T>>;
-  store: { current: any };
-  runtimeCache: {
-    set: (key: any, value: any) => void;
-    get: (key: any) => any;
-  };
-}) => Promise<SessionState<T>>;
+export type StrategyEffect<T> = (state: SessionState<T>) => void;
 
-export type StrategyRequires<T = any> = {
-  current: () => SessionState<T>;
-  variables: any[];
-  runner: () => Promise<SessionState<T>>;
-  store: { current: { current: any }[] };
-  runtimeCache: {
-    set: (key: any, value: any) => void;
-    get: (key: any) => any;
-  };
-};
+export interface StrategyType<T = any> {
+  (value: {
+    current: () => SessionState<T>;
+    variables: any[];
+    runner: () => Promise<SessionState<T>>;
+    store: { current: any };
+    runtimeCache: {
+      set: (key: any, value: any) => void;
+      get: (key: any) => any;
+    };
+  }): Promise<SessionState<T>>;
+  effect?: StrategyEffect<T>;
+}
 
 export type StrategyCollectionType<T = any> =
   | undefined
@@ -155,11 +149,6 @@ export type GlobalConfig = {
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'
   ) => (StrategyType | null | undefined)[];
-};
-
-export type GlobalConfigProviderProps = {
-  value?: GlobalConfig;
-  children?: ReactNode;
 };
 
 export type GlobalSessionProviderProps = {

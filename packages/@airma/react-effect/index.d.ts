@@ -47,16 +47,19 @@ export declare type SessionState<T> =
   | LoadedSessionState<T>
   | UnloadedSessionState;
 
-export declare type StrategyType<T = any> = (runtime: {
-  current: () => SessionState<T>;
-  variables: any[];
-  runner: () => Promise<SessionState<T>>;
-  store: { current: any };
-  runtimeCache: {
-    set: (key: any, value: any) => void;
-    get: (key: any) => any;
-  };
-}) => Promise<SessionState<T>>;
+export declare interface StrategyType<T = any> {
+  (runtime: {
+    current: () => SessionState<T>;
+    variables: any[];
+    runner: () => Promise<SessionState<T>>;
+    store: { current: any };
+    runtimeCache: {
+      set: (key: any, value: any) => void;
+      get: (key: any) => any;
+    };
+  }): Promise<SessionState<T>>;
+  effect?: (state: SessionState<T>) => void;
+}
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
@@ -244,6 +247,21 @@ export declare function useLazyComponent<
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): CheckLazyComponentSupportType<T>;
 
+export declare interface useResponse<T> {
+  (
+    process: (state: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ): void;
+  success: (
+    process: (data: T, sessionState: SessionState<T>) => any,
+    sessionState: SessionState<T>
+  ) => void;
+  error: (
+    process: (error: unknown, sessionState: SessionState) => any,
+    sessionState: SessionState
+  ) => void;
+}
+
 export declare const SessionProvider: FC<
   | {
       keys: ModelKeys;
@@ -297,6 +315,15 @@ export declare const Strategy: {
   reduce: <T>(
     call: (previous: T | undefined, currentData: T) => T | undefined
   ) => StrategyType<T>;
+  effect: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
 };
 
 export declare function provide(

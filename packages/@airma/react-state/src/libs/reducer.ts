@@ -7,12 +7,19 @@ import type {
   FactoryInstance,
   Dispatch,
   ActionWrap,
-  FirstActionWrap
+  FirstActionWrap,
+  UpdaterConfig
 } from './type';
-import { createProxy, toMapObject } from './tools';
+import { createProxy, noop, toMapObject } from './tools';
 import { Collection, Creation, ModelFactoryStore } from './type';
 
-function generateDispatch<S, T extends AirModelInstance>(
+function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
+  dispatches.forEach(callback => {
+    callback(action);
+  });
+}
+
+function generateNotification<S, T extends AirModelInstance>(
   updater: Updater<S, T>
 ) {
   function pendAction(value: Action) {
@@ -58,13 +65,13 @@ function generateDispatch<S, T extends AirModelInstance>(
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
         try {
-          dispatchCallbacks.forEach(callback => {
-            callback(wrap.value);
-          });
+          defaultNotifyImplement(dispatchCallbacks, wrap.value);
         } catch (e) {
           updater.dispatching = undefined;
           throw e;
         }
+      } else {
+        updater.dispatching = undefined;
       }
     }
   };
@@ -78,22 +85,18 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     return updater.cacheMethods[type];
   }
   const newMethod = function newMethod(...args: unknown[]) {
-    function dispatch(action: Action): void {
-      const dispatchAll = generateDispatch(updater);
-      dispatchAll(action);
-    }
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
     const { reducer, controlled } = updater;
     const methodAction = { type, state: result };
     if (controlled) {
-      dispatch(methodAction);
+      updater.notify(methodAction);
       return result;
     }
     updater.current = reducer(result);
     updater.state = result;
     updater.cacheState = { state: result };
-    dispatch({ type, state: result });
+    updater.notify({ type, state: result });
     return result;
   };
   updater.cacheMethods[type] = newMethod;
@@ -103,9 +106,10 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
 export default function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   defaultState: D,
-  controlled?: boolean
+  updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
   const defaultModel = reducer(defaultState);
+  const { controlled } = updaterConfig || {};
   const updater: Updater<S, T> = {
     current: defaultModel,
     reducer,
@@ -114,8 +118,11 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     cacheMethods: {},
     state: defaultState,
     cacheState: null,
-    controlled: !!controlled
+    controlled: !!controlled,
+    notify: noop
   };
+
+  updater.notify = generateNotification(updater);
 
   function update(
     updateReducer: AirReducer<S, T>,
@@ -143,7 +150,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
-    generateDispatch(updater)({ state: updater.state, type: '' });
+    updater.notify({ state: updater.state, type: '' });
   }
 
   function subscribe(dispatchCall: Dispatch): boolean {
@@ -222,7 +229,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       update(updater.reducer, { state, cache: true });
     },
     notice(): void {
-      notice(generateDispatch(updater));
+      notice(updater.notify);
     },
     tunnel(dispatchCall) {
       return {
@@ -256,8 +263,10 @@ export function factory<T extends AirReducer<any, any>>(
   const replaceModel = function replaceModel(s: any) {
     return reducer(s);
   };
-  replaceModel.creation = function creation(): Connection {
-    return createModel(replaceModel, state);
+  replaceModel.creation = function creation(
+    updaterConfig?: UpdaterConfig
+  ): Connection {
+    return createModel(replaceModel, state, updaterConfig);
   };
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
     target: P
@@ -275,7 +284,11 @@ export function factory<T extends AirReducer<any, any>>(
 
 function collectConnections<
   T extends Array<any> | ((...args: any[]) => any) | Record<string, any>
->(factoryCollections: T, collectionKeys: string[] = []): Collection[] {
+>(
+  factoryCollections: T,
+  updaterConfig: UpdaterConfig = {},
+  collectionKeys: string[] = []
+): Collection[] {
   if (
     typeof factoryCollections === 'function' &&
     typeof (factoryCollections as typeof factoryCollections & Creation)
@@ -302,6 +315,7 @@ function collectConnections<
     const k = key as keyof T;
     const result = collectConnections(
       fact[k] as Record<string, any>,
+      updaterConfig,
       collectionKeys.concat(key)
     );
     collection.push(...result);
@@ -322,7 +336,7 @@ function toInstances(collections: Collection[]) {
 
 export function createStore<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
->(fact: T): ModelFactoryStore<T> {
+>(fact: T, updaterConfig?: UpdaterConfig): ModelFactoryStore<T> {
   const handler = fact;
   function extractFactory(collections: Collection[]) {
     const connections = collections.map(({ connection }) => connection);
@@ -377,7 +391,7 @@ export function createStore<
     deletions.forEach(({ connection }) => connection.disconnect());
     return [...additions, ...updates];
   }
-  const currentCollections = collectConnections(fact);
+  const currentCollections = collectConnections(fact, updaterConfig);
   const holder = extractFactory(currentCollections);
 
   const store = {
@@ -385,7 +399,7 @@ export function createStore<
       if (updateFactory === fact) {
         return { ...store };
       }
-      const collections = collectConnections(updateFactory);
+      const collections = collectConnections(updateFactory, updaterConfig);
       const {
         instances,
         connections,

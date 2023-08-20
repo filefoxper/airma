@@ -27,7 +27,8 @@ import type {
   AbstractSessionResult,
   PromiseHolder,
   CheckLazyComponentSupportType,
-  LazyComponentSupportType
+  LazyComponentSupportType,
+  SessionResult
 } from './libs/type';
 import { parseConfig, useSessionBuildModel } from './libs/model';
 import {
@@ -123,7 +124,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   }
 
-  const strategyExecution = useStrategyExecution(
+  const [strategyExecution, strategyEffects] = useStrategyExecution(
     instance,
     sessionRunner,
     strategy
@@ -192,6 +193,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     removeGlobalFetchingKey(keyRef.current);
     instance.removeFetchingKey(keyRef.current);
   });
+
+  useEffect(() => {
+    strategyEffects.forEach(effectCallback => {
+      effectCallback(stableInstance.state);
+    });
+  }, [stableInstance.state]);
 
   return [stableInstance.state, trigger, execute];
 }
@@ -412,6 +419,49 @@ export function useLoadedSession<T, C extends PromiseCallback<T>>(
       : { ...config, loaded: true }
   );
 }
+
+export function useResponse<T>(
+  process: (state: SessionState<T>) => any,
+  sessionState: SessionState<T>
+) {
+  useEffect(() => {
+    const isErrorResponse = !sessionState.isFetching && sessionState.isError;
+    const isSuccessResponse =
+      !sessionState.isFetching &&
+      sessionState.sessionLoaded &&
+      !sessionState.isError;
+    if (isErrorResponse || isSuccessResponse) {
+      process(sessionState);
+    }
+  }, [sessionState]);
+}
+
+useResponse.success = function useSuccessResponse<T>(
+  process: (data: T, sessionState: SessionState<T>) => any,
+  sessionState: SessionState<T>
+) {
+  useEffect(() => {
+    const isSuccessResponse =
+      !sessionState.isFetching &&
+      sessionState.sessionLoaded &&
+      !sessionState.isError;
+    if (isSuccessResponse) {
+      process(sessionState.data as T, sessionState);
+    }
+  }, [sessionState]);
+};
+
+useResponse.error = function useErrorResponse(
+  process: (error: unknown, sessionState: SessionState) => any,
+  sessionState: SessionState
+) {
+  useEffect(() => {
+    const isErrorResponse = !sessionState.isFetching && sessionState.isError;
+    if (isErrorResponse) {
+      process(sessionState.error, sessionState);
+    }
+  }, [sessionState]);
+};
 
 export const SessionProvider = StoreProvider;
 
