@@ -16,6 +16,7 @@
 * [@airma/react-state](/react-state/index.md)
 * [@airma/restful](/restful/index.md)
 * [@airma/react-effect](/react-effect/index.md)
+* [@airma/react-hooks](/react-hooks/index.md)
 
 <h2> @airma/react-state </h2>
 

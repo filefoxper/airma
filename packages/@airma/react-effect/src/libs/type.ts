@@ -145,6 +145,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 };
 
 export type GlobalConfig = {
+  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'
@@ -154,6 +155,11 @@ export type GlobalConfig = {
 export type GlobalSessionProviderProps = {
   config?: GlobalConfig;
   keys?: ModelKeys;
+  children?: ReactNode;
+};
+
+export type ConfigProviderProps = {
+  value: GlobalConfig;
   children?: ReactNode;
 };
 
@@ -192,5 +198,5 @@ export type PromiseHolder = {
   promise: Promise<any>;
   resolve: (data: any) => void;
   reject: (data: any) => void;
-  loaded: boolean;
+  loaded?: boolean;
 };

@@ -236,7 +236,8 @@ effect.error = function effectError<T>(
   process: (e: unknown, sessionData: SessionState) => any
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
-    const { runner } = value;
+    const { runner, runtimeCache } = value;
+    runtimeCache.set(error, true);
     return runner();
   };
   sc.effect = function effectCallback(state) {

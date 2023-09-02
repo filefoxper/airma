@@ -156,7 +156,7 @@ const App = ()=>{
 }
 ```
 
-## useRefreshModel
+## ~~useRefreshModel~~
 
 ```ts
 function useRefreshModel<
@@ -210,7 +210,7 @@ const App = ()=>{
 }
 ```
 
-## useRefresh
+## ~~useRefresh~~
 
 ```ts
 function useRefresh<T extends (...args: any[]) => any>(
@@ -502,3 +502,49 @@ const Counter = ()=>{
     return ......
 }
 ```
+
+## ConfigProvider
+
+React 组件
+
+```ts
+export declare type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
+};
+
+export declare const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;
+```
+
+属性 
+
+* value - 全局 API 配置，可通过对 `batchUpdate` 使用 `ReactDOM.unstable_batchedUpdates` 来提供公共模型的 state 更新效率。（注意：若使用 react 版本已经超过 18.0.0 可忽略该配置）
+* children - React 节点
+
+例子
+
+```ts
+import React from 'react';
+import { render, unstable_batchedUpdates } from 'react-dom';
+import App from '@/app';
+import { ConfigProvider, GlobalConfig } from '@airma/react-state';
+
+const root = document.getElementById('root');
+
+// react 低于 18.0.0 可配置 batchUpdate
+const config: GlobalConfig = {
+  batchUpdate: unstable_batchedUpdates
+};
+
+render(
+  <React.StrictMode>
+    <ConfigProvider value={config}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>,
+  root
+);
+```
+

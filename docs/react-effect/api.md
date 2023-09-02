@@ -301,9 +301,85 @@ const Strategy: {
 * Strategy.effect.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
 * Strategy.effect.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
 
-`Strategy.success` is different with `Strategy.effect.success`, one responses to the promise resolver, another responses to session state effect. The same as `Strategy.error` and `Strategy.effect.error`. 
+`Strategy.success` is different with `Strategy.effect.success`, one responses to the promise resolver, another responses to session state effect. The same as `Strategy.error` and `Strategy.effect.error`.
 
-## GlobalSessionProvider
+## ConfigProvider
+
+It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, or use a global fetching state, you can use it.
+
+```ts
+type GlobalConfig = {
+  useGlobalFetching?: boolean;
+  strategy?:(
+    strategies:(StrategyType | undefined | null)[], 
+    type: 'query' | 'mutation'
+  )=>(StrategyType | undefined | null)[];
+};
+
+interface ConfigProviderProps:{
+    value: GlobalConfig;
+    children?: ReactNode;
+}
+```
+
+### Parameters
+
+* value - It should be global config.
+* children - React Nodes
+
+### Example
+
+```ts
+import React from 'react';
+import {
+  ConfigProvider,
+  Strategy,
+  useQuery,
+  useIsFetching
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+import {fetchUsers, fetchGroups} from './globalSessions'; 
+
+const config: GlobalConfig = {
+  // The strategy is a callback,
+  // it accepts a running effect strategy array,
+  // and a effect type: 'query' | 'mutation'.
+  // You can complete the running strategies
+  // with padding strategies,
+  // so, the running effect will work with these new strategies.
+  strategy:(
+    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
+  )=>[...s, Strategy.error((e)=>console.log(e))],
+  // use global fetching state.
+  useGlobalFetching: true
+}
+
+const App = ()=>{
+  // if the `fetchUsers` is failed,
+  // the global config strategy `Strategy.error` works.
+  useQuery(fetchUsers, []);
+  useQuery(fetchGroups, {
+    variables: [...ids],
+    strategy: [
+      Strategy.debounce(300), 
+      // Strategy.error can not work twice in strategy chain runtime.
+      Strategy.error(...)
+    ]
+  });
+  const userOrGroupsIsFetching = useIsFetching();
+  ......
+}
+
+......
+{/* Set a GlobalConfig */}
+<ConfigProvider 
+  value={config}
+>
+  <App/>
+</ConfigProvider>
+```
+
+## ~~GlobalSessionProvider~~
 
 It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
 
@@ -341,8 +417,6 @@ const config: GlobalConfig = {
   // You can complete the running strategies
   // with padding strategies,
   // so, the running effect will work with these new strategies.
-  // It can be ignored by a local effect config option:
-  // `exact: true`
   strategy:(
     s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
   )=>[...s, Strategy.error((e)=>console.log(e))]
@@ -357,9 +431,7 @@ const App = ()=>{
     strategy: [
       Strategy.debounce(300), 
       Strategy.error(...)
-    ],
-    // tell useQuery to use the current config exactly.
-    exact: true
+    ]
   });
   ......
 }
@@ -367,7 +439,7 @@ const App = ()=>{
 ......
 {/* Set a ClientConfig */}
 <GlobalSessionProvider 
-  config={Strategy.error(e => console.log(e))}
+  config={config}
 >
   <App/>
 </GlobalSessionProvider>
@@ -393,9 +465,9 @@ A boolean data, if any of sessionStates is in `fetching`, it returns true.
 
 Explain
 
-If `useIsFetching` is in a `GlobalProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in  `GlobalProvider`.
+If `useIsFetching` is in a `useGlobalFetching` setted `ConfigProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in this Provider.
 
-## useLazyComponent
+## ~~useLazyComponent~~
 
 ```ts
 declare type LazyComponentSupportType<P> =

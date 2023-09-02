@@ -209,7 +209,83 @@ function useLoadedSession(sessionKey, config?: Config){
 
 `@airma/react-effect` 提供的[常用策略集合](/zh/react-effect/concepts?id=常用策略)。
 
-## GlobalSessionProvider
+## ConfigProvider
+
+provider 组件
+
+```ts
+type GlobalConfig = {
+  useGlobalFetching?: boolean;
+  strategy?:(
+    strategies:(StrategyType | undefined | null)[], 
+    type: 'query' | 'mutation'
+  )=>(StrategyType | undefined | null)[];
+};
+
+interface ConfigProviderProps:{
+    value: GlobalConfig;
+    children?: ReactNode;
+}
+```
+
+### 作用
+
+用于配置范围内 API 特性。
+
+### 属性
+
+* value - 配置对象，`useGlobalFetching` 属性用于为无参 `useIsFetching` 提供全局监听支持；`strategy` 回调函数可以影响`useQuery`和`useMutation`的策略列表。
+* children - React 节点
+
+### 例子
+
+```ts
+import React from 'react';
+import {
+  ConfigProvider,
+  Strategy,
+  useQuery,
+  useIsFetching
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+import {fetchUsers, fetchGroups} from './globalSessions'; 
+
+const config: GlobalConfig = {
+  // 通过全局策略回调为每个 `useQuery` 和 `useMutation`
+  // 的 strategy 属性列表追加 Strategy.error 报错兜底处理
+  strategy:(
+    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
+  )=>[...s, Strategy.error((e)=>console.log(e))],
+  // 启用全局 isFetching 监听
+  useGlobalFetching: true
+}
+
+const App = ()=>{
+  // 如果 `fetchUsers` 调用失败,
+  // 全局配置 strategy 中的 `Strategy.error` 会被兜底运行
+  useQuery(fetchUsers, []);
+  useQuery(fetchGroups, {
+    variables: [...ids],
+    strategy: [
+      Strategy.debounce(300), 
+      // Strategy.error 可以阻止后续追加的 Strategy.error 运行 
+      Strategy.error(...)
+    ]
+  });
+  const userOrGroupsIsFetching = useIsFetching();
+  ......
+}
+
+......
+{/* Set a GlobalConfig */}
+<ConfigProvider 
+  value={config}
+>
+  <App/>
+</ConfigProvider>
+```
+
+## ~~GlobalSessionProvider~~
 
  provider 组件
 
@@ -252,7 +328,7 @@ export declare function useIsFetching(
 
 boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。如果没有指定任何参数，同时也不在 `GlobalSessionProvider` 范围内，则报出异常。
 
-## useLazyComponent
+## ~~useLazyComponent~~
 
 ```ts
 declare type LazyComponentSupportType<P> =

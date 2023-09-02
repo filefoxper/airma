@@ -4,6 +4,7 @@
 
 * [@airma/react-state](/zh/react-state/index.md)
 * [@airma/react-effect](/zh/react-effect/index.md)
+* [@airma/react-hooks](/zh/react-hooks/index.md)
 
 <h2> @airma/react-state </h2>
 
@@ -136,4 +137,8 @@ const App = ()=>{
 };
 ```
 
-如上所示一个本地查询的状态管理非常容易，如果希望了解更多用法和跨组建状态同步功能可参阅[相关文档](/zh/react-effect)。
+如上所示一个本地查询的状态管理非常容易，如果希望了解更多用法和跨组建状态同步功能可参阅[相关文档](/zh/react-effect/index)。
+
+<h2>@airma/react-hooks</h2>
+
+`@airma/react-hooks` 是 `@airma/react-state` 与 `@airma/react-effect` 的合集，它能让使用者更方便的操作两个库的API。[相关文档](/zh/react-hooks/index)

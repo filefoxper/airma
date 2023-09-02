@@ -10,7 +10,7 @@ import {
   useContext,
   FunctionComponent
 } from 'react';
-import { usePersistFn } from '@airma/react-hooks';
+import { usePersistFn } from '@airma/react-hooks-core';
 import type {
   AirModelInstance,
   AirReducer,
@@ -23,10 +23,12 @@ import createModel, {
   factory as createFactory
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
-import type { AirReducerLike, Selector } from './type';
+import type { AirReducerLike, GlobalConfig, Selector } from './type';
 
 const realtimeInstanceMountProperty =
   '@@_airmaReactStateRealtimeInstancePropertyV18_@@';
+
+const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
@@ -160,8 +162,10 @@ export const StoreProvider: FC<{
   if (storeKeys == null) {
     throw new Error('You need to provide keys to `StoreProvider`');
   }
+  const config = useContext(ConfigContext);
+  const { batchUpdate } = config || {};
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(storeKeys), []);
+  const storeMemo = useMemo(() => createStore(storeKeys, { batchUpdate }), []);
   const selector = useMemo(() => {
     const store = storeMemo.update(storeKeys);
     return { ...store, parent: context };
@@ -480,3 +484,11 @@ export const factory = createFactory;
 export const createStoreKey = createFactory;
 
 export const createKey = createFactory;
+
+export const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}> = function ConfigProvider(props) {
+  const { value, children } = props;
+  return createElement(ConfigContext.Provider, { value }, children);
+};

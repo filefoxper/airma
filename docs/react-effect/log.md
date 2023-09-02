@@ -24,3 +24,9 @@
 
 * add `variables` and `sessionLoaded` to session state.
 * add API `useLazyComponent`.
+
+# v 18.2.0 2023-09-03
+
+* deprecate GlobalSessionProvider
+* deprecate useLazyComponent
+* add ConfigProvider to replace GlobalSessionProvider

@@ -1,11 +1,11 @@
 {
   "private": false,
-  "name": "@airma/react-hooks",
-  "version": "18.2.0",
+  "name": "@airma/react-hooks-core",
+  "version": "18.0.0",
   "description": "This is a common react hook package",
   "license": "MIT",
   "author": "Jimmy.Harding",
-  "homepage": "https://filefoxper.github.io/airma/#/react-hooks/index",
+  "homepage": "https://github.com/filefoxper/airma",
   "repository": {
     "type": "git",
     "url": "https://github.com/filefoxper/airma"
@@ -25,10 +25,7 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "react": ">=16.8.0",
-    "@airma/react-hooks-core": "^18.0.0",
-    "@airma/react-state": "^18.2.0",
-    "@airma/react-effect": "^18.2.0"
+    "react": ">=16.8.0"
   },
   "devDependencies": {
     "esbuild": "^0.16.6",
