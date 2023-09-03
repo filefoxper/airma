@@ -20,7 +20,8 @@ function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
 }
 
 function generateNotification<S, T extends AirModelInstance>(
-  updater: Updater<S, T>
+  updater: Updater<S, T>,
+  batchUpdate?: (callback: () => void) => void
 ) {
   function pendAction(value: Action) {
     const { dispatching } = updater;
@@ -65,7 +66,13 @@ function generateNotification<S, T extends AirModelInstance>(
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
         try {
-          defaultNotifyImplement(dispatchCallbacks, wrap.value);
+          if (typeof batchUpdate === 'function') {
+            batchUpdate(() => {
+              defaultNotifyImplement(dispatchCallbacks, wrap.value);
+            });
+          } else {
+            defaultNotifyImplement(dispatchCallbacks, wrap.value);
+          }
         } catch (e) {
           updater.dispatching = undefined;
           throw e;
@@ -109,7 +116,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
   const defaultModel = reducer(defaultState);
-  const { controlled } = updaterConfig || {};
+  const { controlled, batchUpdate } = updaterConfig || {};
   const updater: Updater<S, T> = {
     current: defaultModel,
     reducer,
@@ -122,7 +129,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     notify: noop
   };
 
-  updater.notify = generateNotification(updater);
+  updater.notify = generateNotification(updater, batchUpdate);
 
   function update(
     updateReducer: AirReducer<S, T>,
@@ -301,7 +308,7 @@ function collectConnections<
         factory: factoryCollections as (...args: any[]) => any,
         connection: (
           factoryCollections as typeof factoryCollections & Creation
-        ).creation()
+        ).creation(updaterConfig)
       } as Collection
     ];
   }

@@ -1,24 +1,23 @@
 import React from 'react';
 import { render, unstable_batchedUpdates } from 'react-dom';
 import App from '@/app';
-import {
-  GlobalConfig,
-  GlobalSessionProvider,
-  Strategy
-} from '@airma/react-effect';
+import { Strategy } from '@airma/react-effect';
 import { createRoot } from 'react-dom/client';
+import { ConfigProvider, GlobalConfig } from '@airma/react-hooks';
 
 const root = document.getElementById('root');
 
 const config: GlobalConfig = {
+  batchUpdate: unstable_batchedUpdates,
+  useGlobalFetching: true,
   strategy: s => [...s, Strategy.error(e => console.log('final...', e))]
 };
 
 render(
   <React.StrictMode>
-    <GlobalSessionProvider config={config}>
+    <ConfigProvider value={config}>
       <App />
-    </GlobalSessionProvider>
+    </ConfigProvider>
   </React.StrictMode>,
   root
 );

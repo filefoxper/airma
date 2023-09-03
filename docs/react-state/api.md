@@ -152,7 +152,7 @@ const App = ()=>{
 }
 ```
 
-## useRefreshModel
+## ~~useRefreshModel~~
 
 It is a shortcut usage about [useModel(model, state, {refresh:true})](/react-state/api?id=usemodel).
 
@@ -209,7 +209,7 @@ const App = ()=>{
 }
 ```
 
-## useRefresh
+## ~~useRefresh~~
 
 ```ts
 function useRefresh<T extends (...args: any[]) => any>(
@@ -515,4 +515,54 @@ const Counter = ()=>{
     }), shallowEqual);
     return ......
 }
+```
+
+## ConfigProvider
+
+It is a provider component, you can config `@airma/react-state` API inside it.
+
+```ts
+export declare type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
+};
+
+export declare const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;
+```
+
+Props
+
+* value - A config object.
+* children - React Nodes
+
+Explain
+
+The config allows you provide a `batchUpdate` function to improve the notice state update performance.
+
+Notice, if the version of react you used is `>=18.0.0`, you can forget it.
+
+```ts
+import React from 'react';
+import { render, unstable_batchedUpdates } from 'react-dom';
+import App from '@/app';
+import { ConfigProvider, GlobalConfig } from '@airma/react-state';
+
+const root = document.getElementById('root');
+
+// use `unstable_batchedUpdates` as a batchUpdate.
+// It is often used in react with a lower version to 18.0.0
+const config: GlobalConfig = {
+  batchUpdate: unstable_batchedUpdates
+};
+
+render(
+  <React.StrictMode>
+    <ConfigProvider value={config}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>,
+  root
+);
 ```

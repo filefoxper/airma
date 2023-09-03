@@ -78,10 +78,11 @@ export type Updater<S, T extends AirModelInstance> = {
 
 export type UpdaterConfig = {
   controlled?: boolean;
+  batchUpdate?: (callback: () => void) => void;
 };
 
 export type Creation = {
-  creation(): Connection;
+  creation(updateConfig?: UpdaterConfig): Connection;
 };
 
 export type Collection = {

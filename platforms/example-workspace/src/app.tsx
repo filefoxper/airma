@@ -3,23 +3,20 @@ import {
   createKey,
   useControlledModel,
   useModel,
-  useRefreshModel,
-  useSelector
-} from '@airma/react-state';
-import { client as cli } from '@airma/restful';
-import {
+  useSelector,
   createSessionKey,
   provide,
   Strategy,
-  ErrorSessionState,
   useIsFetching,
-  useLazyComponent,
   useMutation,
   useQuery,
-  useSession
-} from '@airma/react-effect';
+  useSession,
+  useUpdate
+} from '@airma/react-hooks';
+import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
 import { useResponse } from '@airma/react-effect/src';
+import { ErrorSessionState, useLazyComponent } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
   ...c,
@@ -299,16 +296,11 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
       querySession
     );
 
-    const [s, setState] = useState(3);
-
-    const { state, reset } = useRefreshModel(
-      testKey.pipe((d: number) => ({
-        state: d,
-        reset() {
-          return 0;
-        }
-      })),
-      s
+    useUpdate(
+      ([d]) => {
+        console.log('update...', d);
+      },
+      [data, 1]
     );
 
     return (
@@ -332,7 +324,6 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
             </div>
           ))}
         </div>
-        <div>{state}</div>
       </div>
     );
   }

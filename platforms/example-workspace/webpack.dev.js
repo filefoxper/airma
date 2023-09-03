@@ -16,8 +16,9 @@ module.exports = function config() {
       alias: {
         "@airma/react-state":"@airma/react-state/src",
         "@airma/restful":"@airma/restful/src",
-        "@airma/react-hooks":"@airma/react-hooks/src",
-        "@airma/react-effect":"@airma/react-effect/src"
+        "@airma/react-hooks-core":"@airma/react-hooks-core/src",
+        "@airma/react-effect":"@airma/react-effect/src",
+        "@airma/react-hooks":"@airma/react-hooks/src"
       }
     },
     plugins: [

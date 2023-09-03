@@ -193,24 +193,24 @@ declare interface UnloadedUseSessionConfig extends UseSessionConfig {
 }
 
 export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
+  sessionKey: D,
   config: LoadedUseSessionConfig
 ): [LoadedSessionState<PCR<D>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
+  sessionKey: D,
   config: SessionType
 ): [SessionState<PCR<D>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
+  sessionKey: D,
   config?: UnloadedUseSessionConfig
 ): [SessionState<PCR<D>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
+  sessionKey: D,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [SessionState<PCR<D>>, () => void];
 
 export declare function useLoadedSession<D extends SessionKey<any>>(
-  factory: D,
+  sessionKey: D,
   config?: UseSessionConfig | SessionType
 ): [LoadedSessionState<PCR<D>>, () => void];
 
@@ -240,6 +240,11 @@ declare type CheckLazyComponentSupportType<
     : never
   : never;
 
+/**
+ * @deprecated
+ * @param componentLoader
+ * @param deps
+ */
 export declare function useLazyComponent<
   T extends LazyComponentSupportType<any>
 >(
@@ -274,15 +279,24 @@ export declare const SessionProvider: FC<
 >;
 
 export declare type GlobalConfig = {
+  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: SessionType
   ) => (StrategyType | null | undefined)[];
 };
 
+/**
+ * @deprecated
+ */
 export declare const GlobalSessionProvider: FC<{
-  config?: GlobalConfig;
+  config?: Omit<GlobalConfig, 'useGlobalFetching'>;
   keys?: ModelKeys;
+  children?: ReactNode;
+}>;
+
+export declare const ConfigProvider: FC<{
+  value: GlobalConfig;
   children?: ReactNode;
 }>;
 

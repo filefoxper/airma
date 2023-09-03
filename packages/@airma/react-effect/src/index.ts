@@ -1,4 +1,11 @@
-import { createElement, lazy, useEffect, useMemo, useRef } from 'react';
+import {
+  createElement,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 import {
   StoreProvider,
   useIsModelMatchedInStore,
@@ -12,7 +19,7 @@ import {
   usePersistFn,
   useUnmount,
   useUpdate
-} from '@airma/react-hooks';
+} from '@airma/react-hooks-core';
 import type {
   SessionState,
   PromiseCallback,
@@ -336,6 +343,11 @@ function withError<T extends LazyComponentSupportType<any>>(
   } as T;
 }
 
+/**
+ * @deprecated
+ * @param componentLoader
+ * @param deps
+ */
 export function useLazyComponent<T extends LazyComponentSupportType<any>>(
   componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
@@ -473,4 +485,4 @@ export { createSessionKey } from './libs/model';
 
 export { Strategy } from './strategies';
 
-export { GlobalSessionProvider } from './libs/global';
+export { GlobalSessionProvider, ConfigProvider } from './libs/global';

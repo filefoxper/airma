@@ -27,3 +27,9 @@
 
 * 添加了 `useResponse` hook 接口，用于副作用处理会话状态变化
 * 添加了 `Strategy.effect` 策略，用于副作用处理会话状态变化
+
+## v 18.2.0
+
+* 弃用 GlobalSessionProvider
+* 弃用 useLazyComponent
+* 添加了 ConfigProvider 代替 GlobalSessionProvider

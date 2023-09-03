@@ -76,3 +76,9 @@
 
 * provide more simple but more effective typescript
 * remove the dependency about `@airma/core`.
+
+## v 18.2.0 2023-09-03
+
+* provide `ConfigProvider` to config API usage in it.
+* deprecate `useRefreshModel` API
+* deprecate `useRefresh` API

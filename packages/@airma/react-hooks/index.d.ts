@@ -1,12 +1,45 @@
-export declare function usePersistFn<T extends (...args: any[]) => any>(
-  callback: T
-): T;
+import { FC, FunctionComponent, NamedExoticComponent, ReactNode } from 'react';
+import {
+  GlobalConfig as StateGlobalConfig,
+  ModelKeys
+} from '@airma/react-state';
+import { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
 
-export declare function useMount(callback: () => (() => void) | void): void;
+export declare type GlobalConfig = StateGlobalConfig & EffectGlobalConfig;
 
-export declare function useUpdate<T extends any[]>(
-  callback: (prevDeps: undefined | T) => (() => void) | void,
-  deps?: T
-): void;
+export * from '@airma/react-hooks-core';
 
-export declare function useUnmount(destroy: () => void): void;
+export {
+  createKey,
+  useModel,
+  useControlledModel,
+  useRealtimeInstance,
+  useSelector
+} from '@airma/react-state';
+
+export {
+  createSessionKey,
+  Strategy,
+  useQuery,
+  useMutation,
+  useSession,
+  useLoadedSession,
+  useResponse,
+  useIsFetching
+} from '@airma/react-effect';
+
+export declare function provide(
+  keys: ModelKeys
+): <P extends Record<string, any>>(
+  component: FunctionComponent<P> | NamedExoticComponent<P>
+) => typeof component;
+
+export declare const Provider: FC<{
+  value: ModelKeys;
+  children?: ReactNode;
+}>;
+
+export declare const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;

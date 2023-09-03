@@ -99,6 +99,12 @@ export declare function useControlledModel<
   onChange: (s: PickState<R>) => any
 ): ValidReducerReturnType<R>;
 
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export declare function useRefreshModel<
   R extends AirReducer,
   D extends PickState<R>
@@ -110,6 +116,12 @@ export declare function useRefreshModel<
     realtimeInstance?: boolean;
   }
 ): ValidReducerReturnType<R>;
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export declare function useRefreshModel<
   R extends AirReducer,
   D extends PickState<R>
@@ -119,6 +131,11 @@ export declare function useRefreshModel<
   option?: { autoLink?: boolean; realtimeInstance?: boolean }
 ): ValidReducerReturnType<R>;
 
+/**
+ * @deprecated
+ * @param method
+ * @param params
+ */
 export declare function useRefresh<T extends (...args: any[]) => any>(
   method: T,
   params:
@@ -156,6 +173,15 @@ export declare const StoreProvider: FC<
       children?: ReactNode;
     }
 >;
+
+export declare type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
+};
+
+export declare const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;
 
 /**
  * @deprecated
@@ -240,4 +266,9 @@ export declare function useIsModelMatchedInStore(
   model: AirReducer | ModelKey<AirReducer>
 ): boolean;
 
+/**
+ * @deprecated
+ * @param prev
+ * @param current
+ */
 export declare function shallowEqual<R>(prev: R, current: R): boolean;

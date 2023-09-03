@@ -4,9 +4,19 @@ import {
   createKey,
   useIsModelMatchedInStore
 } from '@airma/react-state';
-import { createContext, createElement, useContext, useMemo } from 'react';
+import {
+  createContext,
+  createElement,
+  ReactNode,
+  useContext,
+  useMemo
+} from 'react';
 import { globalController } from './model';
-import type { GlobalConfig, GlobalSessionProviderProps } from './type';
+import type {
+  ConfigProviderProps,
+  GlobalConfig,
+  GlobalSessionProviderProps
+} from './type';
 
 export const defaultIsFetchingState: any[] = [];
 
@@ -17,6 +27,13 @@ export const globalControllerKey = createKey(
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
+/**
+ * @deprecated
+ * @param config
+ * @param value
+ * @param children
+ * @constructor
+ */
 export function GlobalSessionProvider({
   config,
   keys: value,
@@ -43,6 +60,19 @@ export function GlobalSessionProvider({
           children
         )
       );
+}
+
+export function ConfigProvider({ value, children }: ConfigProviderProps) {
+  const globalFetchingKey = useMemo(() => {
+    return value.useGlobalFetching ? globalControllerKey : undefined;
+  }, []);
+  return createElement(
+    GlobalConfigContext.Provider,
+    { value },
+    globalFetchingKey
+      ? createElement(StoreProvider, { value: globalFetchingKey }, children)
+      : children
+  );
 }
 
 export function useGlobalConfig(): GlobalConfig | null {

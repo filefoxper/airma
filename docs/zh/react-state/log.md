@@ -36,3 +36,9 @@
 
 * 对 dispatch 队列逻辑进行单例化处理。
 * 优化了不必要的 `useState` hook 应用。
+
+## v18.2.0
+
+* 增加了 ConfigProvider 配置组件
+* 弃用 `useRefreshModel` API
+* 弃用 `useRefresh` API

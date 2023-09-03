@@ -11,6 +11,10 @@
       "path": "packages/@airma/react-hooks"
     },
     {
+      "name": "packages/@airma/react-hooks-core",
+      "path": "packages/@airma/react-hooks-core"
+    },
+    {
       "name": "packages/@airma/react-state",
       "path": "packages/@airma/react-state"
     },
