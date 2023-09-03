@@ -9,10 +9,10 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-effect": "18.1.0",
-    "@airma/react-state": "18.1.0",
-    "@airma/restful": "15.2.3",
+    "@airma/react-effect": "18.2.0",
     "@airma/react-hooks": "18.2.0",
+    "@airma/react-state": "18.2.0",
+    "@airma/restful": "15.2.3",
     "classnames": "^2.3.2",
     "history": "^5.3.0",
     "lodash": "^4.17.21",
