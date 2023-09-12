@@ -343,11 +343,6 @@ function withError<T extends LazyComponentSupportType<any>>(
   } as T;
 }
 
-/**
- * @deprecated
- * @param componentLoader
- * @param deps
- */
 export function useLazyComponent<T extends LazyComponentSupportType<any>>(
   componentLoader: () => Promise<T | { default: T }>,
   ...deps: (AbstractSessionState | AbstractSessionResult)[]

@@ -30,3 +30,8 @@
 * deprecate GlobalSessionProvider
 * deprecate useLazyComponent
 * add ConfigProvider to replace GlobalSessionProvider
+
+# v 18.2.1 2023-09-12
+
+* add `loaded` to session config
+* recover `useLazyComponent` API

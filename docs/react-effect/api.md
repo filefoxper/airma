@@ -27,6 +27,9 @@ Variables config:
     deps?: any[],
     // set trigger on `manual` mode forcely
     manual?: boolean,
+    // set loaded `true` can tells typescript about useQuery 
+    // give out a loaded data type.
+    loaded?:true,
     // a default data before state is loaded
     defaultData?: any,
     // strategy callbacks to optimize query
@@ -87,6 +90,9 @@ Variables config:
     variables?: Parameters<callback>,
     // the deps to drive `useQuery` works,
     deps?: any[],
+    // set loaded `true` can tells typescript about useQuery 
+    // give out a loaded data type.
+    loaded?:true,
     // a default data before state is loaded
     defaultData?: any,
     // strategy callbacks to optimize query
@@ -467,7 +473,7 @@ Explain
 
 If `useIsFetching` is in a `useGlobalFetching` setted `ConfigProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in this Provider.
 
-## ~~useLazyComponent~~
+## useLazyComponent
 
 ```ts
 declare type LazyComponentSupportType<P> =

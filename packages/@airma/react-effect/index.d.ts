@@ -102,9 +102,16 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
 declare type DefaultQueryConfig<T, C extends PromiseCallback<T>> = QueryConfig<
   T,
   C
-> & {
-  defaultData: T;
-};
+> &
+  (
+    | {
+        defaultData: T;
+      }
+    | {
+        defaultData?: T;
+        loaded: true;
+      }
+  );
 
 declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
@@ -116,9 +123,16 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
 declare type DefaultMutationConfig<
   T,
   C extends PromiseCallback<T>
-> = MutationConfig<T, C> & {
-  defaultData: T;
-};
+> = MutationConfig<T, C> &
+  (
+    | {
+        defaultData: T;
+      }
+    | {
+        defaultData?: T;
+        loaded: true;
+      }
+  );
 
 declare type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
   T extends PromiseCallback<infer R>
@@ -240,11 +254,6 @@ declare type CheckLazyComponentSupportType<
     : never
   : never;
 
-/**
- * @deprecated
- * @param componentLoader
- * @param deps
- */
 export declare function useLazyComponent<
   T extends LazyComponentSupportType<any>
 >(

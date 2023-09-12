@@ -33,3 +33,8 @@
 * 弃用 GlobalSessionProvider
 * 弃用 useLazyComponent
 * 添加了 ConfigProvider 代替 GlobalSessionProvider
+
+## v 18.2.1
+
+* 添加了 `loaded` 会话配置项目
+* 恢复了 `useLazyComponent` API

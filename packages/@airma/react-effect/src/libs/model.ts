@@ -127,7 +127,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
     QueryConfig<T, C>
   >(callback, 'query', cg);
   const configuration = con || {};
-  const { defaultData } = configuration;
+  const { defaultData, loaded } = configuration;
   const hasDefaultData = Object.prototype.hasOwnProperty.call(
     configuration,
     'defaultData'
@@ -149,6 +149,11 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   const stableInstance = useModel(
     ...(modelParams as [typeof model, SessionState<T>])
   );
+  if (loaded && !stableInstance.state.loaded) {
+    throw new Error(
+      'This session is not loaded, you should remove "config.loaded" option.'
+    );
+  }
   return [stableInstance, configuration, effectCallback];
 }
 

@@ -328,7 +328,7 @@ export declare function useIsFetching(
 
 boolean 值，如有正在工作的会话返回 `true`，否则返回`false`。如果没有指定任何参数，同时也不在 `GlobalSessionProvider` 范围内，则报出异常。
 
-## ~~useLazyComponent~~
+## useLazyComponent
 
 ```ts
 declare type LazyComponentSupportType<P> =

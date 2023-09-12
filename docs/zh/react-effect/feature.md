@@ -203,6 +203,7 @@ declare type StrategyCollectionType<T> =
 declare type SessionConfig<T, C extends PromiseCallback<T>> = {
   defaultData?: T;
   deps?: any[];
+  loaded?: true;
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
