@@ -261,12 +261,12 @@ export declare function useLazyComponent<
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): CheckLazyComponentSupportType<T>;
 
-export declare interface useResponse<T> {
-  (
+export declare const useResponse: {
+  <T>(
     process: (state: SessionState<T>) => any,
     sessionState: SessionState<T>
   ): void;
-  success: (
+  success: <T>(
     process: (data: T, sessionState: SessionState<T>) => any,
     sessionState: SessionState<T>
   ) => void;
@@ -274,7 +274,7 @@ export declare interface useResponse<T> {
     process: (error: unknown, sessionState: SessionState) => any,
     sessionState: SessionState
   ) => void;
-}
+};
 
 export declare const SessionProvider: FC<
   | {

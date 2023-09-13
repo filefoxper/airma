@@ -137,7 +137,7 @@ function reduce<T>(
   return function reduceStrategy(requires): Promise<SessionState> {
     const { runner, current } = requires;
     return runner().then(d => {
-      if (d.isError) {
+      if (d.isError || d.abandon) {
         return d;
       }
       const state = current();

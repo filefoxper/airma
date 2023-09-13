@@ -9,7 +9,7 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-effect": "18.2.0",
+    "@airma/react-effect": "18.2.1",
     "@airma/react-hooks": "18.2.0",
     "@airma/react-state": "18.2.0",
     "@airma/restful": "15.2.3",
