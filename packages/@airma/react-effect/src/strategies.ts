@@ -21,7 +21,7 @@ function debounce(op: { duration: number } | number): StrategyType {
         store.current = undefined;
         resolve(runner());
       }, time);
-      return store.current.promise.then(d => ({ ...d, abandon: true }));
+      return store.current.promise;
     }
     const defaultPromise = new Promise<SessionState>(resolve => {
       const currentState = current();

@@ -38,3 +38,9 @@
 
 * 添加了 `loaded` 会话配置项目
 * 恢复了 `useLazyComponent` API
+
+## v 18.2.3
+
+* 修复了 `Strategy.debounce`  影响 会话状态 的问题
+* 修复了 `Strategy.reduce` 处理了舍弃值的问题
+* 修复了 `useResponse` typescript 无法引用问题

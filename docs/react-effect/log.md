@@ -35,3 +35,8 @@
 
 * add `loaded` to session config
 * recover `useLazyComponent` API
+
+# v 18.2.3 2023-09-14
+
+* fix bug about `Strategy.debounce`, `Strategy.reduce`
+* fix bug about `useResponse` typescript syntax.
