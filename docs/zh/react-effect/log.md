@@ -44,3 +44,7 @@
 * 修复了 `Strategy.debounce`  影响 会话状态 的问题
 * 修复了 `Strategy.reduce` 处理了舍弃值的问题
 * 修复了 `useResponse` typescript 无法引用问题
+
+## v 18.2.4
+
+* 升级 `Strategy.reduce` ，新增参数 states : `Strategy.reduce(prev, current, states:[prevState, currentState])`。

@@ -414,7 +414,7 @@ Strategy.validate: (process: () => boolean)
 
 ```ts
 reduce: <T>(
-  call: (previous: T | undefined, currentData: T) => T | undefined
+    call: (previous: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
 );
 ```
 

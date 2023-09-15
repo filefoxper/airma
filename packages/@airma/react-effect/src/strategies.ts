@@ -132,7 +132,11 @@ function throttle(op: { duration: number } | number): StrategyType {
 }
 
 function reduce<T>(
-  call: (previous: T | undefined, currentData: T) => T | undefined
+  call: (
+    previous: T | undefined,
+    currentData: T,
+    states: [SessionState<T>, SessionState<T>]
+  ) => T | undefined
 ): StrategyType {
   return function reduceStrategy(requires): Promise<SessionState> {
     const { runner, current } = requires;
@@ -141,7 +145,7 @@ function reduce<T>(
         return d;
       }
       const state = current();
-      const newData = call(state.data, d.data);
+      const newData = call(state.data, d.data, [state, d]);
       return { ...d, data: newData } as SessionState;
     });
   };

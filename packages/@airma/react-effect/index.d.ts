@@ -336,7 +336,11 @@ export declare const Strategy: {
     equalFn?: (source: T | undefined, target: T) => boolean
   ) => StrategyType<T>;
   reduce: <T>(
-    call: (previous: T | undefined, currentData: T) => T | undefined
+    call: (
+      previous: T | undefined,
+      currentData: T,
+      states: [SessionState<T | undefined>, SessionState<T>]
+    ) => T | undefined
   ) => StrategyType<T>;
   effect: {
     <T>(process: (state: SessionState<T>) => void): StrategyType<T>;

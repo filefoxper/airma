@@ -282,7 +282,7 @@ const Strategy: {
   ) => StrategyType<T>;
   validate: (process: () => boolean) => StrategyType;
   reduce: <T>(
-    call: (previous: T | undefined, currentData: T) => T | undefined
+    call: (previous: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
   effect: {
     <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
@@ -302,7 +302,7 @@ const Strategy: {
 * Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 * Strategy.validate - It returns a strategy. You can set a boolean returning callback, it is always called before promise callback is started. If the setting callback returns `false`, the promise callback will stop work.
-* Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state.
+* Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state. If you need other info from state, you can use the last param to fetch session data.
 * Strategy.effect - It returns a strategy. You can set a process callback for it to process the session state effect.
 * Strategy.effect.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
 * Strategy.effect.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
