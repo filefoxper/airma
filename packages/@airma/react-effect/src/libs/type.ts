@@ -75,6 +75,7 @@ export interface AbstractSessionState {
   triggerType: undefined | TriggerType;
   loaded: boolean;
   sessionLoaded: boolean;
+  uniqueKey: unknown;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {

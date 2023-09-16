@@ -207,7 +207,14 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   }, [stableInstance.state]);
 
-  return [stableInstance.state, trigger, execute];
+  const state = useMemo(() => {
+    return {
+      ...stableInstance.state,
+      uniqueKey: keyRef.current
+    };
+  }, [stableInstance.state]);
+
+  return [state, trigger, execute];
 }
 
 export function useQuery<T, C extends PromiseCallback<T>>(

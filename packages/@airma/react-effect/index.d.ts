@@ -25,6 +25,7 @@ declare interface AbstractSessionState {
   triggerType: undefined | TriggerType;
   loaded: boolean;
   sessionLoaded: boolean;
+  uniqueKey: unknown;
 }
 
 export declare interface LoadedSessionState<T> extends AbstractSessionState {
