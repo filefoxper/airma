@@ -10,7 +10,7 @@ import type {
 export function effectModel(state: SessionState & { version?: number }) {
   const { version, ...rest } = state;
   const mergeVersion = (s: SessionState) => {
-    return { ...s, version };
+    return { ...s, version, uniqueKey: state.uniqueKey };
   };
   return {
     state: rest,
@@ -70,18 +70,20 @@ export function globalController(fetchingKeys: any[]) {
 
 export const defaultPromiseResult = (config?: {
   data: any;
+  uniqueKey: unknown;
   loaded: true;
-}): SessionState => ({
-  data: undefined,
-  variables: undefined,
-  isError: false,
-  isFetching: false,
-  abandon: false,
-  triggerType: undefined,
-  loaded: false,
-  sessionLoaded: false,
-  ...config
-});
+}): SessionState =>
+  ({
+    data: undefined,
+    variables: undefined,
+    isError: false,
+    isFetching: false,
+    abandon: false,
+    triggerType: undefined,
+    loaded: false,
+    sessionLoaded: false,
+    ...config
+  } as SessionState);
 
 function parseEffect<
   E extends (...p: any[]) => any,
@@ -119,6 +121,7 @@ export function parseConfig<T, C extends PromiseCallback<T>>(
 
 export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
+  uniqueKey: unknown,
   config?: QueryConfig<T, C> | Parameters<C>
 ): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
   const cg = Array.isArray(config) ? { variables: config } : config;
@@ -138,12 +141,21 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
         return [
           model,
           defaultPromiseResult(
-            hasDefaultData ? { data: defaultData, loaded: true } : undefined
+            hasDefaultData
+              ? { data: defaultData, uniqueKey, loaded: true }
+              : undefined
           )
         ];
       }
       return hasDefaultData
-        ? [model, defaultPromiseResult({ data: defaultData, loaded: true })]
+        ? [
+            model,
+            defaultPromiseResult({
+              data: defaultData,
+              uniqueKey: callback,
+              loaded: true
+            })
+          ]
         : [model];
     })();
   const stableInstance = useModel(

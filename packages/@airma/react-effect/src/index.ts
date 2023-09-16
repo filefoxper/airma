@@ -89,8 +89,10 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
+  const keyRef = useRef({});
   const [stableInstance, con, promiseCallback] = useSessionBuildModel(
     callback,
+    keyRef.current,
     config
   );
   const {
@@ -107,8 +109,6 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     defaultIsFetchingState,
     { autoLink: true }
   );
-
-  const keyRef = useRef({});
 
   function sessionRunner(
     triggerType: TriggerType,
@@ -207,14 +207,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   }, [stableInstance.state]);
 
-  const state = useMemo(() => {
-    return {
-      ...stableInstance.state,
-      uniqueKey: keyRef.current
-    };
-  }, [stableInstance.state]);
-
-  return [state, trigger, execute];
+  return [stableInstance.state, trigger, execute];
 }
 
 export function useQuery<T, C extends PromiseCallback<T>>(
