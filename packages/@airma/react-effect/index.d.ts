@@ -28,15 +28,15 @@ declare interface AbstractSessionState {
   uniqueKey: unknown;
 }
 
-export declare interface LoadedSessionState<T> extends AbstractSessionState {
+export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
   data: T;
-  variables: any[] | undefined;
+  variables: V | undefined;
   loaded: true;
 }
 
-export declare interface UnloadedSessionState extends AbstractSessionState {
+export declare interface UnloadedSessionState<V> extends AbstractSessionState {
   data: undefined;
-  variables: any[] | undefined;
+  variables: V | undefined;
   loaded: false;
 }
 
@@ -44,9 +44,9 @@ export declare interface ErrorSessionState extends AbstractSessionState {
   isError: true;
 }
 
-export declare type SessionState<T> =
-  | LoadedSessionState<T>
-  | UnloadedSessionState;
+export declare type SessionState<T = any, V extends any[] = any[]> =
+  | LoadedSessionState<T, V>
+  | UnloadedSessionState<V>;
 
 export declare interface StrategyType<T = any> {
   (runtime: {
@@ -152,15 +152,19 @@ declare type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
 declare type LoadedSessionResult<
   D extends PromiseCallback<any> | SessionKey<any>
 > = [
-  LoadedSessionState<PCR<D>>,
-  () => Promise<LoadedSessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
+  LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>,
+  (
+    ...variables: Parameters<MCC<D>>
+  ) => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>
 ];
 
 declare type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
-  SessionState<PCR<D>>,
-  () => Promise<SessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
+  SessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>,
+  (
+    ...variables: Parameters<MCC<D>>
+  ) => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>
 ];
 
 declare type AbstractSessionResult = [
@@ -210,24 +214,24 @@ declare interface UnloadedUseSessionConfig extends UseSessionConfig {
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config: LoadedUseSessionConfig
-): [LoadedSessionState<PCR<D>>, () => void];
+): [LoadedSessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config: SessionType
-): [SessionState<PCR<D>>, () => void];
+): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: UnloadedUseSessionConfig
-): [SessionState<PCR<D>>, () => void];
+): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<PCR<D>>, () => void];
+): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
 
 export declare function useLoadedSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: UseSessionConfig | SessionType
-): [LoadedSessionState<PCR<D>>, () => void];
+): [LoadedSessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
 
 export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
@@ -263,17 +267,14 @@ export declare function useLazyComponent<
 ): CheckLazyComponentSupportType<T>;
 
 export declare const useResponse: {
-  <T>(
-    process: (state: SessionState<T>) => any,
-    sessionState: SessionState<T>
-  ): void;
-  success: <T>(
-    process: (data: T, sessionState: SessionState<T>) => any,
-    sessionState: SessionState<T>
+  <T extends SessionState>(process: (state: T) => any, sessionState: T): void;
+  success: <T extends SessionState>(
+    process: (data: T['data'], sessionState: T) => any,
+    sessionState: T
   ) => void;
-  error: (
-    process: (error: unknown, sessionState: SessionState) => any,
-    sessionState: SessionState
+  error: <T extends SessionState>(
+    process: (error: unknown, sessionState: T) => any,
+    sessionState: T
   ) => void;
 };
 

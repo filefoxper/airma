@@ -146,7 +146,11 @@ const Creating = memo(
       };
     }, [creating]);
 
-    const [, query] = useSession(fetchSessionKey);
+    const [{ variables }, query] = useSession(fetchSessionKey);
+
+    const [q] = variables ?? [];
+
+    console.log(q?.age);
 
     const [, save] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -222,7 +226,10 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   }, state);
 
   useResponse.success(d => {
-    console.log('rsp s', d);
+    console.log(
+      'rsp s',
+      d.map(u => u.name)
+    );
   }, state);
 
   useResponse.error(e => {
@@ -289,7 +296,11 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
       strategy: Strategy.success((a, s) => console.log(a, s))
     });
 
-    const [{ data }, t] = querySession;
+    const [{ data, variables }, t] = querySession;
+
+    const [q] = variables ?? [];
+
+    console.log(q?.name);
 
     const Creator = useLazyComponent(
       () => Promise.resolve(Creating) as Promise<typeof Creating>,
