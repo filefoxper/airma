@@ -225,7 +225,8 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
     console.log('rsp', s.data?.length);
   }, state);
 
-  useResponse.success(d => {
+  useResponse.success((d, s) => {
+    const [{ name }] = s.variables;
     console.log(
       'rsp s',
       d.map(u => u.name)

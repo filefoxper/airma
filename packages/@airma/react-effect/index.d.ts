@@ -30,13 +30,13 @@ declare interface AbstractSessionState {
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
   data: T;
-  variables: V | undefined;
+  variables: V;
   loaded: true;
 }
 
-export declare interface UnloadedSessionState<V> extends AbstractSessionState {
+export declare interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
-  variables: V | undefined;
+  variables: undefined;
   loaded: false;
 }
 
@@ -46,7 +46,7 @@ export declare interface ErrorSessionState extends AbstractSessionState {
 
 export declare type SessionState<T = any, V extends any[] = any[]> =
   | LoadedSessionState<T, V>
-  | UnloadedSessionState<V>;
+  | UnloadedSessionState;
 
 export declare interface StrategyType<T = any> {
   (runtime: {
