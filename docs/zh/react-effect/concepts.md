@@ -202,7 +202,7 @@ type SessionState<T> = {
 * triggerType - 触发类型，`'mount' | 'update' | 'manual'` 分别对应触发模式的三种类型。每种触发模式都会让`会话结果`带上相应的触发类型。
 * loaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。 (注意，当设置 defaultData 属性后，该值默认为 true)
 * sessionLoaded - 表示是曾今成功请求过，且未被 `abandon` 废弃的会话状态，其含义为会话是否已经加载过。 (该参数不受任何配置信息影响)
-* variables - 产生当前会话结果的变量数组，在第一次运行前，该值为 undefined。
+* variables - 产生当前会话结果的变量数组，在会话从未成功前，该值为 undefined。
 
 ### 会话触发器
 
@@ -424,7 +424,7 @@ reduce: <T>(
 
 * call - 累积函数，参数 `previous` 代表当前会话最新状态， `currentData` 代表请求返回的会话结果。可返回一个累积数据作为下更新后会话状态的数据字段。
 
-#### Strategy.effect
+#### ~~Strategy.effect~~
 
 ```ts
 effect: {
@@ -452,11 +452,47 @@ useEffect(()=>{
 
 * process - 副作用处理函数，可接受一个 session state 作为入参。
 
-#### Strategy.effect.success
+#### ~~Strategy.effect.success~~
 
 会话状态副作用处理策略。用来处理会话请求正常返回，并改变会话状态时的副作用。与 `Strategy.success` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
 
-#### Strategy.effect.error
+#### ~~Strategy.effect.error~~
+
+会话状态副作用处理策略。用来处理会话请求异常返回，并改变会话状态时的副作用。与 `Strategy.error` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
+
+#### Strategy.response
+
+```ts
+response: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
+```
+
+会话状态副作用处理策略。用来处理会话状态产生及变化的副作用。可看作：
+
+```ts
+const [sessionState] = useQuery(promiseCall, []);
+
+useEffect(()=>{
+  processEffectOfSessionState(sessionState);
+}, [sessionState]);
+```
+
+配置参数：
+
+* process - 副作用处理函数，可接受一个 session state 作为入参。
+
+#### Strategy.response.success
+
+会话状态副作用处理策略。用来处理会话请求正常返回，并改变会话状态时的副作用。与 `Strategy.success` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
+
+#### Strategy.response.error
 
 会话状态副作用处理策略。用来处理会话请求异常返回，并改变会话状态时的副作用。与 `Strategy.error` 不同的是，这个策略相应的是会话状态，而非请求。（推荐）
 

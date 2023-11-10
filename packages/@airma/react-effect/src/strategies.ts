@@ -262,5 +262,6 @@ export const Strategy = {
   validate,
   memo,
   reduce,
-  effect
+  effect,
+  response: effect
 };
