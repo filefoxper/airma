@@ -344,7 +344,19 @@ export declare const Strategy: {
       states: [SessionState<T | undefined>, SessionState<T>]
     ) => T | undefined
   ) => StrategyType<T>;
+  /**
+   * @deprecated
+   */
   effect: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
+  response: {
     <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
     success: <T>(
       process: (data: T, sessionData: SessionState<T>) => any

@@ -293,6 +293,15 @@ const Strategy: {
       process: (e: unknown, sessionData: SessionState) => any
     ) => StrategyType;
   };
+  response: {
+    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    success: <T>(
+      process: (data: T, sessionData: SessionState<T>) => any
+    ) => StrategyType<T>;
+    error: (
+      process: (e: unknown, sessionData: SessionState) => any
+    ) => StrategyType;
+  };
 };
 ```
 
@@ -303,9 +312,12 @@ const Strategy: {
 * Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
 * Strategy.validate - It returns a strategy. You can set a boolean returning callback, it is always called before promise callback is started. If the setting callback returns `false`, the promise callback will stop work.
 * Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state. If you need other info from state, you can use the last param to fetch session data.
-* Strategy.effect - It returns a strategy. You can set a process callback for it to process the session state effect.
-* Strategy.effect.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
-* Strategy.effect.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
+* ~~Strategy.effect~~ - It returns a strategy. You can set a process callback for it to process the session state effect.
+* ~~Strategy.effect.success~~ - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
+* ~~Strategy.effect.error~~ - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
+* Strategy.response - It returns a strategy. You can set a process callback for it to process the session state effect.
+* Strategy.response.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
+* Strategy.response.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
 
 `Strategy.success` is different with `Strategy.effect.success`, one responses to the promise resolver, another responses to session state effect. The same as `Strategy.error` and `Strategy.effect.error`.
 

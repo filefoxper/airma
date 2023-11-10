@@ -208,7 +208,7 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const session = useQuery(fetchSessionKey, {
     variables: [q],
     defaultData: [],
-    strategy: Strategy.effect.success((a, s) =>
+    strategy: Strategy.response.success((a, s) =>
       console.log('effect strategy', a, s)
     )
   });

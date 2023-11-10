@@ -48,3 +48,7 @@
 ## v 18.2.4
 
 * 升级 `Strategy.reduce` ，新增参数 states : `Strategy.reduce(prev, current, states:[prevState, currentState])`。
+
+## v 18.2.9
+
+* 新增 `Strategy.response` 策略代替 `Strategy.effect`

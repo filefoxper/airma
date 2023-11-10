@@ -40,3 +40,7 @@
 
 * fix bug about `Strategy.debounce`, `Strategy.reduce`
 * fix bug about `useResponse` typescript syntax.
+
+# v 18.2.9 2023-11-10
+
+* replace `Strategy.effect` with `Strategy.response`
