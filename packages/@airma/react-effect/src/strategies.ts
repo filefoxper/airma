@@ -253,6 +253,48 @@ effect.error = function effectError<T>(
   return sc;
 };
 
+function response<T>(callback: (state: SessionState<T>) => void): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner } = value;
+    return runner();
+  };
+  sc.response = callback;
+  return sc;
+}
+
+response.success = function responseSuccess<T>(
+  process: (data: T, sessionData: SessionState<T>) => any
+): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner } = value;
+    return runner();
+  };
+  sc.response = function effectCallback(state) {
+    if (state.isError || state.isFetching || !state.sessionLoaded) {
+      return;
+    }
+    process(state.data, state);
+  };
+  return sc;
+};
+
+response.error = function responseError<T>(
+  process: (e: unknown, sessionData: SessionState) => any
+): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner, runtimeCache } = value;
+    runtimeCache.set(error, true);
+    return runner();
+  };
+  sc.response = function effectCallback(state) {
+    if (!state.isError || state.isFetching) {
+      return;
+    }
+    process(state.error, state);
+  };
+  return sc;
+};
+
 export const Strategy = {
   debounce,
   throttle,
@@ -263,5 +305,5 @@ export const Strategy = {
   memo,
   reduce,
   effect,
-  response: effect
+  response
 };

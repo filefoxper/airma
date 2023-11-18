@@ -5,7 +5,7 @@ import app from './app';
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort((process.env.PORT as string | undefined) || '9090');
+const port = normalizePort((process.env.PORT as string | undefined) || '9999');
 app.set('port', port);
 
 /**

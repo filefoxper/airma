@@ -12,6 +12,12 @@ export function effectModel(state: SessionState & { version?: number }) {
   const mergeVersion = (s: SessionState) => {
     return { ...s, version, uniqueKey: state.uniqueKey };
   };
+  const mergeFetchVersion = (s: SessionState) => {
+    if (s.isFetching) {
+      return s;
+    }
+    return { ...s, fetchVersion: (state.fetchVersion || 0) + 1 };
+  };
   return {
     state: rest,
     version: version || 0,
@@ -19,9 +25,9 @@ export function effectModel(state: SessionState & { version?: number }) {
       s: SessionState | ((p: SessionState) => SessionState)
     ): SessionState & { version?: number } {
       if (typeof s !== 'function') {
-        return mergeVersion(s);
+        return mergeFetchVersion(mergeVersion(s));
       }
-      return mergeVersion(s(state));
+      return mergeFetchVersion(mergeVersion(s(state)));
     },
     setFetchingKey(fetchingKey: unknown): SessionState & { version?: number } {
       return mergeVersion({

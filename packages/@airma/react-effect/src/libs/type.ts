@@ -76,6 +76,7 @@ export interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  fetchVersion?: number;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {
@@ -120,6 +121,7 @@ export interface StrategyType<T = any> {
     };
   }): Promise<SessionState<T>>;
   effect?: StrategyEffect<T>;
+  response?: StrategyEffect<T>;
 }
 
 export type StrategyCollectionType<T = any> =

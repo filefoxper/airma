@@ -49,7 +49,7 @@ module.exports = function config() {
       port: 8081,
       proxy:{
         '/api/*': {
-          target: `http://localhost:9090`,
+          target: `http://localhost:9999`,
           secure: false
         },
       }

@@ -44,3 +44,7 @@
 # v 18.2.9 2023-11-10
 
 * replace `Strategy.effect` with `Strategy.response`
+
+# v 18.2.10 2023-11-18
+
+* fix bugs about `useResponse` and `Strategy.response`, that it responses a before fetching session state change.

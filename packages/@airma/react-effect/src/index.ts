@@ -131,11 +131,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   }
 
-  const [strategyExecution, strategyEffects] = useStrategyExecution(
-    instance,
-    sessionRunner,
-    strategy
-  );
+  const [strategyExecution, strategyEffects, strategyResponses] =
+    useStrategyExecution(instance, sessionRunner, strategy);
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
@@ -206,6 +203,15 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       effectCallback(stableInstance.state);
     });
   }, [stableInstance.state]);
+
+  useEffect(() => {
+    if (stableInstance.state.fetchVersion == null) {
+      return;
+    }
+    strategyResponses.forEach(effectCallback => {
+      effectCallback(stableInstance.state);
+    });
+  }, [stableInstance.state.fetchVersion]);
 
   return [stableInstance.state, trigger, execute];
 }
@@ -432,6 +438,9 @@ export function useResponse<T>(
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
+    if (sessionState.fetchVersion == null) {
+      return;
+    }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     const isSuccessResponse =
       !sessionState.isFetching &&
@@ -440,7 +449,7 @@ export function useResponse<T>(
     if (isErrorResponse || isSuccessResponse) {
       process(sessionState);
     }
-  }, [sessionState]);
+  }, [sessionState.fetchVersion]);
 }
 
 useResponse.success = function useSuccessResponse<T>(
@@ -448,6 +457,9 @@ useResponse.success = function useSuccessResponse<T>(
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
+    if (sessionState.fetchVersion == null) {
+      return;
+    }
     const isSuccessResponse =
       !sessionState.isFetching &&
       sessionState.sessionLoaded &&
@@ -455,7 +467,7 @@ useResponse.success = function useSuccessResponse<T>(
     if (isSuccessResponse) {
       process(sessionState.data as T, sessionState);
     }
-  }, [sessionState]);
+  }, [sessionState.fetchVersion]);
 };
 
 useResponse.error = function useErrorResponse(
@@ -463,11 +475,14 @@ useResponse.error = function useErrorResponse(
   sessionState: SessionState
 ) {
   useEffect(() => {
+    if (sessionState.fetchVersion == null) {
+      return;
+    }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     if (isErrorResponse) {
       process(sessionState.error, sessionState);
     }
-  }, [sessionState]);
+  }, [sessionState.fetchVersion]);
 };
 
 export const SessionProvider = StoreProvider;
