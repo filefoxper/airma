@@ -52,3 +52,7 @@
 ## v 18.2.9
 
 * 新增 `Strategy.response` 策略代替 `Strategy.effect`
+
+## v18.2.10
+
+* 解决 `Strategy.response` 和 `useResponse` 关于响应 fetching 预设 session 状态的问题。

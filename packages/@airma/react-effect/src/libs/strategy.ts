@@ -97,6 +97,15 @@ export function useStrategyExecution<T>(
     })
     .filter((e): e is StrategyEffect<any> => !!e);
 
+  const responses = strategies
+    .map(s => {
+      if (!s) {
+        return undefined;
+      }
+      return s.response;
+    })
+    .filter((e): e is StrategyEffect<any> => !!e);
+
   return [
     function callWithStrategy(triggerType: TriggerType, variables?: any[]) {
       const runtimeVariables = variables || [];
@@ -122,7 +131,8 @@ export function useStrategyExecution<T>(
         return data;
       });
     },
-    effects
+    effects,
+    responses
   ] as const;
 }
 

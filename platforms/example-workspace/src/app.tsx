@@ -139,18 +139,9 @@ const Creating = memo(
       }
     );
 
-    useEffect(() => {
-      console.log('updating...', creating);
-      return () => {
-        console.log('unmounting...', creating);
-      };
-    }, [creating]);
-
     const [{ variables }, query] = useSession(fetchSessionKey);
 
     const [q] = variables ?? [];
-
-    console.log(q?.age);
 
     const [, save] = useMutation(
       (u: Omit<User, 'id'>) =>
