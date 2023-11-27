@@ -48,3 +48,7 @@
 # v 18.2.10 2023-11-18
 
 * fix bugs about `useResponse` and `Strategy.response`, that it responses a before fetching session state change.
+
+# v 18.2.11 2023-11-27
+
+* add `fetchVersion` into `sessionState`, it should be `undefined` or an increased `number` data.

@@ -56,3 +56,7 @@
 ## v18.2.10
 
 * 解决 `Strategy.response` 和 `useResponse` 关于响应 fetching 预设 session 状态的问题。
+
+## v18.2.11
+
+* 在 sessionState 中增加 `fetchVersion` 字段，该字段初始值为 undefined，查询结果返回后，以number形式增加。

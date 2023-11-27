@@ -26,6 +26,7 @@ declare interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  fetchVersion?: number;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
