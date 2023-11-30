@@ -52,3 +52,7 @@
 # v 18.2.11 2023-11-27
 
 * add `fetchVersion` into `sessionState`, it should be `undefined` or an increased `number` data.
+
+# v 18.2.12 2023-11-30
+
+* fix `useResponse` typescript problem.

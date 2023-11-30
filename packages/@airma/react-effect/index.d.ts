@@ -267,14 +267,35 @@ export declare function useLazyComponent<
   ...deps: (AbstractSessionState | AbstractSessionResult)[]
 ): CheckLazyComponentSupportType<T>;
 
+declare type ImportantVariable<T extends SessionState> = Omit<
+  T,
+  'variables'
+> & {
+  variables: Exclude<T['variables'], undefined>;
+};
+
+declare type SuccessStateOf<T extends SessionState> = Omit<
+  T,
+  'variables' | 'data'
+> & {
+  variables: Exclude<T['variables'], undefined>;
+  data: Exclude<T['data'], undefined>;
+};
+
 export declare const useResponse: {
-  <T extends SessionState>(process: (state: T) => any, sessionState: T): void;
+  <T extends SessionState>(
+    process: (state: ImportantVariable<T>) => any,
+    sessionState: T
+  ): void;
   success: <T extends SessionState>(
-    process: (data: T['data'], sessionState: T) => any,
+    process: (
+      data: SuccessStateOf<T>['data'],
+      sessionState: SuccessStateOf<T>
+    ) => any,
     sessionState: T
   ) => void;
   error: <T extends SessionState>(
-    process: (error: unknown, sessionState: T) => any,
+    process: (error: unknown, sessionState: ImportantVariable<T>) => any,
     sessionState: T
   ) => void;
 };
