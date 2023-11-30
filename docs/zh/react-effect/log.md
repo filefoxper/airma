@@ -60,3 +60,7 @@
 ## v18.2.11
 
 * 在 sessionState 中增加 `fetchVersion` 字段，该字段初始值为 undefined，查询结果返回后，以number形式增加。
+
+## v18.2.12
+
+* 解决 `useResponse` typescript问题
