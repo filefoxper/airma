@@ -1,13 +1,15 @@
 import {
   createElement,
+  FunctionComponent,
   lazy,
+  ReactNode,
   useEffect,
   useMemo,
   useRef,
   useState
 } from 'react';
 import {
-  StoreProvider,
+  Provider as ModelProvider,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
@@ -20,6 +22,7 @@ import {
   useUnmount,
   useUpdate
 } from '@airma/react-hooks-core';
+import { AirReducer } from '@airma/react-state/src/libs/type';
 import type {
   SessionState,
   PromiseCallback,
@@ -37,7 +40,11 @@ import type {
   LazyComponentSupportType,
   SessionResult
 } from './libs/type';
-import { parseConfig, useSessionBuildModel } from './libs/model';
+import {
+  parseConfig,
+  useSessionBuildModel,
+  createSessionKey
+} from './libs/model';
 import {
   defaultIsFetchingState,
   globalControllerKey,
@@ -485,14 +492,115 @@ useResponse.error = function useErrorResponse(
   }, [sessionState.fetchVersion]);
 };
 
-export const SessionProvider = StoreProvider;
+/**
+ * @deprecated
+ */
+export const SessionProvider = ModelProvider;
 
-export const withSessionProvider = provideKeys;
+export const Provider = ModelProvider;
 
 export const provide = provideKeys;
 
-export { createSessionKey } from './libs/model';
+export { createSessionKey };
 
 export { Strategy } from './strategies';
 
-export { GlobalSessionProvider, ConfigProvider } from './libs/global';
+export { ConfigProvider } from './libs/global';
+
+const session = function session<T, C extends PromiseCallback<T>>(
+  callback: C,
+  queryType: 'query' | 'mutation'
+) {
+  const useApiQuery = function useApiQuery(
+    c: QueryConfig<T, C> | Parameters<C>
+  ) {
+    return useQuery(callback, c);
+  };
+
+  const useApiMutation = function useApiMutation(
+    c: MutationConfig<T, C> | Parameters<C>
+  ) {
+    return useMutation(callback, c);
+  };
+
+  const storeApi = function storeApi(k?: any, keys: any[] = []) {
+    const key = k != null ? k : createSessionKey(callback, queryType);
+    const useStoreApiQuery = function useStoreApiQuery(
+      c: QueryConfig<T, C> | Parameters<C>
+    ) {
+      return useQuery(key, c);
+    };
+    const useStoreApiMutation = function useStoreApiMutation(
+      c: MutationConfig<T, C> | Parameters<C>
+    ) {
+      return useMutation(key, c);
+    };
+    const useStoreApiSession = function useStoreApiSession() {
+      return useSession(key, queryType);
+    };
+    const useStoreApiLoadedSession = function useStoreApiLoadedSession() {
+      return useLoadedSession(key, queryType);
+    };
+    const withKeys = function withKeys(
+      ...stores: (
+        | {
+            key: AirReducer<any, any>;
+          }
+        | AirReducer<any, any>
+      )[]
+    ) {
+      const nks = keys.concat(
+        stores.map(store => (typeof store === 'function' ? store : store.key))
+      );
+      return storeApi(key, nks);
+    };
+    const storeApiProvide = function storeApiProvide() {
+      return provide([key, ...keys]);
+    };
+    const storeApiProvideTo = function storeApiProvideTo(
+      component: FunctionComponent
+    ) {
+      return provide([key, ...keys])(component);
+    };
+    const StoreApiProvider = function StoreApiProvider({
+      children
+    }: {
+      children?: ReactNode;
+    }) {
+      return createElement(
+        Provider,
+        { value: [key, ...keys] },
+        children
+      );
+    };
+    const sessionStoreApi = {
+      key,
+      with: withKeys,
+      useSession: useStoreApiSession,
+      useLoadedSession: useStoreApiLoadedSession,
+      provide: storeApiProvide,
+      provideTo: storeApiProvideTo,
+      Provider: StoreApiProvider
+    };
+    return queryType === 'query'
+      ? { ...sessionStoreApi, useQuery: useStoreApiQuery }
+      : { ...sessionStoreApi, useMutation: useStoreApiMutation };
+  };
+
+  const api = {
+    store: storeApi
+  };
+
+  const queryApi = {
+    ...api,
+    useQuery: useApiQuery
+  };
+
+  const mutationApi = {
+    ...api,
+    useMutation: useApiMutation
+  };
+  return queryType === 'query' ? queryApi : mutationApi;
+};
+
+export { session };

@@ -90,6 +90,11 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
   return useSourceControlledModel(model, state, onChange);
 }
 
+/**
+ * @deprecated
+ * @param method
+ * @param params
+ */
 export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
   params:
@@ -130,37 +135,14 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
-/**
- * @deprecated
- * @param value
- * @param children
- * @constructor
- */
-export const ModelProvider: FC<{
-  value: Array<any> | ((...args: any) => any) | Record<string, any>;
-  children?: ReactNode;
-}> = function RequiredModelProvider({ value, children }) {
-  const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(value), []);
-  const selector = useMemo(() => {
-    const store = storeMemo.update(value);
-    return { ...store, parent: context };
-  }, [context, value]);
-  return createElement(
-    ReactStateContext.Provider,
-    { value: selector },
-    children
-  );
-};
-
-export const StoreProvider: FC<{
+export const Provider: FC<{
   keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
   value?: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ keys, value, children }) {
   const storeKeys = keys != null ? keys : value;
   if (storeKeys == null) {
-    throw new Error('You need to provide keys to `StoreProvider`');
+    throw new Error('You need to provide keys to `Provider`');
   }
   const config = useContext(ConfigContext);
   const { batchUpdate } = config || {};
@@ -176,6 +158,16 @@ export const StoreProvider: FC<{
     children
   );
 };
+
+/**
+ * @deprecated
+ */
+export const StoreProvider = Provider;
+
+/**
+ * @deprecated
+ */
+export const ModelProvider = Provider;
 
 function findConnection<S, T extends AirModelInstance>(
   c: Selector,
@@ -425,27 +417,6 @@ export function provide(
   };
 }
 
-/**
- * @deprecated
- * @param keys
- */
-export function withStoreProvider(
-  keys: Array<any> | ((...args: any) => any) | Record<string, any>
-) {
-  return function connect<
-    P extends Record<string, any>,
-    C extends ComponentType<P>
-  >(Comp: C): ComponentType<P> {
-    return function WithModelProviderComponent(props: P) {
-      return createElement(
-        ModelProvider,
-        { value: keys },
-        createElement<P>(Comp as FunctionComponent<P>, props)
-      );
-    };
-  };
-}
-
 export function useRealtimeInstance<T>(
   instance: T & { [realtimeInstanceMountProperty]?: T }
 ): T {
@@ -455,11 +426,6 @@ export function useRealtimeInstance<T>(
   }
   return realtimeInstance;
 }
-
-/**
- * @deprecated
- */
-export const withModelProvider = withStoreProvider;
 
 export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
   const { pipe } = model as AirReducer<any, any> & { pipe: () => void };
@@ -473,16 +439,6 @@ export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
 
 export const shallowEqual = shallowEq;
 
-/**
- * @deprecated
- */
-export const factory = createFactory;
-
-/**
- * @deprecated
- */
-export const createStoreKey = createFactory;
-
 export const createKey = createFactory;
 
 export const ConfigProvider: FC<{
@@ -491,4 +447,95 @@ export const ConfigProvider: FC<{
 }> = function ConfigProvider(props) {
   const { value, children } = props;
   return createElement(ConfigContext.Provider, { value }, children);
+};
+
+export const model = function model<S, T extends AirModelInstance>(
+  m: AirReducer<S | undefined, T>
+) {
+  const useApiModel = function useApiModel(s?: S) {
+    const params = (arguments.length ? [m, s] : [m]) as [
+      typeof m,
+      (S | undefined)?
+    ];
+    return useModel(...params);
+  };
+
+  const useApiControlledModel = function useApiControlledModel(
+    state: S | undefined,
+    setState: (s: S | undefined) => any
+  ) {
+    return useControlledModel(m, state, setState);
+  };
+
+  const apiStore = function apiStore(state?: S, k?: any, keys: any[] = []) {
+    const key = k == null ? createKey(m, state) : k;
+
+    const useApiStoreModel = function useApiStoreModel(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useModel(...params);
+    };
+
+    const useApiStoreSelector = function useApiStoreSelector(
+      c: (i: T) => any,
+      eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
+    ) {
+      return useSelector(key, c, eq);
+    };
+
+    const apiStoreProvide = function apiStoreProvide() {
+      return provide([key, ...keys]);
+    };
+
+    const apiStoreProvideTo = function apiStoreProvideTo(
+      component: FunctionComponent
+    ) {
+      return provide([key, ...keys])(component);
+    };
+
+    const ApiStoreProvider = function ApiStoreProvider({
+      children
+    }: {
+      children?: ReactNode;
+    }) {
+      return createElement(Provider, { value: [key, ...keys] }, children);
+    };
+
+    const storeApi = {
+      key,
+      keys,
+      useModel: useApiStoreModel,
+      useSelector: useApiStoreSelector,
+      provide: apiStoreProvide,
+      provideTo: apiStoreProvideTo,
+      Provider: ApiStoreProvider
+    };
+
+    const withKeys = function withKeys(
+      ...stores: (
+        | {
+            key: AirReducer<any, any>;
+          }
+        | AirReducer<any, any>
+      )[]
+    ) {
+      const nks = keys.concat(
+        stores.map(store => (typeof store === 'function' ? store : store.key))
+      );
+      return apiStore(state, key, nks);
+    };
+
+    return {
+      ...storeApi,
+      with: withKeys
+    };
+  };
+
+  return Object.assign(m, {
+    useModel: useApiModel,
+    useControlledModel: useApiControlledModel,
+    store: apiStore
+  });
 };

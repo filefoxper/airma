@@ -20,8 +20,22 @@ type ValidInstance<S, T extends AirModelInstance> = {
     : T[K];
 };
 
+export type Contexts = {
+  data: { current: unknown }[];
+  current: number;
+  initialized: boolean;
+};
+
+export type ModelContext = {
+  ref: <C>(current: C) => { current: C };
+  memo: <M extends () => any>(call: M, deps: unknown[]) => ReturnType<M>;
+};
+
+export type ModelContextFactory = { context: ModelContext; reset: () => void };
+
 export type AirReducer<S, T extends AirModelInstance> = (
-  state: S
+  state: S,
+  context: ModelContext
 ) => ValidInstance<S, T>;
 
 export interface Connection<

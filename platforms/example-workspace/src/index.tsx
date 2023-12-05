@@ -14,11 +14,9 @@ const config: GlobalConfig = {
 };
 
 render(
-  <React.StrictMode>
-    <ConfigProvider value={config}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>,
+  <ConfigProvider value={config}>
+    <App />
+  </ConfigProvider>,
   root
 );
 

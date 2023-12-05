@@ -1,7 +1,10 @@
 import { SessionState, StrategyType } from './libs/type';
 
-function debounce(op: { duration: number } | number): StrategyType {
+function debounce(
+  op: { duration: number; lead?: boolean } | number
+): StrategyType {
   const time = typeof op === 'number' ? op : op.duration;
+  const lead = typeof op === 'number' ? false : !!op.lead;
   return function db(value: {
     current: () => SessionState;
     runner: () => Promise<SessionState>;
@@ -13,39 +16,79 @@ function debounce(op: { duration: number } | number): StrategyType {
       };
     };
   }): Promise<SessionState> {
-    const { current, runner, store } = value;
-    if (store.current) {
-      const { id, resolve } = store.current;
-      clearTimeout(id);
-      store.current.id = setTimeout(() => {
+    function leading() {
+      const { current, runner, store } = value;
+      if (store.current && store.current.id) {
+        clearTimeout(store.current.id);
+        store.current.id = undefined;
+      }
+      const timeoutId = setTimeout(() => {
         store.current = undefined;
-        resolve(runner());
       }, time);
-      return store.current.promise;
+      if (store.current != null) {
+        store.current.id = timeoutId;
+        return store.current.promise.then(d => {
+          return { ...d, abandon: true };
+        });
+      }
+      const defaultPromise = new Promise<SessionState>(resolve => {
+        const currentState = current();
+        resolve({ ...currentState, abandon: true });
+      });
+      const storeRef: {
+        id: any;
+        resolve: (d: any) => void;
+        promise: Promise<SessionState>;
+      } = {
+        id: timeoutId,
+        resolve: () => undefined,
+        promise: defaultPromise
+      };
+      const promise = new Promise<SessionState>(resolve => {
+        resolve(runner());
+        storeRef.resolve = resolve;
+      });
+      storeRef.promise = promise;
+      store.current = storeRef;
+      return promise;
     }
-    const defaultPromise = new Promise<SessionState>(resolve => {
-      const currentState = current();
-      resolve({ ...currentState, abandon: true });
-    });
-    const storeRef: {
-      id: any;
-      resolve: (d: any) => void;
-      promise: Promise<SessionState>;
-    } = {
-      id: null,
-      resolve: () => undefined,
-      promise: defaultPromise
-    };
-    const promise = new Promise<SessionState>(resolve => {
-      storeRef.id = setTimeout(() => {
-        store.current = undefined;
-        resolve(runner());
-      }, time);
-      storeRef.resolve = resolve;
-    });
-    storeRef.promise = promise;
-    store.current = storeRef;
-    return promise;
+
+    function normal() {
+      const { current, runner, store } = value;
+      if (store.current) {
+        const { id, resolve } = store.current;
+        clearTimeout(id);
+        store.current.id = setTimeout(() => {
+          store.current = undefined;
+          resolve(runner());
+        }, time);
+        return store.current.promise;
+      }
+      const defaultPromise = new Promise<SessionState>(resolve => {
+        const currentState = current();
+        resolve({ ...currentState, abandon: true });
+      });
+      const storeRef: {
+        id: any;
+        resolve: (d: any) => void;
+        promise: Promise<SessionState>;
+      } = {
+        id: null,
+        resolve: () => undefined,
+        promise: defaultPromise
+      };
+      const promise = new Promise<SessionState>(resolve => {
+        storeRef.id = setTimeout(() => {
+          store.current = undefined;
+          resolve(runner());
+        }, time);
+        storeRef.resolve = resolve;
+      });
+      storeRef.promise = promise;
+      store.current = storeRef;
+      return promise;
+    }
+    return lead ? leading() : normal();
   };
 }
 
@@ -98,8 +141,13 @@ function memo<T>(
   };
 }
 
-function throttle(op: { duration: number } | number): StrategyType {
-  const duration = typeof op === 'number' ? op : op.duration;
+function throttle(op?: { duration: number } | number): StrategyType {
+  const duration = (function computeDuration() {
+    if (op == null) {
+      return undefined;
+    }
+    return typeof op === 'number' ? op : op.duration;
+  })();
 
   function hasChanged(cacheVariables: any[] | undefined, variables: any[]) {
     if (cacheVariables == null) {
@@ -114,12 +162,18 @@ function throttle(op: { duration: number } | number): StrategyType {
     store.current = store.current || { timeoutId: null, variables: undefined };
     const storedVariables = store.current.variables;
     const { timeoutId } = store.current;
-    if (!hasChanged(storedVariables, variables) && timeoutId != null) {
+    if (
+      !hasChanged(storedVariables, variables) &&
+      (timeoutId != null || duration == null)
+    ) {
       return new Promise(resolve => {
         resolve(current());
       });
     }
     store.current.variables = variables;
+    if (duration == null) {
+      return runner();
+    }
     if (timeoutId != null) {
       clearTimeout(timeoutId);
     }
@@ -211,48 +265,6 @@ function validate(callback: () => boolean): StrategyType {
   };
 }
 
-function effect<T>(callback: (state: SessionState<T>) => void): StrategyType {
-  const sc: StrategyType = function sc(value) {
-    const { runner } = value;
-    return runner();
-  };
-  sc.effect = callback;
-  return sc;
-}
-
-effect.success = function effectSuccess<T>(
-  process: (data: T, sessionData: SessionState<T>) => any
-): StrategyType {
-  const sc: StrategyType = function sc(value) {
-    const { runner } = value;
-    return runner();
-  };
-  sc.effect = function effectCallback(state) {
-    if (state.isError || state.isFetching || !state.sessionLoaded) {
-      return;
-    }
-    process(state.data, state);
-  };
-  return sc;
-};
-
-effect.error = function effectError<T>(
-  process: (e: unknown, sessionData: SessionState) => any
-): StrategyType {
-  const sc: StrategyType = function sc(value) {
-    const { runner, runtimeCache } = value;
-    runtimeCache.set(error, true);
-    return runner();
-  };
-  sc.effect = function effectCallback(state) {
-    if (!state.isError || state.isFetching) {
-      return;
-    }
-    process(state.error, state);
-  };
-  return sc;
-};
-
 function response<T>(callback: (state: SessionState<T>) => void): StrategyType {
   const sc: StrategyType = function sc(value) {
     const { runner } = value;
@@ -304,6 +316,5 @@ export const Strategy = {
   validate,
   memo,
   reduce,
-  effect,
   response
 };

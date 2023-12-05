@@ -10,8 +10,15 @@ import type {
   FirstActionWrap,
   UpdaterConfig
 } from './type';
-import { createProxy, noop, toMapObject } from './tools';
-import { Collection, Creation, ModelFactoryStore } from './type';
+import { createProxy, noop, shallowEqual, toMapObject } from './tools';
+import {
+  Collection,
+  Creation,
+  ModelFactoryStore,
+  ModelContext,
+  Contexts,
+  ModelContextFactory
+} from './type';
 
 function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   dispatches.forEach(callback => {
@@ -84,9 +91,61 @@ function generateNotification<S, T extends AirModelInstance>(
   };
 }
 
+function generateModelContextFactory(): ModelContextFactory {
+  const contexts: Contexts = { data: [], current: 0, initialized: false };
+  const ref = function ref<C>(current: C) {
+    const { data, initialized } = contexts;
+    const currentIndex = contexts.current;
+    const memoData = data[currentIndex];
+    contexts.current += 1;
+    if (memoData) {
+      return memoData as { current: C };
+    }
+    if (initialized) {
+      throw new Error(
+        'Please keep context methods running with model refresh everytime.'
+      );
+    }
+    const refData = { current };
+    data[currentIndex] = refData;
+    return refData;
+  };
+  const memo = function memo<M extends () => any>(
+    call: M,
+    deps: unknown[] = []
+  ) {
+    const memoRef = ref<undefined | [ReturnType<M>, unknown[]]>(undefined);
+    const [memoData, memoDeps] = (function generate(): [
+      ReturnType<M>,
+      unknown[] | undefined
+    ] {
+      if (memoRef.current == null) {
+        return [call(), deps];
+      }
+      const [d, p] = memoRef.current;
+      if (shallowEqual(p, deps)) {
+        return [d, undefined];
+      }
+      return [call(), deps];
+    })();
+    if (memoDeps) {
+      memoRef.current = [memoData, memoDeps];
+    }
+    return memoData;
+  };
+  return {
+    context: { ref, memo },
+    reset() {
+      contexts.initialized = true;
+      contexts.current = 0;
+    }
+  };
+}
+
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
-  type: string
+  type: string,
+  contextFactory: ModelContextFactory
 ) {
   if (updater.cacheMethods[type]) {
     return updater.cacheMethods[type];
@@ -100,7 +159,8 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
       updater.notify(methodAction);
       return result;
     }
-    updater.current = reducer(result);
+    contextFactory.reset();
+    updater.current = reducer(result, contextFactory.context);
     updater.state = result;
     updater.cacheState = { state: result };
     updater.notify({ type, state: result });
@@ -115,7 +175,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   defaultState: D,
   updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
-  const defaultModel = reducer(defaultState);
+  const modelContextFactory = generateModelContextFactory();
+  const defaultModel = reducer(defaultState, modelContextFactory.context);
   const { controlled, batchUpdate } = updaterConfig || {};
   const updater: Updater<S, T> = {
     current: defaultModel,
@@ -153,7 +214,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       outState && outState.cache
         ? { state: outState.state }
         : updater.cacheState;
-    updater.current = updateReducer(updater.state);
+    modelContextFactory.reset();
+    updater.current = updateReducer(updater.state, modelContextFactory.context);
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
@@ -196,7 +258,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
       ) {
-        return rebuildDispatchMethod<S, T>(updater, p);
+        return rebuildDispatchMethod<S, T>(updater, p, modelContextFactory);
       }
       return value;
     }
@@ -267,8 +329,8 @@ export function factory<T extends AirReducer<any, any>>(
   reducer: T,
   state?: T extends AirReducer<infer S, any> ? S : never
 ): FactoryInstance<T> {
-  const replaceModel = function replaceModel(s: any) {
-    return reducer(s);
+  const replaceModel = function replaceModel(s: any, context: ModelContext) {
+    return reducer(s, context);
   };
   replaceModel.creation = function creation(
     updaterConfig?: UpdaterConfig
@@ -278,8 +340,8 @@ export function factory<T extends AirReducer<any, any>>(
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
     target: P
   ): P & { getSourceFrom: () => FactoryInstance<T> } {
-    const pipeModel = function pipeModel(s: any) {
-      return target(s);
+    const pipeModel = function pipeModel(s: any, context: ModelContext) {
+      return target(s, context);
     };
     pipeModel.getSourceFrom = function getSourceFrom() {
       return replaceModel;

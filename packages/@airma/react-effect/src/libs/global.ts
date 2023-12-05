@@ -27,41 +27,6 @@ export const globalControllerKey = createKey(
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
-/**
- * @deprecated
- * @param config
- * @param value
- * @param children
- * @constructor
- */
-export function GlobalSessionProvider({
-  config,
-  keys: value,
-  children
-}: GlobalSessionProviderProps) {
-  const isMatchedInStore = useIsModelMatchedInStore(globalControllerKey);
-  const keys: Array<ModelKeys> = useMemo(() => {
-    return [isMatchedInStore ? undefined : globalControllerKey, value].filter(
-      (d): d is ModelKeys => !!d
-    );
-  }, [isMatchedInStore, value]);
-  return !keys.length
-    ? createElement(
-        GlobalConfigContext.Provider,
-        { value: config || null },
-        children
-      )
-    : createElement(
-        StoreProvider,
-        { keys },
-        createElement(
-          GlobalConfigContext.Provider,
-          { value: config || null },
-          children
-        )
-      );
-}
-
 export function ConfigProvider({ value, children }: ConfigProviderProps) {
   const globalFetchingKey = useMemo(() => {
     return value.useGlobalFetching ? globalControllerKey : undefined;

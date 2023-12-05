@@ -1,6 +1,6 @@
 import {
   provide,
-  StoreProvider,
+  Provider as ModelProvider,
   ConfigProvider as StateConfigProvider
 } from '@airma/react-state';
 import { ConfigProvider as EffectConfigProvider } from '@airma/react-effect';
@@ -14,7 +14,8 @@ export {
   useModel,
   useControlledModel,
   useRealtimeInstance,
-  useSelector
+  useSelector,
+  model
 } from '@airma/react-state';
 
 export {
@@ -25,10 +26,12 @@ export {
   useSession,
   useLoadedSession,
   useResponse,
-  useIsFetching
+  useIsFetching,
+  useLazyComponent,
+  session
 } from '@airma/react-effect';
 
-export { provide, StoreProvider as Provider };
+export { provide, ModelProvider as Provider };
 
 export const ConfigProvider: FC<{
   value: GlobalConfig;

@@ -1,7 +1,6 @@
 import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   createKey,
-  useControlledModel,
   useModel,
   useSelector,
   createSessionKey,
@@ -16,7 +15,12 @@ import {
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
-import { ErrorSessionState, useLazyComponent } from '@airma/react-effect';
+import {
+  ErrorSessionState,
+  session,
+  useLazyComponent
+} from '@airma/react-effect';
+import { model, ModelContext } from '@airma/react-state';
 
 const { rest } = cli(c => ({
   ...c,
@@ -49,38 +53,28 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  rest('/api/user')
-    .path('list')
-    .setParams(validQuery)
-    .get<User[]>()
-    .then(
-      d =>
-        new Promise<User[]>(resolve => {
-          setTimeout(() => {
-            resolve(d);
-          }, 2000);
-        })
-    );
+  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
 
-export const fetchSessionKey = createSessionKey(userQuery);
+export const fetchSession = session(userQuery, 'query').store();
 
-const test = (state: number) => {
+const test = model((state: number) => {
   return {
     state,
     add() {
-      console.log('run', state + 1);
       return state + 1;
     }
   };
-};
+}).store(0);
 
-const testKey = createKey(test, 0);
-
-const conditionModel = (query: Query) => {
+const store = model((query: Query, { memo }) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
+  const queryData = memo(() => {
+    return { ...query.valid };
+  }, [query.valid]);
   return {
+    queryData,
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
@@ -98,16 +92,14 @@ const conditionModel = (query: Query) => {
     },
     query: handleQuery
   };
-};
-
-const conditionKey = createKey(conditionModel, {
+}).store({
   valid: defaultCondition,
   display: defaultCondition,
-  creating: true
+  creating: false
 });
 
 const Info = memo(() => {
-  const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
+  const [{ isFetching, isError, error }] = fetchSession.useSession();
   if (isFetching) {
     return <span>fetching...</span>;
   }
@@ -116,7 +108,7 @@ const Info = memo(() => {
 
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
-    const creating = useSelector(conditionKey, s => s.creating);
+    const creating = store.useSelector(s => s.creating);
     const { user, changeUsername, changeName } = useModel(
       (userData: Omit<User, 'id'>) => {
         return {
@@ -139,7 +131,7 @@ const Creating = memo(
       }
     );
 
-    const [{ variables }, query] = useSession(fetchSessionKey);
+    const [{ variables }, query] = fetchSession.useSession();
 
     const [q] = variables ?? [];
 
@@ -194,44 +186,11 @@ const Creating = memo(
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
+  const { displayQuery, create, changeDisplay, query } = store.useModel();
 
-  const session = useQuery(fetchSessionKey, {
-    variables: [q],
-    defaultData: [],
-    strategy: Strategy.response.success((a, s) =>
-      console.log('effect strategy', a, s)
-    )
-  });
-
-  const [state, conditionTrigger] = session;
-
-  const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
-
-  useResponse(s => {
-    if (s.isError) {
-      console.log('rsp', s.error);
-      return;
-    }
-    console.log('rsp', s.data?.length);
-  }, state);
-
-  useResponse.success((d, s) => {
-    const [{ name }] = s.variables;
-    console.log(
-      'rsp s',
-      d.map(u => u.name)
-    );
-  }, state);
-
-  useResponse.error(e => {
-    console.log('rsp e', e);
-  }, state);
-
-  useIsFetching(state);
+  const [{ isFetching }, trigger] = fetchSession.useSession();
 
   const handleTrigger = () => {
-    conditionTrigger();
     parentTrigger();
   };
 
@@ -276,38 +235,42 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   );
 });
 
-export default provide({ conditionKey, fetchSessionKey, testKey })(
-  function App() {
-    const { validQuery, creating, cancel } = useSelector(conditionKey, s =>
-      pick(s, 'validQuery', 'creating', 'cancel')
+export default fetchSession
+  .with(store)
+  .with(test)
+  .provideTo(function App() {
+    const { queryData, creating, cancel } = store.useSelector(s =>
+      pick(s, 'queryData', 'creating', 'cancel')
     );
 
-    const querySession = useQuery(fetchSessionKey, {
-      variables: [validQuery],
+    const test = useMemo(() => {
+      console.log('change...', queryData);
+      return queryData;
+    }, [queryData]);
+
+    const querySession = fetchSession.useQuery({
+      variables: [queryData],
       defaultData: [],
-      strategy: Strategy.success((a, s) => console.log(a, s))
+      strategy: [
+        Strategy.debounce({ duration: 500 }),
+        Strategy.response.success((a, s) => {
+          const [v] = s.variables;
+          console.log('name', v.name);
+        })
+      ]
     });
 
     const [{ data, variables }, t] = querySession;
 
     const [q] = variables ?? [];
 
-    console.log(q?.name);
-
     const Creator = useLazyComponent(
       () => Promise.resolve(Creating) as Promise<typeof Creating>,
       querySession
     );
 
-    useUpdate(
-      ([d]) => {
-        console.log('update...', d);
-      },
-      [data, 1]
-    );
-
     return (
-      <div style={{ padding: '12px 24px' }}>
+      <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
         <Condition parentTrigger={t} />
         <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
           {creating ? (
@@ -329,5 +292,4 @@ export default provide({ conditionKey, fetchSessionKey, testKey })(
         </div>
       </div>
     );
-  }
-);
+  });
