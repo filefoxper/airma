@@ -24,6 +24,7 @@ export type Contexts = {
   data: { current: unknown }[];
   current: number;
   initialized: boolean;
+  working: boolean;
 };
 
 export type ModelContext = {
@@ -31,7 +32,11 @@ export type ModelContext = {
   memo: <M extends () => any>(call: M, deps: unknown[]) => ReturnType<M>;
 };
 
-export type ModelContextFactory = { context: ModelContext; reset: () => void };
+export type ModelContextFactory = {
+  context: ModelContext;
+  start: () => void;
+  end: () => void;
+};
 
 export type AirReducer<S, T extends AirModelInstance> = (
   state: S,

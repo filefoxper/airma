@@ -26,6 +26,17 @@ function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   });
 }
 
+function refreshModel<S, T extends AirModelInstance, D extends S>(
+  reducer: AirReducer<S, T>,
+  state: D,
+  runtime: ModelContextFactory
+) {
+  runtime.start();
+  const instance = reducer(state, runtime.context);
+  runtime.end();
+  return instance;
+}
+
 function generateNotification<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   batchUpdate?: (callback: () => void) => void
@@ -92,9 +103,19 @@ function generateNotification<S, T extends AirModelInstance>(
 }
 
 function generateModelContextFactory(): ModelContextFactory {
-  const contexts: Contexts = { data: [], current: 0, initialized: false };
+  const contexts: Contexts = {
+    data: [],
+    current: 0,
+    initialized: false,
+    working: false
+  };
   const ref = function ref<C>(current: C) {
-    const { data, initialized } = contexts;
+    const { data, initialized, working } = contexts;
+    if (!working) {
+      throw new Error(
+        'Context hook only can be used in model refreshing time.'
+      );
+    }
     const currentIndex = contexts.current;
     const memoData = data[currentIndex];
     contexts.current += 1;
@@ -103,7 +124,7 @@ function generateModelContextFactory(): ModelContextFactory {
     }
     if (initialized) {
       throw new Error(
-        'Please keep context methods running with model refresh everytime.'
+        'Context hook should be used everytime, when model is refreshing.'
       );
     }
     const refData = { current };
@@ -135,9 +156,13 @@ function generateModelContextFactory(): ModelContextFactory {
   };
   return {
     context: { ref, memo },
-    reset() {
-      contexts.initialized = true;
+    start() {
+      contexts.working = true;
       contexts.current = 0;
+    },
+    end() {
+      contexts.working = false;
+      contexts.initialized = true;
     }
   };
 }
@@ -145,7 +170,7 @@ function generateModelContextFactory(): ModelContextFactory {
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string,
-  contextFactory: ModelContextFactory
+  runtime: ModelContextFactory
 ) {
   if (updater.cacheMethods[type]) {
     return updater.cacheMethods[type];
@@ -159,8 +184,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
       updater.notify(methodAction);
       return result;
     }
-    contextFactory.reset();
-    updater.current = reducer(result, contextFactory.context);
+    updater.current = refreshModel(reducer, result, runtime);
     updater.state = result;
     updater.cacheState = { state: result };
     updater.notify({ type, state: result });
@@ -176,7 +200,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
   const modelContextFactory = generateModelContextFactory();
-  const defaultModel = reducer(defaultState, modelContextFactory.context);
+  const defaultModel = refreshModel(reducer, defaultState, modelContextFactory);
   const { controlled, batchUpdate } = updaterConfig || {};
   const updater: Updater<S, T> = {
     current: defaultModel,
@@ -214,8 +238,11 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       outState && outState.cache
         ? { state: outState.state }
         : updater.cacheState;
-    modelContextFactory.reset();
-    updater.current = updateReducer(updater.state, modelContextFactory.context);
+    updater.current = refreshModel(
+      updateReducer,
+      updater.state,
+      modelContextFactory
+    );
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
