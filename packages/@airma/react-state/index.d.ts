@@ -10,9 +10,7 @@ export declare type ModelContext = {
   ref: <C>(current: C) => { current: C };
 };
 
-export declare type AirReducer =
-  | ((state: any) => any)
-  | ((state: any, context: ModelContext) => any);
+export declare type AirReducer = (state: any) => any;
 
 declare type ValidInstanceRecord<S, T extends AirModelInstance> = {
   [K in keyof T]: T[K] extends (...args: any[]) => S
@@ -27,23 +25,18 @@ declare type ValidInstance<S, T extends AirModelInstance> = ValidInstanceRecord<
   T
 >;
 
-declare type PickState<R extends AirReducer> = R extends (
-  state: infer S,
-  ...args: any[]
-) => any
+declare type PickState<R extends AirReducer> = R extends (state: infer S) => any
   ? S
   : never;
 
 declare type ValidReducerReturnType<R extends AirReducer> = R extends (
-  state: infer S,
-  ...args: any[]
+  state: infer S
 ) => infer T
   ? ValidInstance<S, T>
   : never;
 
 declare type StateExtendsUndefinedReducer<R extends AirReducer> = R extends (
-  state: infer S,
-  ...args: any[]
+  state: infer S
 ) => any
   ? undefined extends S
     ? R
@@ -51,8 +44,7 @@ declare type StateExtendsUndefinedReducer<R extends AirReducer> = R extends (
   : never;
 
 declare type ValidReducer<R extends AirReducer> = R extends (
-  state: infer S,
-  ...args: any[]
+  state: infer S
 ) => infer T
   ? T extends ValidInstanceRecord<S, T>
     ? R
@@ -248,11 +240,7 @@ declare type ValidModel<R extends AirReducer> = R extends (
 ) => infer T
   ? T extends ValidInstance<S, T>
     ? R
-    : never
-  : R extends (state: infer S, context: ModelContext) => infer T
-  ? T extends ValidInstance<S, T>
-    ? R
-    : never
+    : (state: S) => ValidInstance<S, T> & T
   : never;
 
 declare type ModelUsage<R extends AirReducer> = undefined extends PickState<R>
@@ -294,6 +282,7 @@ declare interface Api<R extends AirReducer> {
     : (state: PickState<R>) => StoreApi<R>;
 }
 
-export declare function model<R extends (s:any,context:ModelContext)=>any>(
-  m: R
-): ValidModel<R> & Api<ValidModel<R>>;
+export declare const model: {
+  <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
+  context: () => ModelContext;
+};

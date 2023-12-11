@@ -39,8 +39,7 @@ export type ModelContextFactory = {
 };
 
 export type AirReducer<S, T extends AirModelInstance> = (
-  state: S,
-  context: ModelContext
+  state: S
 ) => ValidInstance<S, T>;
 
 export interface Connection<

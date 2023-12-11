@@ -20,7 +20,8 @@ import type {
 } from './libs/type';
 import createModel, {
   createStore,
-  factory as createFactory
+  factory as createFactory,
+  getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
 import type { AirReducerLike, GlobalConfig, Selector } from './type';
@@ -539,3 +540,5 @@ export const model = function model<S, T extends AirModelInstance>(
     store: apiStore
   });
 };
+
+model.context = getRuntimeContext;

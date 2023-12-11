@@ -66,11 +66,11 @@ const test = model((state: number) => {
   };
 }).store(0);
 
-const store = model((query: Query, c) => {
+const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
-  const queryData = c.memo(() => {
+  const queryData = model.context().memo(() => {
     return { ...query.valid };
   }, [query.valid]);
   return {

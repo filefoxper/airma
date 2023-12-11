@@ -26,13 +26,27 @@ function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   });
 }
 
+const systemRuntime: { context: ModelContext | null } = {
+  context: null
+};
+
+export function getRuntimeContext(){
+  const context = systemRuntime.context;
+  if(context==null){
+    throw new Error('Can not use context out of the model refresh time.');
+  }
+  return context;
+}
+
 function refreshModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   state: D,
   runtime: ModelContextFactory
 ) {
   runtime.start();
-  const instance = reducer(state, runtime.context);
+  systemRuntime.context = runtime.context;
+  const instance = reducer(state);
+  systemRuntime.context = null;
   runtime.end();
   return instance;
 }
@@ -356,8 +370,8 @@ export function factory<T extends AirReducer<any, any>>(
   reducer: T,
   state?: T extends AirReducer<infer S, any> ? S : never
 ): FactoryInstance<T> {
-  const replaceModel = function replaceModel(s: any, context: ModelContext) {
-    return reducer(s, context);
+  const replaceModel = function replaceModel(s: any) {
+    return reducer(s);
   };
   replaceModel.creation = function creation(
     updaterConfig?: UpdaterConfig
@@ -367,8 +381,8 @@ export function factory<T extends AirReducer<any, any>>(
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
     target: P
   ): P & { getSourceFrom: () => FactoryInstance<T> } {
-    const pipeModel = function pipeModel(s: any, context: ModelContext) {
-      return target(s, context);
+    const pipeModel = function pipeModel(s: any) {
+      return target(s);
     };
     pipeModel.getSourceFrom = function getSourceFrom() {
       return replaceModel;
