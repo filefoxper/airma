@@ -191,14 +191,14 @@ export declare const ModelProvider: FC<
 >;
 
 export declare const Provider: FC<
-    | {
-    value: ModelKeys;
-    children?: ReactNode;
-}
-    | {
-    keys: ModelKeys;
-    children?: ReactNode;
-}
+  | {
+      value: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
+      keys: ModelKeys;
+      children?: ReactNode;
+    }
 >;
 
 export declare type GlobalConfig = {
@@ -296,4 +296,4 @@ declare interface Api<R extends AirReducer> {
 
 export declare function model<R extends AirReducer>(
   m: ValidModel<R>
-): R & Api<R>;
+): typeof m & Api<R>;
