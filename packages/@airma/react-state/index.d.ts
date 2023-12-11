@@ -248,11 +248,11 @@ declare type ValidModel<R extends AirReducer> = R extends (
 ) => infer T
   ? T extends ValidInstance<S, T>
     ? R
-    : (state: S) => ValidInstance<S, T> & T
+    : never
   : R extends (state: infer S, context: ModelContext) => infer T
   ? T extends ValidInstance<S, T>
     ? R
-    : (state: S, context: ModelContext) => ValidInstance<S, T> & T
+    : never
   : never;
 
 declare type ModelUsage<R extends AirReducer> = undefined extends PickState<R>
@@ -294,6 +294,6 @@ declare interface Api<R extends AirReducer> {
     : (state: PickState<R>) => StoreApi<R>;
 }
 
-export declare function model<R extends AirReducer>(
-  m: ValidModel<R>
-): typeof m & Api<R>;
+export declare function model<R extends (s:any,context:ModelContext)=>any>(
+  m: R
+): ValidModel<R> & Api<ValidModel<R>>;
