@@ -382,7 +382,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
         holder.reject(state);
         return;
       }
-      if (state.sessionLoaded && !holder.loaded) {
+      if (state.loaded && !holder.loaded) {
         holder.loaded = true;
         holder.resolve(true);
       }
@@ -567,11 +567,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
     }: {
       children?: ReactNode;
     }) {
-      return createElement(
-        Provider,
-        { value: [key, ...keys] },
-        children
-      );
+      return createElement(Provider, { value: [key, ...keys] }, children);
     };
     const sessionStoreApi = {
       key,
