@@ -459,27 +459,27 @@ export function useResponse<T>(
   }, [sessionState.fetchVersion]);
 }
 
-useResponse.success = function useSuccessResponse<T>(
-  process: (data: T, sessionState: SessionState<T>) => any,
-  sessionState: SessionState<T>
+useResponse.useSuccess = function useResponseSuccess<T>(
+    process: (data: T, sessionState: SessionState<T>) => any,
+    sessionState: SessionState<T>
 ) {
   useEffect(() => {
     if (sessionState.fetchVersion == null) {
       return;
     }
     const isSuccessResponse =
-      !sessionState.isFetching &&
-      sessionState.sessionLoaded &&
-      !sessionState.isError;
+        !sessionState.isFetching &&
+        sessionState.sessionLoaded &&
+        !sessionState.isError;
     if (isSuccessResponse) {
       process(sessionState.data as T, sessionState);
     }
   }, [sessionState.fetchVersion]);
 };
 
-useResponse.error = function useErrorResponse(
-  process: (error: unknown, sessionState: SessionState) => any,
-  sessionState: SessionState
+useResponse.useError = function useResponseError(
+    process: (error: unknown, sessionState: SessionState) => any,
+    sessionState: SessionState
 ) {
   useEffect(() => {
     if (sessionState.fetchVersion == null) {
@@ -491,6 +491,20 @@ useResponse.error = function useErrorResponse(
     }
   }, [sessionState.fetchVersion]);
 };
+
+/**
+ * @deprecated
+ * @param process
+ * @param sessionState
+ */
+useResponse.success = useResponse.useSuccess;
+
+/**
+ * @deprecated
+ * @param process
+ * @param sessionState
+ */
+useResponse.error = useResponse.useError;
 
 /**
  * @deprecated

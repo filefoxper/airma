@@ -287,6 +287,11 @@ export declare const useResponse: {
     process: (state: ImportantVariable<T>) => any,
     sessionState: T
   ): void;
+  /**
+   * @deprecated
+   * @param process
+   * @param sessionState
+   */
   success: <T extends SessionState>(
     process: (
       data: SuccessStateOf<T>['data'],
@@ -294,9 +299,25 @@ export declare const useResponse: {
     ) => any,
     sessionState: T
   ) => void;
+  /**
+   * @deprecated
+   * @param process
+   * @param sessionState
+   */
   error: <T extends SessionState>(
     process: (error: unknown, sessionState: ImportantVariable<T>) => any,
     sessionState: T
+  ) => void;
+  useSuccess: <T extends SessionState>(
+      process: (
+          data: SuccessStateOf<T>['data'],
+          sessionState: SuccessStateOf<T>
+      ) => any,
+      sessionState: T
+  ) => void;
+  useError: <T extends SessionState>(
+      process: (error: unknown, sessionState: ImportantVariable<T>) => any,
+      sessionState: T
   ) => void;
 };
 
@@ -315,14 +336,14 @@ export declare const SessionProvider: FC<
 >;
 
 export declare const Provider: FC<
-    | {
-  keys: ModelKeys;
-  children?: ReactNode;
-}
-    | {
-  value: ModelKeys;
-  children?: ReactNode;
-}
+  | {
+      keys: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
+      value: ModelKeys;
+      children?: ReactNode;
+    }
 >;
 
 export declare type GlobalConfig = {
