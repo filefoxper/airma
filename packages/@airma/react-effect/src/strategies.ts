@@ -230,6 +230,31 @@ function error(
   };
 }
 
+function failure(
+  process: (e: unknown, sessionData: SessionState) => any,
+  option?: { withAbandoned?: boolean }
+): StrategyType {
+  const { withAbandoned } = option || {};
+  return function er(value) {
+    const { runner, runtimeCache, store } = value;
+    const hasHigherErrorProcessor = runtimeCache.get(error);
+    runtimeCache.set(error, true);
+    store.current = process;
+    return runner().then(d => {
+      const currentProcess = store.current;
+      if (
+        d.isError &&
+        !hasHigherErrorProcessor &&
+        currentProcess &&
+        (!d.abandon || withAbandoned)
+      ) {
+        currentProcess(d.error, d);
+      }
+      return d;
+    });
+  };
+}
+
 function success<T>(
   process: (data: T, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
@@ -307,11 +332,29 @@ response.error = function responseError<T>(
   return sc;
 };
 
+response.failure = function responseFailure<T>(
+  process: (e: unknown, sessionData: SessionState) => any
+): StrategyType {
+  const sc: StrategyType = function sc(value) {
+    const { runner, runtimeCache } = value;
+    runtimeCache.set(error, true);
+    return runner();
+  };
+  sc.response = function effectCallback(state) {
+    if (!state.isError || state.isFetching) {
+      return;
+    }
+    process(state.error, state);
+  };
+  return sc;
+};
+
 export const Strategy = {
   debounce,
   throttle,
   once,
   error,
+  failure,
   success,
   validate,
   memo,

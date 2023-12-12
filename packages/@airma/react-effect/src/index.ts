@@ -477,7 +477,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   }, [sessionState.fetchVersion]);
 };
 
-useResponse.useError = function useResponseError(
+useResponse.useFailure = function useResponseFailure(
     process: (error: unknown, sessionState: SessionState) => any,
     sessionState: SessionState
 ) {
@@ -504,7 +504,7 @@ useResponse.success = useResponse.useSuccess;
  * @param process
  * @param sessionState
  */
-useResponse.error = useResponse.useError;
+useResponse.error = useResponse.useFailure;
 
 /**
  * @deprecated

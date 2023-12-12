@@ -309,15 +309,15 @@ export declare const useResponse: {
     sessionState: T
   ) => void;
   useSuccess: <T extends SessionState>(
-      process: (
-          data: SuccessStateOf<T>['data'],
-          sessionState: SuccessStateOf<T>
-      ) => any,
-      sessionState: T
+    process: (
+      data: SuccessStateOf<T>['data'],
+      sessionState: SuccessStateOf<T>
+    ) => any,
+    sessionState: T
   ) => void;
-  useError: <T extends SessionState>(
-      process: (error: unknown, sessionState: ImportantVariable<T>) => any,
-      sessionState: T
+  useFailure: <T extends SessionState>(
+    process: (error: unknown, sessionState: ImportantVariable<T>) => any,
+    sessionState: T
   ) => void;
 };
 
@@ -367,7 +367,19 @@ export declare const Strategy: {
     op?: { duration: number } | number
   ) => StrategyType<T, V>;
   once: <T = any, V extends any[] = any[]>() => StrategyType<T, V>;
+  /**
+   * @deprecated
+   * @param process
+   * @param option
+   */
   error: <T = any, V extends any[] = any[]>(
+    process: (
+      e: unknown,
+      sessionData: ImportantVariable<SessionState<T, V>>
+    ) => any,
+    option?: { withAbandoned?: boolean }
+  ) => StrategyType<T, V>;
+  failure: <T = any, V extends any[] = any[]>(
     process: (
       e: unknown,
       sessionData: ImportantVariable<SessionState<T, V>>
@@ -401,7 +413,17 @@ export declare const Strategy: {
     success: <T = any, V extends any[] = any[]>(
       process: (data: T, sessionData: SuccessStateOf<SessionState<T, V>>) => any
     ) => StrategyType<T, V>;
+    /**
+     * @deprecated
+     * @param process
+     */
     error: <T = any, V extends any[] = any[]>(
+      process: (
+        e: unknown,
+        sessionData: ImportantVariable<SessionState<T, V>>
+      ) => any
+    ) => StrategyType<T, V>;
+    failure: <T = any, V extends any[] = any[]>(
       process: (
         e: unknown,
         sessionData: ImportantVariable<SessionState<T, V>>
