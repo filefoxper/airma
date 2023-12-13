@@ -442,6 +442,8 @@ export const shallowEqual = shallowEq;
 
 export const createKey = createFactory;
 
+export const createKeyDangerously = createFactory;
+
 export const ConfigProvider: FC<{
   value: GlobalConfig;
   children?: ReactNode;
@@ -537,7 +539,8 @@ export const model = function model<S, T extends AirModelInstance>(
   return Object.assign(m, {
     useModel: useApiModel,
     useControlledModel: useApiControlledModel,
-    store: apiStore
+    store: apiStore,
+    storeDangerously: apiStore
   });
 };
 

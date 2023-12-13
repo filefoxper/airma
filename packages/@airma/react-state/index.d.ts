@@ -225,6 +225,11 @@ export declare function createKey<R extends AirReducer, D extends PickState<R>>(
   defaultState: D
 ): ModelKey<R>;
 
+export declare function createKeyDangerously<
+  R extends AirReducer,
+  D extends PickState<R>
+>(model: R, defaultState?: D): ModelKey<R>;
+
 export declare function useRealtimeInstance<T>(instance: T): T;
 
 export declare function useIsModelMatchedInStore(
@@ -280,6 +285,7 @@ declare interface Api<R extends AirReducer> {
   store: undefined extends PickState<R>
     ? (state?: PickState<R>) => StoreApi<R>
     : (state: PickState<R>) => StoreApi<R>;
+  storeDangerously: (state?: PickState<R>) => StoreApi<R>;
 }
 
 export declare const model: {
