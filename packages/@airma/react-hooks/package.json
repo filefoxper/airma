@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/react-hooks",
-  "version": "18.3.0-alpha.6",
+  "version": "18.3.0-alpha.7",
   "description": "This is a common react hook package",
   "license": "MIT",
   "author": "Jimmy.Harding",
@@ -25,9 +25,9 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-effect": "^18.3.0-alpha.6",
-    "@airma/react-hooks-core": "^18.0.0",
-    "@airma/react-state": "^18.3.0-alpha.6",
+    "@airma/react-effect": "^18.3.0-alpha.7",
+    "@airma/react-hooks-core": "^18.3.0-alpha.7",
+    "@airma/react-state": "^18.3.0-alpha.7",
     "react": ">=16.8.0"
   },
   "devDependencies": {
