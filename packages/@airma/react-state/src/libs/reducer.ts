@@ -30,9 +30,9 @@ const systemRuntime: { context: ModelContext | null } = {
   context: null
 };
 
-export function getRuntimeContext(){
-  const context = systemRuntime.context;
-  if(context==null){
+export function getRuntimeContext() {
+  const { context } = systemRuntime;
+  if (context == null) {
     throw new Error('Can not use context out of the model refresh time.');
   }
   return context;

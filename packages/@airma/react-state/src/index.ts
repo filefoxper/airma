@@ -410,7 +410,7 @@ export function provide(
   >(Comp: C): ComponentType<P> {
     return function WithModelProviderComponent(props: P) {
       return createElement(
-        StoreProvider,
+        Provider,
         { value: keys },
         createElement<P>(Comp as FunctionComponent<P>, props)
       );
