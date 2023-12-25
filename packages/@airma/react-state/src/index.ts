@@ -19,6 +19,7 @@ import type {
   FactoryInstance
 } from './libs/type';
 import createModel, {
+  checkIfLazyIdentifyConnection,
   createStore,
   factory as createFactory,
   getRuntimeContext
@@ -210,7 +211,16 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
     );
   }
-
+  const needInitializeScopeConnection =
+    connection != null &&
+    !!useDefaultState &&
+    connection.getCacheState() == null;
+  if (needInitializeScopeConnection) {
+    connection.update(model, { state, cache: true, ignoreDispatch: true });
+  }
+  if (connection != null) {
+    checkIfLazyIdentifyConnection(connection);
+  }
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -222,13 +232,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   );
   const instance = instanceRef.current;
   const current = connection || instance;
-  const needInitializeScopeConnection =
-    connection != null &&
-    !!useDefaultState &&
-    connection.getCacheState() == null;
-  if (needInitializeScopeConnection) {
-    connection.update(model, { state, cache: true, ignoreDispatch: true });
-  }
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
     current.update(model);
@@ -375,6 +378,7 @@ export function useSelector<
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
+  checkIfLazyIdentifyConnection(connection);
   const current = callback(connection.getCurrent());
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);
@@ -440,9 +444,13 @@ export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
 
 export const shallowEqual = shallowEq;
 
-export const createKey = createFactory;
-
-export const createKeyDangerously = createFactory;
+export const createKey = function createKey<S, T extends AirModelInstance>(
+  m: AirReducer<S, T>,
+  s?: S
+) {
+  const lazy = arguments.length < 2;
+  return createFactory(m, s, lazy);
+};
 
 export const ConfigProvider: FC<{
   value: GlobalConfig;
@@ -471,7 +479,13 @@ export const model = function model<S, T extends AirModelInstance>(
   };
 
   const apiStore = function apiStore(state?: S, k?: any, keys: any[] = []) {
-    const key = k == null ? createKey(m, state) : k;
+    const hasParams = arguments.length > 0;
+    const key = (function computeKey() {
+      if (k != null) {
+        return k;
+      }
+      return hasParams ? createKey(m, state) : createKey(m);
+    })();
 
     const useApiStoreModel = function useApiStoreModel(s?: S) {
       const params = (arguments.length ? [key, s] : [key]) as [
@@ -536,12 +550,17 @@ export const model = function model<S, T extends AirModelInstance>(
     };
   };
 
+  function createStoreApi(s?: S) {
+    return arguments.length ? apiStore(s) : apiStore();
+  }
+
   return Object.assign(m, {
     useModel: useApiModel,
     useControlledModel: useApiControlledModel,
-    store: apiStore,
-    storeDangerously: apiStore
+    store: createStoreApi,
+    createStore: createStoreApi
   });
 };
 
 model.context = getRuntimeContext;
+model.create = model;

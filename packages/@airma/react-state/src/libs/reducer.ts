@@ -20,6 +20,10 @@ import {
   ModelContextFactory
 } from './type';
 
+const lazyIdentify = {};
+
+const lazyIdentifyKey = '@@lazyIdentify';
+
 function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   dispatches.forEach(callback => {
     callback(action);
@@ -48,6 +52,9 @@ function refreshModel<S, T extends AirModelInstance, D extends S>(
   const instance = reducer(state);
   systemRuntime.context = null;
   runtime.end();
+  if ((instance as any)[lazyIdentifyKey] === lazyIdentify) {
+    runtime.reset();
+  }
   return instance;
 }
 
@@ -170,6 +177,12 @@ function generateModelContextFactory(): ModelContextFactory {
   };
   return {
     context: { ref, memo },
+    reset() {
+      contexts.working = false;
+      contexts.current = 0;
+      contexts.initialized = false;
+      contexts.data = [];
+    },
     start() {
       contexts.working = true;
       contexts.current = 0;
@@ -366,9 +379,21 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
+export function checkIfLazyIdentifyConnection(
+  connection: Connection<any, any>
+) {
+  const agent = connection.agent as any;
+  if (agent[lazyIdentifyKey]) {
+    throw new Error(
+      'A stateless connection should be initialized before it is accessed.'
+    );
+  }
+}
+
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  state?: T extends AirReducer<infer S, any> ? S : never
+  state?: T extends AirReducer<infer S, any> ? S : never,
+  lazy?: boolean
 ): FactoryInstance<T> {
   const replaceModel = function replaceModel(s: any) {
     return reducer(s);
@@ -376,6 +401,15 @@ export function factory<T extends AirReducer<any, any>>(
   replaceModel.creation = function creation(
     updaterConfig?: UpdaterConfig
   ): Connection {
+    if (lazy) {
+      return createModel(
+        (s: undefined) => {
+          return { [lazyIdentifyKey]: lazyIdentify };
+        },
+        undefined,
+        updaterConfig
+      ) as any;
+    }
     return createModel(replaceModel, state, updaterConfig);
   };
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(

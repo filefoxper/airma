@@ -47,7 +47,7 @@ type Query = {
 };
 
 const defaultCondition: Condition = {
-  name: '',
+  name: 'Mr',
   username: '',
   age: undefined
 };
@@ -92,7 +92,7 @@ const store = model((query: Query) => {
     },
     query: handleQuery
   };
-}).store({
+}).createStore({
   valid: defaultCondition,
   display: defaultCondition,
   creating: false
@@ -239,6 +239,7 @@ export default fetchSession
   .with(store)
   .with(test)
   .provideTo(function App() {
+    store.useModel();
     const { queryData, creating, cancel } = store.useSelector(s =>
       pick(s, 'queryData', 'creating', 'cancel')
     );

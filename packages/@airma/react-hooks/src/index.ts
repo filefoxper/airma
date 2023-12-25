@@ -11,7 +11,6 @@ export * from '@airma/react-hooks-core';
 
 export {
   createKey,
-  createKeyDangerously,
   useModel,
   useControlledModel,
   useRealtimeInstance,

@@ -36,6 +36,7 @@ export type ModelContextFactory = {
   context: ModelContext;
   start: () => void;
   end: () => void;
+  reset: () => void;
 };
 
 export type AirReducer<S, T extends AirModelInstance> = (

@@ -217,18 +217,10 @@ export declare function useSelector<
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
-export declare function createKey<R extends AirReducer>(
-  model: StateExtendsUndefinedReducer<R>
-): ModelKey<R>;
 export declare function createKey<R extends AirReducer, D extends PickState<R>>(
   model: R,
-  defaultState: D
+  defaultState?: D
 ): ModelKey<R>;
-
-export declare function createKeyDangerously<
-  R extends AirReducer,
-  D extends PickState<R>
->(model: R, defaultState?: D): ModelKey<R>;
 
 export declare function useRealtimeInstance<T>(instance: T): T;
 
@@ -282,13 +274,12 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
 declare interface Api<R extends AirReducer> {
   useModel: ModelUsage<R>;
   useControlledModel: ControlledModelUsage<R>;
-  store: undefined extends PickState<R>
-    ? (state?: PickState<R>) => StoreApi<R>
-    : (state: PickState<R>) => StoreApi<R>;
-  storeDangerously: (state?: PickState<R>) => StoreApi<R>;
+  store: (state?: PickState<R>) => StoreApi<R>;
+  createStore: (state?: PickState<R>) => StoreApi<R>;
 }
 
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
   context: () => ModelContext;
+  create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
 };
