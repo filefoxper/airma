@@ -460,17 +460,17 @@ export function useResponse<T>(
 }
 
 useResponse.useSuccess = function useResponseSuccess<T>(
-    process: (data: T, sessionState: SessionState<T>) => any,
-    sessionState: SessionState<T>
+  process: (data: T, sessionState: SessionState<T>) => any,
+  sessionState: SessionState<T>
 ) {
   useEffect(() => {
     if (sessionState.fetchVersion == null) {
       return;
     }
     const isSuccessResponse =
-        !sessionState.isFetching &&
-        sessionState.sessionLoaded &&
-        !sessionState.isError;
+      !sessionState.isFetching &&
+      sessionState.sessionLoaded &&
+      !sessionState.isError;
     if (isSuccessResponse) {
       process(sessionState.data as T, sessionState);
     }
@@ -478,8 +478,8 @@ useResponse.useSuccess = function useResponseSuccess<T>(
 };
 
 useResponse.useFailure = function useResponseFailure(
-    process: (error: unknown, sessionState: SessionState) => any,
-    sessionState: SessionState
+  process: (error: unknown, sessionState: SessionState) => any,
+  sessionState: SessionState
 ) {
   useEffect(() => {
     if (sessionState.fetchVersion == null) {
@@ -598,7 +598,8 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const api = {
-    store: storeApi
+    store: storeApi,
+    createStore: storeApi
   };
 
   const queryApi = {

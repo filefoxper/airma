@@ -511,6 +511,7 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   useQuery: UseQueryShort<D>;
   store: () => QueryStoreApi<D>;
+  createStore: () => QueryStoreApi<D>;
 };
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
@@ -518,4 +519,5 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   useMutation: UseMutationShort<D>;
   store: () => MutationStoreApi<D>;
+  createStore: () => MutationStoreApi<D>;
 };

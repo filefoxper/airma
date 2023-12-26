@@ -92,11 +92,7 @@ const store = model((query: Query) => {
     },
     query: handleQuery
   };
-}).createStore({
-  valid: defaultCondition,
-  display: defaultCondition,
-  creating: false
-});
+}).createStore();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = fetchSession.useSession();
@@ -239,7 +235,11 @@ export default fetchSession
   .with(store)
   .with(test)
   .provideTo(function App() {
-    store.useModel();
+    store.useModel({
+      valid: defaultCondition,
+      display: defaultCondition,
+      creating: false
+    });
     const { queryData, creating, cancel } = store.useSelector(s =>
       pick(s, 'queryData', 'creating', 'cancel')
     );
