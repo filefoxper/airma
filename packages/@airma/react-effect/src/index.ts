@@ -252,9 +252,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const promiseConfig = {
     ...con,
     triggerOn: triggerTypes,
-    strategy: ([latest()] as (StrategyType | null | undefined)[]).concat(
-      strategies
-    )
+    strategy: strategies.concat(latest() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
@@ -281,9 +279,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const promiseConfig = {
     ...con,
     triggerOn: triggerTypes,
-    strategy: ([block()] as (StrategyType | null | undefined)[]).concat(
-      strategies
-    )
+    strategy: strategies.concat(block() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(callback, promiseConfig);

@@ -133,10 +133,16 @@ const Creating = memo(
 
     const [, save] = useMutation(
       (u: Omit<User, 'id'>) =>
-        rest('/api/user')
-          .setBody(u)
-          .post<null>()
-          .then(() => true),
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            resolve(
+              rest('/api/user')
+                .setBody(u)
+                .post<null>()
+                .then(() => true)
+            );
+          }, 1000);
+        }),
       {
         variables: [user],
         strategy: [
@@ -245,7 +251,6 @@ export default fetchSession
     );
 
     const test = useMemo(() => {
-      console.log('change...', queryData);
       return queryData;
     }, [queryData]);
 
@@ -254,6 +259,7 @@ export default fetchSession
       defaultData: [],
       strategy: [
         Strategy.debounce({ duration: 500 }),
+        Strategy.memo(),
         Strategy.response.success((a, s) => {
           const [v] = s.variables;
           console.log('name', v.name);

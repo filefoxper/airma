@@ -11,6 +11,7 @@ function debounce(
     store: {
       current?: {
         id: any;
+        version: number;
         resolve: (d: any) => void;
         promise: Promise<SessionState>;
       };
@@ -37,10 +38,12 @@ function debounce(
       });
       const storeRef: {
         id: any;
+        version: number;
         resolve: (d: any) => void;
         promise: Promise<SessionState>;
       } = {
         id: timeoutId,
+        version: 0,
         resolve: () => undefined,
         promise: defaultPromise
       };
@@ -62,7 +65,11 @@ function debounce(
           store.current = undefined;
           resolve(runner());
         }, time);
-        return store.current.promise;
+        store.current.version += 1;
+        const cVersion = store.current.version;
+        return store.current.promise.then(d =>
+          cVersion === store.current?.version || 0 ? d : { ...d, abandon: true }
+        );
       }
       const defaultPromise = new Promise<SessionState>(resolve => {
         const currentState = current();
@@ -70,10 +77,12 @@ function debounce(
       });
       const storeRef: {
         id: any;
+        version: number;
         resolve: (d: any) => void;
         promise: Promise<SessionState>;
       } = {
         id: null,
+        version: 0,
         resolve: () => undefined,
         promise: defaultPromise
       };
@@ -86,7 +95,12 @@ function debounce(
       });
       storeRef.promise = promise;
       store.current = storeRef;
-      return promise;
+      const currentVersion = storeRef.version;
+      return promise.then(d =>
+        store.current?.version || currentVersion === 0
+          ? d
+          : { ...d, abandon: true }
+      );
     }
     return lead ? leading() : normal();
   };
