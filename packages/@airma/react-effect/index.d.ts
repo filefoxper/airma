@@ -486,10 +486,10 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>> {
   with: <M extends ModelKey<AirReducer>>(
     ...key: ({ key: M } | M)[]
   ) => SessionStoreApi<D>;
-  provide: () => (
+  provide: <P>() => (
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
-  provideTo: (
+  provideTo: <P>(
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
   Provider: FC<{ children?: ReactNode }>;

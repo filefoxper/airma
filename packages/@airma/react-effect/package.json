@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/react-effect",
-  "version": "18.3.0-alpha.9",
+  "version": "18.3.0-alpha.10",
   "description": "This is a react async state management tool",
   "license": "MIT",
   "author": "Jimmy.Harding",
@@ -25,8 +25,8 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-hooks-core": "^18.3.0-alpha.9",
-    "@airma/react-state": "^18.3.0-alpha.9",
+    "@airma/react-hooks-core": "^18.3.0-alpha.10",
+    "@airma/react-state": "^18.3.0-alpha.10",
     "react": ">=16.8.0"
   },
   "devDependencies": {

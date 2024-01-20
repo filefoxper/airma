@@ -262,10 +262,10 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
   with: <M extends ModelKey<AirReducer>>(
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
-  provide: () => (
+  provide: <P>() => (
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
-  provideTo: (
+  provideTo: <P>(
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
   Provider: FC<{ children?: ReactNode }>;
@@ -280,6 +280,9 @@ declare interface Api<R extends AirReducer> {
 
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
+  /**
+   * @deprecated
+   */
   context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
 };
