@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import {
+  QueryConfig,
+  SessionConfig,
   SessionState,
   StrategyCollectionType,
   StrategyEffect,
@@ -75,14 +77,67 @@ function createRuntimeCache() {
   };
 }
 
+function cacheOperation<T>(
+  cache: [string, { data: T; lastUpdateTime: number }][],
+  size: number | undefined
+) {
+  const cacheLimit = size == null ? 1 : size;
+
+  function getByKey(
+    c: [string, { data: T; lastUpdateTime: number }][],
+    k: string
+  ): { data: T; lastUpdateTime: number } | undefined {
+    const found = c.find(([ke]) => ke === k) || [undefined, undefined];
+    const [, v] = found;
+    return v;
+  }
+  return {
+    get: (k: string) => {
+      if (cacheLimit < 1) {
+        return undefined;
+      }
+      return getByKey(cache, k);
+    },
+    set(k: string, data: T): [string, { data: T; lastUpdateTime: number }][] {
+      if (cacheLimit < 1) {
+        return [];
+      }
+      const updater = { data, lastUpdateTime: now() };
+      const target = getByKey(cache, k);
+      if (target != null) {
+        return cache.map(([ke, va]) => {
+          if (k !== ke) {
+            return [ke, va];
+          }
+          return [k, updater];
+        });
+      }
+      const cacheData: [string, { data: T; lastUpdateTime: number }][] = [
+        ...cache,
+        [k, updater]
+      ];
+      return cacheData.length > cacheLimit
+        ? cacheData.slice(cacheData.length - cacheLimit)
+        : cacheData;
+    }
+  };
+}
+
+function now() {
+  return new Date().getTime();
+}
+
 export function useStrategyExecution<T>(
   instance: ReturnType<typeof effectModel>,
-  sessionRunner: (
+  sessionRunner: ((
     triggerType: TriggerType,
     variables: any[]
-  ) => Promise<SessionState<T>>,
-  strategy: StrategyCollectionType<T>
+  ) => Promise<SessionState<T>>) & { sessionConfig?: SessionConfig },
+  config: QueryConfig<T, any>
 ) {
+  const { strategy } = config;
+  const { sessionConfig } = sessionRunner;
+  const { cache: cacheBy } = sessionConfig || {};
   const strategies = toStrategies(strategy);
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
@@ -106,29 +161,101 @@ export function useStrategyExecution<T>(
     })
     .filter((e): e is StrategyEffect<any> => !!e);
 
+  const cacheOption = (function recomputeCache() {
+    const defaultKeyBy = (v: any[]) => JSON.stringify(v);
+    if (cacheBy == null) {
+      return undefined;
+    }
+    if (cacheBy === 'default') {
+      return {
+        key: defaultKeyBy
+      };
+    }
+    if (typeof cacheBy === 'function') {
+      return {
+        key: cacheBy
+      };
+    }
+    const { key, staleTime, capacity } = cacheBy;
+    return {
+      key: key == null || key === 'default' ? defaultKeyBy : key,
+      staleTime,
+      capacity
+    };
+  })();
+
   return [
     function callWithStrategy(triggerType: TriggerType, variables?: any[]) {
       const runtimeVariables = variables || [];
-      const requires = {
-        current: () => instance.state,
-        variables: runtimeVariables,
-        runner: () => {
-          const { state: current, setState } = instance;
+      const runner = function runner() {
+        const { state: current, setState } = instance;
+        if (!cacheOption) {
           setState({
             ...current,
             isFetching: true,
             triggerType
           });
           return sessionRunner(triggerType, runtimeVariables);
-        },
+        }
+        const { cache } = current;
+        const { key, staleTime, capacity } = cacheOption;
+        const variableKey = key(runtimeVariables || []);
+        const cacheData = cacheOperation(cache, capacity).get(variableKey);
+        if (
+          cacheData &&
+          staleTime &&
+          now() > staleTime + cacheData.lastUpdateTime
+        ) {
+          return Promise.resolve({
+            ...current,
+            data: cacheData.data,
+            isFetching: false
+          });
+        }
+        setState(
+          cacheData
+            ? {
+                ...current,
+                isFetching: true,
+                data: cacheData.data,
+                triggerType
+              }
+            : {
+                ...current,
+                isFetching: true,
+                triggerType
+              }
+        );
+        return sessionRunner(triggerType, runtimeVariables);
+      };
+      const requires = {
+        current: () => instance.state,
+        variables: runtimeVariables,
+        runner,
         store: strategyStoreRef,
         runtimeCache: createRuntimeCache()
       };
       return composeStrategies(strategies)(requires).then(data => {
-        if (!data.abandon) {
-          instance.setState(data);
+        const { state: currentSessionState } = instance;
+        if (data.abandon) {
+          return data;
         }
-        return data;
+        if (
+          !cacheOption ||
+          (cacheOption.capacity != null && cacheOption.capacity < 1)
+        ) {
+          instance.setState(data);
+          return data;
+        }
+        const { key: keyBy, capacity } = cacheOption;
+        const recordKey = keyBy(data.variables || []);
+        const newCache = cacheOperation(
+          currentSessionState.cache,
+          capacity
+        ).set(recordKey, data.data);
+        const result = { ...data, cache: newCache } as SessionState<T>;
+        instance.setState(result);
+        return result;
       });
     },
     effects,

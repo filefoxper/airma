@@ -1,22 +1,7 @@
-import {
-  ModelKeys,
-  StoreProvider,
-  createKey,
-  useIsModelMatchedInStore
-} from '@airma/react-state';
-import {
-  createContext,
-  createElement,
-  ReactNode,
-  useContext,
-  useMemo
-} from 'react';
+import { createKey, Provider } from '@airma/react-state';
+import { createContext, createElement, useContext, useMemo } from 'react';
 import { globalController } from './model';
-import type {
-  ConfigProviderProps,
-  GlobalConfig,
-  GlobalSessionProviderProps
-} from './type';
+import type { ConfigProviderProps, GlobalConfig } from './type';
 
 export const defaultIsFetchingState: any[] = [];
 
@@ -35,7 +20,7 @@ export function ConfigProvider({ value, children }: ConfigProviderProps) {
     GlobalConfigContext.Provider,
     { value },
     globalFetchingKey
-      ? createElement(StoreProvider, { value: globalFetchingKey }, children)
+      ? createElement(Provider, { value: globalFetchingKey }, children)
       : children
   );
 }

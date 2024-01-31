@@ -20,9 +20,10 @@ import type {
 } from './libs/type';
 import createModel, {
   checkIfLazyIdentifyConnection,
-  createStore,
+  createStoreCollection,
   factory as createFactory,
-  getRuntimeContext
+  getRuntimeContext,
+  staticFactory
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
 import type { AirReducerLike, GlobalConfig, Selector } from './type';
@@ -149,7 +150,10 @@ export const Provider: FC<{
   const config = useContext(ConfigContext);
   const { batchUpdate } = config || {};
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(storeKeys, { batchUpdate }), []);
+  const storeMemo = useMemo(
+    () => createStoreCollection(storeKeys, { batchUpdate }),
+    []
+  );
   const selector = useMemo(() => {
     const store = storeMemo.update(storeKeys);
     return { ...store, parent: context };
@@ -172,9 +176,17 @@ export const StoreProvider = Provider;
 export const ModelProvider = Provider;
 
 function findConnection<S, T extends AirModelInstance>(
-  c: Selector,
-  m: AirReducer<S | undefined, T>
+  c: Selector | null | undefined,
+  m: AirReducer<S | undefined, T> & {
+    connection?: Connection<S | undefined, T>;
+  }
 ): Connection<S | undefined, T> | undefined {
+  if (m.connection) {
+    return m.connection;
+  }
+  if (c == null) {
+    return undefined;
+  }
   const d = c.get(m);
   if (!d && c.parent) {
     return findConnection(c.parent, m);
@@ -204,8 +216,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ...option
   };
   const context = useContext(ReactStateContext);
-  const connection =
-    context && required ? findConnection(context, model) : undefined;
+  const connection = required ? findConnection(context, model) : undefined;
   if (required && !autoLink && !connection) {
     throw new Error(
       'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
@@ -374,7 +385,7 @@ export function useSelector<
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {
   const context = useContext(ReactStateContext);
-  const connection = context ? findConnection(context, factoryModel) : null;
+  const connection = findConnection(context, factoryModel);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
@@ -520,11 +531,33 @@ export const model = function model<S, T extends AirModelInstance>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
 
+    function global() {
+      const staticModelKey = key.global();
+
+      const useApiGlobalModel = function useApiGlobalModel(s?: S) {
+        const params = (
+          arguments.length ? [staticModelKey, s] : [staticModelKey]
+        ) as [typeof staticModelKey, (S | undefined)?];
+        return useModel(...params);
+      };
+      const useApiGlobalSelector = function useApiGlobalSelector(
+        c: (i: T) => any,
+        eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
+      ) {
+        return useSelector(staticModelKey, c, eq);
+      };
+      return {
+        useModel: useApiGlobalModel,
+        useSelector: useApiGlobalSelector
+      };
+    }
+
     const storeApi = {
       key,
       keys,
       useModel: useApiStoreModel,
       useSelector: useApiStoreSelector,
+      asGlobal: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
       Provider: ApiStoreProvider

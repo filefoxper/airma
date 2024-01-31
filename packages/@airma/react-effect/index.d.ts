@@ -8,6 +8,7 @@ import {
   LazyExoticComponent,
   ExoticComponent
 } from 'react';
+import { KeyBy } from './src/libs/type';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -74,7 +75,6 @@ export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   }
 > & {
   effect: [E, { sessionType?: SessionType }];
-  implement: (c: E) => void;
 };
 
 export declare interface QuerySessionKey<E extends PromiseCallback<any>>
@@ -92,6 +92,15 @@ declare type StrategyCollectionType<T = any, V extends any[] = any[]> =
   | null
   | StrategyType<T, V>
   | (StrategyType<T, V> | null | undefined)[];
+
+export type KeyBy<C extends PromiseCallback<any>> = (
+  variables: Parameters<C>
+) => string;
+
+export type CacheType<C extends PromiseCallback<any>> =
+  | { key?: KeyBy<C> | 'default'; staleTime?: number; capacity?: number }
+  | KeyBy<C>
+  | 'default';
 
 declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
@@ -498,26 +507,44 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>> {
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
+  asGlobal: () => {
+    useQuery: UseQueryShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
 }
 
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useMutation: UseMutationShort<D>;
+  asGlobal: () => {
+    useMutation: UseMutationShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
 }
 
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
-  queryType: 'query'
+  sessionType: 'query' | { sessionType: 'query'; cache?: CacheType<D> }
 ): {
+  (...p: Parameters<D>): ReturnType<D>;
   useQuery: UseQueryShort<D>;
+  /**
+   * @deprecated
+   */
   store: () => QueryStoreApi<D>;
   createStore: () => QueryStoreApi<D>;
 };
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
-  queryType: 'mutation'
+  sessionType: 'mutation' | { sessionType: 'mutation'; cache?: CacheType<D> }
 ): {
+  (...p: Parameters<D>): ReturnType<D>;
   useMutation: UseMutationShort<D>;
+  /**
+   * @deprecated
+   */
   store: () => MutationStoreApi<D>;
   createStore: () => MutationStoreApi<D>;
 };

@@ -5,8 +5,7 @@ import {
   ReactNode,
   useEffect,
   useMemo,
-  useRef,
-  useState
+  useRef
 } from 'react';
 import {
   Provider as ModelProvider,
@@ -38,7 +37,8 @@ import type {
   PromiseHolder,
   CheckLazyComponentSupportType,
   LazyComponentSupportType,
-  SessionResult
+  CacheType,
+  SessionConfig
 } from './libs/type';
 import {
   parseConfig,
@@ -105,8 +105,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const {
     variables,
     deps,
-    triggerOn: triggerTypes = ['mount', 'update', 'manual'],
-    strategy
+    triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
 
   const instance = useRealtimeInstance(stableInstance);
@@ -117,7 +116,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     { autoLink: true }
   );
 
-  function sessionRunner(
+  const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
     vars: any[]
   ): Promise<SessionState<T>> {
@@ -136,15 +135,16 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         triggerType
       } as SessionState<T>;
     });
-  }
+  };
+  sessionRunner.sessionConfig = promiseCallback.sessionConfig;
 
   const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(instance, sessionRunner, strategy);
+    useStrategyExecution(instance, sessionRunner, con);
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
     vars?: any[]
-  ) {
+  ): Promise<SessionState<T>> {
     const currentFetchingKey = instance.state.fetchingKey;
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
@@ -519,22 +519,39 @@ export { ConfigProvider } from './libs/global';
 
 const session = function session<T, C extends PromiseCallback<T>>(
   callback: C,
-  queryType: 'query' | 'mutation'
+  config:
+    | 'query'
+    | 'mutation'
+    | { sessionType: 'query' | 'mutation'; cache?: CacheType<C> }
 ) {
+  const { sessionType: queryType, cache: sessionCache } =
+    typeof config === 'string'
+      ? { sessionType: config, cache: undefined }
+      : config;
+  const sessionCallback: C & {
+    sessionConfig?: SessionConfig<C>;
+  } = function sessionCallback(...args: Parameters<C>) {
+    return callback(...args);
+  } as C;
+  sessionCallback.sessionConfig = {
+    sessionType: queryType,
+    cache: sessionCache
+  };
+
   const useApiQuery = function useApiQuery(
     c: QueryConfig<T, C> | Parameters<C>
   ) {
-    return useQuery(callback, c);
+    return useQuery(sessionCallback, c);
   };
 
   const useApiMutation = function useApiMutation(
     c: MutationConfig<T, C> | Parameters<C>
   ) {
-    return useMutation(callback, c);
+    return useMutation(sessionCallback, c);
   };
 
   const storeApi = function storeApi(k?: any, keys: any[] = []) {
-    const key = k != null ? k : createSessionKey(callback, queryType);
+    const key = k != null ? k : createSessionKey(sessionCallback, queryType);
     const useStoreApiQuery = function useStoreApiQuery(
       c: QueryConfig<T, C> | Parameters<C>
     ) {
@@ -579,9 +596,34 @@ const session = function session<T, C extends PromiseCallback<T>>(
     }) {
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
+    const globalApi = function globalApi() {
+      const globalKey = key.global();
+      const globalApiHooks = {
+        useSession() {
+          return useSession(globalKey, queryType);
+        },
+        useLoadedSession() {
+          return useLoadedSession(globalKey, queryType);
+        }
+      };
+      const useGlobalApiQuery = function useGlobalApiQuery(
+        c: QueryConfig<T, C> | Parameters<C>
+      ) {
+        return useQuery(globalKey, c);
+      };
+      const useGlobalApiMutation = function useGlobalApiMutation(
+        c: MutationConfig<T, C> | Parameters<C>
+      ) {
+        return useMutation(globalKey, c);
+      };
+      return queryType === 'query'
+        ? { ...globalApiHooks, useQuery: useGlobalApiQuery }
+        : { ...globalApiHooks, useMutation: useGlobalApiMutation };
+    };
     const sessionStoreApi = {
       key,
       with: withKeys,
+      asGlobal: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
       provide: storeApiProvide,
@@ -607,7 +649,8 @@ const session = function session<T, C extends PromiseCallback<T>>(
     ...api,
     useMutation: useApiMutation
   };
-  return queryType === 'query' ? queryApi : mutationApi;
+  const apis = queryType === 'query' ? queryApi : mutationApi;
+  return Object.assign(sessionCallback, apis);
 };
 
 export { session };

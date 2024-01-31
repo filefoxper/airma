@@ -4,7 +4,9 @@ import type {
   SessionType,
   SessionKey,
   PromiseCallback,
-  QueryConfig
+  QueryConfig,
+  CacheType,
+  SessionConfig
 } from './type';
 
 export function effectModel(state: SessionState & { version?: number }) {
@@ -88,6 +90,7 @@ export const defaultPromiseResult = (config?: {
     triggerType: undefined,
     loaded: false,
     sessionLoaded: false,
+    cache: [],
     ...config
   } as SessionState);
 
@@ -129,7 +132,11 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   uniqueKey: unknown,
   config?: QueryConfig<T, C> | Parameters<C>
-): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
+): [
+  ReturnType<typeof effectModel>,
+  QueryConfig<T, C>,
+  C & { sessionConfig?: SessionConfig<C> }
+] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con, isSessionKey] = parseEffect<
     C,
@@ -175,24 +182,19 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   return [stableInstance, configuration, effectCallback];
 }
 
-export function createSessionKey<
-  E extends (...params: any[]) => Promise<any>,
-  T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E, sessionType?: SessionType): SessionKey<E> {
-  const context = { implemented: false };
+export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
+  effectCallback: E & { sessionConfig?: SessionConfig<E> },
+  sessionType?: SessionType
+): SessionKey<E> {
   const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
-  model.effect = [
+  const effectCallbackReplace: E & { sessionConfig?: SessionConfig<E> } =
     function effectCallbackReplace(...params: any[]) {
       return effectCallback(...params);
-    } as E,
+    } as E;
+  effectCallbackReplace.sessionConfig = effectCallback.sessionConfig;
+  model.effect = [
+    effectCallbackReplace,
     sessionType ? { sessionType } : {}
   ] as [E, { sessionType?: SessionType }];
-  model.implement = function impl(callback: E) {
-    if (context.implemented) {
-      return;
-    }
-    model.effect[0] = callback;
-    context.implemented = true;
-  };
   return model as SessionKey<E>;
 }

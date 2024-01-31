@@ -20,7 +20,7 @@ import {
   session,
   useLazyComponent
 } from '@airma/react-effect';
-import { model, ModelContext } from '@airma/react-state';
+import { model } from '@airma/react-state';
 
 const { rest } = cli(c => ({
   ...c,
@@ -53,9 +53,24 @@ const defaultCondition: Condition = {
 };
 
 const userQuery = (validQuery: Condition) =>
-  rest('/api/user').path('list').setParams(validQuery).get<User[]>();
+  rest('/api/user')
+    .path('list')
+    .setParams(validQuery)
+    .get<User[]>()
+    .then(d => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(d);
+        }, 700);
+      }) as Promise<User[]>;
+    });
 
-export const fetchSession = session(userQuery, 'query').store();
+export const fetchSession = session(userQuery, {
+  sessionType: 'query',
+  cache: { capacity: 5 }
+})
+  .createStore()
+  .asGlobal();
 
 const test = model((state: number) => {
   return {
@@ -92,7 +107,9 @@ const store = model((query: Query) => {
     },
     query: handleQuery
   };
-}).createStore();
+})
+  .createStore()
+  .asGlobal();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = fetchSession.useSession();
@@ -237,66 +254,58 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   );
 });
 
-export default fetchSession
-  .with(store)
-  .with(test)
-  .provideTo(function App() {
-    store.useModel({
-      valid: defaultCondition,
-      display: defaultCondition,
-      creating: false
-    });
-    const { queryData, creating, cancel } = store.useSelector(s =>
-      pick(s, 'queryData', 'creating', 'cancel')
-    );
-
-    const test = useMemo(() => {
-      return queryData;
-    }, [queryData]);
-
-    const querySession = fetchSession.useQuery({
-      variables: [queryData],
-      defaultData: [],
-      strategy: [
-        Strategy.debounce({ duration: 500 }),
-        Strategy.memo(),
-        Strategy.response.success((a, s) => {
-          const [v] = s.variables;
-          console.log('name', v.name);
-        })
-      ]
-    });
-
-    const [{ data, variables }, t] = querySession;
-
-    const [q] = variables ?? [];
-
-    const Creator = useLazyComponent(
-      () => Promise.resolve(Creating) as Promise<typeof Creating>,
-      querySession
-    );
-
-    return (
-      <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
-        <Condition parentTrigger={t} />
-        <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-          {creating ? (
-            <Suspense>
-              <Creator onClose={cancel} />
-            </Suspense>
-          ) : (
-            <Info />
-          )}
-        </div>
-        <div>
-          {data.map(user => (
-            <div key={user.id} style={{ padding: '4px 0' }}>
-              <span style={{ marginRight: 12 }}>name: {user.name}</span>
-              <span style={{ marginRight: 12 }}>username: {user.username}</span>
-              <span style={{ marginRight: 12 }}>age: {user.age}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+export default test.provideTo(function App() {
+  store.useModel({
+    valid: defaultCondition,
+    display: defaultCondition,
+    creating: false
   });
+  const { queryData, creating, cancel } = store.useSelector(s =>
+    pick(s, 'queryData', 'creating', 'cancel')
+  );
+
+  const querySession = fetchSession.useQuery({
+    variables: [queryData],
+    defaultData: [],
+    strategy: [
+      Strategy.memo(),
+      Strategy.response.success((a, s) => {
+        const [v] = s.variables;
+        console.log('name', v.name);
+      })
+    ]
+  });
+
+  const [{ data, variables }, t] = querySession;
+
+  const [q] = variables ?? [];
+
+  const Creator = useLazyComponent(
+    () => Promise.resolve(Creating) as Promise<typeof Creating>,
+    querySession
+  );
+
+  return (
+    <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
+      <Condition parentTrigger={t} />
+      <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
+        {creating ? (
+          <Suspense>
+            <Creator onClose={cancel} />
+          </Suspense>
+        ) : (
+          <Info />
+        )}
+      </div>
+      <div>
+        {data.map(user => (
+          <div key={user.id} style={{ padding: '4px 0' }}>
+            <span style={{ marginRight: 12 }}>name: {user.name}</span>
+            <span style={{ marginRight: 12 }}>username: {user.username}</span>
+            <span style={{ marginRight: 12 }}>age: {user.age}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});

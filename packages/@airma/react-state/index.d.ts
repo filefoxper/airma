@@ -58,6 +58,7 @@ declare type PipeCallback<S> = <R extends AirReducer>(
 export declare type ModelKey<R extends AirReducer> = ValidReducer<R> & {
   pipe: PipeCallback<PickState<R>>;
   effect?: [(...params: any[]) => any, Record<string, any>?];
+  global: () => ModelKey<R>;
 };
 
 export declare function useModel<R extends AirReducer>(
@@ -262,6 +263,7 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
   with: <M extends ModelKey<AirReducer>>(
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
+  asGlobal: () => StoreUsageApi<R>;
   provide: <P>() => (
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
@@ -274,6 +276,10 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
 declare interface Api<R extends AirReducer> {
   useModel: ModelUsage<R>;
   useControlledModel: ControlledModelUsage<R>;
+  /**
+   * @deprecated
+   * @param state
+   */
   store: (state?: PickState<R>) => StoreApi<R>;
   createStore: (state?: PickState<R>) => StoreApi<R>;
 }

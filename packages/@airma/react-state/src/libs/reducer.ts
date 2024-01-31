@@ -1,4 +1,4 @@
-import type {
+import {
   Action,
   AirModelInstance,
   AirReducer,
@@ -8,10 +8,8 @@ import type {
   Dispatch,
   ActionWrap,
   FirstActionWrap,
-  UpdaterConfig
-} from './type';
-import { createProxy, noop, shallowEqual, toMapObject } from './tools';
-import {
+  UpdaterConfig,
+  StaticFactoryInstance,
   Collection,
   Creation,
   ModelFactoryStore,
@@ -19,6 +17,7 @@ import {
   Contexts,
   ModelContextFactory
 } from './type';
+import { createProxy, noop, shallowEqual, toMapObject } from './tools';
 
 const lazyIdentify = {};
 
@@ -390,6 +389,21 @@ export function checkIfLazyIdentifyConnection(
   }
 }
 
+export function staticFactory<T extends AirReducer<any, any>>(
+  reducer: FactoryInstance<T>
+): StaticFactoryInstance<T> {
+  const replaceModel: StaticFactoryInstance<T> = function replaceModel(s: any) {
+    return reducer(s);
+  } as StaticFactoryInstance<T>;
+  replaceModel.effect = reducer.effect;
+  replaceModel.connection = reducer.creation();
+  replaceModel.pipe = reducer.pipe;
+  replaceModel.global = function self() {
+    return replaceModel;
+  };
+  return replaceModel as StaticFactoryInstance<T>;
+}
+
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
   state?: T extends AirReducer<infer S, any> ? S : never,
@@ -422,6 +436,9 @@ export function factory<T extends AirReducer<any, any>>(
       return replaceModel;
     };
     return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
+  };
+  replaceModel.global = function staticFactoryForModel() {
+    return staticFactory<T>(replaceModel as FactoryInstance<T>);
   };
   return replaceModel as FactoryInstance<T>;
 }
@@ -478,7 +495,7 @@ function toInstances(collections: Collection[]) {
   };
 }
 
-export function createStore<
+export function createStoreCollection<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
 >(fact: T, updaterConfig?: UpdaterConfig): ModelFactoryStore<T> {
   const handler = fact;

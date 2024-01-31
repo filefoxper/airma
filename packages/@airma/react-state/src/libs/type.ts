@@ -119,9 +119,20 @@ export type ModelFactoryStore<T> = {
   destroy(): void;
 };
 
-export type FactoryInstance<T extends AirReducer<any, any>> = T & {
-  creation(): Connection;
+export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
+  connection: Connection;
+  effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P
   ): P & { getSourceFrom: () => FactoryInstance<T> };
+  global: () => StaticFactoryInstance<T>;
+};
+
+export type FactoryInstance<T extends AirReducer<any, any>> = T & {
+  creation(updateConfig?: UpdaterConfig): Connection;
+  effect?: [(...params: any[]) => any, Record<string, any>?];
+  pipe<P extends AirReducer<any, any>>(
+    reducer: P
+  ): P & { getSourceFrom: () => FactoryInstance<T> };
+  global: () => StaticFactoryInstance<T>;
 };
