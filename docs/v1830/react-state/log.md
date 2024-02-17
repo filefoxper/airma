@@ -82,3 +82,9 @@
 * provide `ConfigProvider` to config API usage in it.
 * deprecate `useRefreshModel` API
 * deprecate `useRefresh` API
+
+## v 18.3.0 2024-02-20
+
+* remove old deprecated APIs.
+* simplify APIs.
+* add `model` API.

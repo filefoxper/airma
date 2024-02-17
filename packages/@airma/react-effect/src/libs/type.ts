@@ -115,8 +115,12 @@ export interface StrategyType<T = any> {
   (value: {
     current: () => SessionState<T>;
     variables: any[];
-    runner: () => Promise<SessionState<T>>;
+    config: QueryConfig<T, any>;
+    runner: (
+      setSessionState?: (s: SessionState<T>) => SessionState<T>
+    ) => Promise<SessionState<T>>;
     store: { current: any };
+    triggerType: TriggerType;
     runtimeCache: {
       set: (key: any, value: any) => void;
       get: (key: any) => any;
@@ -136,11 +140,6 @@ export type KeyBy<C extends PromiseCallback<any>> = (
   variables: Parameters<C>
 ) => string;
 
-export type CacheType<C extends PromiseCallback<any>> =
-  | { key?: KeyBy<C> | 'default'; staleTime?: number; capacity?: number }
-  | KeyBy<C>
-  | 'default';
-
 export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
@@ -158,11 +157,6 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   loaded?: boolean;
-};
-
-export type SessionConfig<R extends PromiseCallback<any> = any> = {
-  sessionType: 'query' | 'mutation';
-  cache?: CacheType<R>;
 };
 
 export type GlobalConfig = {

@@ -8,7 +8,6 @@ import {
   LazyExoticComponent,
   ExoticComponent
 } from 'react';
-import { KeyBy } from './src/libs/type';
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -92,15 +91,6 @@ declare type StrategyCollectionType<T = any, V extends any[] = any[]> =
   | null
   | StrategyType<T, V>
   | (StrategyType<T, V> | null | undefined)[];
-
-export type KeyBy<C extends PromiseCallback<any>> = (
-  variables: Parameters<C>
-) => string;
-
-export type CacheType<C extends PromiseCallback<any>> =
-  | { key?: KeyBy<C> | 'default'; staleTime?: number; capacity?: number }
-  | KeyBy<C>
-  | 'default';
 
 declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
@@ -369,6 +359,11 @@ export declare const ConfigProvider: FC<{
 }>;
 
 export declare const Strategy: {
+  cache: <T = any, V extends any[] = any[]>(op?: {
+    key?: (vars: V) => string;
+    staleTime?: number;
+    capacity?: number;
+  }) => StrategyType<T, V>;
   debounce: <T = any, V extends any[] = any[]>(
     op: { duration: number; lead?: boolean } | number
   ) => StrategyType<T, V>;
@@ -526,7 +521,7 @@ declare interface MutationStoreApi<D extends PromiseCallback<any>>
 
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
-  sessionType: 'query' | { sessionType: 'query'; cache?: CacheType<D> }
+  sessionType: 'query'
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useQuery: UseQueryShort<D>;
@@ -538,7 +533,7 @@ export declare function session<D extends PromiseCallback<any>>(
 };
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
-  sessionType: 'mutation' | { sessionType: 'mutation'; cache?: CacheType<D> }
+  sessionType: 'mutation'
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useMutation: UseMutationShort<D>;

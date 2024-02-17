@@ -8,59 +8,44 @@
 [standard-url]: http://npm.im/standard
 [npm-downloads-image]: https://img.shields.io/npm/dm/%40airma/react-state.svg?style=flat-square
 
-
 # @airma/react-state
 
-Simple `reducer-like` state-management with method action dispatch mode for react components.
+`@airma/react-state` 是一款基于模型对象的类 redux 状态管理工具，通过调用行为方法进行事件分发，改变模型状态。
 
-Create `reducer-like` function:
+## 使用方式
 
-```js
-export function counting(state:number){
-    return {
-        // reproduced state for render
-        count: `mount: ${state}`,
-        // action method
-        increase:()=>count + 1,
-        // action method
-        decrease:()=>count - 1,
-        // action method, define parameters freely.
-        add(...additions: number[]){
-            return additions.reduce((result, current)=>{
-                return result + current;
-            }, count);
-        }
-    };
-}
-```
-
-Use `reducer-like` function:
-
-```tsx
-import {counting} from './model';
+```ts
 import {useModel} from '@airma/react-state';
 
-......
-// give it an initialState can make it fly.
-const {count, increase, decrease, add} = useModel(counting, 0); // initialState `0`
-// call method `increase\decrease\add` can change `count` and make component rerender
-......
+const instance = useModel((count:number)=>({
+    // 渲染数据
+    count,
+    isNegative: count<0,
+    // 行为方法，用于生成行为后的状态
+    increase:()=> count + 1,
+    decrease:()=> count - 1
+}),0); // 默认状态 0
+
+const {
+    count, 
+    isNegative,
+    // 调用行为方法触发状态变更与重渲染
+    decrease, 
+    increase
+} = instance;
 ```
 
-The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
+上例通过使用类 `reducer` 的 `function` 创建了一个计数状态管理器。在 `@airma/react-state` 中，这个类 `reducer function` 被称为[模型](/zh/react-state/concepts?id=模型) `model`。
 
-## Documents
+使用 [model](/zh/react-state/api?id=model) API，可以简化使用步骤，让相关的 hooks 使用更加清晰明了。
 
-* [En](https://filefoxper.github.io/airma/#/react-state/index)
-* [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
+### 本地状态管理
 
-## Local state management
-
-```tsx
+```ts
 import {model} from '@airma/react-state';
 
-// api model returns a wrap function for your model function.
-// it keeps a same type of parameters and return data with the wrapped function.
+// model API 通过包装模型函数，返回一个与源模型接口相同的新模型，
+// 并在新模型上提供了一套完整的模型操作常用 API 集合。
 const counting = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
@@ -74,16 +59,16 @@ const counting = model(function counting(state:number){
     };
 });
 ......
-// you can get useModel from the model wrapped function.
+// 我们可以直接通过 get 的形式使用 useModel
 const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+`model` API 的基本功能即优化 `React.useReducer`，方便本地状态管理。同时它也支持了使用 `React.Context` 共享状态管理模式和全局共享状态管理模式。
 
-## React.Context state management
+### React.Context 共享状态管理
 
-```tsx
+```ts
 import {memo} from 'react';
 import {model} from '@airma/react-state';
 
@@ -128,9 +113,7 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-Using `model(xxx).createStore().asGlobal()` can build a global store.
-
-## Global state management
+### 全局共享状态管理
 
 ```ts
 import {model} from '@airma/react-state';
@@ -172,37 +155,68 @@ const Component = function Comp() {
 };
 ```
 
-The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
+### render 运行时初始化默认状态
 
-## Why support context store?
+```ts
+import {model} from '@airma/react-state';
 
-In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
+const countingStore = model(function counting(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore();
+// Give default state later in component render.
+......
+const Increase = memo(()=>{
+    const increase = countingStore.useSelector(i => i.increase);
+    return <button onClick={increase}>+</button>;
+});
 
- That means: 
- 
- 1. The store data can be destroyed with its `provider` component unmount.
- 2. Components with same store provider can be used together in one parent component without state change effect to each other.
- 
- ### How to subscribe a grand parent provider store?
+const Count = memo(()=>{
+    const {count} = countingStore.useModel();
+    return <span>{count}</span>;
+});
 
- The store provider system in `@airma/react-state` is designed with a tree structure. The nearest `provider` finds store one-by-one from itself to its root parent `provider`, and links the nearest matched `provider` store to the subscriber `useModel/useSelector`.
+const Decrease = memo(()=>{
+    const decrease = countingStore.useSelector(i => i.decrease);
+    return <button onClick={decrease}>-</button>;
+});
 
- ### Does the state change of store leads a whole provider component rerender?
-
- No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
-
- ## Why not async action methods
-
- Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
-
-There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
-
-## Browser Support 
-
+const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultCount:number}) {
+    // initialize default state in render.
+    countingStore.useModel(defaultCount);
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+});
 ```
-chrome: '>=91',
-edge: '>=91',
-firefox: '=>90',
-safari: '>=15'
-```
+
+## 介绍
+
+### 模型是如何工作的？
+
+### 为什么要支持 React.Context 共享状态模式？
+
+#### 如何跨 Provider 订阅共享状态？
+
+#### 共享状态变更是否会引起整个 Provider 组件重新渲染？
+
+### 为什么不支持异步状态管理？
+
+## 安装与浏览器支持
+
+### 安装命令
+
+### 浏览器支持
 

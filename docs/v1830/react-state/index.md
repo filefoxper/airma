@@ -13,6 +13,8 @@
 
 Simple `reducer-like` state-management with method action dispatch mode for react components.
 
+## Code first
+
 Create `reducer-like` function:
 
 ```js
@@ -24,7 +26,8 @@ export function counting(state:number){
         increase:()=>count + 1,
         // action method
         decrease:()=>count - 1,
-        // action method, define parameters freely.
+        // action method, define parameters freely,
+        // return next state.
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
@@ -49,14 +52,9 @@ const {count, increase, decrease, add} = useModel(counting, 0); // initialState 
 
 The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
 
-## Documents
+### Local state management
 
-* [En](https://filefoxper.github.io/airma/#/react-state/index)
-* [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
-
-## Local state management
-
-```tsx
+```ts
 import {model} from '@airma/react-state';
 
 // api model returns a wrap function for your model function.
@@ -79,11 +77,11 @@ const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+The basic usage about `model` is just enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
 
-## React.Context state management
+### React.Context state management
 
-```tsx
+```ts
 import {memo} from 'react';
 import {model} from '@airma/react-state';
 
@@ -128,9 +126,9 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-Using `model(xxx).createStore().asGlobal()` can build a global store.
+Using `model(xxx).createStore(defaultState?).asGlobal()` can build a global store.
 
-## Global state management
+### Global state management
 
 ```ts
 import {model} from '@airma/react-state';
@@ -146,7 +144,8 @@ const countingStore = model(function counting(state:number){
             }, count);
         }
     };
-}).createStore(0).asGlobal();
+}).createStore(0).asGlobal(); 
+// mark store to be global
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -174,7 +173,64 @@ const Component = function Comp() {
 
 The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
 
-## Why support context store?
+### Initialize a dynamic state for store in render
+
+Sometimes, provides a static initialized state for store is very difficult. Use `useModel` API to initialize a dynamic state for store in render is a better solution in that case.
+
+```ts
+import {model} from '@airma/react-state';
+
+const countingStore = model(function counting(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore();
+// Give default state later in component render.
+......
+const Increase = memo(()=>{
+    const increase = countingStore.useSelector(i => i.increase);
+    return <button onClick={increase}>+</button>;
+});
+
+const Count = memo(()=>{
+    const {count} = countingStore.useModel();
+    return <span>{count}</span>;
+});
+
+const Decrease = memo(()=>{
+    const decrease = countingStore.useSelector(i => i.decrease);
+    return <button onClick={decrease}>-</button>;
+});
+
+const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultCount:number}) {
+    // initialize default state in render.
+    countingStore.useModel(defaultCount);
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+});
+```
+
+## Introduce
+
+Consider `@airma/react-state` as a enhanced redux. It uses `model function` to replace `reducer function` and makes `dispatching action` been `calling method`; it provides 3 kinds of state-management: `Local state`, `React.Context state`, `Global state`, then the usage can be more reasonable; it allows providing parts of state out for render, that makes state more flexible. 
+
+### How dose a model work?
+
+A model function should always return an object with action methods and render data. The `useModel` calls model function with a default state parameter, and generates an instance for model returning object. Calls method from the instance can generate a new state, then `useModel` uses this new state to recall model function, and generate a new instance for render.
+
+### Why support context store?
 
 In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
 
@@ -183,21 +239,29 @@ In `@airma/react-state`, store is dynamic, every `provider` copies a working ins
  1. The store data can be destroyed with its `provider` component unmount.
  2. Components with same store provider can be used together in one parent component without state change effect to each other.
  
- ### How to subscribe a grand parent provider store?
+ #### How to subscribe a grand parent provider store?
 
  The store provider system in `@airma/react-state` is designed with a tree structure. The nearest `provider` finds store one-by-one from itself to its root parent `provider`, and links the nearest matched `provider` store to the subscriber `useModel/useSelector`.
 
- ### Does the state change of store leads a whole provider component rerender?
+ #### Does the state change of store leads a whole provider component rerender?
 
  No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
 
- ## Why not async action methods
+ ### Why not async action methods
 
- Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
+ Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](/react-effect/index) with it.
 
-There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
+ ## Install and support
 
-## Browser Support 
+The package lives in [npm](https://www.npmjs.com/get-npm). To install the latest stable version, run the following command:
+
+### Install command
+
+```
+npm i @airma/react-state
+```
+
+### Browser support
 
 ```
 chrome: '>=91',
@@ -206,3 +270,4 @@ firefox: '=>90',
 safari: '>=15'
 ```
 
+Go to [Concepts](/react-state/concepts).

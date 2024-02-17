@@ -36,9 +36,7 @@ import type {
   AbstractSessionResult,
   PromiseHolder,
   CheckLazyComponentSupportType,
-  LazyComponentSupportType,
-  CacheType,
-  SessionConfig
+  LazyComponentSupportType
 } from './libs/type';
 import {
   parseConfig,
@@ -136,7 +134,6 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       } as SessionState<T>;
     });
   };
-  sessionRunner.sessionConfig = promiseCallback.sessionConfig;
 
   const [strategyExecution, strategyEffects, strategyResponses] =
     useStrategyExecution(instance, sessionRunner, con);
@@ -519,24 +516,12 @@ export { ConfigProvider } from './libs/global';
 
 const session = function session<T, C extends PromiseCallback<T>>(
   callback: C,
-  config:
-    | 'query'
-    | 'mutation'
-    | { sessionType: 'query' | 'mutation'; cache?: CacheType<C> }
+  sessionType: 'query' | 'mutation'
 ) {
-  const { sessionType: queryType, cache: sessionCache } =
-    typeof config === 'string'
-      ? { sessionType: config, cache: undefined }
-      : config;
-  const sessionCallback: C & {
-    sessionConfig?: SessionConfig<C>;
-  } = function sessionCallback(...args: Parameters<C>) {
+  const queryType = sessionType;
+  const sessionCallback: C = function sessionCallback(...args: Parameters<C>) {
     return callback(...args);
   } as C;
-  sessionCallback.sessionConfig = {
-    sessionType: queryType,
-    cache: sessionCache
-  };
 
   const useApiQuery = function useApiQuery(
     c: QueryConfig<T, C> | Parameters<C>

@@ -363,7 +363,103 @@ response.failure = function responseFailure<T>(
   return sc;
 };
 
+function now() {
+  return new Date().getTime();
+}
+
+function cacheOperation<T>(
+  cache: [string, { data: T; lastUpdateTime: number }][],
+  size: number | undefined
+) {
+  const cacheLimit = size == null ? 1 : size;
+
+  function getByKey(
+    c: [string, { data: T; lastUpdateTime: number }][],
+    k: string
+  ): { data: T; lastUpdateTime: number } | undefined {
+    const found = c.find(([ke]) => ke === k) || [undefined, undefined];
+    const [, v] = found;
+    return v;
+  }
+  return {
+    get: (k: string) => {
+      if (cacheLimit < 1) {
+        return undefined;
+      }
+      return getByKey(cache, k);
+    },
+    set(k: string, data: T): [string, { data: T; lastUpdateTime: number }][] {
+      if (cacheLimit < 1) {
+        return [];
+      }
+      const updater = { data, lastUpdateTime: now() };
+      const target = getByKey(cache, k);
+      if (target != null) {
+        return cache.map(([ke, va]) => {
+          if (k !== ke) {
+            return [ke, va];
+          }
+          return [k, updater];
+        });
+      }
+      const cacheData: [string, { data: T; lastUpdateTime: number }][] = [
+        ...cache,
+        [k, updater]
+      ];
+      return cacheData.length > cacheLimit
+        ? cacheData.slice(cacheData.length - cacheLimit)
+        : cacheData;
+    }
+  };
+}
+
+function cache(option?: {
+  key?: (vars: any[]) => string;
+  staleTime?: number;
+  capacity?: number;
+}): StrategyType {
+  function defaultKeyBy(vars: any[]) {
+    return JSON.stringify(vars);
+  }
+  const { key: keyBy = defaultKeyBy, staleTime, capacity = 1 } = option || {};
+  return function cacheStrategy(requies) {
+    const { current, runner, variables } = requies;
+    const currentState = current();
+    const { cache: cacheInState, ...rest } = currentState;
+    const variableKey = keyBy(variables);
+    const cacheData = cacheOperation(cacheInState, capacity).get(variableKey);
+    if (
+      cacheData &&
+      staleTime &&
+      now() > staleTime + cacheData.lastUpdateTime
+    ) {
+      const cacheState: SessionState = {
+        ...currentState,
+        data: cacheData.data,
+        variables
+      };
+      return Promise.resolve(cacheState);
+    }
+    return runner(c => {
+      return cacheData && (!staleTime || staleTime < 0)
+        ? { ...c, data: cacheData.data }
+        : c;
+    }).then(next => {
+      if (next.isError) {
+        return next;
+      }
+      const nextKey = keyBy(next.variables || []);
+      const nextCache = cacheOperation(next.cache, capacity).set(
+        nextKey,
+        next.data
+      );
+      return { ...next, cache: nextCache };
+    });
+  };
+}
+
 export const Strategy = {
+  cache,
   debounce,
   throttle,
   once,

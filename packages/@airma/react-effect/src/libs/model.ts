@@ -4,9 +4,7 @@ import type {
   SessionType,
   SessionKey,
   PromiseCallback,
-  QueryConfig,
-  CacheType,
-  SessionConfig
+  QueryConfig
 } from './type';
 
 export function effectModel(state: SessionState & { version?: number }) {
@@ -132,11 +130,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   uniqueKey: unknown,
   config?: QueryConfig<T, C> | Parameters<C>
-): [
-  ReturnType<typeof effectModel>,
-  QueryConfig<T, C>,
-  C & { sessionConfig?: SessionConfig<C> }
-] {
+): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con, isSessionKey] = parseEffect<
     C,
@@ -183,15 +177,15 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
 }
 
 export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
-  effectCallback: E & { sessionConfig?: SessionConfig<E> },
+  effectCallback: E,
   sessionType?: SessionType
 ): SessionKey<E> {
   const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
-  const effectCallbackReplace: E & { sessionConfig?: SessionConfig<E> } =
-    function effectCallbackReplace(...params: any[]) {
-      return effectCallback(...params);
-    } as E;
-  effectCallbackReplace.sessionConfig = effectCallback.sessionConfig;
+  const effectCallbackReplace: E = function effectCallbackReplace(
+    ...params: any[]
+  ) {
+    return effectCallback(...params);
+  } as E;
   model.effect = [
     effectCallbackReplace,
     sessionType ? { sessionType } : {}

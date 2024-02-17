@@ -65,10 +65,7 @@ const userQuery = (validQuery: Condition) =>
       }) as Promise<User[]>;
     });
 
-export const fetchSession = session(userQuery, {
-  sessionType: 'query',
-  cache: { capacity: 5 }
-})
+export const fetchSession = session(userQuery, 'query')
   .createStore()
   .asGlobal();
 
@@ -268,6 +265,7 @@ export default test.provideTo(function App() {
     variables: [queryData],
     defaultData: [],
     strategy: [
+      Strategy.cache({ capacity: 5, key: JSON.stringify }),
       Strategy.memo(),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
