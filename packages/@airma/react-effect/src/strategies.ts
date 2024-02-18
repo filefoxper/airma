@@ -431,7 +431,7 @@ function cache(option?: {
     if (
       cacheData &&
       staleTime &&
-      now() > staleTime + cacheData.lastUpdateTime
+      now() < staleTime + cacheData.lastUpdateTime
     ) {
       const cacheState: SessionState = {
         ...currentState,

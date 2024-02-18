@@ -265,7 +265,10 @@ export default test.provideTo(function App() {
     variables: [queryData],
     defaultData: [],
     strategy: [
-      Strategy.cache({ capacity: 5, key: JSON.stringify }),
+      Strategy.cache({
+        capacity: 5,
+        key: JSON.stringify
+      }),
       Strategy.memo(),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
