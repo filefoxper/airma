@@ -42,3 +42,9 @@
 * 增加了 ConfigProvider 配置组件
 * 弃用 `useRefreshModel` API
 * 弃用 `useRefresh` API
+
+## v18.3.0
+
+* 移除废弃 API
+* 简化当前 API
+* 新增流式调用 API model

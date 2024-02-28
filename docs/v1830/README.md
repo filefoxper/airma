@@ -16,6 +16,10 @@
 2. [@airma/react-effect](/react-effect/index)
 3. [@airma/react-hooks](/react-hooks/index)
 
+The package can be used without react:
+
+1. [@airma/restful](/restful/index)
+
 ### @airma/react-state
 
 Simple `reducer-like` state-management with method action dispatch mode for react components.
@@ -141,3 +145,79 @@ const Component = countingStore.with(fetchUsersSession).provideTo(function Comp(
     ......
 });
 ```
+
+Read [documents](/react-hooks/index) of `@airma/react-hooks`
+
+### @airma/restful
+
+A nice restful style http request tool.
+
+```ts
+import { client } from '@airma/restful';
+
+const { rest } = client();
+
+const root = rest('/path');
+
+// GET http://host/path
+root.get();
+
+// GET http://host/path?param1=param1&param2=param2
+root.setParams({ param1:'param1', param2:'param2' }).get();
+
+// GET http://host/path/child-path
+root.path('child-path').get();
+
+// GET http://host/path/child-path?param1=param1&param2=param2
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).get();
+
+// POST http://host/path 
+// payload: {data:'data'}
+root.setBody({data:'data'}).post();
+
+// POST http://host/path/child-path 
+// payload: {data:'data'}
+root.path('child-path').setBody({data:'data'}).post();
+
+// POST http://host/path/child-path?param1=param1&param2=param2 
+// payload: {data:'data'}
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).setBody({data:'data'}).post();
+```
+
+With typescript
+
+```ts
+import { client, ResponseData } from '@airma/restful';
+
+const { rest } = client();
+
+const root = rest('/path');
+
+type User = {
+    id: string;
+    name: string;
+    username: string;
+}
+
+async function getUser(id: string): Promise<User>{
+    try{
+        return root.setParams({ id }).get<User>();
+    } catch(e: any) {
+        console.log(e)
+    }
+}
+
+// use `response` method to get response detail.
+async function getUserResponse(id: string): Promise<ResponseData<User>>{
+    try{
+        // with response
+        // when error { isError: true; error: any, networkError: boolean, status: number, headers?: Record<string, any> }
+        // when success { isError: false; data: User, status: number, headers: Record<string, any> }
+        return root.setParams({ id }).get<User>().response();
+    } catch(e: any) {
+        console.log(e)
+    }
+}
+```
+
+Read [documents](/restful/index) of `@airma/restful`

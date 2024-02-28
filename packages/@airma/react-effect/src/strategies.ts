@@ -6,9 +6,9 @@ function debounce(
   const time = typeof op === 'number' ? op : op.duration;
   const lead = typeof op === 'number' ? false : !!op.lead;
   return function db(value: {
-    current: () => SessionState;
+    getSessionState: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: {
+    localCache: {
       current?: {
         id: any;
         version: number;
@@ -18,7 +18,7 @@ function debounce(
     };
   }): Promise<SessionState> {
     function leading() {
-      const { current, runner, store } = value;
+      const { getSessionState: current, runner, localCache: store } = value;
       if (store.current && store.current.id) {
         clearTimeout(store.current.id);
         store.current.id = undefined;
@@ -57,7 +57,7 @@ function debounce(
     }
 
     function normal() {
-      const { current, runner, store } = value;
+      const { getSessionState: current, runner, localCache: store } = value;
       if (store.current) {
         const { id, resolve } = store.current;
         clearTimeout(id);
@@ -108,11 +108,11 @@ function debounce(
 
 function once(): StrategyType {
   return function oc(runtime: {
-    current: () => SessionState;
+    getSessionState: () => SessionState;
     runner: () => Promise<SessionState>;
-    store: { current?: Promise<SessionState> };
+    localCache: { current?: Promise<SessionState> };
   }) {
-    const { runner, store } = runtime;
+    const { runner, localCache: store } = runtime;
     if (store.current) {
       return store.current.then(d => ({ ...d, abandon: true }));
     }
@@ -140,7 +140,7 @@ function memo<T>(
   equalFn: (source: T | undefined, target: T) => boolean = stringifyComparator
 ): StrategyType {
   return function mo(value) {
-    const { runner, current } = value;
+    const { runner, getSessionState: current } = value;
     return runner().then(d => {
       const state = current();
       if (
@@ -172,7 +172,12 @@ function throttle(op?: { duration: number } | number): StrategyType {
   }
 
   return function th(value) {
-    const { current, runner, store, variables = [] } = value;
+    const {
+      getSessionState: current,
+      runner,
+      localCache: store,
+      variables = []
+    } = value;
     store.current = store.current || { timeoutId: null, variables: undefined };
     const storedVariables = store.current.variables;
     const { timeoutId } = store.current;
@@ -207,7 +212,7 @@ function reduce<T>(
   ) => T | undefined
 ): StrategyType {
   return function reduceStrategy(requires): Promise<SessionState> {
-    const { runner, current } = requires;
+    const { runner, getSessionState: current } = requires;
     return runner().then(d => {
       if (d.isError || d.abandon) {
         return d;
@@ -225,7 +230,7 @@ function error(
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value) {
-    const { runner, runtimeCache, store } = value;
+    const { runner, executeContext: runtimeCache, localCache: store } = value;
     const hasHigherErrorProcessor = runtimeCache.get(error);
     runtimeCache.set(error, true);
     store.current = process;
@@ -250,7 +255,7 @@ function failure(
 ): StrategyType {
   const { withAbandoned } = option || {};
   return function er(value) {
-    const { runner, runtimeCache, store } = value;
+    const { runner, executeContext: runtimeCache, localCache: store } = value;
     const hasHigherErrorProcessor = runtimeCache.get(error);
     runtimeCache.set(error, true);
     store.current = process;
@@ -275,11 +280,11 @@ function success<T>(
 ): StrategyType<T> {
   const { withAbandoned } = option || {};
   return function sc(value: {
-    current: () => SessionState<T>;
+    getSessionState: () => SessionState<T>;
     runner: () => Promise<SessionState<T>>;
-    store: { current?: (data: T, sessionData: SessionState<T>) => any };
+    localCache: { current?: (data: T, sessionData: SessionState<T>) => any };
   }) {
-    const { runner, store } = value;
+    const { runner, localCache: store } = value;
     store.current = process;
     return runner().then(d => {
       const currentProcess = store.current;
@@ -292,7 +297,7 @@ function success<T>(
 }
 
 function validate(callback: () => boolean): StrategyType {
-  return function validStrategy({ runner, current }) {
+  return function validStrategy({ runner, getSessionState: current }) {
     const result = callback();
     if (!result) {
       const state = current();
@@ -333,7 +338,7 @@ response.error = function responseError<T>(
   process: (e: unknown, sessionData: SessionState) => any
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
-    const { runner, runtimeCache } = value;
+    const { runner, executeContext: runtimeCache } = value;
     runtimeCache.set(error, true);
     return runner();
   };
@@ -350,7 +355,7 @@ response.failure = function responseFailure<T>(
   process: (e: unknown, sessionData: SessionState) => any
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
-    const { runner, runtimeCache } = value;
+    const { runner, executeContext: runtimeCache } = value;
     runtimeCache.set(error, true);
     return runner();
   };
@@ -423,8 +428,8 @@ function cache(option?: {
   }
   const { key: keyBy = defaultKeyBy, staleTime, capacity = 1 } = option || {};
   return function cacheStrategy(requies) {
-    const { current, runner, variables } = requies;
-    const currentState = current();
+    const { getSessionState, runner, variables } = requies;
+    const currentState = getSessionState();
     const { cache: cacheInState, ...rest } = currentState;
     const variableKey = keyBy(variables);
     const cacheData = cacheOperation(cacheInState, capacity).get(variableKey);

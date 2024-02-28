@@ -1,10 +1,14 @@
 # @airma
 
-`@airma` 是一款用于辅助 react `>=16.8.0` 版本的 hooks 工具库，它包含了多样化的简易状态管理功能。
+`@airma` 是一款用于辅助 react `>=16.8.0` 版本的编码的工具库，它包含了多样化的简易状态管理功能。
 
-* [@airma/react-state](/zh/react-state/index.md)
-* [@airma/react-effect](/zh/react-effect/index.md)
-* [@airma/react-hooks](/zh/react-hooks/index.md)
+* [@airma/react-state](/zh/react-state/index)
+* [@airma/react-effect](/zh/react-effect/index)
+* [@airma/react-hooks](/zh/react-hooks/index)
+
+与 React 关系不大的请求工具库：
+
+* [@airma/restful](/zh/restful/index)
 
 ### @airma/react-state
 
@@ -76,3 +80,81 @@ const [
 `@airma/react-hooks` 是 `@airma/react-state` 与 `@airma/react-effect` 的合集，它能让使用者更方便的操作两个库的API。
 
 [相关文档](/zh/react-hooks/index)
+
+### @airma/restful
+
+@airma/restful 是一个优化异步请求代码风格的工具。支持流式请求设定，让请求代码更像请求路由。
+
+```ts
+import { client } from '@airma/restful';
+
+const { rest } = client();
+
+const root = rest('/path');
+
+// GET http://host/path
+root.get();
+
+// GET http://host/path?param1=param1&param2=param2
+root.setParams({ param1:'param1', param2:'param2' }).get();
+
+// GET http://host/path/child-path
+root.path('child-path').get();
+
+// GET http://host/path/child-path?param1=param1&param2=param2
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).get();
+
+// POST http://host/path 
+// payload: {data:'data'}
+root.setBody({data:'data'}).post();
+
+// POST http://host/path/child-path 
+// payload: {data:'data'}
+root.path('child-path').setBody({data:'data'}).post();
+
+// POST http://host/path/child-path?param1=param1&param2=param2 
+// payload: {data:'data'}
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).setBody({data:'data'}).post();
+```
+
+Typescript 风格：
+
+```ts
+import { client, ResponseData } from '@airma/restful';
+
+const { rest } = client();
+
+const root = rest('/path');
+
+type User = {
+    id: string;
+    name: string;
+    username: string;
+}
+
+async function getUser(id: string): Promise<User>{
+    try{
+        return root.setParams({ id }).get<User>();
+    } catch(e: any) {
+        console.log(e)
+    }
+}
+
+// 获取请求详细信息
+async function getUserResponse(
+    id: string
+): Promise<ResponseData<User>>{
+    try{
+        const responseData = await root.
+            setParams({ id }).
+            get<User>().
+            // 通过 response 方法获取请求详细信息
+            response();
+        return responseData
+    } catch(e: any) {
+        console.log(e)
+    }
+}
+```
+
+[相关文档](/zh/restful/index)

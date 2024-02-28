@@ -10,168 +10,33 @@
 
 # @airma/react-effect
 
-`@airma/react-effect` 是一款用于管理 React 副作用状态（state）的库，目前只涉及异步请求相关的状态管理。
+`@airma/react-effect` 是一款用于管理 React 异步状态的工具。
 
-## 为什么需要管理副作用状态
+## 用法
 
-React hook 是一套基于函数式编程思想设计的系统，在普通回调函数中大量使用副作用会破坏了函数式编程的稳定性，使得输入输出之间没有稳定的关系。
+### useQuery
 
-为了更好地理解副作用对组件更新带来的破环性，我们以下面的例子来做个简单说明：
-
-```ts
-import React from 'react';
-
-const App = ()=>{
-
-    const [count, setCount] = useState(0);
-
-    // 先点击 “异步 + 1” 按钮
-    const handleAsyncIncrease = async ()=>{
-        // 异步等待，3秒后运行 setCount(count + result);
-        const result = await new Promise((resolve)=>{
-            setTimeout(()=>{
-                resolve(1);
-            }, 3000);
-        });
-        // result 值为 1，
-        // 因为之前同步点击已经运行了 setCount(count + 1),
-        // 所这时的 count 是 1 ？
-        // 1 + 1 = 2，
-        // 所以运行完毕后 useState 元组中的 count 为 2 ？
-        setCount(count + result);
-    };
-
-    // 然后立即点击 “同步 + 1” 按钮。
-    const handleSyncIncrease = ()=>{
-        setCount(count+1);
-    };
-
-    return (
-        <div>
-          <button onClick={handleAsyncIncrease}>异步 + 1</button>
-          <button onClick={handleSyncIncrease}>同步 + 1</button>
-          <span>{ count }</span>
-        </div>
-    )
-}
-```
-
-上例中，我们先点击 “异步 + 1” 按钮，然后立即点击 “同步 + 1” 按钮，这时 count 值显示为 1，我们根据异步结果 result 也是 1，推测 3 秒后将运行 setCount(1 + 1) ，也就是说 count 最终应该显示为 2。
-
-```
-1 second later count: 1
-2 seconds later count: 1
-3 seconds later count: 1
-...
-2000 years later count: 1
-```
-
-不用等了，count 依然是 1，不会是 2。handleAsyncIncrease 中的 count 是初次渲染的 useState 元组投射变量的闭包值，3秒后运行 setCount 时，该闭包值 count 始终为 0，结果就是 0 + 1 = 1。
-
-是的，我们常见的闭包旧数据问题往往就是由副作用破坏函数式编程稳定性产生的。为此我们需要使用 `setCount((current)=> current + result)` 回调方式来解决问题。但不断使用回调更新并非长久之计，我们需要从根本上解决问题，按 react 设计思想来使用副作用。
-
-将副作用输入数据独立出来，并接受 react 渲染管理就显得特别有必要了。
-
-```ts
-import React, {useEffect, useState} from 'react';
-
-const usePromise = <T>(
-    promiseCallback: ()=>Promise<T>
-): [T|undefined, ()=>void] =>{
-    // 我们设计了一个拥有稳定 state 状态的接口，用于管理 promise 回调状态，默认值为 undefined，
-    // 这是一个把异步输入托管到 React 状态更迭系统中的接口。
-    const [result, setResult] = useState<T|undefined>(undefined);
-    const [triggerVersion, setTriggerVersion] = useState(0);
-
-    useEffect(()=>{
-        if (!triggerVersion) {
-            return;
-        }
-        promiseCallback(params).then((data:T)=>{
-            // 只更新 promise resolve 结果
-            setResult(data);
-        });
-    },[triggerVersion]);
-
-    const trigger = ()=>{
-        setTriggerVersion(v => v+1);
-    };
-
-    return [result, trigger];
-}
-
-const App = ()=>{
-    const [count, setCount] = useState(0);
-
-    // 先点击 “异步 + 1” 按钮
-    const [result, asyncIncrease] = usePromise(
-        () => {
-           return new Promise((resolve)=>{
-                setTimeout(()=>{
-                    resolve(1);
-                }, 3000);
-            }); 
-        }
-    );
-
-    useEffect(()=>{
-        // 通过监听 promise result 变化来更新数据，
-        if(result == null){
-            return;
-        }
-        setCount(count + result);
-    },[result])
-
-    // 然后立即点击 “同步 + 1” 按钮。
-    const handleSyncIncrease = ()=>{
-        setCount(count+1);
-    };
-
-    return (
-        <div>
-          <button onClick={asyncIncrease}>异步 + 1</button>
-          <button onClick={handleSyncIncrease}>同步 + 1</button>
-          <span>{ count }</span>
-        </div>
-    )
-}
-```
-
-使用 usePromise 来统一管理异步副作用输入数据，并将单一的副作用输入当作状态托管给 React 组件更迭系统（hook），然后通过监听副作用状态的变化来驱动 `setCount` 运行。这样就符合函数式编程的稳定输入输出结构了。让我们再次重复上述操作，我们发现 3 秒后，值被更新成 2，符合我们的预期。因为 useEffect 在监听到 result 变化时会使用当前最新迭代的闭包数据 count，这时 count 确实为 1，于是运行的就是 `setCount(1 + 1)`。
-
-## 介绍
-
-针对前端开发的日常业务，我们开发了一套比上述 `usePromise` 更符合大多业务场景的副作用状态管理工具 `@airma/react-effect`。当前库中包含了 `useQuery` 和 `useMutation` API，分别用于`查询`和`修改（增、删、该）`的异步逻辑。
-
-我们需要为这两个 API 提供返回 promise 结果的回调函数用于实际运行。为了方便描述，我们把这个回调函数称作`请求函数`。
-
-### UseQuery
-
-加载时或依赖参数变化时，会调用`请求函数`。因为大多查询场景都需要在页面（或组件）加载时直接运行，依赖参数发生变化时再次运行。
+API useQuery 用于管理异步查询状态。
 
 ```ts
 import React from 'react';
 import {useQuery} from '@airma/react-effect';
 import {User} from './type';
 
-// 查询参数类型
 type UserQuery = {
     name: string;
     username: string;
 }
-// 查询请求，必须符合返回值为 promise 的先决条件
+// 异步查询函数
 const fetchUsers = (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]);
 
 const App = ()=>{
-    // 我们将请求参数设置为 state 状态数据
     const [query, setQuery] = useState({name:'', username:''});
-
-    // useQuery 通过监听参数状态的变化调用查询请求函数
-    const [state, trigger, execute] = useQuery(
-        // 设置查询请求函数
+    const [state, trigger, executeWithParams] = useQuery(
+        // 使用异步查询函数
         fetchUsers,
-        // 请求参数
+        // 设置查询函数参数
         [query]
     );
     const {
@@ -184,41 +49,37 @@ const App = ()=>{
         // boolean
         isError,
         // boolean
-        loaded,
-        // boolean
-        sessionLoaded
+        loaded
     } = state;
 
     ......
 }
 ```
 
-上例是 `useQuery` 的一个简单应用场景。`useQuery` 会在组件 App 加载或监听到参数变化时，调用查询函数，并在 promise 成功或失败后修改状态。
+当 useQuery 被加载或其依赖的参数发生变化时会自动触发查询，不用怀疑，这套自动触发机制采用的就是 React 渲染副作用机制 useEffect。
 
-`useQuery` 的返回结果是一个元组数据，并稳定存在于组件中，由 `[state, trigger, execute]` 三部分组成。其中元组的 `[state, trigger]` 部分被称为`会话`，稍后我们会在概念篇中进行详细介绍。这里我们只需要了解 `state` 为查询状态（包含查询回调 promise resolve 或 reject 的数据），`trigger` 为无参手动触发函数，`execute` 为有参触发函数。
+### useMutation
 
-### UseMutation
-
-`useMutation` 常用于修改数据，大多场景是需要手动触发的，所以该 API 在默认情况下，并没有采取 `useQuery` 的监听策略，我们需要通过会话元组中的 `trigger` 或 `execute` 函数去触发它。
+API useMutation 用于管理修改异步状态。
 
 ```ts
 import React from 'react';
 import {useMutation} from '@airma/react-effect';
 import {User} from './type';
 
-// 保存请求函数
 const saveUser = (user: User): Promise<User> => 
     Promise.resolve(user);
 
 const App = ()=>{
-    // 需要保存的 user 数据
     const [user, setUser] = useState<User>({...});
-
-    // 需手动触发
-    const [state, trigger] = useMutation(
-        // 设置保存请求函数
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = useMutation(
+        // 使用异步修改函数
         saveUser,
-        // 设置保存参数
+        // 设置修改参数
         [ user ]
     );
     const {
@@ -232,8 +93,8 @@ const App = ()=>{
         isError
     } = result;
 
-    const handleSubmit = ()=>{
-        // 通过元组中的 trigger 手动触发
+    const handleClick = ()=>{
+        // 手动触发异步修改
         trigger();
     }
 
@@ -241,6 +102,475 @@ const App = ()=>{
 }
 ```
 
-`useMutation` 与 `useQuery` 返回数据结构相同，都是`会话`。
+不同于 useQuery，useMutation 需要手动触发异步修改操作，不能随渲染副作用自动执行。
 
-如果 `@airma/react-effect` 已经足够成为你开发项目，解决副作用问题的选项，请移步至[安装与支持](/zh/react-effect/install.md)先睹为快。如果希望了解更多相关信息，请参考[概念篇](/zh/react-effect/concepts.md)深入学习。
+### Session
+
+每个异步状态管理单元都被称为[会话](/zh/react-effect/concepts?id=会话) (session)，无论 useQuery 还是 useMutation 都是创建会话的工具。通过 session API 来使用 useQuery 和 useMutation 更自然。
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// 使用 session API 声明一个查询会话
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+        // 使用 session.useQuery
+    ] = userQuerySession.useQuery(
+        // 设置查询参数
+        [query]
+    );
+    const {
+        // User[] | undefined
+        data,
+        // boolean
+        isFetching,
+        // any
+        error,
+        // boolean
+        isError,
+        // boolean
+        loaded
+    } = state;
+
+    ......
+}
+```
+
+session.useQuery/session.useMutation 的运行规则与 useQuery/useMutation 相同，不同的只有 session 预设了异步操作函数。
+
+useQuery/useMutation 与异步函数的直接组合只能创建一个本地会话。通过 session.createStore() 的方式可以创建一个状态库，并使用库的方式管理异步状态。
+
+### React.Context 动态库状态管理
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// 创建一个动态库
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore();
+
+const SearchButton = ()=>{
+    // 通过 useSession 可监听库状态的变化
+    const [
+        // 库状态
+        {isFetching},
+        // 调用 triggerQuery 可以触发当前库下的 useQuery 工作 
+        triggerQuery
+    ] = userQueryStore.useSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+// 动态库采用的是 React.Context 技术，
+// 因此需要通过 provideTo 创建一个 Provider 高阶包装组件。
+// 动态库并不维护会话状态，而是键的集合。
+// 真正的库和会话状态维护在 Provider 组件库中
+const App = userQueryStore.provideTo(()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        // Write every query state change to store
+    ] = userQueryStore.useQuery(
+        [query]
+    );
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+})
+```
+
+关于为什么支持 React.Context 动态库的原因可参考 [@airma/react-state 中的解释](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)。
+
+动态库是[键](/zh/react-effect/concepts?id=键)的集合；键是创建 Provider 内部库的模板，也是连接库的通道。所以需要使用 [provide](/zh/react-effect/api?id=provide) 高阶组件创建一个 Provider 包装组件进行使用。
+
+当同一个 Provider 组件元素化成不同的 React.Element 时，每个元素（React.Element）拥有不同的内部库，这些库随着组件的销毁而销毁。
+
+### 全局静态库状态管理
+
+不同于 `@airma/react-state` 中的模型库，异步状态似乎更适合全局静态状态管理模式。全局静态库的会话状态是直接维护在当前静态库对象中的，是真正意义上的库。
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// 创建全局静态库
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore().asGlobal();
+
+const SearchButton = ()=>{
+    const [
+        {
+            isFetching,
+            // User[] | undefined
+            data
+        },
+        triggerQuery
+    ] = userQueryStore.useSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+// 全局静态库不需要使用 Provider，
+// 可直接连接使用，
+// 会话状态是维护在该库中的，是真正意义上的库
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQueryStore.useQuery(
+        [query]
+    );
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+}
+```
+
+通过 useSession API 获取的[会话状态](/zh/react-effect/concepts?id=会话状态) data 值类型始终可能是 undefined。如果可以保证会话库中的会话状态已经成功加载，可使用 useLoadedSession API 来代替 useSession 工作，这时获取的会话状态 data 值类型完全与异步函数返回的 Promise resolve 类型相同。
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore().asGlobal();
+
+const SearchButton = ()=>{
+    // 当确信当前会话为已加载会话时，
+    // store.useLoadedSession 可用于稳定 data 的数据类型
+    const [
+        {
+            isFetching,
+            // User[]
+            data
+        },
+        triggerQuery
+    ] = userQueryStore.useLoadedSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQueryStore.useQuery(
+        // 通过 config 形式设置参数和默认值
+        {
+            // 参数
+            variables: [query],
+            // 默认值
+            // 如果一个会话设置了默认值，
+            // 那么该会话永远处于已加载状态
+            defaultData: []
+        }
+    );
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+}
+```
+
+想要在 useQuery/useMutation 执行完毕后做些什么？
+
+```ts
+import React from 'react';
+import {session, useResponse} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQuerySession.useQuery(
+        [query]
+    );
+    
+    // useResponse 可用于处理 useQuery/useMutation 执行完毕后的操作
+    useResponse(
+        // 处理函数
+        (sessionState)=>{
+            // 接收一个完成时的会话状态做参数
+            const {
+                data,
+                isError,
+                error,
+                ......
+            } = sessionState;
+            doSomething(sessionState);
+        }, 
+        // 监听 useQuery 的会话状态
+        state
+    );
+
+    // useResponse.useSuccess 可用于处理 useQuery/useMutation 执行成功后的操作
+    useResponse.useSuccess(
+        (data, sessionState)=>{
+            // 接收成功完成时的会话数据和会话状态做参数
+            doSomething(data);
+        }, 
+        // 监听 useQuery 的会话状态
+        state
+    );
+
+    // useResponse.useFailure 可用于处理 useQuery/useMutation 执行失败后的操作
+    useResponse.useFailure(
+        (error, sessionState)=>{
+            // 接收完成失败时的会话错误信息和会话状态做参数
+            doSomething(error);
+        }, 
+        // 监听 useQuery 的会话状态
+        state
+    );
+    ......
+}
+```
+
+想使用类似 debounce 这样的防抖异步执行方式？
+
+### Strategy
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            // 使用 debounce 防抖策略
+            strategy: Strategy.debounce(300)
+        }
+    );
+
+    ......
+}
+```
+
+[Strategy](/zh/react-effect/api=strategy) API 提供了丰富的常用策略库。这些[策略](/zh/react-effect/concepts?id=策略)可单独或组合使用，以改变部分会话特性。
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            // 组合策略
+            strategy: [
+                // 检测策略，
+                // 检测 query.name 是否为空,
+                // 如为空字符串，则跳过本次执行。
+                Strategy.validate(()=>!!query.name),
+                // 防抖策略
+                Strategy.debounce(300),
+                // 会话数据更新缓存策略，
+                // 如旧会话状态数据与本次执行结果数据等价，
+                // 则继续使用旧会话状态数据，以提高渲染效率
+                Strategy.memo()
+            ]
+        }
+    );
+
+    ......
+}
+```
+
+想要使用 SWR(stale-while-revalidate) 特性？
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            strategy: [
+                // 开启 swr 缓存策略
+                Strategy.cache({
+                    // 总数据容量 10 条
+                    capacity:10, 
+                    // 每条缓存数据的陈旧时间 5 分钟
+                    staleTime:5*60*1000
+                })
+            ]
+        }
+    );
+
+    ......
+}
+```
+
+## 介绍
+
+`@airma/react-effect` 主要负责异步状态管理工作，它依赖了 [@airma/react-state](/zh/react-state/index) 工具包，并借助了如键、动态库等诸多概念，因此在 API 上多有重叠。如果需要同时使用两个工具包，[@airma/react-hooks](/zh/react-hooks/index) 包将会是更优选择，它整合了两个包的通用 API，同时包囊了各自不同的常用 API，非常的实用。
+
+### 为什么不推荐使用在异步函数中调用同步的 setState 来管理异步状态？
+
+在异步函数中调用同步的 setState 很容易误入闭包产生的过时旧数据陷阱；同时也非常容易产生因组件过早卸载引起的 setState 内存泄漏问题，俗成[僵尸娃问题 (zombie-children)](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children)。
+
+## 安装与支持
+
+当前工具的可运行包维护在[npm](https://www.npmjs.com/get-npm)官方服务器。可运行如下命令获取最新的稳定版本。
+
+### 安装命令
+
+```
+npm i @airma/react-effect
+```
+
+### 浏览器支持
+
+```
+chrome: '>=91',
+edge: '>=91',
+firefox: '=>90',
+safari: '>=15'
+```
+
+下一节[概念](/zh/react-effect/concepts)

@@ -16,7 +16,11 @@ export function effectModel(state: SessionState & { version?: number }) {
     if (s.isFetching) {
       return s;
     }
-    return { ...s, fetchVersion: (state.fetchVersion || 0) + 1 };
+    return {
+      ...s,
+      fetchVersion: (state.fetchVersion || 0) + 1,
+      round: state.round + 1
+    };
   };
   return {
     state: rest,
@@ -89,6 +93,7 @@ export const defaultPromiseResult = (config?: {
     loaded: false,
     sessionLoaded: false,
     cache: [],
+    round: 0,
     ...config
   } as SessionState);
 

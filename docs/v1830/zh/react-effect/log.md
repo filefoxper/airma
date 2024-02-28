@@ -64,3 +64,9 @@
 ## v18.2.12
 
 * 解决 `useResponse` typescript问题
+
+## v18.3.0
+
+* 移除废弃 API
+* 简化当前 API
+* 新增流式调用 API session

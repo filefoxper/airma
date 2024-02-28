@@ -3,22 +3,12 @@
 ## useModel
 
 ```ts
-function useModel<S, T extends Record<string|number, any>>(
-  model: (state:S)=>T
-): T;
-function useModel<S, T extends Record<string|number, any>, D extends S>(
-  model: (state:S)=>T,
-  defaultState: D
-): T;
-function useModel<S, T extends Record<string|number, any>, D extends S>(
-  model: ModelKey<(state:S)=>T>,
-  defaultState?: D
-): T;
+function useModel(modelFn, defaultState?): instance
 ```
 
 Parameters:
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* modelFn - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
 * defaultState - Optional, a default state for model initializing.
 
 Returns
@@ -28,20 +18,16 @@ Returns
 ## useControlledModel
 
 ```ts
-function useControlledModel<
-  S,
-  T extends Record<string|number, any>,
-  D extends S
->(
-    model: (state:S)=>T, 
-    state: D, 
-    onChange: (nextState: S) => any
-): T;
+function useControlledModel(
+    modelFn, 
+    state, 
+    onChange
+): instance
 ```
 
 Parameters
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
+* modelFn - A function accepts a state parameter, and returns an object to provide display data and action methods.
 * state - An outside state for refresh model instance.
 * onChange - A callback to feedback a next state outside.
 
@@ -86,13 +72,10 @@ const App = ()=>{
 ## useSelector
 
 ```ts
-export declare function useSelector<
-  R extends ModelKey<AirReducer<any, any>>,
-  C extends (instance: ReturnType<R>) => any
->(
-  modelKey: R,
-  selector: C,
-  equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+function useSelector(
+  modelKey,
+  selector,
+  equalFn?
 ): ReturnType<C>;
 ```
 
@@ -115,7 +98,7 @@ Example
 ```ts
 import React from 'react';
 import {
-  StoreProvider, 
+  Provider, 
   createKey, 
   useSelector
 } from '@airma/react-state';
@@ -151,11 +134,11 @@ const Counter = ()=>{
 
 export default ()=>{
     return (
-        <StoreProvider keys={counter}>
+        <Provider value={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
-        </StoreProvider>
+        </Provider>
     );
 }
 ```
@@ -166,14 +149,14 @@ It is a `Context.Provider` component for [React.Context state-management](/react
 
 ```ts
 const Provider: FC<{
-  keys:  Array<ModelKey> | ModelKey | Record<string, ModelKey>;
-  children: ReactNode;
+  value:  Array<ModelKey> | ModelKey | Record<string, ModelKey>;
+  children?: ReactNode;
 }>;
 ```
 
 Props
 
-* keys - model keys.
+* value - model keys.
 * children - react nodes
 
 Returns
@@ -186,8 +169,8 @@ The HOC mode for Provider.
 
 ```ts
 function provide(
-  keys: Array<ModelKey> | ModelKey | Record<string, ModelKey>
-): <P extends object>(component: ComponentType<P>) => typeof component;
+  keys
+): (component: ComponentType) => typeof component;
 ```
 
 Parameters
@@ -226,15 +209,15 @@ const App = provide(key)(()=>{
 ## createKey
 
 ```ts
-function createKey<S,T extends Record<string|number,any>>(
-    model: (state:S)=>T,
-    defaultState?: S
-):ModelKey;
+function createKey(
+    modelFn,
+    defaultState?
+): ModelKey;
 ```
 
 Parameters
 
-* model - A function accepts a state parameter, and returns an object to provide display data and action methods.
+* modelFn - A function accepts a state parameter, and returns an object to provide display data and action methods.
 * defaultState - Optional, provide a default state for store initial.
 
 Returns
@@ -258,8 +241,6 @@ Example
 ```ts
 import React from 'react';
 import {
-    ModelProvider, 
-    factory, 
     useSelector,
     shallowEqual
 } from '@airma/react-state';
@@ -279,36 +260,33 @@ const Counter = ()=>{
 It is a simplified API for use `hooks` in `@airma/react-state`. It also can be used for checking the typescript problems about the parameter `model function`. 
 
 ```ts
-declare interface StoreUsageApi<R extends AirReducer> {
-  useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
-  useSelector: <C extends (instance: ReturnType<R>) => any>(
-    call: C,
-    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
-  ) => ReturnType<C>;
+interface GlobalStoreApi {
+  useModel,
+  useSelector
 }
 
-declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
-  key: ModelKey<R>;
-  with: <M extends ModelKey<AirReducer>>(
-    ...key: ({ key: M } | M)[]
-  ) => StoreApi<R>;
-  asGlobal: () => StoreUsageApi<R>;
-  provide: <P>() => (
-    component: FunctionComponent<P> | NamedExoticComponent<P>
-  ) => typeof component;
-  provideTo: <P>(
-    component: FunctionComponent<P> | NamedExoticComponent<P>
-  ) => typeof component;
-  Provider: FC<{ children?: ReactNode }>;
+interface StoreApi {
+  key,
+  with:(
+    ...stores: (StoreApi | ModelKey)[]
+  ) => StoreApi,
+  asGlobal: () => GlobalStoreApi,
+  provide,
+  provideTo: (
+    component: ComponentType
+  ) => typeof component,
+  Provider: FC<{ children?: ReactNode }>,
+  useModel,
+  useSelector
 }
 
-declare interface Api<R extends AirReducer> {
-  useModel: ModelUsage<R>;
-  useControlledModel: ControlledModelUsage<R>;
-  createStore: (state?: PickState<R>) => StoreApi<R>;
+interface Api {
+  useModel,
+  useControlledModel,
+  createStore: (defaultState?) => StoreApi;
 }
 
-declare function model<R extends AirReducer>(modelFn: ValidModel<R>): R & Api<R>;
+function model(modelFn): (typeof modelFn) & Api;
 ```
 
 Parameters
@@ -343,12 +321,12 @@ Explain
 
 `@airma/react-state` does not dependent to `react-dom`. Before `react@18.0.0` unstable_batchedUpdates is still needed for enhancing state change performance.
 
-Notice, if the version of react you used is `>=18.0.0`, you can forget it.
+Notice, if react>=18.0.0, this config is unnecessary.
 
 ```ts
 import React from 'react';
 import { render, unstable_batchedUpdates } from 'react-dom';
-import App from '@/app';
+import App from './app';
 import { ConfigProvider, GlobalConfig } from '@airma/react-state';
 
 const root = document.getElementById('root');
@@ -360,11 +338,9 @@ const config: GlobalConfig = {
 };
 
 render(
-  <React.StrictMode>
-    <ConfigProvider value={config}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>,
+  <ConfigProvider value={config}>
+    <App />
+  </ConfigProvider>,
   root
 );
 ```

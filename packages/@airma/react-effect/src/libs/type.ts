@@ -77,6 +77,10 @@ export interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  round: number;
+  /**
+   * @deprecated
+   */
   fetchVersion?: number;
   cache: SessionCache[];
 }
@@ -113,15 +117,15 @@ export type StrategyEffect<T> = (state: SessionState<T>) => void;
 
 export interface StrategyType<T = any> {
   (value: {
-    current: () => SessionState<T>;
+    getSessionState: () => SessionState<T>;
     variables: any[];
     config: QueryConfig<T, any>;
     runner: (
-      setSessionState?: (s: SessionState<T>) => SessionState<T>
+      setFetchingSessionState?: (s: SessionState<T>) => SessionState<T>
     ) => Promise<SessionState<T>>;
-    store: { current: any };
+    localCache: { current: any };
     triggerType: TriggerType;
-    runtimeCache: {
+    executeContext: {
       set: (key: any, value: any) => void;
       get: (key: any) => any;
     };
@@ -160,6 +164,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 };
 
 export type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
   useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],

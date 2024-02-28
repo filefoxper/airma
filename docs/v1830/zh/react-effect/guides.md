@@ -1,775 +1,832 @@
 # 引导
 
-本章节，我们将着重介绍如何使用本地会话进行简单的本地请求操作；如何使用上下文会话进行较为复杂的请求数据同步，及跨组件操作等内容。
+`@airma/react-effect` 的常用 API 有：[useQuery](/zh/react-effect/guides?id=usequery), [useMutation](/zh/react-effect/guides?id=usemutation), [useSession](/zh/react-effect/guides?id=usessesion), [provide](/zh/react-effect/guides?id=provide), [session](/zh/react-effect/guides?id=session) 以及 [Strategy](/zh/react-effect/guides?id=strategy)。
 
-## 本地会话
+## useQuery
 
-本地会话涉及的查询和修改操作十分简单。通过合理区分每种不同异步操作的类型，配合正确的策略，就能简单满足我们的大部分需求。
+API [useQuery](/zh/react-effect/api?id=usequery) 可用于管理查询性的异步操作状态，其建立的会话为查询会话。查询会话的兜底策略始终以最新一次执行产生的数据为会话状态数据。查询会话默认开启加载更新依赖触发模式，可将其当作使用 useEffect 执行异步函数的行为。
 
-### useQuery
-
-如果一个会话仅仅涉及简单的数据查询工作，那么 `useQuery` 就是最佳选择。通常我们会对一个查询功能使用 `Strategy.throttle`、`Strategy.memo`、`Strategy.success`、`Strategy.error` 等策略。
-
-#### 依赖查询
-
-最常见的查询就是依赖查询，而依赖查询中变量依赖驱动方式最为普遍。
+查询会话可接收一个异步函数作为最终执行函数，也可以接收一个会话[键](/zh/react-effect/concepts?id=键)链接库执行函数工作。
 
 ```ts
-import React from 'react';
-import { message } from 'antd';
-import { useQuery, Strategy } from '@airma/react-effect';
-import { User } from './type';
-
-// 查询参数类型
-type UserQuery = {
-    name: string;
-    username: string;
-}
-
-const fetchUsers = (query: UserQuery):Promise<User[]> =>
-        Promise.resolve([]);
-
-const App = ()=>{
-    const [query, setQuery] = useState({name:'', username:''});
-
-    const [ state ] = useQuery(
-        // 设置查询请求函数
-        fetchUsers,
-        {
-            // 根据变量依赖查询
-            variables: [query],
-            strategy: [
-                // 设置，在 30 秒内，若变量序列化字符串没变，则不发起请求的节流策略
-                Strategy.throttle(30000),
-                // 设置结果数据序列化字符串没有变化，直接使用当前会话数据的策略
-                Strategy.memo(),
-                // 设置错误处理策略
-                Strategy.error(message.error)
-            ]
-        }
-    );
-
-    const {
-        // User[] | undefined
-        data,
-        // 是否正在请求数据
-        isFetching,
-        // 是否请求出错
-        isError,
-        // 是否有过一次正确请求
-        loaded
-    } = state;
-    ......
-}
-```
-
-#### 级联查询
-
-有时，我们需要使用互相依赖的 `useQuery` 进行级联查询，这时我们可以利用 `triggerOn` 来控制我们下行 `useQuery` 在上行数据更新成功后进行。
-
-```ts
-import React from 'react';
-import { message } from 'antd';
-import { useQuery, Strategy } from '@airma/react-effect';
-import { User } from './type';
-
-// 查询参数类型
-type UserQuery = {
-    id: string;
-}
-
-// 获取当前登陆用户请求
-const fetchLoginUser = ():Promise<User> =>
-        Promise.resolve([{id:'1', username:'xxx', name:'xxx'});
-
-// 通过 id 获取用户详细信息的请求
-const fetchUserDetail = (id: number|undefined):Promise<User> =>{
-    if (id == null) {
-        throw new Error('xxx');
-    }
-    return Promise.resolve([{id:query.id, age: 10, introduce: 'xxx'});
-}
-
-const App = ()=>{
-    const [ userState ] = useQuery(fetchLoginUser,[]);
-
-    const [ detailState ] = useQuery(
-        fetchUserDetail,
-        {
-            // 以 userState 中的 data.id 作为依赖变量
-            variables: [userState?.data?.id],
-            strategy: [
-                Strategy.throttle(30000),
-                Strategy.memo(),
-                Strategy.error(message.error)
-            ],
-            // 使用更新触发模式
-            // 依赖的 userState?.data?.id 变更后才开始查询，
-            // userState?.data?.id 原始值为 undefined。
-            triggerOn: ['update']
-        }
-    );
-
-    const {
-        // User[] | undefined
-        data,
-        // 是否正在请求数据
-        isFetching,
-        // 是否请求出错
-        isError,
-        // 是否有过一次正确请求 (如果设置默认值，loaded 必为 true)
-        loaded,
-        // 是否有过一次正确请求
-        sessionLoaded
-    } = state;
-    ......
-}
-```
-
-上例通过使用 `update` 触发模式查询。在上行 `useQuery(fetchLoginUser)` 加载时 `userState?.data?.id` 为 undefined，而此时由于下行 `useQuery(fetchUserDetail)` 不存在 `mount` 模式，所以不会在加载时触发查询。当上行 `useQuery(fetchLoginUser)` 查询成功后， `userState?.data?.id` 变成 `1`，这个改变触发了下行 `useQuery(fetchUserDetail)` 的 `update` 模式工作。 
-
-#### 定时查询
-
-通常涉及到的定时查询以人工触发 `trigger` 函数为佳。我们可以通过 `manual: true`，将 `useQuery` 设置为人工触发模式。该配置相当于 `triggerOn: ['manual']` 的快捷方式。
-
-```ts
-import React from 'react';
-import { message } from 'antd';
-import { useQuery, Strategy } from '@airma/react-effect';
-import { User } from './type';
-
-// 查询参数类型
-type UserQuery = {
-    name: string;
-    username: string;
-}
-
-const fetchUsers = (query: UserQuery):Promise<User[]> =>
-        Promise.resolve([]);
-
-const App = ()=>{
-    const [query, setQuery] = useState({name:'', username:''});
-
-    const [users, setUsers] = useState<User[]>([]);
-
-    // 直接使用 isFetching 查看请求是否还在进行中
-    const [ { isFetching }, trigger, execute] = useQuery(
-        // 设置查询请求函数
-        fetchUsers,
-        // 请求参数
-        {
-            variables: [query],
-            strategy: [
-                Strategy.throttle(30000),
-                Strategy.memo(),
-                // 成功后直接把结果设置到 useState 
-                Strategy.success(setUsers),
-                // 设置错误处理策略
-                Strategy.error(message.error)
-            ],
-            // 相当于 triggerOn: ['manual']，
-            // 只支持手动触发模式
-            manual: true
-        }
-    );
-
-    useEffect(()=>{
-        // 20 秒触发一次查询
-        const id = setInterval(()=>{
-            trigger();
-        }, 20000);
-        return ()=>{
-            clearInterval(id);
-        }
-    },[]);
-
-    ......
-}
-```
-
-### useMutation
-
-异步修改操作通常通过手动触发的形式进行，如：
-
-```ts
-import React from 'react';
-import {useMutation} from '@airma/react-effect';
+//session.ts
 import {User} from './type';
 
-// 保存请求函数
-const saveUser = (user: User): Promise<User> => 
-    Promise.resolve(user);
+type UserQuery = {
+    name: string;
+    username: string;
+}
+// 异步执行函数
+export function fetchUsers(query: UserQuery):Promise<User[]> {
+    return Promise.resolve([]); 
+}
+```
 
-const App = ()=>{
-    // 需要保存的 user 数据
-    const [user, setUser] = useState<User>({...});
+#### 运行本地查询会话
 
-    // 需手动触发
-    const [state, trigger] = useMutation(
-        // 设置保存请求函数
-        saveUser,
-        // 设置保存参数
-        [ user ]
-    );
+```ts
+// page.tsx
+import React from 'react';
+import {useQuery} from '@airma/react-effect';
+import {fetchUsers} from './session';
+
+const Page = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    // 以类似 useEffect 的形式工作，依赖项为参数 query
+    const [
+        sessionState,
+        trigger,
+        execute
+    ] = useQuery(fetchUsers, [query]); 
     const {
-        // User | undefined
+        // User[] | undefined
         data,
+        // [UserQuery] | undefined
+        variables,
         // boolean
         isFetching,
-        // any
-        error,
-        // boolean
-        isError
-    } = result;
-
-    const handleSubmit = ()=>{
-        // 通过元组中的 trigger 手动触发
+    } = sessionState;
+    ......
+    const callTrigger = ()=>{
+        // 触发查询
         trigger();
     }
 
-    ......
+    const callExecute = ()=>{
+        // 传参执行查询
+        execute({name:'name',username:''});
+    }
 }
 ```
 
-#### 传参触发函数
-
-我们注意到，无论 `useQuery` 还是 `useMutation` 返回元组中都有一个会话外的触发函数 `execute`，它允许我们传入临时参数触发工作，之所以放在 `useMutation` 中进行说明是因为 `useMutation` 使用传参触发的概率会更高一些。
+#### 提供默认会话数据
 
 ```ts
+const [
+    {
+        // User[]
+        // 初始化时数据为默认会话数据
+        data
+    }
+] = useQuery(fetchUsers, {
+    variables: [query],
+    // 提供默认会话数据
+    defaultData: []
+}); 
+```
+
+#### 非参数自动查询依赖项
+
+```ts
+const [
+    {
+        // User[]
+        data
+    }
+] = useQuery(fetchUsers, {
+    variables: [query],
+    defaultData: [],
+    // 自定义依赖项，当 query.name 变更时发生查询
+    deps: [query.name]
+}); 
+```
+
+#### 更改查询触发条件
+
+```ts
+useQuery(fetchUsers, {
+    variables: [query],
+    defaultData: [],
+    deps: [query.name],
+    // 更改为只在依赖项更新时查询，
+    // 这时无论 useQuery 加载还是手动触发均失效
+    triggerOn: ['update']
+}); 
+```
+
+#### 查询结束回调
+
+```ts
+import {useResponse} from '@airma/react-effect';
+
+const [sessionState] = useQuery(fetchUsers, {
+    variables: [query],
+    defaultData: [],
+    deps: [query.name],
+    triggerOn: ['update']
+}); 
+// 当一次查询结束后调用回调函数
+useResponse((state)=>{
+    // state 为执行完成后的会话状态
+    const {variables} = state;
+    doSomething(state);
+}, sessionState); // 需监听 useQuery 的会话状态
+
+// 当一次查询成功结束后调用回调函数
+useResponse.useSuccess((data, state)=>{
+    // data 为执行成功后的会话状态数据
+    // state 为执行成功后的会话状态
+    const {variables} = state;
+    doSomething(state);
+}, sessionState); // 需监听 useQuery 的会话状态
+
+// 当一次查询执行失败后调用回调函数
+useResponse.useFailure((error, state)=>{
+    // error 为执行失败后的会话状态错误信息
+    // state 为执行失败后的会话状态
+    const {variables} = state;
+    doSomething(state);
+}, sessionState); // 需监听 useQuery 的会话状态
+```
+
+也可使用完成回调策略。
+
+```ts
+import {Strategy} from '@airma/react-effect';
+
+const [sessionState] = useQuery(fetchUsers, {
+    variables: [query],
+    defaultData: [],
+    deps: [query.name],
+    triggerOn: ['update'],
+    // 回调策略
+    strategy: [
+        Strategy.response((state)=>{...}),
+        Strategy.response.success((data, state)=>{...}),
+        Strategy.response.failure((error, state)=>{...}),
+    ]
+}); 
+```
+
+#### 强制手工执行查询
+
+```ts
+const [sessionState, , execute] = useQuery(fetchUsers, {
+    // 无 variables 参数，默认进入强制手工执行模式
+    defaultData: [],
+}); 
+
+const callExecute=()=>{
+    // 强制手工执行模式，必须使用 execute 执行函数，传参执行。
+    execute(query);
+}
+```
+
+#### 最受欢迎的查询会话策略
+
+```ts
+import {Strategy} from '@airma/react-effect';
+
+useQuery(fetchUsers, {
+    variables: [query],
+    strategy: [
+        // 防抖策略
+        Strategy.debounce(300),
+        // 会话状态数据缓存策略，
+        // 提升查询结果的渲染性能。
+        Strategy.memo(),
+        // SWR 缓存策略
+        Strategy.cache({capacity:10}),
+        // 查询成功后回调策略
+        Strategy.response.success((data)=>{
+            doSomething(data);
+        })
+    ]
+}); 
+```
+
+使用 useQuery 管理库会话，常常需要与 [useSession](/zh/react-effect/guides?id=usession) API 配合，相关内容将在介绍
+[provide](/zh/react-effect/guides?id=provide) 和 [useSession](/zh/react-effect/guides?id=usession) 部分一并介绍。
+
+## useMutation
+
+API [useMutation](/zh/react-effect/guides?id=usemutation) 用于管理修改性异步[会话状态](/zh/react-effect/concepts?id=会话状态)。默认情况下只支持原子性的人工触发方式。
+
+与 useQuery 一样，useMutation 也支持本地会话管理和库会话管理两种模式。
+
+```ts
+// session.ts
+type User = {
+    name: string;
+    username: string;
+};
+
+export function saveUser(user: User): Promise<User>{
+    return Promise.resolve(user);
+}
+```
+
+#### 运行本地修改会话
+
+```ts
+// page.tsx
 import React from 'react';
 import {useMutation} from '@airma/react-effect';
-import {User} from './type';
+import {saveUser} from './session';
 
-// 保存请求函数
-const saveUser = (user: User): Promise<User> => 
-    Promise.resolve(user);
-
-const App = ()=>{
-    // 需要保存的 user 数据
-    const [user, setUser] = useState<User>({...});
-
-    // 传参的手动触发方式
-    const [state, , execute] = useMutation(
-        // 设置保存请求函数
-        // 不设置变量
-        saveUser
-    );
+const Page = ()=>{
+    const [user, setUser] = useState({name:'', username:''});
+    // 默认只支持手工触发模式
+    const [
+        sessionState,
+        trigger,
+        execute
+    ] = useMutation(fetchUsers, [user]); 
     const {
         // User | undefined
         data,
+        // [User] | undefined
+        variables,
         // boolean
         isFetching,
-        // any
-        error,
-        // boolean
-        isError
-    } = result;
-
-    const handleSubmit = ()=>{
-        // 通过元组中的 execute 手动触发，并传入 user 参数
-        execute(user);
-    }
-
+    } = sessionState;
     ......
-}
-```
-
-注意：这里我们没有设置任何变量依赖与自定义依赖，这时 `useQuery` 和 `useMutation` 都将自动进入手动触发状态，而我们也不推荐在使用 `execute` 的同时也使用变量依赖，这会导致我们的会话参数变化极不稳定。或者说，在大部分情况下，我们不应该去使用 `execute` 这个会话外的可传参触发函数。关于 `execute` 的返回值，同样仅供参考，若真要使用，请注意只采纳 `abandon` 不为 `true` 的会话结果。 
-
-最后因为修改相对比较简单，复杂的例子也和 `useQuery` 类似，就不再展开叙述了。
-
-## 上下文会话
-
-本地会话基本可以满足一个简单页面的增删改查需求了。但如果查询数据可以通过上下文状态的方式，在需要的深层子组件中直接获取，而非 props 层层传递，那会更加方便。
-
-### 基本用法
-
-`@airma/react-effect` 提供了这个能力。为了实现会话的上下文同步，我们采取了和 `@airma/react-state` 的[上下文状态](/zh/react-state/guides?id=上下文状态)管理一样的机制，通过键库匹配的方式进行上下文间的关联同步。
-
-1. 使用 `createSessionKey` API 创建一个会话`键`。
-2. 将创建好的会话`键`集合（可以是独立的`键`，也可以是由`键`组成的对象或数组）提供给 `SessionProvider` 组件，用于生成会话`库`（store）。
-3. 通过 `useQuery` 或 `useMutation` 使用会话`键`来连接 `SessionProvider` 组件实例中的 会话`库`。请求所得的会话结果最终会发往与`键`匹配的`库`，从而支持上下文关联。需要知道的是所有使用同一会话`键`的 `useQuery` 或 `useMutation` 共享通一个上下文会话。
-4. 通过 API `useSession` 使用会话`键`来连接 `SessionProvider` 组件实例中的 会话`库`。与 `useQuery` 或 `useMutation` 不同，`useSession` 的主要用途是用来被动接收来自 `useQuery` 或 `useMutation` 创建好的会话变更，所以不具备除了手动触发以外的触发模式。
-
-基础样例：
-
-```ts
-import React from 'react';
-import {
-    useQuery,
-    useSession,
-    createSessionKey,
-    SessionProvider
-} from '@airma/react-effect';
-import { fetchUsers } from './service';
-import type { UserQuery, User } from './type';
-
-// type UserQuery = {username?: string};
-
-// function fetchUsers(query: UserQuery): Promise<User[]>;
-
-// 给 createSessionKey 提供一个请求函数，可以创建一个会话`键`。
-// 相当于一把钥匙
-const fetchUsersSessionKey = createSessionKey(fetchUsers);
-
-const Condition = ()=>{
-    const [displayQuery, setDisplayQuery] = useState<UserQuery>({});
-
-    const [validQuery, setValidQuery] = useState<UserQuery>(displayQuery);
-
-    // 通过会话`键`匹配通过该`键`建立的会话库，
-    // useQuery直接使用匹配库中会话。
-    // 查询产生的会话结果将被更新到匹配库的会话状态中。
-    useQuery(fetchUsersSessionKey, [validQuery]);
-
-    const handleUsernameChange = (e)=>{
-        setDisplayQuery({username: e.target.value});
-    };
-
-    const handleSubmitQuery = ()=>{
-        // 必须引起依赖变量的改变，以期每次提交都能触发查询。
-        setValidQuery({...displayQuery});
-    };
-
-    return (
-        <div>
-          <input 
-            type="text" 
-            value={displayQuery.username}
-            onChange={handleUsernameChange}
-          />
-          <button onClick={handleSubmitQuery}>提交</button>
-        </div>
-    );
-}
-
-const Datasource = ()=>{
-
-    const [
-        {
-          isFetching, 
-          data, 
-          isError, 
-          error,
-          loaded
-        }
-        // 使用 useSession 可以直接获取会话库中与`键`匹配的会话，
-        // 根据目前的需求，我们只需要获取会话状态即可。
-    ] = useSession(fetchUsersSessionKey);
-
-    if (isFetching) {
-        return (
-            <div>加载中...</div>
-        );
+    const callTrigger = ()=>{
+        // 调用无参触发函数
+        trigger();
     }
 
-    if (isError) {
-        return (
-            <div>
-                {
-                    error?error.toString():'未知错误'
-                }
-            </div>
-        );
+    const callExecute = ()=>{
+        // 调用有参执行函数
+        execute({name:'name',username:'username'});
     }
-
-    return (
-        <div>
-          {
-            loaded?
-              data.map((user)=>(
-                <div>
-                  <span>{user.name}</span>
-                  <span>{user.username}</span>
-                </div>
-              )):
-              null
-          }
-        </div>
-    );
-}
-
-const App = ()=>{
-    // 把会话`键`提供给 `SessionProvider`，
-    // `SessionProvider` 会根据会话`键`建立一个内部的会话库
-    return (
-        <SessionProvider keys={fetchUsersSessionKey}>
-          <Condition />
-          <Datasource />
-        </SessionProvider>
-    );
 }
 ```
 
-通过 API `createSessionKey`，我们可以把请求包装成一个会话`键`。一个会话`键`相当于一把钥匙，把同一把钥匙提分别供给会话库的创建者 `SessionProvider` 和使用者 `useQuery`、`useMutation`、`useSession` 就能为它们建立起会话同步链接。每个 `SessionProvider` 都会在组件实例内部维护会话库，这意味着内部使用 `SessionProvider` 的相同组件的不同实例拥有的会话库是不同的，会话状态也是不同步的。
+#### 修改默认触发方式
 
 ```ts
-const App = ()=>{
-    // 把会话`键`提供给 `SessionProvider`，
-    // `SessionProvider` 会根据会话`键`建立一个内部的会话库
-    return (
-        <SessionProvider keys={fetchUsersSessionKey}>
-          <Condition />
-          <Datasource />
-        </SessionProvider>
-    );
-}
-
-const Layout = ()=>{
-    // 两个 App 的会话状态是互不干扰的。
-    return (
-        <div>
-          <App />
-          <App />
-        </div>
-    );
-}
+useMutation(saveUser, {
+    variables: [user],
+    // 通过 triggerOn 修改为只支持更新模式，
+    // 这时，只有在参数 user 发生更新时才会触发执行
+    triggerOn: ['update']
+}); 
 ```
 
-使用键库配对的上下文状态管理要比只有全局库的方式来的更灵活。比如我们需要设计一个可能在一个页面多次复用的复杂组件，该组件需要根据 props 传入参数查询请求，这时，只有全局库的弊端就出来了，因为使用的是同一库对象，所以这些组件的最终会话状态都是相同的，这明显不符合我们的需求。如果简单使用 React.Context.Provider 来同步数据，则会引发另外一个问题，同一种 Context 的 Provider 会阻止更高层 Provider 提供的会话状态，这可能导致真正的全局会话状态无法直接从复杂组件中通过 useContext 获取出来。这也引出了一个话题，`SessionProvider` 会阻止访问更高层 `SessionProvider` 提供的会话库吗？答案显然是不会的，不然我发这个问有啥意义。
+当 useMutation 的触发方式**不是人工触发**时，执行异步函数**不再遵循阻塞的原子性操作**。
 
-通过键库匹配原则，我们可以在内层 `SessionProvider` 的子组件中使用高层`键`匹配到高层库。
-
-所谓的键库匹配规则就是，当我们使用`键`去查找库时，会按就近原则匹配最近一层父级 `SessionProvider`，如匹配失败（没在库里找到），则继续向更高层 `SessionProvider` 发起匹配，直至匹配成功或者匹配结束为止。如所有的 `SessionProvider` 都没有提供使用者持有的`键`，持有者会抛出异常。
+#### 最受欢迎的修改会话策略
 
 ```ts
-import React from 'react';
-import {
-    useQuery,
-    useSession,
-    createSessionKey,
-    SessionProvider
-} from '@airma/react-effect';
-import { fetchSomething } from './service';
-import { globalKeys } from '@/global';
+import {Strategy} from '@airma/react-effect';
 
-// export const globalKeys = {
-//     currentUser: createSessionKey(fetchCurrentUser),
-//     config: createSessionKey(fetchUserConfig)
-// }
-
-const fetchSomethingKey = createSessionKey(fetchSomething);
-
-const Condition = ({variables}:{variables})=>{
-    useQuery(fetchSomethingKey, [variables]);
-    // 在  <SessionProvider keys={fetchUsersSessionKey}> 无法匹配，
-    // 询问更高层进行匹配，并建立同步关系 
-    const [ {data: user} ] = useSession(globalKeys.currentUser);
-    return ......;
-}
-
-const Datasource = ()=>{
-    useSession(fetchSomethingKey);
-    // 在  <SessionProvider keys={fetchUsersSessionKey}> 无法匹配，
-    // 询问更高层进行匹配，并建立同步关系 
-    const [ {data: config} ] = useSession(globalKeys.config);
-    return ......;
-}
-
-const Complex = ({variables}:{variables})=>{
-    // 把会话`键`提供给 `SessionProvider`，
-    // `SessionProvider` 会根据会话`键`建立一个内部的会话库
-    return (
-        <SessionProvider keys={fetchUsersSessionKey}>
-          <Condition />
-          <Datasource />
-        </SessionProvider>
-    );
-}
-
-const Layout = ()=>{
-    // 因为库的不同，所以两个 Complex 的会话状态是互不干扰的。
-    // 不同 variables 的结果自然也是不同的
-    return (
-        <div>
-          <SessionProvider keys={globalKeys}>
-            <Complex variables={......} />
-            <Complex variables={......} />
-          </SessionProvider>
-        </div>
-    );
-}
+useMutation(saveUser, {
+    variables: [user],
+    strategy: [
+        // 一次性策略，
+        // 只允许修改操作成功运行一次。
+        // 在修改成功后自动关闭的弹窗组件中特别受欢迎。
+        Strategy.once(),
+        // 修改成功后回调策略
+        Strategy.response.success((data)=>{
+            doSomething(data);
+        })
+    ]
+}); 
 ```
 
-上例展示了键库匹配原则的基本运用。同时我们也观察到了 `SessionProvider` 接收的`键`形式可以是由`键`组成的 object 这一现象（可以认为是钥匙串）。
+#### 其他用法？
 
-### 调度者与工作者
+useMutation 的其他用法可参考 useQuery 用法。
 
-在上下文会话模式下，`useQuery` 和 `useMutation` 是不可或缺的，`useSession` 仅仅只是共享了它们的会话状态，并提供了再次触发会话工作的接口 `trigger`。我们可以形象的把 `useQuery` 和 `useMutation` 称作`工作者`，而 `useSession` 就是`调度者`。`调度者`在获知工作者会话状态的同时，也可以通过触发器 `trigger` 调度相关`工作者`的工作。而`工作者`互相之间可以共享会话状态，但不能互相触发工作。
+## provide
 
-为了说明问题，我们对[基本用法](/zh/react-effect/guides?id=基本用法)中的基础样例做了些小改动。
+库的使用可以让 React 状态管理变得更加简单易懂。`@airma/react-effect` 支持创建**动态**和**静态**两种不同形态的库。 [Provider](/zh/react-effect/api?id=provider) 组件通过持有[键](/zh/react-effect/concepts?id=键)可动态创建一个维护在 Provider 内部的库，useQuery/useMutation/useSession 可通过键订阅库的状态变更，也可通过执行触发更新库的状态。
+
+[provide](/zh/react-effect/api?id=provide) 为 Provider 组件的高阶形态（High-Order-Component），更加易用。
+
+#### 创建会话键
 
 ```ts
-import React from 'react';
-import {
-    useQuery,
-    useSession,
-    createSessionKey,
-    SessionProvider
-} from '@airma/react-effect';
-import { fetchUsers } from './service';
-import type { UserQuery, User } from './type';
+// session.ts
 
-// type UserQuery = {username?: string};
+import {createSessionKey} from '@airma/react-effect';
 
-// function fetchUsers(query: UserQuery): Promise<User[]>;
+// 将异步函数 fetchUsers 包装成一个查询会话键
+const queryKey = createSessionKey(fetchUsers, 'query');
 
-// 给 createSessionKey 提供一个请求函数，可以创建一个会话`键`。
-// 相当于一把钥匙。
-// 注意：这里我们为会话键配置了一个 `query` 的会话类型，
-// 如果我们把这个明确为 `query` 会话类型的会话键提供给了 `useMutation`，
-// 就会发生运行时报错。
-const fetchUsersSessionKey = createSessionKey(fetchUsers, 'query');
-
-const Submit = ()=>{
-    // 调度者
-    // 不关心会话状态，只做调度触发工作。
-    const [, trigger] = useSession(fetchUsersSessionKey);
-    return (
-        <button onClick={trigger}>提交</button>
-    );
-}
-
-const Condition = ()=>{
-    const [displayQuery, setDisplayQuery] = useState<UserQuery>({});
-
-    // 工作者
-    // 负责工作，并将工作所得的会话状态共享给其他工作者和调度者
-    useQuery(fetchUsersSessionKey, {
-        // 利用了调读者和工作者的关系，
-        // 我们只需对依赖做些小调整就可以省去 validQuery 这个提交状态了
-        variables: [ displayQuery ],
-        deps: []
-    });
-
-    const handleUsernameChange = (e)=>{
-        setDisplayQuery({username: e.target.value});
-    };
-
-    return (
-        <div>
-          <input 
-            type="text" 
-            value={displayQuery.username}
-            onChange={handleUsernameChange}
-          />
-          <Submit />
-        </div>
-    );
-}
-
-const Datasource = ()=>{
-
-    const [
-        {
-          isFetching, 
-          data, 
-          isError, 
-          error,
-          loaded
-        }
-        // 调度者
-        // 只共享了会话状态，
-        // 开启 `query` 会话类型检查
-    ] = useSession(fetchUsersSessionKey, 'query');
-
-    return ......;
-}
-
-const App = ()=>{
-    // 把会话`键`提供给 `SessionProvider`，
-    // `SessionProvider` 会根据会话`键`建立一个内部的会话库
-    return (
-        <SessionProvider keys={fetchUsersSessionKey}>
-          <Condition />
-          <Datasource />
-        </SessionProvider>
-    );
-}
+// 将异步函数 saveUser 包装成一个修改会话键
+const saveKey = createSessionKey(saveUser, 'mutation');
 ```
 
-`@airma/react-effect` 支持多对多的 `调读者` 和 `工作者` 关系，但这并不是理想状态，最佳方案是多个`调度者`对应一个`工作者`。那么，如果同时存在多个`键`相同的`工作者`会发生什么？如果这些`工作者`是被同时触发工作的，那只有最先被触发的`工作者`才能正常工作，其他工作者将处于等待会话同步的状态，我们稍后会在特性中看到详细解释。
+使用 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 可将异步函数包装成一个会话键。
 
-注意：上例中，我们在创建会话键时，提供了会话类型限制 `query`，这意味着，只有 `useQuery` 和 `useSession`  才能使用这把钥匙。会话类型🈶️：`'query' | 'mutation'`。同理，`useSession` 也可以进行会话类型限制。使用类型限制创建会话键可以让你的应用更安全。
-
-让我们看看剩下的常见问题，如错误兜底功能。
-
-### 全局会话
-
-通过以上学习，我们可以很容易的使用 `SessionProvider` 包装一个全局会话库，似乎已经不在需要那么多功能了。但 `@airma/react-effect` 依旧塞过来一份传单：9块9，9块9啊，9块9你买不了吃亏，买不了上当......于是你揣起了传单，定睛一看：`GlobalSessionProvider`，正当你准备一怒弃之时，一条消息飘过你的眼帘：具有真正的全局配置功能。
-
-好了，让我们来看看 `GlobalSessionProvider` 与 `SessionProvider` 的区别。`GlobalSessionProvider` 是专为全局会话准备的，除了生成应用的上下文会话库，还有一个主打功能，那就是全局配置，不论你使用的 `useQuery` 与 `useMutation` 是否在使用上下文会话`键`，这份全局配置都能起作用。
-
-何曾几时，在前端流传着 `window.addEventListener('unhandledrejection', ......)` 的传说，无奈现在的前端异步处理库越来越主动得揽收了错误处理步骤，并要求使用者独立处理。
-
-现在就让我们看看，如何使用 `GlobalSessionProvider` 做全局错误兜底工作。
-
-#### 全局配置
-
-全局配置 config 作用于所有包含再 `GlobalSessionProvider` 组件内的 `useQuery` 和 `useMutation`。
+#### 创建会话库
 
 ```ts
-import React from 'react';
-import { render } from 'react-dom';
-import App from '@/app';
-import {
-  GlobalSessionProvider,
-  Strategy
-} from '@airma/react-effect';
-import type { GlobalConfig } from '@airma/react-effect';
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {provide} from '@airma/react-effect';
 
-const root = document.getElementById('root');
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
 
-// 使用全局配置做异常兜底
-const config: GlobalConfig = {
-  // 为所有会话添加 Strategy.error 错误策略兜底
-  strategy: s => [...s, Strategy.error(e => console.log('未捕捉异常：', e))]
-};
+// 调用 provide 高阶组件函数，传入键（或键的集合），
+// 可得到一个 Provider 的次级高阶组件，
+// 该组件可包囊需要使用库的自定义组件。
+const wrap = provide(sessions);
 
-// 如果不希望使用 `GlobalSessionProvider` 配置全局会话库也没关系
-render(
-  <React.StrictMode>
-    <GlobalSessionProvider config={config}>
-      <App />
-    </GlobalSessionProvider>
-  </React.StrictMode>,
-  root
-);
+// 包囊自定义组件，
+// 包囊组件中的 Provider 会根据会话键建立库
+const Component = wrap((props:Props)=>{
+    // 库的使用范围包含了整个自定义组件。
+    // useQuery 通过会话键管理会话状态
+    useQuery(sessions.query, [props.query]);
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
 ```
 
-通过添加 `config` 我们可以为 `GlobalSessionProvider` 内部的所有 `useQuery` 与 `useMutation` 提供一些公共的[策略](/zh/react-effect/concepts?id=策略)。
+在 Provider 库提供组件包囊范围内，useQuery/useMutation 可通过键实时获取会话状态变更，并将会话操作产生的状态更新至库中，以便其他同键会话使用者订阅。
 
-`config.strategy` 是一个函数。所有的 `useQuery` 或 `useMutation` 在加载时会检查这个全局的策略配置函数是否存在，如存在，则将当前会话配置的策略作为参数传入该函数以生成一套包含全局策略的策略链。
-
-上例的配置相当于为为所有会话添加了 `Strategy.error` 错误策略兜底。根据 `Strategy.error` 的特性，在一次会话的请求过程中，`Strategy.error` 只能执行一次，我们可以知道，如果我们的策略遗漏了错误处理（或者就想纯粹偷懒），那么此处的 `Strategy.error` 就能为我们提供最后的防御；如果，我们在会话中已经使用了 `Strategy.error` 错误策略，那么最后的兜底策略将不做反应。
-
-关于 GlobalConfig 配置的解释：
+直接使用 [Provider](/zh/react-effect/api?id=provider) 组件创建库的效果会稍有不同。
 
 ```ts
-export declare type GlobalConfig = {
-  strategy?: (
-    strategy: (StrategyType | null | undefined)[],
-    type: 'query' | 'mutation'
-  ) => (StrategyType | null | undefined)[];
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {Provider} from '@airma/react-effect';
+
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
+
+const Component = (props:Props)=>{
+    // 使用 Provider 创建的库包囊范围并不包含当前自定义组件 return 前的内容，
+    // 因此不能在自定义组件 return 前使用库。
+    return (
+        <Provider value={sessions}>
+            <Child1 />
+            <Child2 />
+        </Provider>
+    );
 };
 ```
 
-目前这个全局配置项只包含了策略配置函数。我们可以通过它来配置全局策略。
+## useSession
 
-GlobalConfig.strategy：
-
-策略函数 `strategy` 能接受两个参数：
-
-* strategy - 来自运行会话的策略列表。
-* type - 会话类型，`query` 表示当前使用配置函数的是一个 `useQuery`，`mutation` 表示的时一个 `useMutation`。
-
-返回值：
-
-该函数要求配置者根据参数返回一个新的策略列表。上例中，是通过追加的方式，为所有会话策略添加了错误兜底策略。
-
-根据配置参数，我们完全可以自由发挥，如继续追加一个自定义的错误日志策略，将错误信息回传服务器；又如通过判断 `type` 会话类型是否是 `query` 来决定是否追加 `Strategy.memo` 会话结果优化策略，等......
-
-#### 会话库
-
-`GlobalSessionProvider` 是一种特殊的 `SessionProvider`。我们也可以为它提供会话`键`，维护会话库。这点和 `SessionProvider` 是一致的，就不再次啰嗦了。
-
-#### 管理全局 isFetching 状态
-
-`GlobalSessionProvider` 还有一个作用，就是管理旗下所有 `useQuery` 和 `useMutation` 的辅助状态：`isFetching`，`isError`。
-
-目前我们只提供了获取全局 `isFetching` 的途径，我们可以通过使用无参的 `useIsFetching` hook API 来获取是否有请求依然还处于工作状态的信息。
+API [useSession](/zh/react-effect/api?id=usesession) 可通过会话[键](/zh/react-effect/concepts?id=键)订阅库的会话状态，也可人工触发 useQuery/useMutation 执行。
 
 ```ts
-import React from 'react';
-import { render } from 'react-dom';
+// usage.tsx
+import {queryKey, saveKey} from './session';
 import {
-  GlobalSessionProvider,
-  Strategy,
-  useQuery
+    provide,
+    useQuery,
+    useSession
 } from '@airma/react-effect';
-import type { GlobalConfig } from '@airma/react-effect';
 
-const root = document.getElementById('root');
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
 
-const lazyLoading = (): Promise<number>=>{
-    return new Promise((resolve)=>{
-        setTimeout(()=>{
-            resolve(1);
-        }, 3000);
+const Child1 = ()=>{
+    // useSession 通过键订阅库状态
+    const [
+        // 会话状态
+        querySessionState, 
+        // 触发器,
+        // 通过调用触发器，人工触发同键 useQuery 查询
+        triggerQuery
+    ] = useSession(sessions.query);
+
+    const {
+        // User[] | undefined
+        // 虽然已经为 useQuery 设置了默认会话状态数据，
+        // 会话状态数据类型识别依然可能为 undefined
+        data,
+    } = querySessionState;
+    
+    return ......;
+}
+
+const Child2 = ()=>{
+    return ......;
+}
+
+// 简化 provide 包装过程
+const Component = provide(sessions)((props:Props)=>{
+    useQuery(sessions.query, {
+        variables: [props.query],
+        // 设置默认会话状态数据
+        defaultData: []
     });
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
+```
+
+useSession 的触发器函数触发的是所有同键[会话](/zh/react-effect/concepts?id=会话)（useQuery/useMutation），当同键会话同时触发时，只有一个会被允许执行，其他会话监听状态变更。
+
+```ts
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {
+    provide,
+    useQuery,
+    useSession
+} from '@airma/react-effect';
+
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
+
+const Child1 = ()=>{
+    const [
+        querySessionState, 
+        // 触发所有 useQuery(sessions.query, xxx)
+        triggerQuery
+    ] = useSession(sessions.query);
+    return ......;
+}
+
+const Child2 = ()=>{
+    const q = useMemo(()=>({name:'',username:''}),[]);
+    // 同键 useQuery 同时触发时，只有一个被允许执行
+    useQuery(sessions.query, [q]);
+    return ......;
+}
+
+const Component = provide(sessions)((props:Props)=>{
+    // 同键 useQuery 同时触发时，只有一个被允许执行
+    useQuery(sessions.query, [props.query]);
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
+```
+
+关于同键会话问题，通常更建议采用单会话（useQuery/useMutation），多监听（useSession）的解决方案，但有时这种类似抢答的同键会话问题可以成为一种优秀的公共组件设计方案。
+
+## useLoadedSession
+
+useSession API 返回的会话状态数据类型总是支持 undefined，即便库中的会话状态数据已经确认不可能为 undefined。
+
+在确认会话确实已加载（执行成功过）或已经设置默认会话状态数据时，可使用 [useLoadedSession](/zh/react-effect/api?id=useloadedsession) API 来订阅库的会话状态。
+
+```ts
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {
+    provide,
+    useQuery,
+    useSession
+} from '@airma/react-effect';
+
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
+
+const Child1 = ()=>{
+    // useQuery(sessions.query, xxx) 已设置 defaultData，
+    // 会话默认为以加载状态，
+    // 这时使用 useLoadedSession 更为合理。
+    const [
+        querySessionState, 
+        triggerQuery
+    ] = useLoadedSession(sessions.query);
+
+    const {
+        // User[]
+        // useLoadedSession 得到的会话状态数据与异步函数结果类型完全一致。
+        data,
+    } = querySessionState;
+    return ......;
+}
+
+const Child2 = ()=>{
+    return ......;
+}
+
+const Component = provide(sessions)((props:Props)=>{
+    useQuery(sessions.query, {
+        variables: [props.query],
+        defaultData: []
+    });
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
+```
+
+## session
+
+API [session](/zh/react-effect/api?id=session) 可以将异步函数包装成会话声明函数，会话声明函数与原异步函数几乎完全相同，但拥有大量可直接调用的常用静态 API。
+
+```ts
+// session.ts
+import {session} from '@airma/react-effect';
+
+// 包装成查询会话声明函数
+export const querySession = session(fetchUsers, 'query');
+
+// 包装成修改会话声明函数
+export const saveSession = session(saveUser, 'mutation');
+```
+
+会话声明函数可采用流式调用方式调用常用 API。
+
+```ts
+// usage.tsx
+import {querySession, saveSession} from './session';
+
+// 创建动态库（被包装成库形态的键）
+const queryStore = querySession.createStore();
+const saveStore = saveSession.createStore();
+
+const Child1 = ({query}: {query:UserQuery})=>{
+    // store.useQuery 不再需要使用会话键
+    const [
+        {
+            data,
+            isFetching
+        },
+        triggerQuery,
+        executeQuery
+    ] = queryStore.useQuery([query]);
+    return ......;
+}
+
+const Child2 = ()=>{
+    const [user, setUser] = useState({
+        name:'',
+        username:''
+    });
+    // store.useSession 不再需要使用会话键
+    const [, triggerQuery] = queryStore.useSession();
+    // store.useMutation 不再需要使用会话键
+    const [
+        saveSessionState,
+        triggerSave,
+        executeSave
+    ] = saveStore.useMutation([user]);
+
+    useResponse.useSuccess(()=>{
+        triggerQuery();
+    }, saveSessionState);
+    return ......;
+}
+
+// 动态库可通过 store.with 方法联合成一个公共库 (store)，
+// 并使用 store.provideTo(Component) 来生成 Provider 库。
+const Component = saveStore.with(queryStore).provideTo(
+    (props: Props)=>{
+        return (
+            <>
+                <Child1 query={props.query} />
+                <Child2 />
+            </>
+        )
+    }
+)
+
+// store.asGlobal 方法可声明一个全局静态库。
+// 全局静态库是一个真正意义上的库，
+// 会话状态是维护在这个静态库中的。
+const globalQueryStore = queryStore.asGlobal();
+
+// 全局静态库不需要 provide 高阶组件
+const Component2 = (props:Props)=>{
+    // 全局静态库可直接使用
+    const [
+        {
+            data,
+            isFetching
+        },
+        triggerQuery
+    ] = globalQueryStore.useQuery({
+        variables: [props.query],
+        defaultData: [],
+        strategy: Strategy.debounce(300)
+    });
+    const [user, setUser] = useState({
+        name:'',
+        username:''
+    });
+    // session 的本地会话用法
+    const [
+        saveSessionState,
+        triggerSave,
+        executeSave
+    ] = saveSession.useMutation([user]);
+
+    useResponse.useSuccess(()=>{
+        triggerQuery();
+    }, saveSessionState);
+
+    return ......;
+}
+```
+
+更多[例子](/zh/react-effect/index?id=session)。
+
+## strategy
+
+[策略](/zh/react-effect/concepts?id=策略)系统贯穿了会话的执行过程，除了对每个会话单独使用各种不同的策略，也可以设置全局会话策略添加系统内会话的公共特性。
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    batchUpdate: unstable_batchedUpdates,
+    useGlobalFetching: true,
+    // 设置全局策略链组合函数
+    strategy: (
+        // 会话运行时使用的策略链
+        s: StrategyType[], 
+        // 运行时会话的会话类型,
+        // useQuery - query,
+        // useMutation - mutation
+        sessionType: 'query'|'mutation'
+    ) => [
+        ...s, 
+        // 给所有的 useQuery 策略接入会话状态数据缓存策略
+        sessionType === 'query'? Strategy.memo():null,
+        // 给所有会话策略接入兜底错误处理策略
+        Strategy.failure(e => {
+            // 当策略链中出现多个错误处理策略时，
+            // 只运行最前面的错误处理策略回调函数。
+            message.error(e);
+        })
+    ]
+}
+
+<ConfigProvider value={globalConfig}>
+......
+</ConfigProvider>
+```
+
+策略链中的每一个策略函数可以与 null 动态切换。
+
+```ts
+const [openMemo, setOpenMemo] = useState(false);
+
+const [
+    sessionState,
+    trigger,
+    execute
+] = useQuery(fetchUsers, {
+    variables: [query],
+    strategy:[
+        Strategy.validate(()=>!!query.name),
+        // dynamic switch strategy
+        openMemo? Strategy.memo(): null
+    ]
+    // don't filter strategy chain.
+});
+```
+
+**注意**，在策略链中，每个策略的位置在会话创建时就固定好了。动态排序，删除，更改，切换策略都是不被允许的，否则可能出现策略缓存异常问题。
+
+如何自定义策略？
+
+```ts
+// Strategy.validate 源码
+import type {StrategyType} from '@airma/react-effect';
+
+function validate(callback: () => boolean): StrategyType {
+    // 策略函数返回的 promise 对象必须始终 resolve 一个 `会话状态类型` 的数据
+    return function validStrategy(runtime) {
+        const { runner, getSessionState } = runtime;
+        const result = callback();
+        // 通过回调判断是否应该执行后续策略
+        if (!result) {
+            // 如判断结果为 false，
+            // 则不运行 runner，
+            // 直接返回一个自定义 resolve 会话状态的 promise 对象。
+            // 通过 getSessionState 可以获取当前会话状态。
+            const sessionState = getSessionState();
+            return new Promise(resolve => {
+                // 因为校验不通过，所以不应该修改会话状态
+                resolve({
+                    ...sessionState, 
+                    // 将 abandon 字段设置 `true`，
+                    // 策略终端会放弃当前 promise resolve 结果。
+                    abandon: true 
+                });
+            });
+        }
+        // 若校验通过，则通过调用 runner 函数，继续运行后续策略。
+        // runner 为当前策略所在链条位置的下一个策略函数，
+        // runner 函数返回的 promise 对象始终 resolve 一个 `会话状态类型` 的数据，
+        // 如最终 promise resolve 数据的 abandon 字段为 `false`，
+        // 则表示最终所得的会话状态可以被接受，
+        // 该数据会被更新为新的会话状态。
+        return runner();
+    };
+}
+```
+
+一个合法的策略函数可接受一个 [runtime](/zh/react-effect/concepts?id=策略) 对象用于操作会话，同时返回一个 resolve 会话状态的 promise 对象，用于决定最终会话状态。通过对最终 promise resolve 对象标记 **abandon: true**，可迫使策略终端放弃当前执行结果。**注意**，因为其他策略也只推荐对最终会话状态做放弃标记，所以尽量不要将 **abandon** 字段标记为 **false（采纳标记）**，这可能会影响到其他策略函数的正常运行。
+
+使用策略本地缓存：
+
+```ts
+// Strategy.once 源码
+function once(): StrategyType {
+    return function oc(runtime: {
+        getSessionState: () => SessionState;
+        runner: () => Promise<SessionState>;
+        localCache: { current?: Promise<SessionState> };
+    }) {
+        const { runner, localCache } = runtime;
+        // localCache 可用于缓存当前策略产生的状态
+        // Strategy.once 策略直接缓存了后续策略返回的 promise 对象。
+        // 如 localCache.current 存在，则认为当前会话已经执行。
+        if (localCache.current) {
+            // 对已经执行的会话直接返回执行产生的 promise 对象，
+            // 并将该 promise resolve 的会话状态标记为放弃。
+            // 这样就可以阻止当前会话被多次执行了。
+            return localCache.current.then(d => ({
+                 ...d, 
+                 abandon: true 
+            }));
+        }
+        // 如 localCache.current 不存在，则认为当前会话未执行。
+        // 执行后续策略，同时将后续策略返回的 promise 存入 localCache，阻止会话被多次执行。
+        localCache.current = runner().then(d => {
+            if (d.isError) {
+                // 如后续策略执行结果发生错误，
+                // 则重置阻止状态，
+                // 这样会话即可重新执行。
+                localCache.current = undefined;
+            }
+        return d;
+        });
+        return localCache.current;
+    };
+}
+```
+
+## ConfigProvider
+
+ConfigProvider 组件用于全局配置 ：
+
+* batchUpdate - 批量更新方法。当环境中 react 版本 < 18.0.0 时，需要使用 react-dom 的批量更新状态方法  unstable_batchedUpdates 优化状态更新过程。
+* useGlobalFetching - 支持通过 [useIsFetching](/zh/react-effect/api?id=useisfetching) 监听所有会话的 fetching 状态。
+* strategy - 公共策略链定义函数。用于定义运行时的动态公共策略链。
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy,
+    useIsFetching
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    // 使用 unstable_batchedUpdates 优化渲染性能
+    batchUpdate: unstable_batchedUpdates,
+    // 支持使用 useIsFetching 获取所有会话的 isFetching 状态
+    useGlobalFetching: true,
+    // 设置公共策略链动态组合函数
+    strategy: (
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        ...s, 
+        sessionType === 'query'? Strategy.memo():null,
+        Strategy.failure(e => {
+            message.error(e);
+        })
+    ]
 }
 
 const App = ()=>{
-    useQuery(lazyLoading, []);
-    useQuery(lazyLoading, []);
-
-    // 可以通过 useIsFetching 获知，是否有会话正在工作。
+    // ConfigProvider 范围内所有会话的 isFetching 状态。
     const isFetching = useIsFetching();
-
-    return ......;
+    return isFetching? <Fetching/> : <Content/>
 }
 
-// 使用全局配置做异常兜底
-const config: GlobalConfig = {
-  // 为所有会话添加 Strategy.error 错误策略兜底
-  strategy: s => [...s, Strategy.error(e => console.log('未捕捉异常：', e))]
-};
-
-// 如果不希望使用 `GlobalSessionProvider` 配置全局会话库也没关系
-render(
-  <React.StrictMode>
-    <GlobalSessionProvider config={config}>
-      <App />
-    </GlobalSessionProvider>
-  </React.StrictMode>,
-  root
-);
+<ConfigProvider value={globalConfig}>
+    <App />
+</ConfigProvider>
 ```
 
-注意，如果无参的 `useIsFetching` 在 `GlobalSessionProvider` 环境之外使用会报异常。如果需要在 `GlobalSessionProvider` 外部环境使用 `useIsFetching` ，需要为它提供`会话状态`参数。
-
-```ts
-import React from 'react';
-import { render } from 'react-dom';
-import {
-  GlobalSessionProvider,
-  Strategy,
-  useQuery
-} from '@airma/react-effect';
-import type { GlobalConfig } from '@airma/react-effect';
-
-const root = document.getElementById('root');
-
-const lazyLoading = (): Promise<number>=>{
-    return new Promise((resolve)=>{
-        setTimeout(()=>{
-            resolve(1);
-        }, 3000);
-    });
-}
-
-const App = ()=>{
-    const [ state1 ] = useQuery(lazyLoading, []);
-    const [ state2 ] = useQuery(lazyLoading, []);
-
-    // 可以通过 useIsFetching 获知指定会话状态是否有正在工作的。
-    const isFetching = useIsFetching(state1, state2);
-
-    return ......;
-}
-
-render(
-  <App />,
-  root
-);
-```
-
-### SessionProvider 与 StoreProvider
-
-如果你在使用 `@airma/react-effect` 的同时也在使用 [@airma/react-state](/zh/react-state/index)，那么这里有一条值得你注意的消息，`SessionProvider` 就是 `@airma/react-state` 中的 [StoreProvider](/zh/react-state/guides?id=库)。也就是说两者是完全可以通用，因此我们可以把会话`键`用于 [StoreProvider](/zh/react-state/guides?id=库)，也可以把 模型[键](/zh/react-state/guides?id=键) 用于 `SessionProvider`，`createSessionKey` 产生的会话`键`其实就是一种特殊的模型[键](/zh/react-state/guides?id=键)。
-
-## 本地状态管理
-
-关于本地状态管理，我们推荐 [@airma/react-state](/zh/react-state/index) ，这是一个非常棒的本地状态管理库，它将 reducer 系统与方法调用完美结合，为使用者省去了很多状态管理相关的烦恼。`@airma/react-effect`正式基于此库开发的。希望大家能够喜欢，你们的支持就是我们创作的动力。
-
-好了，特性时间到了，现在你已经基本学会了如何使用 `@airma/react-effect` 库进行开发，让我们看看它有哪些固有[特性](/zh/react-effect/feature.md)可以为我们省去不必要的麻烦。
+下一节[特性](/zh/react-effect/feature)

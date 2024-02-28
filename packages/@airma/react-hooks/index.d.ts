@@ -13,7 +13,6 @@ export {
   createKey,
   useModel,
   useControlledModel,
-  useRealtimeInstance,
   useSelector,
   model
 } from '@airma/react-state';

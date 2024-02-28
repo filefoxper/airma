@@ -1,6 +1,8 @@
 # API
 
-## createKey
+## React-state API
+
+### createKey
 
 [method API] 用于创建模型[键](/zh/react-state/guides?id=键)，可将键提供给 Provider 创建 store；使用者可通过使用键访问 store 中的模型[实例](/zh/react-state/concepts?id=实例)，并同步[模型](/zh/react-state/concepts?id=模型)状态更新。 [引用](/zh/react-state/api?id=createkey)
 
@@ -16,7 +18,7 @@ export declare function createKey<
 ): R;
 ```
 
-## useModel
+### useModel
 
 [hook API] 用于创建或连接（如果使用的是模型键）一个模型实例，并维持模型与实例对象之间的状态同步。[引用](/zh/react-state/api?id=usemodel)
 
@@ -38,7 +40,7 @@ export declare function useModel<
 ): ReturnType<R>;
 ```
 
-## useControlledModel
+### useControlledModel
 
 [hook API] 用于将模型实例状态链接至外部状态，并完全受控于该外部状态， 如: `useState`, [引用](/zh/react-state/api?id=usecontrolledmodel)
 
@@ -55,15 +57,7 @@ export declare function useControlledModel<
 ): ReturnType<R>;
 ```
 
-## useRealtimeInstance
-
-[hook API] 从 `useModel` 生成的稳定实例对象中获取一个实时性更强的实时实例，[引用](/zh/react-state/api?id=userealtimeinstance)
-
-```ts
-export declare function useRealtimeInstance<T>(instance: T): T;
-```
-
-## useSelector
+### useSelector
 
 [hook API] 用于选取或重组来自全局 store 的实例对象。当实例对象更新时，若选取或重组的数据与更新前一致，则不会引起数据更新，从而达到优化性能的目的，[引用](/zh/react-state/api?id=useselector)
 
@@ -81,7 +75,70 @@ export declare function useSelector<
 ): ReturnType<C>;
 ```
 
-## createSessionKey
+### model
+
+[函数 API] model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API 调用风格。
+
+```ts
+interface GlobalStoreApi {
+  useModel,
+  useSelector
+}
+
+interface StoreApi {
+  key,
+  with:(
+    ...stores: (StoreApi | ModelKey)[]
+  ) => StoreApi,
+  asGlobal: () => GlobalStoreApi,
+  provide,
+  provideTo: (
+    component: ComponentType
+  ) => typeof component,
+  Provider: FC<{ children?: ReactNode }>,
+  useModel,
+  useSelector
+}
+
+interface Api {
+  useModel,
+  useControlledModel,
+  createStore: (defaultState?) => StoreApi;
+}
+
+function model(modelFn): (typeof modelFn) & Api;
+```
+
+参数
+
+* modelFn - 模型函数
+
+返回
+
+带有常用API的模型函数
+
+用法[参考](/zh/react-state/guides?id=model)
+
+### shallowEqual
+
+[method API] 用于浅对比两个对象是否等价。
+
+```ts
+export declare function shallowEqual<R>(prev: R, current: R): boolean;
+```
+
+参数：
+
+* prev - 对比值之一
+* current - 对比值之一
+
+返回：
+
+等价为 true，否则为 false。
+
+## React-effect API
+
+### createSessionKey
 
 [method API] 用于创建一个会话键（会话键也是一种模型键），可将键提供给 Provider 创建 store；使用者可通过使用键访问 store 中的[会话](/zh/react-effect/concepts?id=会话)实例，并同步[会话状态](/zh/react-effect/concepts?id=会话状态)，[引用](/zh/react-effect/api?id=createsessionkey)
 
@@ -94,11 +151,11 @@ export declare function createSessionKey<
 ): SessionKey<E>;
 ```
 
-## Strategy
+### Strategy
 
 [collection API] 这是一个常用会话[策略](/zh/react-effect/concepts?id=策略)集合，[引用](/zh/react-effect/concepts?id=常用策略)
 
-## useQuery
+### useQuery
 
 [hook API] 用于维护查询功能的会话状态。 [引用](/zh/react-effect/api?id=usequery)
 
@@ -111,7 +168,7 @@ export declare function useQuery<
 ): SessionResult<D>;
 ```
 
-## useMutation
+### useMutation
 
 [hook API] 用于维护修改功能的会话状态。[引用](/zh/react-effect/api?id=usemutation)
 
@@ -124,7 +181,7 @@ export declare function useMutation<
 ): SessionResult<D>;
 ```
 
-## useSession
+### useSession
 
 [hook API] 用于同步会话状态，调度会话[工作者](/zh/react-effect/guides?id=调度者与工作者)运行，即[调度者](/zh/react-effect/guides?id=调度者与工作者)。[引用](/zh/react-effect/api?id=usesession)
 
@@ -135,7 +192,7 @@ export declare function useSession<D extends SessionKey>(
 ): [SessionState, () => void];
 ```
 
-## useLoadedSession
+### useLoadedSession
 
 [hook API] 该 hook 相当于设置了 loaded 为 true 的 useSession。typescript 会认为其会话状态已经为加载状态。[引用](/zh/react-effect/api?id=useloadedsession)
 
@@ -146,7 +203,7 @@ export declare function useLoadedSession<D extends SessionKey>(
 ): [LoadedSessionState, () => void];
 ```
 
-## useResponse
+### useResponse
 
 [hook API] 用于处理会话状态发生响应变化时产生的副作用。[引用](/zh/react-effect/api?id=useresponse)
 
@@ -167,7 +224,7 @@ export declare interface useResponse<T> {
 }
 ```
 
-## useIsFetching
+### useIsFetching
 
 [hook API] 用于统计是否还有正在工作的会话。[引用](/zh/react-effect/api?id=useisfetching)
 
@@ -177,7 +234,72 @@ export declare function useIsFetching(
 ): boolean;
 ```
 
-## provide
+### session
+
+用于包装声明会话的函数形 API。该API可封装一个异步函数，并返回一个针对会话的常用API集合。
+
+```ts
+type StaticStoreApi = {
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
+type StoreApi = {
+  asGlobal(): StaticStoreApi;
+  provideTo<P extends object>(
+    component: ComponentType<P>
+  ):ComponentType<P>;
+  Provider:FunctionComponent<{
+    value: ModelKeys, 
+    children?: ReactNode
+  }>;
+  with(...stores:(StoreApi|ModelKey)[]);
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
+type Api = {
+  createStore():StoreApi;
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+};
+
+function session(
+  promiseCallback, 
+  sessionType: 'query' | 'mutation'
+): Api
+```
+
+### Parameters
+
+* **promiseCallback** - 会话需要执行的异步函数。
+* **sessionType** - 声明当前会话类型，`query` 表示查询类，`mutation` 表示修改类。
+
+### Returns
+
+一个可流式调用的常用会话 API 集合。
+
+[例子](/zh/react-effect/guides?id=session)
+
+## 公共 API
+
+### provide
 
 [common HOC API] 用于使用键生成带有库的 Provider 组件，由于 `@airma/react-effect` 的状态共享使用的就是 `@airma/react-state` 提供的模型共享机制, 所以我们将两者的 provide API 合成一个。 [state 引用](/zh/react-state/api?id=provide)、[effect 引用](/zh/react-effect/api?id=provide)
 
@@ -189,7 +311,7 @@ export declare function provide(
 ) => typeof component;
 ```
 
-## Provider
+### Provider
 
 [common Component API] 因为 `@airma/react-effect` 的状态共享机制与 `@airma/react-state` 相同，所以，可以将两者的 Provider ：[state StoreProvider](/zh/react-state/api?id=storeprovider)、[effect SessionProvider](/zh/react-effect/api?id=sessionprovider) 合成一个。
 
@@ -200,7 +322,7 @@ export declare const Provider: FC<{
 }>;
 ```
 
-## ConfigProvider
+### ConfigProvider
 
 [common Component API] 虽然 `@airma/react-state` 与 `@airma/react-effect`有细微不同，但却是可以互相兼容的，所以 [state ConfigProvider](/zh/react-state/api?id=configprovider) 与 [effect ConfigProvider](/zh/react-effect/api?id=configprovider) 合成一个公共的 ConfigProvider。
 
@@ -220,24 +342,9 @@ export declare const ConfigProvider: FC<{
 }>;
 ```
 
-## shallowEqual
+## React-hooks-core API
 
-[method API] 用于浅对比两个对象是否等价。
-
-```ts
-export declare function shallowEqual<R>(prev: R, current: R): boolean;
-```
-
-参数：
-
-* prev - 对比值之一
-* current - 对比值之一
-
-返回：
-
-等价为 true，否则为 false。
-
-## usePersistFn
+### usePersistFn
 
 ```ts
 export declare function usePersistFn<T extends (...args: any[]) => any>(
@@ -273,7 +380,7 @@ const Layout = ()=>{
 }
 ```
 
-## useMount
+### useMount
 
 ```ts
 export declare function useMount(callback: () => (() => void) | void): void;
@@ -281,7 +388,7 @@ export declare function useMount(callback: () => (() => void) | void): void;
 
 该 hook 相当于 `React.useEffect(callback, [])`。
 
-## useUpdate
+### useUpdate
 
 ```ts
 export declare function useUpdate<T extends any[]>(
@@ -323,7 +430,7 @@ const App = memo((props: {value:number})=>{
 });
 ```
 
-## useRefresh
+### useRefresh
 
 ```ts
 export declare function useRefresh<T extends (...args: any[]) => any>(
@@ -372,10 +479,32 @@ function useIntervalCountDown() {
 }
 ```
 
-## useUnmount
+### useUnmount
 
 ```ts
 export declare function useUnmount(destroy: () => void): void;
 ```
 
 该 hook 相当于 `useEffect(()=>destrory, [])`
+
+### useDebounceFn
+
+用于将一个回调函数包装成一个防抖的异步函数。
+
+```ts
+declare type Promisify<F extends (...args: any[]) => any> = F extends (
+  ...args: infer A
+) => infer R
+  ? (...args: A) => Promise<R>
+  : never;
+
+export declare function useDebounceFn<F extends (...args: any[]) => any>(
+  fn: F,
+  option: number | { lead?: boolean; ms: number }
+): Promisify<F>;
+```
+
+#### 参数
+
+* **fn** - 被包装函数
+* **option** - 防抖时间或配置，如果 option.lead 为 true，函数调用时机为先调用后防抖，否则先防抖后调用。

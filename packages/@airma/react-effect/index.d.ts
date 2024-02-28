@@ -26,6 +26,10 @@ declare interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  round: number;
+  /**
+   * @deprecated
+   */
   fetchVersion?: number;
 }
 
@@ -51,11 +55,14 @@ export declare type SessionState<T = any, V extends any[] = any[]> =
 
 export declare interface StrategyType<T = any, V extends any[] = any[]> {
   (runtime: {
-    current: () => SessionState<T, V>;
-    variables: any[];
-    runner: () => Promise<SessionState<T, V>>;
-    store: { current: any };
-    runtimeCache: {
+    getSessionState: () => SessionState<T, V>;
+    variables: V;
+    triggerType: TriggerType;
+    runner: (
+      setFetchingSessionState?: (s: SessionState<T, V>) => SessionState<T, V>
+    ) => Promise<SessionState<T, V>>;
+    localCache: { current: any };
+    executeContext: {
       set: (key: any, value: any) => void;
       get: (key: any) => any;
     };
@@ -346,6 +353,7 @@ export declare const Provider: FC<
 >;
 
 export declare type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
   useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
@@ -367,6 +375,10 @@ export declare const Strategy: {
   debounce: <T = any, V extends any[] = any[]>(
     op: { duration: number; lead?: boolean } | number
   ) => StrategyType<T, V>;
+  /**
+   * @deprecated
+   * @param op
+   */
   throttle: <T = any, V extends any[] = any[]>(
     op?: { duration: number } | number
   ) => StrategyType<T, V>;

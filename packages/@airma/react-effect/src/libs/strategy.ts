@@ -23,13 +23,13 @@ export function composeStrategies(
           return c(r);
         }, s);
       });
-    const storeSlots = v.store.current as { current: any }[];
+    const storeSlots = v.localCache.current as { current: any }[];
     const callback = [...strategies]
       .reverse()
       .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
         const storage = storeSlots[i] || { current: undefined };
         return function middle(value) {
-          const nextValue = { ...value, store: storage };
+          const nextValue = { ...value, localCache: storage };
           if (c == null) {
             return r(nextValue);
           }
@@ -45,7 +45,7 @@ export function composeStrategies(
         };
       }, defaultStrategy);
     return callback(v).then(d => {
-      const { loaded, sessionLoaded } = v.current();
+      const { loaded, sessionLoaded } = v.getSessionState();
       const { abandon, isError, isFetching } = d;
       const currentLoaded = loaded || (!abandon && !isError && !isFetching);
       const currentIsSessionLoaded =
@@ -145,13 +145,13 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        current: () => instance.state,
+        getSessionState: () => instance.state,
         variables: runtimeVariables,
         runner,
         triggerType,
         config,
-        store: strategyStoreRef,
-        runtimeCache: createRuntimeCache()
+        localCache: strategyStoreRef,
+        executeContext: createRuntimeCache()
       };
       return composeStrategies(strategies)(requires).then(data => {
         if (data.abandon) {
@@ -168,12 +168,12 @@ export function useStrategyExecution<T>(
 
 export function latest(): StrategyType {
   return function latestStrategy(requires): Promise<SessionState> {
-    const { runner, store } = requires;
-    store.current = store.current || 0;
-    const version = store.current + 1;
-    store.current = version;
+    const { runner, localCache } = requires;
+    localCache.current = localCache.current || 0;
+    const version = localCache.current + 1;
+    localCache.current = version;
     return runner().then(sessionData => {
-      if (store.current !== version) {
+      if (localCache.current !== version) {
         return { ...sessionData, abandon: true };
       }
       return sessionData;
@@ -183,19 +183,19 @@ export function latest(): StrategyType {
 
 export function block(): StrategyType {
   return function blockStrategy(requires): Promise<SessionState> {
-    const { runner, store, triggerType } = requires;
+    const { runner, localCache, triggerType } = requires;
     if (triggerType !== 'manual') {
       return runner();
     }
-    if (store.current) {
-      return store.current.then((sessionData: SessionState) => ({
+    if (localCache.current) {
+      return localCache.current.then((sessionData: SessionState) => ({
         ...sessionData,
         abandon: true
       }));
     }
     const promise = runner();
-    store.current = promise.then((sessionData: SessionState) => {
-      store.current = undefined;
+    localCache.current = promise.then((sessionData: SessionState) => {
+      localCache.current = undefined;
       return sessionData;
     });
     return promise;

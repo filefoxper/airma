@@ -277,6 +277,12 @@ export default test.provideTo(function App() {
     ]
   });
 
+  const [queryState] = querySession;
+
+  useResponse.useSuccess(state => {
+    console.log('response success', state);
+  }, queryState);
+
   const [{ data, variables }, t] = querySession;
 
   const [q] = variables ?? [];

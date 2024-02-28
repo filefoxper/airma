@@ -1,6 +1,6 @@
 # Concepts
 
-There are some concepts for understanding the working principle.
+There are some concepts for understanding the working principles.
 
 1. [model](/react-state/concepts?id=model)
 2. [key](/react-state/concepts?id=key)

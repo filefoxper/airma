@@ -1,15 +1,17 @@
-import type { ComponentType, FC, ReactNode } from 'react';
-
 import {
+  ComponentType,
+  FC,
+  ReactNode,
+  useRef,
   useEffect,
   useMemo,
-  useRef,
   useState,
   createContext,
   createElement,
   useContext,
   FunctionComponent
 } from 'react';
+
 import { usePersistFn } from '@airma/react-hooks-core';
 import type {
   AirModelInstance,
@@ -215,6 +217,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ...defaultOpt,
     ...option
   };
+  const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
   const connection = required ? findConnection(context, model) : undefined;
   if (required && !autoLink && !connection) {
@@ -249,6 +252,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   }
   const [agent, setAgent] = useState(current.getCurrent());
   const dispatch = () => {
+    if (unmountRef.current) {
+      return;
+    }
     setAgent(current.getCurrent());
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -266,6 +272,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   useEffect(() => {
     tunnel.connect();
     return () => {
+      unmountRef.current = true;
       tunnel.disconnect();
     };
   }, []);
@@ -393,9 +400,13 @@ export function useSelector<
   const current = callback(connection.getCurrent());
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);
+  const unmountRef = useRef(false);
   const [s, setS] = useState({ data: current });
 
   const dispatch = usePersistFn(() => {
+    if (unmountRef.current) {
+      return;
+    }
     const next = callback(connection.getCurrent());
     if (eqCallback(s.data, next)) {
       return;
@@ -409,6 +420,7 @@ export function useSelector<
   useEffect(() => {
     tunnel.connect();
     return () => {
+      unmountRef.current = true;
       tunnel.disconnect();
     };
   }, []);

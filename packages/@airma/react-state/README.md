@@ -13,6 +13,13 @@
 
 Simple `reducer-like` state-management with method action dispatch mode for react components.
 
+## Documents
+
+* [En](https://filefoxper.github.io/airma/#/react-state/index)
+* [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
+
+## Code first
+
 Create `reducer-like` function:
 
 ```js
@@ -49,12 +56,7 @@ const {count, increase, decrease, add} = useModel(counting, 0); // initialState 
 
 The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
 
-## Documents
-
-* [En](https://filefoxper.github.io/airma/#/react-state/index)
-* [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
-
-## Local state management
+### Local state management
 
 ```tsx
 import {model} from '@airma/react-state';
@@ -81,7 +83,7 @@ const {count, increase, decrease, add} = counting.useModel(0);
 
 Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
 
-## React.Context state management
+### React.Context state management
 
 ```tsx
 import {memo} from 'react';
@@ -130,7 +132,7 @@ const Component = countingStore.provideTo(function Comp() {
 
 Using `model(xxx).createStore().asGlobal()` can build a global store.
 
-## Global state management
+### Global state management
 
 ```ts
 import {model} from '@airma/react-state';

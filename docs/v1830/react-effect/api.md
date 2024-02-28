@@ -2,164 +2,90 @@
 
 ## useQuery
 
-It is used to maintain a query state.
+It is a query [session](/react-effect/concepts?id=session) API. By the default, it can be triggered when it is mounted; the dependency parameters change; or a manual trigger/execute is called. 
 
 ```ts
-function useQuery(callback, variables){
-    return [state, trigger, execute];
-}
+function useQuery(
+  promiseCallbackOrSessionKey, 
+  variablesOrConfig
+):[
+  sessionState, 
+  trigger, 
+  execute
+]
 ```
 
 ### Parameters
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
-* variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
-
-Variables config:
-
-```ts
-{
-    // the variables for callback,
-    // if there is no deps,
-    // the change of variables can drive `useQuery` works
-    variables?: Parameters<callback>,
-    // the deps to drive `useQuery` works,
-    deps?: any[],
-    // set trigger on `manual` mode forcely
-    manual?: boolean,
-    // set loaded `true` can tells typescript about useQuery 
-    // give out a loaded data type.
-    loaded?:true,
-    // a default data before state is loaded
-    defaultData?: any,
-    // strategy callbacks to optimize query
-    strategy?: Strategy | (Strategy[]),
-    // limit the working trigger type in `mount`, `update`, `manual`
-    // default with ['mount', 'update', 'manual']
-    triggerOn?: TriggerType[]
-}
-```
+* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key).
+* variablesOrConfig - It is optional, if there is no variables, useQuery works in manual mode. It can be an parameter array for callback, or a [session config](/react-effect/concepts?id=session-config).
 
 ### Returns
 
-* state - The promise state of useQuery.
-* trigger - A callback to trigger useQuery work manually with the current variables you set to useQuery. It returns a promise resolving a `state`.
-* execute - A callback to trigger useQuery work manually with local parameters. It returns a promise resolving a `state`.
-
-State:
-
-```ts
-type State<T> = {
-    // The data promise resolved
-    data: T,
-    // If the query or mutation is not finished
-    isFetching: boolean,
-    // The error promise rejected
-    error: any,
-    // If the promise has rejected 
-    isError: boolean,
-    // If there is one promise resolve happened.
-    loaded: boolean,
-    // If this promise state is abandoned
-    abandon: boolean
-} 
-```
+* sessionState - [session state](/react-effect/concepts?id=session-state).
+* trigger - A callback to trigger useQuery work manually. It need no parameter, useQuery uses setted `variables` as parameters for execution.
+* execute - A callback to execute useQuery manually. It need full parameters for execution.
 
 ## useMutation
 
-It is used to maintain a mutation state.
+It is a mutation [session](/react-effect/concepts?id=session) API. By the default, it can be triggered when  a manual trigger/execute is called. 
 
 ```ts
-function useMutation(callback, variables){
-    return [state, trigger, execute];
-}
+function useMutation(
+  promiseCallbackOrSessionKey, 
+  variablesOrConfig
+):[
+  sessionState, 
+  trigger, 
+  execute
+]
 ```
 
 ### Parameters
 
-* callback - It can be a promise callback `(...variables:any[])=>Promise<any>` or a session key `createSessionKey((...variables:any[])=>Promise<any>)`.
-* variables - It is optional, if there is no variables, `useQuery` works in manual mode. It can be an parameter array for callback `[...variables]`, or a detail config.
-
-Variables config:
-
-```ts
-{
-    // the variables for callback,
-    // if there is no deps,
-    // the change of variables can drive `useQuery` works
-    variables?: Parameters<callback>,
-    // the deps to drive `useQuery` works,
-    deps?: any[],
-    // set loaded `true` can tells typescript about useQuery 
-    // give out a loaded data type.
-    loaded?:true,
-    // a default data before state is loaded
-    defaultData?: any,
-    // strategy callbacks to optimize query
-    strategy?: Strategy | (Strategy[]),
-    // limit the working trigger type in `mount`, `update`, `manual`
-    // default with ['manual']
-    triggerOn?: TriggerType[]
-}
-```
+* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key).
+* variablesOrConfig - It is optional, if there is no variables, useMutation works in manual mode. It can be an parameter array for callback, or a [session config](/react-effect/concepts?id=session-config).
 
 ### Returns
 
-* state - The promise state of useQuery.
-* trigger - A callback to trigger useQuery work manually with the current variables you set to useQuery. It returns a promise resolving a `state`.
-* execute - A callback to trigger useQuery work manually with local parameters. It returns a promise resolving a `state`.
-
-State:
-
-```ts
-type State<T> = {
-    // The data promise resolved
-    data: T,
-    // If the query or mutation is not finished
-    isFetching: boolean,
-    // The error promise rejected
-    error: any,
-    // If the promise has rejected 
-    isError: boolean,
-    // If there is one promise resolve happened.
-    loaded: boolean,
-    // If this promise state is abandoned
-    abandon: boolean
-} 
-```
+* sessionState - [session state](/react-effect/concepts?id=session-state).
+* trigger - A callback to trigger useMutation work manually. It need no parameter, useMutation uses setted `variables` as parameters for execution.
+* execute - A callback to execute useMutation manually. It need full parameters for execution.
 
 ## createSessionKey
 
-It is used to create a session key for a promise callback.
+It wraps a promise callback to be a session [key](/react-effect/concepts?id=key) for creating store.
 
 ```ts
-function createSessionKey(promiseCallback){
-    return SessionKey;
-}
+function createSessionKey(
+  promiseCallback,
+  sessionType?: 'query' | 'mutation'
+): SessionKey
 ```
 
 ### Parameters
 
-* promiseCallback - It should be a callback returns a promise.
+* promiseCallback - It is a promise callback.
+* sessionType - It is optional, default 'query'. It can declare what kind this session key is.
 
 ### Returns
 
-* SessionKey - It is a session key function. It can be provided to SessionProvider for creating a store. And with this key inside SessionProvider, you can broadcast or accept state changes. 
+* SessionKey - It is a session [key](/react-effect/concepts?id=key).
 
-## SessionProvider
+## Provider
 
-It is a React Context Provider component. It is used for creating a scope store by using session keys.
+It is a React Context Provider component. It creates store from [keys](/react-effect/concepts?id=key). It can be replace by [Provider](/react-state/api?id=provider) in @airma/react-state package.
 
 ```ts
-SessionProvider props:{
-    keys: <session keys>,
+Provider props:{
+    value: <session keys> or <model keys>,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* keys - It should be session keys.
+* value - [Session keys](/react-effect/concepts?id=key) or [model keys](/react-state/concepts?id=key).
 * children - React Nodes
 
 ### Returns
@@ -168,95 +94,55 @@ It returns a React element.
 
 ## provide
 
-It is a HOC mode for SessionProvider.
+It is a HOC mode for Provider.
 
 ```ts
-function provide(sessionKeys){
+function provide(keys){
     return function connect(Component){
         return function HocComponent(componentProps){
             return (
-                <SessionProvider keys={sessionKeys}>
+                <Provider keys={keys}>
                   <Component {...componentProps}/>
-                </SessionProvider>
+                </Provider>
             );
         }
     }
 }
 ```
 
-### Example
-
-```ts
-import React from 'react';
-import {
-    provide, 
-    useQuery, 
-    useSession,
-    createSessionKey
-} from '@airma/react-effect';
-
-const clientKey = createSessionKey(...);
-
-const Child = ()=>{
-    const [ {data} ] = useSession(clientKey);
-    return ......;
-}
-
-const App = provide(clientKey)(()=>{
-
-    useQuery(clientKey, []);
-
-    return (
-        <div>
-            <Child/>
-        </div>
-    );
-})
-```
-
 ## useSession
 
-It is a react hook used to accept state changes from the nearest mathced [SessionProvider](/react-effect/api?id=sessionprovider).
+It is used for subscribing store state change. It can trigger useQuery/useMutation to execute.
 
 ```ts
-export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
-  config: LoadedUseSessionConfig
-): [LoadedSessionState<PCR<D>>, () => void];
-export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
-  config: SessionType
-): [SessionState<PCR<D>>, () => void];
-export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
-  config?: UnloadedUseSessionConfig
-): [SessionState<PCR<D>>, () => void];
-export declare function useSession<D extends SessionKey<any>>(
-  factory: D,
-  config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<PCR<D>>, () => void];
+function useSession(sessionKey):[sessionState, trigger]
 ```
 
 ### Parameters
 
-* sessionKey - A session key created by [createSessionKey](/react-effect/api?id=createsessionkey) API.
-* config - An optional config object or session type, set `{loaded: true}` can force it returns a loaded session state, set `{sessionType: 'query'|'mutation'}` can mark out if you have use a wrong session type. 
+* sessionKey - A session [key](/react-effect/concepts?id=key).
 
 ### Returns
 
-* state - The promise state from nearest SessionProvider store matched with the session key.
-* trigger - It is a no parameter callback, returns void. It can be used to trigger query or mutation which is using the same session key manually.
+* sessionState - [session state](/react-effect/concepts?id=session-state).
+* trigger - A callback to trigger useQuery/useMutation work manually. It need no parameter, useQuery/useMutation uses setted `variables` as parameters for execution.
 
 ## useLoadedSession
 
+It is a special useSession when the usage is ensure, a [session](/react-effect/concepts?id=session) has been loaded.
+
 ```ts
-export declare function useLoadedSession<D extends SessionKey<any>>(
-  factory: D,
-  config: UseSessionConfig
-): [LoadedSessionState<PCR<D>>, () => void];
+function useSession(sessionKey):[sessionState, trigger]
 ```
 
-It is `useSession` with a `{loaded: true}` config item.
+### Parameters
+
+* sessionKey - A session [key](/react-effect/concepts?id=key).
+
+### Returns
+
+* sessionState - A loaded [session state](/react-effect/concepts?id=session-state).
+* trigger - A callback to trigger useQuery/useMutation work manually. It need no parameter, useQuery/useMutation uses setted `variables` as parameters for execution.
 
 
 ## Strategy
@@ -265,11 +151,14 @@ It is a set for often used [strategies](/react-effect/concepts?id=strategy).
 
 ```ts
 const Strategy: {
-  // Provide a debounce running strategy
-  debounce: (op: { duration: number } | number) => StrategyType;
-  // Provide a once running strategy
+  cache:(op?: {
+    key?: (variables: any[]) => string;
+    staleTime?: number;
+    capacity?: number;
+  }) => StrategyType;
+  debounce: (op: { duration: number; lead?: boolean } | number) => StrategyType;
   once: () => StrategyType;
-  error: (
+  failure: (
     process: (e: unknown) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType;
@@ -278,21 +167,12 @@ const Strategy: {
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T>;
   memo: <T>(
-    equalFn?: (source: T | undefined, target: T) => boolean
+    equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
   validate: (process: () => boolean) => StrategyType;
   reduce: <T>(
-    call: (previous: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
+    call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
-  effect: {
-    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
-    success: <T>(
-      process: (data: T, sessionData: SessionState<T>) => any
-    ) => StrategyType<T>;
-    error: (
-      process: (e: unknown, sessionData: SessionState) => any
-    ) => StrategyType;
-  };
   response: {
     <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
     success: <T>(
@@ -305,28 +185,118 @@ const Strategy: {
 };
 ```
 
-* Strategy.debounce - It returns a debounce strategy. You can set a duration time to make promise callback work debounce with this duration time.
-* Strategy.once - It returns a strategy. With it, when your promise callback has resolved a promise, it can not be called again.
-* Strategy.error - It returns a strategy. You can provide a error process callback for it. When the promise is rejected, it calls the process callback with error parameter.
-* Strategy.success - It returns a strategy. You can provide a success process callback for it. When the promise is resolved, it calls the process callback with data parameter.
-* Strategy.memo - It returns a strategy. You can provide a data comparator function for it. This strategy compares promise data with state data, if the result of `equalFn` returns true, it will reuse the state data. The default `equalFn` compares with two JSON.stringify results.
-* Strategy.validate - It returns a strategy. You can set a boolean returning callback, it is always called before promise callback is started. If the setting callback returns `false`, the promise callback will stop work.
-* Strategy.reduce - It returns a strategy. You can set a callback which accepts a newest session data and a current promise resolving data for generating a accumulative data for next session state. If you need other info from state, you can use the last param to fetch session data.
-* ~~Strategy.effect~~ - It returns a strategy. You can set a process callback for it to process the session state effect.
-* ~~Strategy.effect.success~~ - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
-* ~~Strategy.effect.error~~ - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
-* Strategy.response - It returns a strategy. You can set a process callback for it to process the session state effect.
-* Strategy.response.success - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to success.
-* Strategy.response.error - It returns a strategy. You can set a process callback for it to process the session state effect when state changes to error.
+### Strategy.cache
 
-`Strategy.success` is different with `Strategy.effect.success`, one responses to the promise resolver, another responses to session state effect. The same as `Strategy.error` and `Strategy.effect.error`.
+Used for opening SWR query mode. When the query key (default `JSON.stringify(variables)`) can be found in cache, the cache data can be picked out as [session state](/react-effect/concepts?id=session-state).data immediately. In that case, if the **staleTime** is setted, the execution skips.
+
+If the query key is not in cache data, it store execution result with this key into cache. 
+
+#### Parameters
+
+* **op.key** - It is an optional callback, accept executing variables, returns a string value as key for every cache data.
+* **op.staleTime** - It is an optional millisecond number value, to describe the time for caching a data.
+* **op.capacity** - It is an optional number value, to describe how many record can be cached.
+
+### Strategy.debounce
+
+It makes execution run with debounce feature.
+
+#### Parameters
+
+* **op.duration** - It is a millisecond number value, to describe the debounce time. If the whole option is a number, then the whole option is this duration setting.
+* **op.lead** - It is an optional boolean value, to describe the execution work time: `true` means start, `false or undefined` means end.
+
+### Strategy.once
+
+It makes session can only be executed successfully once.
+
+### Strategy.failure
+
+It allows process callback running when a session is failed. 
+
+**Be careful, it works when the executed promise is rejected, it is different with Strategy.response.failure.**
+
+**If there are some Strategy.failure or Strategy.response.failure working in the strategy chain, only the first one runs process callback.**
+
+#### Parameters
+
+* **process** - It is a callback to process when session is failed. This process callback accepts a error data from session.
+* **op.withAbandoned** - It is an optional boolean value, if it is true, the process can accept the abondoned execution errors.
+
+### Strategy.success
+
+It allows process callback running when a session executes successfully. 
+
+**Be careful, it works when the executed promise is resolved, it is different with Strategy.response.success.**
+
+#### Parameters
+
+* **process** - It is a callback to process when session executes successfully. This process callback accepts a promise resolved data from session.
+* **op.withAbandoned** - It is an optional boolean value, if it is true, the process can accept the abondoned execution data.
+
+### Strategy.memo
+
+It is used for reducing render frequency. If the execution data equals with [session state](/react-effect/concepts?id=session-state) data, it uses the old session state data as a new session state data.
+
+#### Parameters
+
+* **equalFn** - It is an optional callback, accepts an old session state data, and a new executed data, returns a boolean for telling if they are equal with each other.
+
+### Strategy.validate
+
+It can skip invalidate session execution happens.
+
+#### Parameters
+
+* **process** - It is a callback returns a boolean value, to validate if the current execution is validate.
+
+### Strategy.reduce
+
+It can accumulate execution data with session state data, just like Array.prototype.reduce.
+
+#### Parameters
+
+* **process** - It is a callback, accepts previous session state data, current executed data and a tuple array about [previouse session state, current session state], returns a next session state data.
+
+### Strategy.response
+
+It allows to process callback when a session execution is finished.
+
+**It works in react.useEffect after a execution result is setted as a new session state.**
+
+#### Parameters
+
+* **process** -It is a callback to process when a execution is finished. It accepts a session state as parameter.
+
+### Strategy.response.success
+
+It allows to process callback when a session execution is successful.
+
+**It works in react.useEffect after a execution result is setted as a new session state.**
+
+#### Parameters
+
+* **process** -It is a callback to process when a execution is successful. It accepts a session state data and the session state as parameters.
+
+### Strategy.response.failure
+
+It allows to process callback when a session execution is failed.
+
+**It works in react.useEffect after a execution result is setted as a new session state.**
+
+**If there are some Strategy.failure or Strategy.response.failure working in the strategy chain, only the first one runs process callback.**
+
+#### Parameters
+
+* **process** -It is a callback to process when a execution is failed. It accepts a session state error and the session state as parameters.
 
 ## ConfigProvider
 
-It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, or use a global fetching state, you can use it.
+It is a global config provider. It can be used for preseting common strategies, providing batch update callback, and opening global fetching mode.
 
 ```ts
 type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
   useGlobalFetching?: boolean;
   strategy?:(
     strategies:(StrategyType | undefined | null)[], 
@@ -345,221 +315,84 @@ interface ConfigProviderProps:{
 * value - It should be global config.
 * children - React Nodes
 
-### Example
-
-```ts
-import React from 'react';
-import {
-  ConfigProvider,
-  Strategy,
-  useQuery,
-  useIsFetching
-} from '@airma/react-effect';
-import type {GlobalConfig} from '@airma/react-effect';
-import {fetchUsers, fetchGroups} from './globalSessions'; 
-
-const config: GlobalConfig = {
-  // The strategy is a callback,
-  // it accepts a running effect strategy array,
-  // and a effect type: 'query' | 'mutation'.
-  // You can complete the running strategies
-  // with padding strategies,
-  // so, the running effect will work with these new strategies.
-  strategy:(
-    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
-  )=>[...s, Strategy.error((e)=>console.log(e))],
-  // use global fetching state.
-  useGlobalFetching: true
-}
-
-const App = ()=>{
-  // if the `fetchUsers` is failed,
-  // the global config strategy `Strategy.error` works.
-  useQuery(fetchUsers, []);
-  useQuery(fetchGroups, {
-    variables: [...ids],
-    strategy: [
-      Strategy.debounce(300), 
-      // Strategy.error can not work twice in strategy chain runtime.
-      Strategy.error(...)
-    ]
-  });
-  const userOrGroupsIsFetching = useIsFetching();
-  ......
-}
-
-......
-{/* Set a GlobalConfig */}
-<ConfigProvider 
-  value={config}
->
-  <App/>
-</ConfigProvider>
-```
-
-## ~~GlobalSessionProvider~~
-
-It is a global config provider. If you want to set a global strategy for every `useQuery` and `useMutation` in children, you can use it.
-
-```ts
-GlobalSessionProvider props:{
-    keys?: SessionKeys,
-    config?: GlobalConfig,
-    children?: ReactNode
-}
-```
-
-### Parameters
-
-* keys - It is optional, you can set session keys for creating a session store in it.
-* config - It is optional, and it should be global config.
-* children - React Nodes
-
-### Example
-
-```ts
-import React from 'react';
-import {
-  GlobalSessionProvider,
-  Strategy,
-  useQuery
-} from '@airma/react-effect';
-import type {GlobalConfig} from '@airma/react-effect';
-import {fetchUsers, fetchGroups} from './globalSessions'; 
-
-// The GlobalConfig only support rebuild strategy currently.
-const config: GlobalConfig = {
-  // The strategy is a callback,
-  // it accepts a running effect strategy array,
-  // and a effect type: 'query' | 'mutation'.
-  // You can complete the running strategies
-  // with padding strategies,
-  // so, the running effect will work with these new strategies.
-  strategy:(
-    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
-  )=>[...s, Strategy.error((e)=>console.log(e))]
-}
-
-const App = ()=>{
-  // if the `fetchUsers` is failed,
-  // the global config strategy `Strategy.error` works.
-  useQuery(fetchUsers, []);
-  useQuery(fetchGroups, {
-    variables: [...ids],
-    strategy: [
-      Strategy.debounce(300), 
-      Strategy.error(...)
-    ]
-  });
-  ......
-}
-
-......
-{/* Set a ClientConfig */}
-<GlobalSessionProvider 
-  config={config}
->
-  <App/>
-</GlobalSessionProvider>
-```
+[Examples](/react-state/guides?id=configprovider) in guides.
 
 ## useIsFetching
 
-It is a hook to detect if there are some `useQuery` or `useMutation` are still fetching.
+It is a hook to detect if there are some useQuery or useMutation still in fetching.
 
 ```ts
-export declare function useIsFetching(
+function useIsFetching(
   ...sessionStates: SessionState[]
 ): boolean;
 ```
 
 Parameters
 
-* sessionStates - The states of `useQuery` or `useMutation` for detecting.
+* sessionStates - Session states for detecting, it is optional. If it is void, and the **GlobalConfig.useGlobalFetching** has been setted, useIsFetching detecting all sessions.
 
 Returns
 
-A boolean data, if any of sessionStates is in `fetching`, it returns true.
-
-Explain
-
-If `useIsFetching` is in a `useGlobalFetching` setted `ConfigProvider`, and there is no parameter for it, it detects all `useQuery` or `useMutation` in this Provider.
+A boolean value, if any of sessionStates is in `fetching`, it returns true.
 
 ## useLazyComponent
 
+It is used for loading asynchronous component when all dependency sessions have finished once.
+
 ```ts
-declare type LazyComponentSupportType<P> =
-  | ComponentType<P>
-  | ExoticComponent<P>;
-
-declare type CheckLazyComponentSupportType<
-  T extends LazyComponentSupportType<any>
-> = T extends LazyComponentSupportType<infer P>
-  ? P extends { error?: ErrorSessionState }
-    ? LazyExoticComponent<T>
-    : never
-  : never;
-
-export declare function useLazyComponent<
-  T extends LazyComponentSupportType<any>
->(
-  componentLoader: () => Promise<T | { default: T }>,
-  ...deps: (AbstractSessionState | AbstractSessionResult)[]
-): CheckLazyComponentSupportType<T>;
+function useLazyComponent(
+  componentLoader, 
+  ...sessionStates
+): LazyComponent
 ```
 
-Parameters
+### Parameters
 
-* componentLoader - It is a callback, it should returns a promise which always resolve a React component or `{default: ReactComponent}` with `{ error?: ErrorSessionState }` props. 
-* deps - The states of `useQuery` or `useMutation` for detecting.
+* componentLoader - It is a callback returns a React.Component resolving promise. 
+* sessionStates - Session states.
 
-Explain
+### Returns
 
-This hook API is used for loading component with its dependecy sessions. It accepts a callback which returns a promise with a component result, and sessionStates from `useQuery`, `useMutation` or `useSession`.
+A React.lazy component with **props.error** field, if all session states are loaded successfully, the component Suspense wrapper renders the component without **props.error: undefined**, unless the error should be like a failed executed [session state](/react-effect/concepts?id=session-state).
 
-Example
+### Example
 
 ```ts
 import React, {Suspense} from 'react';
 import {
-  GlobalSessionProvider,
-  Strategy,
   useQuery,
   useLazyComponent
 } from '@airma/react-effect';
-import type {GlobalConfig, ErrorSessionState} from '@airma/react-effect';
+import type {ErrorSessionState} from '@airma/react-effect';
 import {currentUserKey, fetchUsersKey, fetchGroupsKey} from './globalSessions'; 
 
-// The GlobalConfig only support rebuild strategy currently.
-const config: GlobalConfig = {
-  strategy:(
-    s:(StrategyType | undefined| null)[], type: 'query' | 'mutation'
-  )=>[...s, Strategy.error((e)=>console.log(e))]
-}
-
 const UnexpectedComp = (props:{error?:ErrorSessionState})=>{
+  const {error: errorSessionState} = props;
+  const {
+    error
+  } = errorSessionState;
   return (
     <div>some thing is wrong</div>
   )
 }
 
 const App = ()=>{
-  const userSession = useQuery(currentUserKey, []);
-  const [{data}] = userSession;
-  const usersSession = useQuery(fetchUsersKey, {
+  const [userSessionState] = useQuery(currentUserKey, []);
+  const {data} = userSessionState;
+  const [usersSessionState] = useQuery(fetchUsersKey, {
     variables:[data],
     triggerOn: [ 'update' ],
   });
-  const groupSession = useQuery(fetchGroupsKey, {
+  const [groupSessionState] = useQuery(fetchGroupsKey, {
     variables:[data],
     triggerOn: [ 'update' ],
   });
 
-  // It can help you to load component with its dependency sessions.
+  // It is helpful to load component with its dependency sessions.
   const Container = useLazyComponent(()=>import('./container'), 
-    userSession,
-    usersSession,
-    groupSession
+    userSessionState,
+    usersSessionState,
+    groupSessionState
   )
 
   ......
@@ -572,45 +405,25 @@ const App = ()=>{
     </div>
   )
 }
-
-......
-{/* Set a ClientConfig */}
-<GlobalSessionProvider 
-  config={Strategy.error(e => console.log(e))}
-  keys = {{fetchUsersKey, fetchGroupsKey}}
->
-  <App/>
-</GlobalSessionProvider>
 ```
 
 ## useResponse
 
+It allows to process callback after a session execution is finished (in React.useEffect). 
+
 ```ts
-export declare interface useResponse<T> {
-  (
-    process: (state: SessionState<T>) => any,
-    sessionState: SessionState<T>
-  ): void;
-  success: (
-    process: (data: T, sessionState: SessionState<T>) => any,
-    sessionState: SessionState<T>
-  ) => void;
-  error: (
-    process: (error: unknown, sessionState: SessionState) => any,
-    sessionState: SessionState
-  ) => void;
-}
+function useResponse(
+  process: (sessionState)=>any,
+  sessionState
+): void
 ```
 
-Parameters
+### Parameters
 
-process - A process callback response for session state changes.
+* **process** - A process callback accepts a session state as parameter.
+* **sessionState** - The dependent session state.
 
-Explain
-
-This hook Api calls process callback when session is responsed. It is a effect for session state.
-
-Example:
+### Example:
 
 ```ts
 const [sessionState] = useQuery(sessionCallback, []);
@@ -624,58 +437,119 @@ useResponse((s)=>{
 }, sessionState);
 ```
 
-### useResponse.success
+It has child APIs:
+
+### useResponse.useSuccess
+
+It allows to process callback after a session execution is finished successfully (in React.useEffect).
 
 ```ts
-useResponse.success<T>(
-    process: (data: T, sessionState: SessionState<T>) => any,
-    sessionState: SessionState<T>
-  ) => void;
+useResponse.useSuccess(
+  process: (data, sessionState) => any,
+  sessionState
+): void;
 ```
 
-Parameters
+#### Parameters
 
-process - A process callback response for session state changes.
+* **process** - A process callback accepts a successful execution data and a session state as parameters.
+* **sessionState** - The dependent session state.
 
-Explain
-
-This Hook Api calls process callback when the session is responsed successful.
-
-Example
+#### Example
 
 ```ts
 const [sessionState] = useQuery(sessionCallback, []);
 
-useResponse.success((data)=>{
-  processSuccess(data);
+useResponse.useSuccess((data, state)=>{
+  processSuccess(data, state.variables);
 }, sessionState);
 ```
 
-### useResponse.success
+### useResponse.useFailure
+
+It allows to process callback after a session execution is finished failed (in React.useEffect).
 
 ```ts
-useResponse.error(
-    process: (error: unknown, sessionState: SessionState) => any,
-    sessionState: SessionState
-  ) => void;
+useResponse.useFailure(
+  process: (error, sessionState) => any,
+  sessionState
+): void;
 ```
 
-Parameters
+#### Parameters
 
-process - A process callback response for session state changes.
+* **process** - A process callback accepts a failed execution data and a session state as parameters.
+* **sessionState** - The dependent session state.
 
-Explain
-
-This Hook Api calls process callback when the session is responsed failed.
-
-Example
+#### Example
 
 ```ts
 const [sessionState] = useQuery(sessionCallback, []);
 
-useResponse.error((err)=>{
+useResponse.useFailure((err)=>{
   processError(err);
 }, sessionState);
 ```
 
-Why use `useResponse` hooks? `Strategy.success` and `Strategy.error` only response for the running promise drived by `useQuery`, that means if there are some `useQuery` and `useSession` with same session keys, only one of them can trigger `Strategy.xxx`. But, `useResponse` responses for session state, it can be triggered by every session state from `useQuery` and `useSession` with a same session key. If you still like using a `Strategy` to response session state changes, you can use `Strategy.effect` for a same experience.
+## session
+
+It is a function for wrapping a promise callback to be a API collection.
+
+```ts
+type StaticStoreApi = {
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
+type StoreApi = {
+  asGlobal(): StaticStoreApi;
+  provideTo<P extends object>(
+    component: ComponentType<P>
+  ):ComponentType<P>;
+  Provider:FunctionComponent<{
+    value: ModelKeys, 
+    children?: ReactNode
+  }>;
+  with(...stores:(StoreApi|ModelKey)[]);
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
+type Api = {
+  createStore():StoreApi;
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+};
+
+function session(
+  promiseCallback, 
+  sessionType: 'query' | 'mutation'
+): Api
+```
+
+### Parameters
+
+* **promiseCallback** - A promise callback.
+* **sessionType** - To declare if this session is for `query` or `mutation`.
+
+### Returns
+
+An Api collection for coding with a flow style.
+
+[Examples](/react-effect/index?id=session) before.

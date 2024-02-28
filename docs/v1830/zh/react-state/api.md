@@ -3,128 +3,41 @@
 ## useModel
 
 ```ts
-function useModel<
-  S, 
-  T extends Record<string, any>| Record<number, any>,
-  D extends S
->(
-  model: (state:S)=>T,
-  state?: D,
-  option?: { 
-    refresh?: boolean; 
-    autoLink?: boolean; 
-    realtimeInstance?: boolean 
-  }
-): T;
+function useModel(modelFn, defaultState?): instance;
 ```
 
 参数：
 
-* model - 模型函数或[键](/zh/react-state/guides?id=键) 模型。
-* state - 默认状态值，当 model 为 [键](/zh/react-state/guides?id=键) 模型时为可选项。
-* option - 可选配置，可配置 `refresh`，`autoLink`，`realtimeInstance` 项，开启不同的功能。
-
-解释：
-
-1. `option.refresh`：当该配置项为 `true` 时，`useModel` 会跟随默认状态值的变化刷新实例。
-2. `option.autoLink`：当该配置项为 `true` 时，如果 `useModel` 使用的 `键` 无法匹配到 `库`，则将 `键` 模型当作本地模型使用，实例维护在 `useModel` 中。成功匹配上下文实例库的 `useModel`，在开启 `autoLink` 的情况下，不具备[运行时初始化](/zh/react-state/guides?id=初始化)的能力。
-3. `option.realtimeInstance`：当该配置项为 `true` 时，返回的实例对象为[非稳定实例](/zh/react-state/concepts?id=非稳定实例)。
+* modelFn - [模型](/zh/react-state/concepts?id=模型)函数或[键](/zh/react-state/concepts?id=键) 。
+* state - 默认状态值，当 modelFn 为键(/zh/react-state/guides?id=键) 时为可选项。
 
 返回：
 
-模型[实例](/zh/react-state/concepts?id=实例)
-
-例子：
-
-```ts
-// 本地状态
-import {useModel} from '@airma/react-state';
-
-const counter = (state:number)=>({
-    count: state,
-    increase:()=> state + 1,
-    decrease:()=> state - 1
-});
-
-// 自定义 hook
-const useCounter = ()=>{
-    const {
-        count,
-        increase,
-        decrease,
-    } = useModel(counter);
-
-    ......
-};
-```
-
-或 
-
-```ts
-// 上下文状态
-import React from 'react';
-import {
-    useModel, 
-    createKey,
-    StoreProvider
-} from '@airma/react-state';
-
-// 建立 `键` 模型
-const counter = createKey((state:number)=>({
-    count: state,
-    increase:()=> state + 1,
-    decrease:()=> state - 1
-}));
-
-const Counter = ({name}:{name:string})=>{
-    // 使用 `键` 模型匹配上下文状态库中的实例
-    const {
-        count,
-        increase,
-        decrease,
-    } = useModel(counter);
-
-    ......
-};
-
-export const App = ()=>{
-    // StoreProvider 通过 `键` 创建并维护链接库
-    return (
-        <StoreProvider keys={counter}>
-            <Counter name="count_1">
-            <Counter name="count_2">
-        </StoreProvider>
-    );
-}
-```
+模型实例对象
 
 ## useControlledModel
 
 ```ts
-function useControlledModel<
-  S,
-  T extends Record<string|number, any>,
-  D extends S
->(
-    model: (state:S)=>T, 
-    state: D, 
-    onChange: (s: S) => any
-): T;
+function useControlledModel(
+    modelFn, 
+    state, 
+    onChange
+): instance
 ```
 
 参数：
 
-* model - 模型函数，不能为 `键` 模型，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
+* modelFn - 模型函数。
 * state - 外部状态值。
 * onChange - 对外反馈变化状态的 callback 接口。
 
 解释：
 
-该 API 有助于将模型复用至受控模式，`useControlledModel` 不维护内部状态，完全受控于传入的外部状态值 state，这与 `useModel` 的 `refresh` 模式以及 `useRefreshModel` 不同。可参考引导中关于[受控模型](zh/react-state/guides?id=受控模型)这部分。
+该 API 有助于将模型复用至受控模式，`useControlledModel` 不维护内部状态，完全受控于传入的外部状态值 state，可参考引导中关于[useControlledModel](zh/react-state/guides?id=usecontrolledmodel)这部分。
 
 返回：
 
-完全受控的模型[实例](/zh/react-state/concepts?id=实例)
+完全受控的模型实例对象
 
 例子：
 
@@ -156,109 +69,25 @@ const App = ()=>{
 }
 ```
 
-## ~~useRefreshModel~~
-
-```ts
-function useRefreshModel<
-  S,
-  T extends Record<string|number, any>,
-  D extends S
->(
-  model: (state:S)=>T,
-  state: D,
-  option?: { autoLink?: boolean; realtimeInstance?:boolean }
-): T;
-```
-
-参数：
-
-* model - 模型函数或`键` 模型，详情可见[概念部分](/zh/react-state/concepts?id=模型)。
-* state - 状态值，`useRefreshModel` 监听该值的变化刷新实例。
-* option - 可选配置，可配置 `autoLink`，`realtimeInstance` 项，开启不同的功能。
-
-解释：
-
-API `useRefreshModel` 相当于 [useModel(model, state, {refresh: true})](/zh/react-state/api?id=usemodel) 的快捷使用方式，内部有自己的 state 或有匹配的链接实例。当传参 state 发生变化时，`useRefreshModel` 会刷新实例，当实例行为方法被调用时，也会刷新实例。
-
-返回：
-
-模型[实例](/zh/react-state/concepts?id=实例)
-
-例子：
-
-```ts
-import React from 'react';
-import {useRefreshModel} from '@airma/react-state';
-import {counter} from './model';
-
-const App = ()=>{
-    const [state, setState] = useState(0);
-
-    // 跟随 state 变化刷新实例，当并不完全受控于 state
-    const {
-        count,
-        // 调用行为方法刷新实例
-        increase,
-        decrease,
-    } = useRefreshModel(counter, state); 
-
-    const resetCountTo = (c)=>{
-        setState(c);
-    };
-
-    return ......;
-}
-```
-
-## ~~useRefresh~~
-
-```ts
-function useRefresh<T extends (...args: any[]) => any>(
-  method: T,
-  variables:
-    | Parameters<T>
-    | {
-        refreshDeps?: any[];
-        variables: Parameters<T>;
-      }
-): void;
-```
-
-参数：
-
-* method - 任意带参数的回调函数
-* variables - 回调函数依赖参数，或配置。
-
-解释：
-
-`useRefresh` API 通过监听 variables 变化调用 method 回调函数。variables 为 method 的参数。如果希望改变监听依赖，可设置 refreshDeps 作监听依赖，设置 refreshDeps 后，`useRefresh` 不再监听 variables 变化。
-
-返回
-
-void
-
 ## useSelector
 
 ```ts
-export declare function useSelector<
-  R extends Key<AirReducer<any, any>>,
-  C extends (instance: ReturnType<R>) => any
->(
-  key: R,
-  selector: C,
-  equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+function useSelector(
+  modelKey,
+  selector,
+  equalFn?
 ): ReturnType<C>;
 ```
 
 参数：
 
-* key - [键](/zh/react-state/guides?id=键)模型。
+* key - [键](/zh/react-state/concepts?id=键)。
 * selector - 回调函数，可选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
-* equalFn - 可选对比函数，用于对比`库链接`实例刷新时，上次选取数据与本次选取值是否相等。默认以 `===` 作为对比方案。
+* equalFn - 可选对比函数，用于对比库状态更新前后，实例选取字段值是否相等。默认以 `===` 作为对比方案。
 
 解释：
 
-`useSelector` 用于选取`库链接`实例中的部分数据，当实例刷新时，若判断上次选取数据与本次选取值相等，则不触发渲染，继续沿用上次选中值。否则刷新选取值，触发使用组件渲染。对比标准 `equalFn`。
+`useSelector` 用于选取`库`实例中的部分数据，当实例更新前后选取值相等，则不触发渲染，否则刷新选取值，触发使用组件渲染。对比标准 `equalFn`。
 
 该 API 大最大作用就是降低渲染频率，提高渲染性能。
 
@@ -271,7 +100,7 @@ selector 回调函数返回值。
 ```ts
 import React from 'react';
 import {
-  StoreProvider, 
+  Provider, 
   createKey, 
   useSelector
 } from '@airma/react-state';
@@ -305,73 +134,34 @@ const Counter = ()=>{
 
 export default ()=>{
     return (
-        <StoreProvider keys={counter}>
+        <Provider value={counter}>
             <Decrease/>
             <Counter/>
             <Increase/>
-        </StoreProvider>
+        </Provider>
     );
 }
 ```
 
-## useRealtimeInstance
+## Provider
 
-React hook
-
-```ts
-export declare function useRealtimeInstance<T>(instance: T): T;
-```
-
-参数：
-
-* instance - 模型[实例](/zh/react-state/concepts?id=实例)
-
-返回：
-
-非稳定[实例](/zh/react-state/concepts?id=非稳定实例)
-
-## useIsModelMatchedInStore
-
-React hook
+React.Context.Provider 组件
 
 ```ts
-export declare function useIsModelMatchedInStore(
-  key: Key<any>
-): boolean;
-```
-参数：
-
-* key - [键](/zh/react-state/guides?id=键)模型
-
-返回
-
-判断[键](/zh/react-state/guides?id=键)模型是否可以匹配上层 StoreProvider 中的 store。
-
-## StoreProvider
-
-React 组件
-
-```ts
-type Key=((state:any)=>Record<number|string, any>)&{
-    pipe<S,T extends (Record<number|string, any>)>(
-        model:(s:S)=>T
-    ): typeof model
-}
-
-const StoreProvider: FC<{
-  keys:  Array<Key> | Key | Record<string, Key>;
-  children: ReactNode;
+const Provider: FC<{
+  value:  Array<ModelKey> | ModelKey | Record<string, ModelKey>;
+  children?: ReactNode;
 }>;
 ```
 
 Props
 
-* keys - [键](/zh/react-state/guides?id=键)集合，可以是单个`键`模型，也可以是`键`模型数组或对象。
+* value - [键](/zh/react-state/concepts?id=键)集合，可以是单个键，也可以是键的数组或对象集合形式。
 * children - react elements
 
 作用
 
-根据`键`创建链接库，提供上下文环境。
+根据键创建本地库，提供通过键访问本地库的上下文环境。
 
 返回
 
@@ -379,30 +169,24 @@ Props
 
 ## provide
 
-React 高阶组件
+Provider 的高阶组件形态。
 
 ```ts
-type Key=((state:any)=>Record<number|string, any>)&{
-    pipe<S,T extends (Record<number|string, any>)>(
-        model:(s:S)=>T
-    ): typeof model
-}
-
 function provide(
-  keys: Keys
-): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
+  keys
+): (
+  component: ComponentType
 ) => typeof component;
 ```
 
 参数：
 
-* keys - [键](/zh/react-state/guides?id=键)集合，可以是单个`键`模型，也可以是`键`模型数组或对象。
+* keys - [键](/zh/react-state/concepts?id=键)集合，可以是单个键，也可以是键的数组或对象集合形态。
 * component - React 组件
 
 返回
 
-* 与传入 component 拥有相同 props 接口的组件。相当于对该组件包装了一层 `StoreProvider` 父节点。
+* 与传入 component 拥有相同 props 接口的组件。相当于对传入组件包装了一层 Provider 父节点。
 
 
 例子：
@@ -433,31 +217,19 @@ const App = provide(models)(
 函数 API
 
 ```ts
-type Key=((state:any)=>Record<number|string, any>)&{
-    pipe<S,T extends (Record<number|string, any>)>(
-        model:(s:S)=>T
-    ): typeof model
-}
-
-function createKey<S,T extends Record<string|number,any>>(
-    model: (state:S)=>T,
-    defaultState?: S
-):Key;
+function createKey(
+    modelFn,
+    defaultState?
+): ModelKey;
 ```
 
 参数：
 
-* model - [模型](/zh/react-state/concepts?id=模型)函数
-
-解释：
-
-`createKey`通过包装模型函数，生成`键`模型。`键`模型可用于 `StoreProvider` 生成 [链接](/zh/react-state/concepts?id=链接) 库。`useModel` 或 `useSelector` 可以通过`键`模型访问 `StoreProvider` 中的 [链接](/zh/react-state/concepts?id=链接) 库，从而达到上下文状态同步的效果。
-
-如果希望了解[键](/zh/react-state/guides?id=键)模型的 pipe 方法的用途，请参考[神奇的管道](/zh/react-state/feature?id=神奇的管道)。
+* modelFn - [模型](/zh/react-state/concepts?id=模型)函数
 
 返回：
 
-[键](/zh/react-state/guides?id=键)模型
+[键](/zh/react-state/concepts?id=键)
 
 ## shallowEqual
 
@@ -485,8 +257,6 @@ function shallowEqual<R>(prev: R, current: R): boolean;
 ```ts
 import React from 'react';
 import {
-    StoreProvider, 
-    factory, 
     useSelector,
     shallowEqual
 } from '@airma/react-state';
@@ -502,6 +272,50 @@ const Counter = ()=>{
     return ......
 }
 ```
+
+## model
+
+model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API 调用风格。
+
+```ts
+interface GlobalStoreApi {
+  useModel,
+  useSelector
+}
+
+interface StoreApi {
+  key,
+  with:(
+    ...stores: (StoreApi | ModelKey)[]
+  ) => StoreApi,
+  asGlobal: () => GlobalStoreApi,
+  provide,
+  provideTo: (
+    component: ComponentType
+  ) => typeof component,
+  Provider: FC<{ children?: ReactNode }>,
+  useModel,
+  useSelector
+}
+
+interface Api {
+  useModel,
+  useControlledModel,
+  createStore: (defaultState?) => StoreApi;
+}
+
+function model(modelFn): (typeof modelFn) & Api;
+```
+
+参数
+
+* modelFn - 模型函数
+
+返回
+
+带有常用API的模型函数
+
+用法[参考](/zh/react-state/guides?id=model)
 
 ## ConfigProvider
 
@@ -528,7 +342,7 @@ export declare const ConfigProvider: FC<{
 ```ts
 import React from 'react';
 import { render, unstable_batchedUpdates } from 'react-dom';
-import App from '@/app';
+import App from './app';
 import { ConfigProvider, GlobalConfig } from '@airma/react-state';
 
 const root = document.getElementById('root');
@@ -539,11 +353,9 @@ const config: GlobalConfig = {
 };
 
 render(
-  <React.StrictMode>
-    <ConfigProvider value={config}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>,
+  <ConfigProvider value={config}>
+    <App />
+  </ConfigProvider>,
   root
 );
 ```

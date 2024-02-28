@@ -10,9 +10,9 @@
 
 # @airma/restful
 
-## Basic usage
+A nice restful style http request tool.
 
-We have provided a nice way to describe a restful http requests like:
+## Basic usage
 
 ```ts
 import { client } from '@airma/restful';
@@ -69,13 +69,19 @@ async function getUser(id: string): Promise<User>{
     }
 }
 
-// if you need details from response, use `response` from `method promise`
-async function getUserResponse(id: string): Promise<ResponseData<User>>{
+// use `response` method to get response detail.
+async function getUserResponse(
+    id: string
+): Promise<ResponseData<User>>{
     try{
-        // with response
-        // when error { isError: true; error: any, networkError: boolean, status: number, headers?: Record<string, any> }
-        // when success { isError: false; data: User, status: number, headers: Record<string, any> }
-        return root.setParams({ id }).get<User>().response();
+        const responseData = await root.
+            setParams({ id }).
+            get<User>().
+            // with response
+            // when error { isError: true; error: any, networkError: boolean, status: number, headers?: Record<string, any> }
+            // when success { isError: false; data: User, status: number, headers: Record<string, any> }
+            response();
+        return responseData;
     } catch(e: any) {
         console.log(e)
     }
@@ -84,7 +90,7 @@ async function getUserResponse(id: string): Promise<ResponseData<User>>{
 
 ## Config
 
-The `@airma/restful` contains a simple default config, it is not enough for you, you can config it:
+The `@airma/restful` contains a simple default config. Use client API to set it.
 
 ```ts
 import { client, ResponseData } from '@airma/restful';
@@ -95,8 +101,13 @@ const { rest } = client({
     // default params ex { sessionId: 12 } -> http://host/path?sessionId=12&xx=...
     defaultParams: {...},
     // intercept the response data
-    responseInterceptor: ( data: ResponseData ) => {console.log(data)},
-    // you can replace the default request with your own request method
+    responseInterceptor: ( 
+        data: ResponseData 
+    ) => {
+        console.log(data)；
+        return data
+    },
+    // replace request implement with a customized asynchronous callback
     async request(url: string, requestConfig: RequestConfig){
         return Promise<ResponseData>;
     }
@@ -105,7 +116,7 @@ const { rest } = client({
 
 ### Headers
 
-You can set a headers for the client, and the client always sends request with the headers you set.
+Set a request headers for client.
 
 ```ts
 client({
@@ -119,7 +130,7 @@ client({
 
 ### DefaultParams
 
-You can set default params for the requests send by you client. These params always exist in the `url`, unless you recover them with undefined in the specific request.
+Set default params for requests. These params always exist in the `url`, unless recover them with tobe undefined.
 
 ```ts
 const {rest} = client({
@@ -133,14 +144,15 @@ const {rest} = client({
 rest('/path').path('child').setParams({userId:1}).get<User>();
 
 // http://host/path/child?sessionId=12&userId=1
+// recover private tobe undefined.
 rest('/path').path('child').setParams({userId:1, private: undefined}).get<User>();
 ```
 
 ### Request
 
-The default request sender is a `window.fetch` adapter. If you want to replace it with some more good adapter, you can set `request`.
+The default request sender based on [window.fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). It is allowed to be replaced with customized implement.
 
-The `Request` is a callback, with a url and requestConfig as params, it should returns a promise with a `ResponseData` type result.
+The `Request` is an asynchronous callback, with url and requestConfig as parameters. It should returns a promise with a `ResponseData` type result.
 
 ```ts
 type Request = (
@@ -151,7 +163,7 @@ type Request = (
 ) => Promise<ResponseData>; // response data
 ```
 
-The `RequestConfig` type:
+RequestConfig type:
 
 ```ts
 type ResponseType =
@@ -161,26 +173,27 @@ type ResponseType =
   | 'blob'
   | 'arrayBuffer';
 
-// the config you can set to `client`
+type ParamsProcessor = {
+  stringify: (params: Record<string | number, any>) => string;
+  parse: (query: string) => Record<string | number, any>;
+};
+
+// client config type
 type RestConfig = {
-    // just headers you set to client({headers:...})
+  // request headers
   headers?: Record<string, any>;
-  // the response data format: json, text, formData, blob, arrayBuffer
+  // response data format: json, text, formData, blob, arrayBuffer
   responseType?: ResponseType;
-  // just responseInterceptor you set to client({responseInterceptor})
+  // callback for reproducing response data.
   responseInterceptor?: (
     data: ResponseData
   ) => ResponseData | undefined;
-  // just defaultParams you set to client({defaultParams...})
+  // default parameters make query data with default options.
   defaultParams?: Record<string | number, any>;
-  // you can provide a param processor to stringify and parse
-  // params.
-  // type ParamsProcessor = { 
-  //   stringify(data:Record<string | number, any>): string,
-  //   parse(data: string): Record<string | number, any>
-  // }
+  // re-define how to stringify parameters to query, and how to parse query to parameters.
   paramsProcessor?: () => ParamsProcessor;
-  /** the rest config you can refer to window.fetch API **/
+
+  /** Refer to window.fetch API **/
   credentials?: 'include' | 'omit' | 'same-origin';
   cache?:
     | 'default'
@@ -208,7 +221,7 @@ type RestConfig = {
 }
 
 type RequestConfig = RestConfig & {
-  // object style for ?param=xxx&more=xxx
+  // object style for query string: ?param=xxx&more=xxx
   params?: Record<string, any>;
   // object style for post request payload
   body?: Record<string, any>;
@@ -221,44 +234,46 @@ The `ResponseData` type:
 
 ```ts
 export declare type SuccessResponse<T = any> = {
+  // response status
   status: number;
+  // response headers
   headers?: Record<string, any>;
   // the final promise result
   data: T;
-  // is error request
+  // if request is failed
   isError: false;
 };
 
 export declare type ErrorResponse = {
+  // response status
   status: number | null;
   // error data
   error: any;
   // same value with `error`
   data: any;
+  // response headers
   headers?: Record<string, any>;
-  // is network error
+  // if network error is happening
   networkError: boolean;
-  // is error request
+  // if request is failed
   isError: true;
 };
 
 export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
 ```
 
-You can replace request with the most popular request tool [axios](https://www.npmjs.com/package/axios) or other request API. And now you should know, that `@airma/restful` just provides a restful style for you.
-
 ### ResponseInterceptor
 
-`ResponseInterceptor` is a callback which helps you intercept a response. You can redefine if the request is an error request, and affect if the rest end should resolve or reject this result. You can also just make a log, and don't change result.
+`ResponseInterceptor` is a callback for intercepting a response.
 
 intercept response:
 
 ```ts
 import {client, ResponseData} from '@airma/restful';
 
-// for example we have to judge if the request is success 
-// by the `data.success`
-const redefinition = (response:ResponseData) :ResponseData =>{
+const myInterceptor = (response:ResponseData) :ResponseData =>{
+    // If a system allows no http error happen,
+    // intercept response, and re-define response data for simple usage.
     const {data, status, networkError} = response;
     if ( data && data.success ) {
         return {
@@ -278,30 +293,13 @@ const redefinition = (response:ResponseData) :ResponseData =>{
 }
 
 const { rest } = client({
-    responseInterceptor: redefinition
-})
-```
-
-log response:
-
-```ts
-import {client, ResponseData} from '@airma/restful';
-
-// the different with redefinition is we should return void,
-// if we do not want to change result.
-const log = (response:ResponseData): void =>{
-    const {data, status} = response;
-    console.log(status, data);
-}
-
-const { rest } = client({
-    responseInterceptor: log
+    responseInterceptor: myInterceptor
 })
 ```
 
 ### paramsProcessor
 
-If you want to keep the default request, but replace a better params processor like [qs](https://www.npmjs.com/package/qs), you can use this setting.
+For replacing the function about how to stringify parameters to query, or parse query to parameters object. The recommend tool is [qs](https://www.npmjs.com/package/qs).
 
 ```ts
 import { client } from '@airma/restful';
@@ -310,10 +308,14 @@ import qs from 'qs';
 export default client({
     paramsProcessor(){
         return {
-            stringify(data: Record<string | number, any>): string{
+            stringify(
+                data: Record<string | number, any>
+            ): string{
                 return qs.stringify(data);
             },
-            parse(query: string): Record<string | number, any>{
+            parse(
+                query: string
+            ): Record<string | number, any>{
                 return qs.parse(query);
             }
         }
@@ -321,9 +323,9 @@ export default client({
 })
 ```
 
-## Change config
+## Accumulated config
 
-Sometimes you want to change rest config when the client has been built. You can use `config` method from client instance.
+Use the **config** method from client instance to config cumulatively.
 
 ```ts
 import {client} from '@airma/restful';
@@ -342,28 +344,94 @@ async function test(){
 }
 ```
 
-You can set headers and other config too.
-
-If you want to config a specific request, you should set config to a method.
+It also supports config for special request.
 
 ```ts
 rest('/path').get({headers:{...}, responseType:'text'});
 ```
 
+## Realtime config
+
+Use the **configRuntime** method from client instance to config everytime when request works.
+
+```ts
+import {client} from '@airma/restful';
+
+const {rest, configRuntime} = client();
+
+const sessionCache = {
+    sessionId: undefined
+};
+
+setInterval(async ()=>{
+    const sessionId = await rest('/get-session-id').get();
+    sessionCache.sessionId = sessionId;
+}, 5000);
+
+// Everytime when request is started,
+// the callback setted by `configRuntime` is called for generating a realtime request config data.
+configRuntime(
+    c => ({
+        ...c, 
+        defaultParams: {
+            // use newest sessionId
+            sessionId: sessionCache.sessionId
+        } 
+    })
+);
+
+function test(){
+    // http://host/path?sessionId=xxx&id=1
+    await rest('/path').setParams({id:1}).get();
+}
+```
+
+Everytime when request is started, the callback setted by `configRuntime` is called for generating a realtime request config data.
+
 ## Response
 
-As we have known, the method `get`, `post`, `put`, `delete` provides a promise which has a result we need directly. But, sometimes, we need a more original response data with status, headers, networkError properties. So, we can use `response` from the method returns.
+Method `response` allows to get the origin response data for process.
 
 ```ts
 const res = await rest('/path').get<User>().response();
 if(!res.isError){
     return res.data; // User type
 }
-// we can get details now
+// detail
 const {error, networkError, headers} = res;
 ```
 
-The response method is a parasitic method in the `get`, `post`, `put`, `delete` method returning promise. It returns a promise which result is a `ResponseData`.
+Type of response data:
+
+```ts
+export declare type SuccessResponse<T = any> = {
+  // response status
+  status: number;
+  // response headers
+  headers?: Record<string, any>;
+  // the final promise result
+  data: T;
+  // if request is failed
+  isError: false;
+};
+
+export declare type ErrorResponse = {
+  // response status
+  status: number | null;
+  // error data
+  error: any;
+  // same value with `error`
+  data: any;
+  // response headers
+  headers?: Record<string, any>;
+  // if network error is happening
+  networkError: boolean;
+  // if request is failed
+  isError: true;
+};
+
+export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
+```
 
 ## Changes
 
@@ -376,3 +444,6 @@ The response method is a parasitic method in the `get`, `post`, `put`, `delete` 
 * use a simple inside `qs` to replace [qs](https://www.npmjs.com/package/qs), and you can replace it with [qs](https://www.npmjs.com/package/qs) by client config `paramsProcessor`.
 * add the config from `window.fetch` API.
 
+### v18.3.0
+
+* add `configRuntime` method in client instance.

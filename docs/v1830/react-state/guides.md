@@ -95,7 +95,7 @@ const Component = provide(modelKey)(function Component(){
 })
 ```
 
-Want to load more than one stores?
+Want to use more than one stores?
 
 
 ```ts
@@ -287,7 +287,7 @@ const Checkbox = (props:{
 API `useControlledModel` accepts a model function, a controlled state and a change callback for this controlled state as parameters.
 
 ```ts
-const instance = useControlledModel(model, value, onChange)
+const instance = useControlledModel(modelFn, value, onChange)
 ```
 
 ## model
@@ -353,6 +353,23 @@ toggleStore.with(countStore,...).provideTo(
 ```
 
 API `model` is more simple and useful, the output from `model(myModelFn)` is still a model function, it still can be used in other model functions.
+
+## ConfigProvider
+
+For `@airma/react-state` uses subscription mode to synchronous state changes, it needs a batch update way to update multiple state changes.
+
+Before react<18.0.0, provide `unstable_batchedUpdates` from `react-dom` to `@airma/react-state` can make subscription state updating work more effectively. 
+
+```ts
+import { unstable_batchedUpdates } from 'react-dom';
+import { ConfigProvider } from '@airma/react-state';
+
+const config = {batchUpdate: unstable_batchedUpdates};
+
+<ConfigProvider value={config}>
+......
+</ConfigProvider>
+```
 
 Next Page [feature](/react-state/feature).
 

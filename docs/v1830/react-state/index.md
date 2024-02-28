@@ -224,7 +224,7 @@ const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultC
 
 ## Introduce
 
-Consider `@airma/react-state` as a enhanced redux. It uses `model function` to replace `reducer function` and makes `dispatching action` been `calling method`; it provides 3 kinds of state-management: `Local state`, `React.Context state`, `Global state`, then the usage can be more reasonable; it allows providing parts of state out for render, that makes state more flexible. 
+Consider `@airma/react-state` as a enhanced redux. It uses `model function` to replace `reducer function` and makes `dispatching action` been `calling method`; it provides 3 kinds of state-management: `Local state`, `React.Context state`, `Global state`, then the usage can be more reasonable; it allows providing parts of state from model instance, that makes state more flexible. 
 
 ### How dose a model work?
 

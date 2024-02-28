@@ -153,6 +153,16 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
       });
     }
+    if (['mount', 'update'].includes(triggerType) && variables == null) {
+      throw new Error(
+        'Can not execute with `mount` or `update` dependency mode. There is no variables found in config.'
+      );
+    }
+    if (triggerType === 'manual' && variables == null && vars == null) {
+      throw new Error(
+        'Can not trigger session to execute. There is no variables found in config.'
+      );
+    }
     instance.setFetchingKey(keyRef.current);
     Promise.resolve(undefined).then(() => {
       instance.removeFetchingKey(keyRef.current);
@@ -209,13 +219,13 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.state]);
 
   useEffect(() => {
-    if (stableInstance.state.fetchVersion == null) {
+    if (stableInstance.state.round === 0) {
       return;
     }
     strategyResponses.forEach(effectCallback => {
       effectCallback(stableInstance.state);
     });
-  }, [stableInstance.state.fetchVersion]);
+  }, [stableInstance.state.round]);
 
   return [stableInstance.state, trigger, execute];
 }
@@ -438,7 +448,7 @@ export function useResponse<T>(
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -449,7 +459,7 @@ export function useResponse<T>(
     if (isErrorResponse || isSuccessResponse) {
       process(sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 }
 
 useResponse.useSuccess = function useResponseSuccess<T>(
@@ -457,7 +467,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isSuccessResponse =
@@ -467,7 +477,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
     if (isSuccessResponse) {
       process(sessionState.data as T, sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 };
 
 useResponse.useFailure = function useResponseFailure(
@@ -475,14 +485,14 @@ useResponse.useFailure = function useResponseFailure(
   sessionState: SessionState
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     if (isErrorResponse) {
       process(sessionState.error, sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 };
 
 /**

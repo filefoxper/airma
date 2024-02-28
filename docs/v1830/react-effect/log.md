@@ -56,3 +56,8 @@
 # v 18.2.12 2023-11-30
 
 * fix `useResponse` typescript problem.
+
+# v18.3.0
+
+* optimize interfaces
+* add `session` API

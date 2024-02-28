@@ -1,4 +1,5 @@
 * [Packages](/)
-* [@airma/react-state](/react-state/index.md)
-* [@airma/react-effect](/react-effect/index.md)
-* [@airma/react-hooks](/react-hooks/index.md)
+* [@airma/react-state](/react-state/index)
+* [@airma/react-effect](/react-effect/index)
+* [@airma/react-hooks](/react-hooks/index)
+* [@airma/restful](/restful/index)

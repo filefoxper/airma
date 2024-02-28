@@ -1,5 +1,4 @@
 * [文档](/zh/react-state/index.md)
-* [安装与支持](/zh/react-state/install.md)
 * [概念](/zh/react-state/concepts.md)
 * [引导](/zh/react-state/guides.md)
 * [特性](/zh/react-state/feature.md)

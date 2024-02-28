@@ -1,97 +1,116 @@
 # Features
 
-There are some useful features you should know about `useQuery`, `useMutation` and `state sharing`.
+## No zombie child
 
-## UseQuery
+If the session usage is unmounted, no state change happens in react component. In that case, though the store ( if the Provider component is not unmounted ) may still works, but no state change happens in component.
 
-API useQuery always query a newest data for you. If you have triggered one `useQuery` mutiple times, and an old one resolve data later than the newest one, the old promise data will not cover the newest one. The old later data is always comes with a field `abandon: true`, it will not appear in promise state.
+## One session key with one execution at one time
+
+API useQuery/useMutation uses session [key](/react-effect/concepts?id=key) to subscribe and set store state. If there are multiple useQuery/useMutation with a same session key executes at the same time, only one can be allowed to execute, others just wait for the state change by subscribing store.
 
 ```ts
-const fetchData = (page: number)=>{
-    return new Promise((resolve)=>{
-        // Simulate a later resolve,
-        // when page is 1.
-        if(page === 1){
-            setTimeout(()=>{
-                resolve(page);
-            }, 800);
-            return;
+import {session} from '@airma/react-effect';
+
+const fetchUserRelationShips = async (): Promise<RelationShip[]> =>{
+    return ......
+};
+
+const queryStore = session(fetchUserRelationShips, 'query').createStore().asGlobal();
+
+// Common component
+export const RelationShipSelector = (props: Props)=>{
+    const [
+        {
+            data,
+            isFetching
         }
-        resolve(page);
+        // common key to store
+    ] = queryStore.useQuery({
+        variables: [],
+        defaultData: []
     });
-}
-
-const App = ()=>{
-    const [page, setPage] = useState(1);
-    const [ {data} ] = useQuery(fetchData, [page]);
-
-    const handleChangePage=(p: number)=>{
-        // Set page 2 in 800 ms after component mounted.
-        // The data should be 2,
-        // after 800 ms, the data is still 2,
-        // it won't be covered by the later resolve.
-        setPage(p);
-    }
-
-    return ......;
-}
-```
-
-We have simulate a later resolve when varible page is 1. When the component App is mounted, change page to 2 quickly, the data should be 2. After the simulate duration, it is still 2.
-
-## UseMutation
-
-The useMutation can not start its promise callback when last calling is not finished. That means you have to mutate one by one. But this limit is only exist in the same useMutation usage.
-
-```ts
-const saveData = (data:any)=>Promise.resolve(data);
-
-const App = ()=>{
-    const [data, setData] = useState(...);
-    const [, trigger] = useMutation(saveData, [ data ]);
-
-    const handleSubmit = ()=>{
-        // The twice trigger happens
-        trigger();
-        // The second trigger will not call saveData
-        trigger();
-    }
-}
-```
-
-## State sharing
-
-When you are using [state sharing](/react-effect/guides?id=sharing-state) with `useQuery` or `useMutation` in `SessionProvider`, you may use a same key in multiple times to query or mutate data at the same time. In that case, only the first triggered one can actually call the promise callback, and others will be an acceptor to accept the state change from `SessionProvider`.
-
-```ts
-const query = createSessionKey(fetchData);
-
-const Child1 = ()=>{
-    // It is a earliest triggered one
-    useQuery(query, []);
-
-    return ......;
-}
-
-const Child2 = ()=>{
-    // It will not actually call fetchData,
-    // for there is a same key calling happened.
-    // But it can accept state changes.
-    const [ {data}, trigger, execute ] = useQuery(query, []);
-
-    return ......;
-}
-
-const App = ()=>{
-    // The query in Child1 and Child2 triggered in component mount
-    // at the same time.
     return (
-        <SessionProvider keys={query}>
-          <Child1/>
-          <Child2/>
-        </SessionProvider>
+        <Selector {...props} disabled={isFetching}>
+            {
+                data.map((r)=>
+                    <Option value={r.id} key={r.id}>
+                        {r.name}
+                    </Option>
+                )
+            }
+        </Selector>
+    )
+};
+
+const App = ()=>{
+    // More than one queryStore.useQuery works torgether
+    // at the mount time,
+    // only one really executes.
+    return (
+        <Page>
+            <RelationShipSelector {...props}/>
+            ......
+            <div>
+                <RelationShipSelector {...props}/>
+            </div>
+            ......
+        </Page>
     );
 }
 ```
 
-The final section is [APIs](/react-effect/api.md), you can finish it now.
+This feature is very useful.
+
+## Common Provider system with @airma/react-state
+
+In fact, [session key](/react-effect/concepts?id=key) is a special [model key](/react-state/concepts?id=key) in `@airma/react-state`, and the [Provider system](/react-state/guides?id=createkey-and-provide) are same too. So, the they can use together with one provider, no matter is from `@airma/react-effect` or `@airma/react-state`. If it is a trouble problem, use [@airma/react-hooks](/react-hooks/index) for integration is a good idea.
+
+```ts
+import {provide, createKey} from '@airma/react-state';
+import {createSessionKey} from '@airma/react-effect';
+
+const countKey = createKey((count: number)=>{
+    return {
+        count,
+        increase:()=>count+1,
+        decrease:()=>count-1
+    }
+}, 0);
+
+const querySessionKey = createSessionKey(fetchUsers, 'query');
+
+const keys = {count:countKey,query:querySessionKey};
+
+// @airma/react-state provide can create session store too
+const Component = provide(keys)(()=>{
+    return ......;
+});
+```
+
+session API usage:
+
+```ts
+import {model} from '@airma/react-state';
+import {session} from '@airma/react-effect';
+
+const countStore = model((count: number)=>{
+    return {
+        count,
+        increase:()=>count+1,
+        decrease:()=>count-1
+    }
+}).createStore(0);
+
+const queryStore = session(fetchUsers, 'query').createStore();
+
+const saveStore = session(saveUser, 'mutation').createStore();
+
+// model store can join with session store too
+const store = countStore.with(queryStore,saveStore);
+
+const Component = store.provideTo(()=>{
+    return ......;
+});
+```
+
+Next section [api](/react-effect/api).
