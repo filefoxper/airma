@@ -14,15 +14,17 @@ const config: GlobalConfig = {
 };
 
 render(
-  <ConfigProvider value={config}>
-    <App />
-  </ConfigProvider>,
+  <React.StrictMode>
+    <ConfigProvider value={config}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>,
   root
 );
 
 // render(
-//   <GlobalSessionProvider config={config} keys={keys}>
+//   <ConfigProvider value={config}>
 //     <App />
-//   </GlobalSessionProvider>,
+//   </ConfigProvider>,
 //   root
 // );

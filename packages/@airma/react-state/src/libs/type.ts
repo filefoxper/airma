@@ -67,6 +67,7 @@ export interface Connection<
     connect: () => void;
     disconnect: () => void;
   };
+  destroy: () => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -78,7 +79,7 @@ export interface ActionWrap {
 }
 
 export interface FirstActionWrap extends ActionWrap {
-  tail: ActionWrap;
+  tail: ActionWrap | undefined;
 }
 
 // inner interface

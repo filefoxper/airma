@@ -57,6 +57,27 @@ function refreshModel<S, T extends AirModelInstance, D extends S>(
   return instance;
 }
 
+function destroyDispatching<S, T extends AirModelInstance>(
+  updater: Updater<S, T>
+) {
+  const { dispatching } = updater;
+  if (!dispatching) {
+    return;
+  }
+  let wrapper: ActionWrap | undefined = dispatching;
+  while (wrapper) {
+    const { next } = wrapper as ActionWrap;
+    wrapper.next = undefined;
+    wrapper.prev = undefined;
+    if (next) {
+      next.prev = undefined;
+    }
+    wrapper = next;
+  }
+  dispatching.tail = undefined;
+  updater.dispatching = undefined;
+}
+
 function generateNotification<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   batchUpdate?: (callback: () => void) => void
@@ -70,6 +91,9 @@ function generateNotification<S, T extends AirModelInstance>(
       return;
     }
     const { tail } = dispatching;
+    if (!tail) {
+      return;
+    }
     const current: ActionWrap = { prev: tail, value };
     tail.next = current;
     dispatching.tail = current;
@@ -82,6 +106,7 @@ function generateNotification<S, T extends AirModelInstance>(
     }
     const { next, tail } = dispatching;
     if (tail === dispatching || !next) {
+      dispatching.tail = undefined;
       updater.dispatching = undefined;
       return dispatching;
     }
@@ -367,6 +392,15 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         }
       };
     },
+    destroy() {
+      updater.dispatch = null;
+      updater.dispatches = [];
+      destroyDispatching(updater);
+      updater.state = defaultState;
+      updater.cacheState = null;
+      updater.notify = noop;
+      updater.cacheMethods = {};
+    },
     connect(dispatchCall) {
       const needNotice = subscribe(dispatchCall);
       if (!needNotice) {
@@ -549,7 +583,7 @@ export function createStoreCollection<
         } as Collection;
       })
       .filter((d): d is Collection => !!d);
-    deletions.forEach(({ connection }) => connection.disconnect());
+    deletions.forEach(({ connection }) => connection.destroy());
     return [...additions, ...updates];
   }
   const currentCollections = collectConnections(fact, updaterConfig);
@@ -583,7 +617,7 @@ export function createStoreCollection<
       return factoryCollections === handler;
     },
     destroy() {
-      holder.connections.forEach(connection => connection.disconnect());
+      holder.connections.forEach(connection => connection.destroy());
     }
   };
   return { ...store };

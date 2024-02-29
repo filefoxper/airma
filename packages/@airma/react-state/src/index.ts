@@ -24,8 +24,7 @@ import createModel, {
   checkIfLazyIdentifyConnection,
   createStoreCollection,
   factory as createFactory,
-  getRuntimeContext,
-  staticFactory
+  getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
 import type { AirReducerLike, GlobalConfig, Selector } from './type';
@@ -73,6 +72,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
+      current.destroy();
     };
   }, []);
 
@@ -160,6 +160,13 @@ export const Provider: FC<{
     const store = storeMemo.update(storeKeys);
     return { ...store, parent: context };
   }, [context, storeKeys]);
+
+  useEffect(() => {
+    return () => {
+      selector.destroy();
+    };
+  }, []);
+
   return createElement(
     ReactStateContext.Provider,
     { value: selector },
@@ -274,6 +281,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     return () => {
       unmountRef.current = true;
       tunnel.disconnect();
+      if (connection == null) {
+        current.destroy();
+      }
     };
   }, []);
 

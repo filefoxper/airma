@@ -11,7 +11,8 @@ import {
   useQuery,
   useSession,
   useUpdate,
-  useResponse
+  useResponse,
+  useControlledModel
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
@@ -78,6 +79,18 @@ const test = model((state: number) => {
   };
 }).store(0);
 
+const counting = (state: number) => {
+  return {
+    value: state,
+    increase() {
+      return state + 1;
+    },
+    decrease() {
+      return state - 1;
+    }
+  };
+};
+
 const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
@@ -116,88 +129,89 @@ const Info = memo(() => {
   return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
 });
 
+const creatingStore = model((userData: Omit<User, 'id'>) => {
+  return {
+    user: userData,
+    changeUsername(username: string) {
+      return { ...userData, username };
+    },
+    changeName(name: string) {
+      return { ...userData, name };
+    },
+    update() {
+      return { ...userData };
+    }
+  };
+}).createStore();
+
 const Creating = memo(
-  ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
-    const creating = store.useSelector(s => s.creating);
-    const { user, changeUsername, changeName } = useModel(
-      (userData: Omit<User, 'id'>) => {
-        return {
-          user: userData,
-          changeUsername(username: string) {
-            return { ...userData, username };
-          },
-          changeName(name: string) {
-            return { ...userData, name };
-          },
-          update() {
-            return { ...userData };
-          }
-        };
-      },
-      {
+  creatingStore.provideTo(
+    ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
+      const creating = store.useSelector(s => s.creating);
+      const { user, changeUsername, changeName } = creatingStore.useModel({
         name: '',
         username: '',
         age: 10
-      }
-    );
+      });
 
-    const [{ variables }, query] = fetchSession.useSession();
+      const [{ variables }, query] = fetchSession.useSession();
 
-    const [q] = variables ?? [];
+      const [q] = variables ?? [];
 
-    const [, save] = useMutation(
-      (u: Omit<User, 'id'>) =>
-        new Promise((resolve, reject) => {
-          setTimeout(() => {
-            resolve(
-              rest('/api/user')
-                .setBody(u)
-                .post<null>()
-                .then(() => true)
-            );
-          }, 1000);
-        }),
-      {
-        variables: [user],
-        strategy: [
-          Strategy.once(),
-          Strategy.success(() => {
-            query();
-            onClose();
-          })
-        ]
-      }
-    );
+      const [, save] = useMutation(
+        (u: Omit<User, 'id'>) =>
+          new Promise((resolve, reject) => {
+            setTimeout(() => {
+              resolve(
+                rest('/api/user')
+                  .setBody(u)
+                  .post<null>()
+                  .then(() => true)
+              );
+            }, 1000);
+          }),
+        {
+          variables: [user],
+          strategy: [
+            Strategy.once(),
+            Strategy.success(() => {
+              query();
+              onClose();
+            })
+          ]
+        }
+      );
 
-    return (
-      <div>
+      return (
         <div>
-          <input
-            type="text"
-            value={user.name}
-            placeholder="input name"
-            onChange={e => changeName(e.target.value)}
-          />
+          <div>
+            <input
+              type="text"
+              value={user.name}
+              placeholder="input name"
+              onChange={e => changeName(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <input
+              type="text"
+              value={user.username}
+              placeholder="input username"
+              onChange={e => changeUsername(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+              submit
+            </button>
+            <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
+              cancel
+            </button>
+          </div>
         </div>
-        <div style={{ marginTop: 12 }}>
-          <input
-            type="text"
-            value={user.username}
-            placeholder="input username"
-            onChange={e => changeUsername(e.target.value)}
-          />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
-            submit
-          </button>
-          <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
-            cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
+      );
+    }
+  )
 );
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
@@ -287,22 +301,28 @@ export default test.provideTo(function App() {
 
   const [q] = variables ?? [];
 
-  const Creator = useLazyComponent(
-    () => Promise.resolve(Creating) as Promise<typeof Creating>,
-    querySession
-  );
+  const [count, setCount] = useState(0);
+
+  const instance = useControlledModel(counting, count, s => setCount(s));
+
+  const { value, increase, decrease } = instance;
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
+      <div style={{ margin: '8px 0' }}>
+        <button type="button" onClick={increase}>
+          +
+        </button>
+        <span style={{ margin: '0 8px' }}>
+          {count} : {value}
+        </span>
+        <button type="button" onClick={decrease}>
+          -
+        </button>
+      </div>
       <Condition parentTrigger={t} />
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-        {creating ? (
-          <Suspense>
-            <Creator onClose={cancel} />
-          </Suspense>
-        ) : (
-          <Info />
-        )}
+        {creating ? <Creating onClose={cancel} /> : <Info />}
       </div>
       <div>
         {data.map(user => (
