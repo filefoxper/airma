@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/restful",
-  "version": "18.3.0",
+  "version": "18.3.1",
   "description": "A wrapper for asynchronous http requests with a restful style",
   "homepage": "https://filefoxper.github.io/airma/#/restful/index",
   "repository": {
