@@ -4,7 +4,7 @@
 
 The `instance` returned by `useModel` is a `proxy` object, action methods from this object are persistent, no change happens when the `instance` refreshes. It is helpful for using them on memo component props.
 
-In fact, these changeless methods are just action dispatching entrances. In the runtime of action method, an actual method from the source of `proxy instance` is called, this source object is the newest instance data, so, no stale data problem happens. 
+In fact, these changeless methods are just action dispatching entrances. In the runtime of action method, an actual method from the source of `proxy instance` is called, this source object is the newest instance data, so, there is no stale data problem happens in action method runtime. 
 
 ```ts
 import React,{memo, useState} from 'react';

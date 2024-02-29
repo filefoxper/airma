@@ -14,7 +14,8 @@ export {
   useModel,
   useControlledModel,
   useSelector,
-  model
+  model,
+  useRealtimeInstance
 } from '@airma/react-state';
 
 export {

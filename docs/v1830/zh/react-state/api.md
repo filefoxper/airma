@@ -143,6 +143,68 @@ export default ()=>{
 }
 ```
 
+## useRealtimeInstance
+
+ useModel 返回的静态实例对象字段值是相对固定的，只随组件的 render 发生改变，就像 useState 值一样。useRealtimeInstance 可从该值中提取一个动态实例对象，它的字段值随字段的获取，始终保持当前最新。
+
+```ts
+function useRealtimeInstance<T>(instance: T): T;
+```
+
+### 参数
+
+* **instance** - useModel API 返回的实例对象
+
+### 返回
+
+实时动态实例对象
+
+### 例子
+
+```ts
+import {
+  useModel,
+  useRealtimeInstance
+} from '@airma/react-state';
+
+type User = {
+  name: string;
+  username: string;
+  age: number;
+}
+
+const defaultUser = {name:'', username:'', age:0};
+
+const instance = useModel((user: User)=>{
+  return {
+    user,
+    setName: (name:string)=>({...user, name}),
+    setUsername: (username:string)=>({...user, username}),
+    setAge: (age: number)=>({...user, age})
+  }
+}, defaultUser);
+
+// 提出动态实例对象
+const realtimeInstance = useRealtimeInstance(instance);
+
+const callSetAge = (age: number)=>{
+  instance.setAge(age);
+};
+
+const saveUser =()=>{
+  // 在 setTimeout 开始时立即运行 callSetAge 修改 instance.user.age，
+  // 按期望，在 setTimeout 时间到期时 instance.user.age 应该发生了改变，
+  // 实时却不是这样的。
+  // 而动态实例对象对应的 age 值，在获取时是最新的。
+  setTimeout(()=>{
+    // instance.user.age 是旧值
+    instance.user.age;
+    // realtimeInstance.user.age 是新值
+    realtimeInstance.user.age.
+  }, 1000);
+};
+```
+
 ## Provider
 
 React.Context.Provider 组件

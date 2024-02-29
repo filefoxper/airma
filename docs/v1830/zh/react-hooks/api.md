@@ -75,9 +75,17 @@ export declare function useSelector<
 ): ReturnType<C>;
 ```
 
+### useRealtimeInstance
+
+ [hook API] useModel 返回的静态实例对象字段值是相对固定的，只随组件的 render 发生改变，就像 useState 值一样。useRealtimeInstance 可从该值中提取一个动态实例对象，它的字段值随字段的获取，始终保持当前最新。[引用](/zh/react-state/api?id=userealtimeinstance)
+
+ ```ts
+function useRealtimeInstance<T>(instance: T): T;
+```
+
 ### model
 
-[函数 API] model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API 调用风格。
+[函数 API] model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API 调用风格。[引用](/zh/react-state/api?id=model)
 
 ```ts
 interface GlobalStoreApi {
