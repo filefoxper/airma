@@ -20,6 +20,25 @@ type ValidInstance<S, T extends AirModelInstance> = {
     : T[K];
 };
 
+export type Contexts = {
+  data: { current: unknown }[];
+  current: number;
+  initialized: boolean;
+  working: boolean;
+};
+
+export type ModelContext = {
+  ref: <C>(current: C) => { current: C };
+  memo: <M extends () => any>(call: M, deps: unknown[]) => ReturnType<M>;
+};
+
+export type ModelContextFactory = {
+  context: ModelContext;
+  start: () => void;
+  end: () => void;
+  reset: () => void;
+};
+
 export type AirReducer<S, T extends AirModelInstance> = (
   state: S
 ) => ValidInstance<S, T>;
@@ -48,6 +67,7 @@ export interface Connection<
     connect: () => void;
     disconnect: () => void;
   };
+  destroy: () => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
 }
@@ -59,7 +79,7 @@ export interface ActionWrap {
 }
 
 export interface FirstActionWrap extends ActionWrap {
-  tail: ActionWrap;
+  tail: ActionWrap | undefined;
 }
 
 // inner interface
@@ -100,9 +120,20 @@ export type ModelFactoryStore<T> = {
   destroy(): void;
 };
 
-export type FactoryInstance<T extends AirReducer<any, any>> = T & {
-  creation(): Connection;
+export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
+  connection: Connection;
+  effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P
   ): P & { getSourceFrom: () => FactoryInstance<T> };
+  global: () => StaticFactoryInstance<T>;
+};
+
+export type FactoryInstance<T extends AirReducer<any, any>> = T & {
+  creation(updateConfig?: UpdaterConfig): Connection;
+  effect?: [(...params: any[]) => any, Record<string, any>?];
+  pipe<P extends AirReducer<any, any>>(
+    reducer: P
+  ): P & { getSourceFrom: () => FactoryInstance<T> };
+  global: () => StaticFactoryInstance<T>;
 };

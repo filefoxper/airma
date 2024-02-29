@@ -1,15 +1,17 @@
-import type { ComponentType, FC, ReactNode } from 'react';
-
 import {
+  ComponentType,
+  FC,
+  ReactNode,
+  useRef,
   useEffect,
   useMemo,
-  useRef,
   useState,
   createContext,
   createElement,
   useContext,
   FunctionComponent
 } from 'react';
+
 import { usePersistFn } from '@airma/react-hooks-core';
 import type {
   AirModelInstance,
@@ -19,8 +21,10 @@ import type {
   FactoryInstance
 } from './libs/type';
 import createModel, {
-  createStore,
-  factory as createFactory
+  checkIfLazyIdentifyConnection,
+  createStoreCollection,
+  factory as createFactory,
+  getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
 import type { AirReducerLike, GlobalConfig, Selector } from './type';
@@ -68,6 +72,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     current.connect(persistDispatch);
     return () => {
       current.disconnect(persistDispatch);
+      current.destroy();
     };
   }, []);
 
@@ -90,6 +95,11 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
   return useSourceControlledModel(model, state, onChange);
 }
 
+/**
+ * @deprecated
+ * @param method
+ * @param params
+ */
 export function useRefresh<T extends (...args: any[]) => any>(
   method: T,
   params:
@@ -130,46 +140,33 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
-/**
- * @deprecated
- * @param value
- * @param children
- * @constructor
- */
-export const ModelProvider: FC<{
-  value: Array<any> | ((...args: any) => any) | Record<string, any>;
-  children?: ReactNode;
-}> = function RequiredModelProvider({ value, children }) {
-  const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(value), []);
-  const selector = useMemo(() => {
-    const store = storeMemo.update(value);
-    return { ...store, parent: context };
-  }, [context, value]);
-  return createElement(
-    ReactStateContext.Provider,
-    { value: selector },
-    children
-  );
-};
-
-export const StoreProvider: FC<{
+export const Provider: FC<{
   keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
   value?: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ keys, value, children }) {
   const storeKeys = keys != null ? keys : value;
   if (storeKeys == null) {
-    throw new Error('You need to provide keys to `StoreProvider`');
+    throw new Error('You need to provide keys to `Provider`');
   }
   const config = useContext(ConfigContext);
   const { batchUpdate } = config || {};
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(() => createStore(storeKeys, { batchUpdate }), []);
+  const storeMemo = useMemo(
+    () => createStoreCollection(storeKeys, { batchUpdate }),
+    []
+  );
   const selector = useMemo(() => {
     const store = storeMemo.update(storeKeys);
     return { ...store, parent: context };
   }, [context, storeKeys]);
+
+  useEffect(() => {
+    return () => {
+      selector.destroy();
+    };
+  }, []);
+
   return createElement(
     ReactStateContext.Provider,
     { value: selector },
@@ -177,10 +174,28 @@ export const StoreProvider: FC<{
   );
 };
 
+/**
+ * @deprecated
+ */
+export const StoreProvider = Provider;
+
+/**
+ * @deprecated
+ */
+export const ModelProvider = Provider;
+
 function findConnection<S, T extends AirModelInstance>(
-  c: Selector,
-  m: AirReducer<S | undefined, T>
+  c: Selector | null | undefined,
+  m: AirReducer<S | undefined, T> & {
+    connection?: Connection<S | undefined, T>;
+  }
 ): Connection<S | undefined, T> | undefined {
+  if (m.connection) {
+    return m.connection;
+  }
+  if (c == null) {
+    return undefined;
+  }
   const d = c.get(m);
   if (!d && c.parent) {
     return findConnection(c.parent, m);
@@ -209,15 +224,24 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ...defaultOpt,
     ...option
   };
+  const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
-  const connection =
-    context && required ? findConnection(context, model) : undefined;
+  const connection = required ? findConnection(context, model) : undefined;
   if (required && !autoLink && !connection) {
     throw new Error(
       'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
     );
   }
-
+  const needInitializeScopeConnection =
+    connection != null &&
+    !!useDefaultState &&
+    connection.getCacheState() == null;
+  if (needInitializeScopeConnection) {
+    connection.update(model, { state, cache: true, ignoreDispatch: true });
+  }
+  if (connection != null) {
+    checkIfLazyIdentifyConnection(connection);
+  }
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -229,19 +253,15 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   );
   const instance = instanceRef.current;
   const current = connection || instance;
-  const needInitializeScopeConnection =
-    connection != null &&
-    !!useDefaultState &&
-    connection.getCacheState() == null;
-  if (needInitializeScopeConnection) {
-    connection.update(model, { state, cache: true, ignoreDispatch: true });
-  }
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
     current.update(model);
   }
   const [agent, setAgent] = useState(current.getCurrent());
   const dispatch = () => {
+    if (unmountRef.current) {
+      return;
+    }
     setAgent(current.getCurrent());
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -259,7 +279,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   useEffect(() => {
     tunnel.connect();
     return () => {
+      unmountRef.current = true;
       tunnel.disconnect();
+      if (connection == null) {
+        current.destroy();
+      }
     };
   }, []);
 
@@ -378,16 +402,21 @@ export function useSelector<
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {
   const context = useContext(ReactStateContext);
-  const connection = context ? findConnection(context, factoryModel) : null;
+  const connection = findConnection(context, factoryModel);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
+  checkIfLazyIdentifyConnection(connection);
   const current = callback(connection.getCurrent());
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);
+  const unmountRef = useRef(false);
   const [s, setS] = useState({ data: current });
 
   const dispatch = usePersistFn(() => {
+    if (unmountRef.current) {
+      return;
+    }
     const next = callback(connection.getCurrent());
     if (eqCallback(s.data, next)) {
       return;
@@ -401,6 +430,7 @@ export function useSelector<
   useEffect(() => {
     tunnel.connect();
     return () => {
+      unmountRef.current = true;
       tunnel.disconnect();
     };
   }, []);
@@ -417,28 +447,7 @@ export function provide(
   >(Comp: C): ComponentType<P> {
     return function WithModelProviderComponent(props: P) {
       return createElement(
-        StoreProvider,
-        { value: keys },
-        createElement<P>(Comp as FunctionComponent<P>, props)
-      );
-    };
-  };
-}
-
-/**
- * @deprecated
- * @param keys
- */
-export function withStoreProvider(
-  keys: Array<any> | ((...args: any) => any) | Record<string, any>
-) {
-  return function connect<
-    P extends Record<string, any>,
-    C extends ComponentType<P>
-  >(Comp: C): ComponentType<P> {
-    return function WithModelProviderComponent(props: P) {
-      return createElement(
-        ModelProvider,
+        Provider,
         { value: keys },
         createElement<P>(Comp as FunctionComponent<P>, props)
       );
@@ -456,11 +465,6 @@ export function useRealtimeInstance<T>(
   return realtimeInstance;
 }
 
-/**
- * @deprecated
- */
-export const withModelProvider = withStoreProvider;
-
 export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
   const { pipe } = model as AirReducer<any, any> & { pipe: () => void };
   const context = useContext(ReactStateContext);
@@ -473,17 +477,13 @@ export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
 
 export const shallowEqual = shallowEq;
 
-/**
- * @deprecated
- */
-export const factory = createFactory;
-
-/**
- * @deprecated
- */
-export const createStoreKey = createFactory;
-
-export const createKey = createFactory;
+export const createKey = function createKey<S, T extends AirModelInstance>(
+  m: AirReducer<S, T>,
+  s?: S
+) {
+  const lazy = arguments.length < 2;
+  return createFactory(m, s, lazy);
+};
 
 export const ConfigProvider: FC<{
   value: GlobalConfig;
@@ -492,3 +492,130 @@ export const ConfigProvider: FC<{
   const { value, children } = props;
   return createElement(ConfigContext.Provider, { value }, children);
 };
+
+export const model = function model<S, T extends AirModelInstance>(
+  m: AirReducer<S | undefined, T>
+) {
+  const useApiModel = function useApiModel(s?: S) {
+    const params = (arguments.length ? [m, s] : [m]) as [
+      typeof m,
+      (S | undefined)?
+    ];
+    return useModel(...params);
+  };
+
+  const useApiControlledModel = function useApiControlledModel(
+    state: S | undefined,
+    setState: (s: S | undefined) => any
+  ) {
+    return useControlledModel(m, state, setState);
+  };
+
+  const apiStore = function apiStore(state?: S, k?: any, keys: any[] = []) {
+    const hasParams = arguments.length > 0;
+    const key = (function computeKey() {
+      if (k != null) {
+        return k;
+      }
+      return hasParams ? createKey(m, state) : createKey(m);
+    })();
+
+    const useApiStoreModel = function useApiStoreModel(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useModel(...params);
+    };
+
+    const useApiStoreSelector = function useApiStoreSelector(
+      c: (i: T) => any,
+      eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
+    ) {
+      return useSelector(key, c, eq);
+    };
+
+    const apiStoreProvide = function apiStoreProvide() {
+      return provide([key, ...keys]);
+    };
+
+    const apiStoreProvideTo = function apiStoreProvideTo(
+      component: FunctionComponent
+    ) {
+      return provide([key, ...keys])(component);
+    };
+
+    const ApiStoreProvider = function ApiStoreProvider({
+      children
+    }: {
+      children?: ReactNode;
+    }) {
+      return createElement(Provider, { value: [key, ...keys] }, children);
+    };
+
+    function global() {
+      const staticModelKey = key.global();
+
+      const useApiGlobalModel = function useApiGlobalModel(s?: S) {
+        const params = (
+          arguments.length ? [staticModelKey, s] : [staticModelKey]
+        ) as [typeof staticModelKey, (S | undefined)?];
+        return useModel(...params);
+      };
+      const useApiGlobalSelector = function useApiGlobalSelector(
+        c: (i: T) => any,
+        eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
+      ) {
+        return useSelector(staticModelKey, c, eq);
+      };
+      return {
+        useModel: useApiGlobalModel,
+        useSelector: useApiGlobalSelector
+      };
+    }
+
+    const storeApi = {
+      key,
+      keys,
+      useModel: useApiStoreModel,
+      useSelector: useApiStoreSelector,
+      asGlobal: global,
+      provide: apiStoreProvide,
+      provideTo: apiStoreProvideTo,
+      Provider: ApiStoreProvider
+    };
+
+    const withKeys = function withKeys(
+      ...stores: (
+        | {
+            key: AirReducer<any, any>;
+          }
+        | AirReducer<any, any>
+      )[]
+    ) {
+      const nks = keys.concat(
+        stores.map(store => (typeof store === 'function' ? store : store.key))
+      );
+      return apiStore(state, key, nks);
+    };
+
+    return {
+      ...storeApi,
+      with: withKeys
+    };
+  };
+
+  function createStoreApi(s?: S) {
+    return arguments.length ? apiStore(s) : apiStore();
+  }
+
+  return Object.assign(m, {
+    useModel: useApiModel,
+    useControlledModel: useApiControlledModel,
+    store: createStoreApi,
+    createStore: createStoreApi
+  });
+};
+
+model.context = getRuntimeContext;
+model.create = model;

@@ -1,13 +1,14 @@
 import {
   createElement,
+  FunctionComponent,
   lazy,
+  ReactNode,
   useEffect,
   useMemo,
-  useRef,
-  useState
+  useRef
 } from 'react';
 import {
-  StoreProvider,
+  Provider as ModelProvider,
   useIsModelMatchedInStore,
   useModel,
   useRealtimeInstance,
@@ -20,6 +21,7 @@ import {
   useUnmount,
   useUpdate
 } from '@airma/react-hooks-core';
+import { AirReducer } from '@airma/react-state/src/libs/type';
 import type {
   SessionState,
   PromiseCallback,
@@ -34,10 +36,13 @@ import type {
   AbstractSessionResult,
   PromiseHolder,
   CheckLazyComponentSupportType,
-  LazyComponentSupportType,
-  SessionResult
+  LazyComponentSupportType
 } from './libs/type';
-import { parseConfig, useSessionBuildModel } from './libs/model';
+import {
+  parseConfig,
+  useSessionBuildModel,
+  createSessionKey
+} from './libs/model';
 import {
   defaultIsFetchingState,
   globalControllerKey,
@@ -98,8 +103,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const {
     variables,
     deps,
-    triggerOn: triggerTypes = ['mount', 'update', 'manual'],
-    strategy
+    triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
 
   const instance = useRealtimeInstance(stableInstance);
@@ -110,7 +114,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     { autoLink: true }
   );
 
-  function sessionRunner(
+  const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
     vars: any[]
   ): Promise<SessionState<T>> {
@@ -129,15 +133,15 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         triggerType
       } as SessionState<T>;
     });
-  }
+  };
 
   const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(instance, sessionRunner, strategy);
+    useStrategyExecution(instance, sessionRunner, con);
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
     vars?: any[]
-  ) {
+  ): Promise<SessionState<T>> {
     const currentFetchingKey = instance.state.fetchingKey;
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
@@ -148,6 +152,16 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       return new Promise<SessionState<T>>(resolve => {
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
       });
+    }
+    if (['mount', 'update'].includes(triggerType) && variables == null) {
+      throw new Error(
+        'Can not execute with `mount` or `update` dependency mode. There is no variables found in config.'
+      );
+    }
+    if (triggerType === 'manual' && variables == null && vars == null) {
+      throw new Error(
+        'Can not trigger session to execute. There is no variables found in config.'
+      );
     }
     instance.setFetchingKey(keyRef.current);
     Promise.resolve(undefined).then(() => {
@@ -205,13 +219,13 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.state]);
 
   useEffect(() => {
-    if (stableInstance.state.fetchVersion == null) {
+    if (stableInstance.state.round === 0) {
       return;
     }
     strategyResponses.forEach(effectCallback => {
       effectCallback(stableInstance.state);
     });
-  }, [stableInstance.state.fetchVersion]);
+  }, [stableInstance.state.round]);
 
   return [stableInstance.state, trigger, execute];
 }
@@ -245,9 +259,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const promiseConfig = {
     ...con,
     triggerOn: triggerTypes,
-    strategy: ([latest()] as (StrategyType | null | undefined)[]).concat(
-      strategies
-    )
+    strategy: strategies.concat(latest() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
@@ -274,9 +286,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const promiseConfig = {
     ...con,
     triggerOn: triggerTypes,
-    strategy: ([block()] as (StrategyType | null | undefined)[]).concat(
-      strategies
-    )
+    strategy: strategies.concat(block() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
@@ -375,7 +385,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
         holder.reject(state);
         return;
       }
-      if (state.sessionLoaded && !holder.loaded) {
+      if (state.loaded && !holder.loaded) {
         holder.loaded = true;
         holder.resolve(true);
       }
@@ -438,7 +448,7 @@ export function useResponse<T>(
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -449,15 +459,15 @@ export function useResponse<T>(
     if (isErrorResponse || isSuccessResponse) {
       process(sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 }
 
-useResponse.success = function useSuccessResponse<T>(
+useResponse.useSuccess = function useResponseSuccess<T>(
   process: (data: T, sessionState: SessionState<T>) => any,
   sessionState: SessionState<T>
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isSuccessResponse =
@@ -467,32 +477,175 @@ useResponse.success = function useSuccessResponse<T>(
     if (isSuccessResponse) {
       process(sessionState.data as T, sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 };
 
-useResponse.error = function useErrorResponse(
+useResponse.useFailure = function useResponseFailure(
   process: (error: unknown, sessionState: SessionState) => any,
   sessionState: SessionState
 ) {
   useEffect(() => {
-    if (sessionState.fetchVersion == null) {
+    if (sessionState.round === 0) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     if (isErrorResponse) {
       process(sessionState.error, sessionState);
     }
-  }, [sessionState.fetchVersion]);
+  }, [sessionState.round]);
 };
 
-export const SessionProvider = StoreProvider;
+/**
+ * @deprecated
+ * @param process
+ * @param sessionState
+ */
+useResponse.success = useResponse.useSuccess;
 
-export const withSessionProvider = provideKeys;
+/**
+ * @deprecated
+ * @param process
+ * @param sessionState
+ */
+useResponse.error = useResponse.useFailure;
+
+/**
+ * @deprecated
+ */
+export const SessionProvider = ModelProvider;
+
+export const Provider = ModelProvider;
 
 export const provide = provideKeys;
 
-export { createSessionKey } from './libs/model';
+export { createSessionKey };
 
 export { Strategy } from './strategies';
 
-export { GlobalSessionProvider, ConfigProvider } from './libs/global';
+export { ConfigProvider } from './libs/global';
+
+const session = function session<T, C extends PromiseCallback<T>>(
+  callback: C,
+  sessionType: 'query' | 'mutation'
+) {
+  const queryType = sessionType;
+  const sessionCallback: C = function sessionCallback(...args: Parameters<C>) {
+    return callback(...args);
+  } as C;
+
+  const useApiQuery = function useApiQuery(
+    c: QueryConfig<T, C> | Parameters<C>
+  ) {
+    return useQuery(sessionCallback, c);
+  };
+
+  const useApiMutation = function useApiMutation(
+    c: MutationConfig<T, C> | Parameters<C>
+  ) {
+    return useMutation(sessionCallback, c);
+  };
+
+  const storeApi = function storeApi(k?: any, keys: any[] = []) {
+    const key = k != null ? k : createSessionKey(sessionCallback, queryType);
+    const useStoreApiQuery = function useStoreApiQuery(
+      c: QueryConfig<T, C> | Parameters<C>
+    ) {
+      return useQuery(key, c);
+    };
+    const useStoreApiMutation = function useStoreApiMutation(
+      c: MutationConfig<T, C> | Parameters<C>
+    ) {
+      return useMutation(key, c);
+    };
+    const useStoreApiSession = function useStoreApiSession() {
+      return useSession(key, queryType);
+    };
+    const useStoreApiLoadedSession = function useStoreApiLoadedSession() {
+      return useLoadedSession(key, queryType);
+    };
+    const withKeys = function withKeys(
+      ...stores: (
+        | {
+            key: AirReducer<any, any>;
+          }
+        | AirReducer<any, any>
+      )[]
+    ) {
+      const nks = keys.concat(
+        stores.map(store => (typeof store === 'function' ? store : store.key))
+      );
+      return storeApi(key, nks);
+    };
+    const storeApiProvide = function storeApiProvide() {
+      return provide([key, ...keys]);
+    };
+    const storeApiProvideTo = function storeApiProvideTo(
+      component: FunctionComponent
+    ) {
+      return provide([key, ...keys])(component);
+    };
+    const StoreApiProvider = function StoreApiProvider({
+      children
+    }: {
+      children?: ReactNode;
+    }) {
+      return createElement(Provider, { value: [key, ...keys] }, children);
+    };
+    const globalApi = function globalApi() {
+      const globalKey = key.global();
+      const globalApiHooks = {
+        useSession() {
+          return useSession(globalKey, queryType);
+        },
+        useLoadedSession() {
+          return useLoadedSession(globalKey, queryType);
+        }
+      };
+      const useGlobalApiQuery = function useGlobalApiQuery(
+        c: QueryConfig<T, C> | Parameters<C>
+      ) {
+        return useQuery(globalKey, c);
+      };
+      const useGlobalApiMutation = function useGlobalApiMutation(
+        c: MutationConfig<T, C> | Parameters<C>
+      ) {
+        return useMutation(globalKey, c);
+      };
+      return queryType === 'query'
+        ? { ...globalApiHooks, useQuery: useGlobalApiQuery }
+        : { ...globalApiHooks, useMutation: useGlobalApiMutation };
+    };
+    const sessionStoreApi = {
+      key,
+      with: withKeys,
+      asGlobal: globalApi,
+      useSession: useStoreApiSession,
+      useLoadedSession: useStoreApiLoadedSession,
+      provide: storeApiProvide,
+      provideTo: storeApiProvideTo,
+      Provider: StoreApiProvider
+    };
+    return queryType === 'query'
+      ? { ...sessionStoreApi, useQuery: useStoreApiQuery }
+      : { ...sessionStoreApi, useMutation: useStoreApiMutation };
+  };
+
+  const api = {
+    store: storeApi,
+    createStore: storeApi
+  };
+
+  const queryApi = {
+    ...api,
+    useQuery: useApiQuery
+  };
+
+  const mutationApi = {
+    ...api,
+    useMutation: useApiMutation
+  };
+  const apis = queryType === 'query' ? queryApi : mutationApi;
+  return Object.assign(sessionCallback, apis);
+};
+
+export { session };

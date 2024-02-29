@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Promisify } from './type';
 
 function isObject(data: any): data is Record<string, unknown> {
   return data && typeof data === 'object';
@@ -138,4 +139,83 @@ function useUnmount(destroy: () => void): void {
   }, []);
 }
 
-export { usePersistFn, useMount, useUnmount, useUpdate };
+function useDebounceFn<F extends (...args: any[]) => any>(
+  fn: F,
+  option: number | { lead?: boolean; ms: number }
+): Promisify<F> {
+  const ref = useRef<{
+    executor:
+      | {
+          promise: Promise<any>;
+          resolve: (data: any) => any;
+          reject: (data: any) => any;
+        }
+      | undefined;
+    timeoutHandler: any;
+  }>({ executor: undefined, timeoutHandler: undefined });
+  const ms = typeof option === 'number' ? option : option.ms;
+  const lead = typeof option === 'number' ? false : !!option.lead;
+  function createExecutor() {
+    const executor: {
+      promise: Promise<any>;
+      resolve: (data: any) => any;
+      reject: (data: any) => any;
+    } = {} as any;
+    executor.promise = new Promise((resolve, reject) => {
+      executor.resolve = resolve;
+      executor.reject = reject;
+    });
+    return executor;
+  }
+  const persistFn = usePersistFn((...args: any[]) => {
+    function normal() {
+      if (ref.current.timeoutHandler != null) {
+        clearTimeout(ref.current.timeoutHandler);
+        ref.current.timeoutHandler = undefined;
+      }
+      ref.current.executor = ref.current.executor || createExecutor();
+      ref.current.timeoutHandler = setTimeout(() => {
+        const { executor } = ref.current;
+        if (executor == null) {
+          return;
+        }
+        try {
+          const result = fn(...args);
+          executor.resolve(result);
+        } catch (e) {
+          executor.reject(e);
+        }
+        ref.current.timeoutHandler = undefined;
+        ref.current.executor = undefined;
+      }, ms);
+      return ref.current.executor.promise;
+    }
+
+    function leading() {
+      if (ref.current.timeoutHandler != null) {
+        clearTimeout(ref.current.timeoutHandler);
+        ref.current.timeoutHandler = undefined;
+      }
+      ref.current.timeoutHandler = setTimeout(() => {
+        ref.current.timeoutHandler = undefined;
+        ref.current.executor = undefined;
+      }, ms);
+      if (ref.current.executor != null) {
+        return ref.current.executor.promise;
+      }
+      ref.current.executor = createExecutor();
+      const { executor } = ref.current;
+      try {
+        const result = fn(...args);
+        executor.resolve(result);
+      } catch (e) {
+        executor.reject(e);
+      }
+      return ref.current.executor.promise;
+    }
+    return lead ? leading() : normal();
+  });
+  return persistFn as Promisify<F>;
+}
+
+export { usePersistFn, useMount, useUnmount, useUpdate, useDebounceFn };

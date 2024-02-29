@@ -8,10 +8,10 @@ module.exports = {
       {
         modules: false,
         targets: {
-          chrome: '58',
-          edge:'16',
-          firefox:'57',
-          safari:'11'
+          chrome: '91',
+          edge:'91',
+          firefox:'90',
+          safari:'15'
         },
         forceAllTransforms:true,
         useBuiltIns: 'usage',

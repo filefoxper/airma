@@ -41,7 +41,6 @@ export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
   }
 > & {
   effect: [E, { sessionType?: SessionType }];
-  implement: (c: E) => void;
 };
 
 export interface QuerySessionKey<E extends PromiseCallback<any>>
@@ -63,6 +62,8 @@ export type PromiseData<T = any> = {
   isError?: boolean;
 };
 
+type SessionCache = [string, { data: any; lastUpdateTime: number }];
+
 export interface AbstractSessionState {
   data: unknown;
   variables: any[] | undefined;
@@ -76,6 +77,12 @@ export interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  round: number;
+  cache: SessionCache[];
+  maxCacheCapacity: number;
+  /**
+   * @deprecated
+   */
   fetchVersion?: number;
 }
 
@@ -111,11 +118,15 @@ export type StrategyEffect<T> = (state: SessionState<T>) => void;
 
 export interface StrategyType<T = any> {
   (value: {
-    current: () => SessionState<T>;
+    getSessionState: () => SessionState<T>;
     variables: any[];
-    runner: () => Promise<SessionState<T>>;
-    store: { current: any };
-    runtimeCache: {
+    config: QueryConfig<T, any>;
+    runner: (
+      setFetchingSessionState?: (s: SessionState<T>) => SessionState<T>
+    ) => Promise<SessionState<T>>;
+    localCache: { current: any };
+    triggerType: TriggerType;
+    executeContext: {
       set: (key: any, value: any) => void;
       get: (key: any) => any;
     };
@@ -129,6 +140,10 @@ export type StrategyCollectionType<T = any> =
   | null
   | StrategyType<T>
   | (StrategyType<T> | null | undefined)[];
+
+export type KeyBy<C extends PromiseCallback<any>> = (
+  variables: Parameters<C>
+) => string;
 
 export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
@@ -150,6 +165,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 };
 
 export type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
   useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],

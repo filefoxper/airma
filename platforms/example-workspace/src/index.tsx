@@ -13,18 +13,18 @@ const config: GlobalConfig = {
   strategy: s => [...s, Strategy.error(e => console.log('final...', e))]
 };
 
-render(
-  <React.StrictMode>
-    <ConfigProvider value={config}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>,
-  root
-);
-
 // render(
-//   <GlobalSessionProvider config={config} keys={keys}>
-//     <App />
-//   </GlobalSessionProvider>,
+//   <React.StrictMode>
+//     <ConfigProvider value={config}>
+//       <App />
+//     </ConfigProvider>
+//   </React.StrictMode>,
 //   root
 // );
+
+render(
+  <ConfigProvider value={config}>
+    <App />
+  </ConfigProvider>,
+  root
+);

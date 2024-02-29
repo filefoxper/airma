@@ -11,193 +11,200 @@
 
 # @airma/react-state
 
-`@airma/react-state` is a simple state management tool for react app. You can visit the [document](https://filefoxper.github.io/airma/#/react-state/index)  for details.
+Simple `reducer-like` state-management with method action dispatch mode for react components.
 
-## Document
+## Documents
 
-* [English](https://filefoxper.github.io/airma/#/react-state/index)
+* [En](https://filefoxper.github.io/airma/#/react-state/index)
 * [中文](https://filefoxper.github.io/airma/#/zh/react-state/index)
 
-It works like that:
+## Code first
+
+Create `reducer-like` function:
+
+```js
+export function counting(state:number){
+    return {
+        // reproduced state for render
+        count: `mount: ${state}`,
+        // action method
+        increase:()=>count + 1,
+        // action method
+        decrease:()=>count - 1,
+        // action method, define parameters freely.
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}
+```
+
+Use `reducer-like` function:
 
 ```tsx
-import React from 'react';
-import {render} from 'react-dom'
+import {counting} from './model';
 import {useModel} from '@airma/react-state';
-
-function App(){
-    const {count, increase, decrease} = useModel((state:number)=>{
-        const baseState = state >= 0? state : 0;
-        return {
-            count: baseState,
-            increase(){
-                return baseState + 1;
-            },
-            decrease(){
-                return baseState - 1;
-            }
-        };
-    },0);
-    return (
-        <div>
-            <button onClick={decrease}>-</button>
-            <span>{count}</span>
-            <button onClick={increase}>+</button>
-        </div>
-    );
-}
-
-render(<App/>, document.getElementById('root'));
-```
-
-API `useModel` can generate an `instance` object by calling a `model` function with its default parameter. Call `instance` method can generate a new parameter, and then make `instance` to refresh itself by recalling the newest `model` and parameter again. 
-
-It looks like `useReducer`, but more free for usage, you can forget `dispatch` now.
-
-To make a state change sharable, you need to create a `store key`, and use it on a `StoreProvider`, then use `useModel` or `useSelector` to link it.
-
-```tsx
-import React,{memo} from 'react';
-import {render} from 'react-dom'
-import {
-  StoreProvider,
-  useModel,
-  useSelector,
-  createKey
-} from '@airma/react-state';
-
-const counter = (count:number = 0) =>{
-  return {
-    count,
-    isNegative: count<0,
-    increase:()=>count+1,
-    decrease:()=>count-1
-  };
-};
-
-// Use API `createKey` to build a store key.
-// It can be used as a key to link store state.
-const couterFactory =  createKey(counter);
-
-const Increase = memo(()=>{
-  // use API `useSelector` to fetch the `increase` method.
-  // The method from instance is persistent,
-  // so, the none props memo component will not rerender.
-  const increase = useSelector(couterFactory, c=>c.increase);
-  return (
-    <button onClick={increase}>+</button>
-  );
-});
-
-const Decrease = memo(()=>{
-  // same as the usage in `Increase`
-  const decrease = useSelector(couterFactory, c=>c.decrease);
-  return (
-    <button onClick={decrease}>-</button>
-  );
-});
-
-const CountValue = memo(()=>{
-  // use API `useModel` with a store key can link the store state.
-  const {count,isNegative} = useModel(couterFactory);
-  return (
-    <span style={isNegative?{color:'red'}:undefined}>{count}</span>
-  );
-});
-
-function Counter({index}:{index:number}){
-    return (
-      <div>
-        counter:{index}
-        {/* StoreProvider can hold store keys, */}
-        {/* and create a inside store, */}
-        {/* then we can use store key to link store state */}
-        <StoreProvider keys={couterFactory}>
-          <div>
-            <Decrease/>
-            <CountValue/>
-            <Increase/>
-          </div>
-        </StoreProvider>
-      </div>
-    );
-}
-
-render(<Counter index={1}/>, document.getElementById('root'));
-```
-
-As you can see, when click the button in Decrease/Increase component, the CountValue changes.
-
-You can reuse your model in a controlled customized hook or component by `useControlledModel`.
-
-```ts
-import React,{memo} from 'react';
-import {
-  useModel,
-  useControlledModel
-} from '@airma/react-state';
-
-const counter = (count:number = 0) =>{
-  return {
-    count,
-    isNegative: count<0,
-    increase:()=>count+1,
-    decrease:()=>count-1
-  };
-};
-
-const useControlledCounter = (
-  value:number, 
-  onChange:(v:number)=>void
-)=>{
-  return useControlledModel(counter, value, onChange);
-};
-
-const App = memo(()=>{
-  const [state, setState] = useState(0);
-  // use outside `state <-> setState`
-  const {
-    count, 
-    isNegative,
-    increase,
-    decrease,
-  } = useControlledCounter(state, setState);
-  ......
-});
-
-```
-
-Make a tuple instance model:
-
-```ts
-import {useModel} from '@airma/react-state';
-
-const toggleModel = (visible:boolean):[boolean, ()=>boolean]=>[
-  visible,
-  ()=>!visible
-];
 
 ......
-
-const [visible, toggle] = useModel(toggleModel, false);
+// give it an initialState can make it fly.
+const {count, increase, decrease, add} = useModel(counting, 0); // initialState `0`
+// call method `increase\decrease\add` can change `count` and make component rerender
+......
 ```
 
-If you want to know more about `@airma/react-state`, take the [document detail](https://filefoxper.github.io/airma/#/react-state/index) now.
+The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
+
+### Local state management
+
+```tsx
+import {model} from '@airma/react-state';
+
+// api model returns a wrap function for your model function.
+// it keeps a same type of parameters and return data with the wrapped function.
+const counting = model(function counting(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+});
+......
+// you can get useModel from the model wrapped function.
+const {count, increase, decrease, add} = counting.useModel(0);
+......
+```
+
+Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+
+### React.Context state management
+
+```tsx
+import {memo} from 'react';
+import {model} from '@airma/react-state';
+
+const countingStore = model(function counting(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore(0);
+......
+const Increase = memo(()=>{
+    // use store.useSelector can share state changes from store,
+    // when the selected result is changed it rerender component. 
+    const increase = countingStore.useSelector(i => i.increase);
+    return <button onClick={increase}>+</button>;
+});
+const Count = memo(()=>{
+    // use store.useModel can share state changes from store.
+    const {count} = countingStore.useModel();
+    return <span>{count}</span>;
+});
+const Decrease = memo(()=>{
+    const decrease = countingStore.useSelector(i => i.decrease);
+    return <button onClick={decrease}>-</button>;
+});
+// provide store to component for a React.Context usage.
+const Component = countingStore.provideTo(function Comp() {
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+});
+......
+```
+
+Using `model(xxx).createStore().asGlobal()` can build a global store.
+
+### Global state management
+
+```ts
+import {model} from '@airma/react-state';
+
+const countingStore = model(function counting(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore(0).asGlobal();
+......
+const Increase = memo(()=>{
+    const increase = countingStore.useSelector(i => i.increase);
+    return <button onClick={increase}>+</button>;
+});
+const Count = memo(()=>{
+    const {count} = countingStore.useModel();
+    return <span>{count}</span>;
+});
+const Decrease = memo(()=>{
+    const decrease = countingStore.useSelector(i => i.decrease);
+    return <button onClick={decrease}>-</button>;
+});
+// use global store without provider.
+const Component = function Comp() {
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+};
+```
+
+The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
+
+## Why support context store?
+
+In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
+
+ That means: 
+ 
+ 1. The store data can be destroyed with its `provider` component unmount.
+ 2. Components with same store provider can be used together in one parent component without state change effect to each other.
+ 
+ ### How to subscribe a grand parent provider store?
+
+ The store provider system in `@airma/react-state` is designed with a tree structure. The nearest `provider` finds store one-by-one from itself to its root parent `provider`, and links the nearest matched `provider` store to the subscriber `useModel/useSelector`.
+
+ ### Does the state change of store leads a whole provider component rerender?
+
+ No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
+
+ ## Why not async action methods
+
+ Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
+
+There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
 
 ## Browser Support 
 
-We support the browsers:
-
 ```
-chrome: '>=58',
-edge: '>=16',
-firefox: '=>57',
-safari: '>=11'
+chrome: '>=91',
+edge: '>=91',
+firefox: '=>90',
+safari: '>=15'
 ```
-
-If you want to support less version browsers, you'd better have your own polyfills.
-
-## End
-
-We hope you can enjoy this tool, and help us to enhance it in future.
 

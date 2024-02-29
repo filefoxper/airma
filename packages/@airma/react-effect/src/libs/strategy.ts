@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import {
+  QueryConfig,
   SessionState,
   StrategyCollectionType,
   StrategyEffect,
@@ -11,23 +12,40 @@ import { effectModel } from './model';
 export function composeStrategies(
   strategies: (StrategyType | undefined | null)[]
 ): StrategyType {
-  const defaultStrategy: StrategyType = value => value.runner();
   return function strategy(v) {
-    const storeSlots = v.store.current as { current: any }[];
+    const tempSessionSetters: ((s: SessionState) => SessionState)[] = [];
+    const defaultStrategy: StrategyType = value =>
+      value.runner(s => {
+        return tempSessionSetters.reduce((r, c) => {
+          if (r.abandon) {
+            return r;
+          }
+          return c(r);
+        }, s);
+      });
+    const storeSlots = v.localCache.current as { current: any }[];
     const callback = [...strategies]
       .reverse()
       .reduce((r: StrategyType, c: StrategyType | undefined | null, i) => {
         const storage = storeSlots[i] || { current: undefined };
         return function middle(value) {
+          const nextValue = { ...value, localCache: storage };
           if (c == null) {
-            return r(value);
+            return r(nextValue);
           }
-          const nextRunner = () => r(value);
-          return c({ ...value, store: storage, runner: nextRunner });
+          const nextRunner = (
+            setSessionState?: (s: SessionState) => SessionState
+          ) => {
+            if (setSessionState != null) {
+              tempSessionSetters.push(setSessionState);
+            }
+            return r(nextValue);
+          };
+          return c({ ...nextValue, runner: nextRunner });
         };
       }, defaultStrategy);
     return callback(v).then(d => {
-      const { loaded, sessionLoaded } = v.current();
+      const { loaded, sessionLoaded } = v.getSessionState();
       const { abandon, isError, isFetching } = d;
       const currentLoaded = loaded || (!abandon && !isError && !isFetching);
       const currentIsSessionLoaded =
@@ -81,8 +99,9 @@ export function useStrategyExecution<T>(
     triggerType: TriggerType,
     variables: any[]
   ) => Promise<SessionState<T>>,
-  strategy: StrategyCollectionType<T>
+  config: QueryConfig<T, any>
 ) {
+  const { strategy } = config;
   const strategies = toStrategies(strategy);
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
@@ -109,25 +128,36 @@ export function useStrategyExecution<T>(
   return [
     function callWithStrategy(triggerType: TriggerType, variables?: any[]) {
       const runtimeVariables = variables || [];
-      const requires = {
-        current: () => instance.state,
-        variables: runtimeVariables,
-        runner: () => {
-          const { state: current, setState } = instance;
+      const runner = function runner(
+        setSessionState?: (s: SessionState<T>) => SessionState<T>
+      ) {
+        const { state: current, setState } = instance;
+        const initialFetchingState = { ...current, isFetching: true };
+        const fetchingState = setSessionState
+          ? setSessionState(initialFetchingState)
+          : initialFetchingState;
+        if (!fetchingState.abandon) {
           setState({
-            ...current,
-            isFetching: true,
+            ...fetchingState,
             triggerType
           });
-          return sessionRunner(triggerType, runtimeVariables);
-        },
-        store: strategyStoreRef,
-        runtimeCache: createRuntimeCache()
+        }
+        return sessionRunner(triggerType, runtimeVariables);
+      };
+      const requires = {
+        getSessionState: () => instance.state,
+        variables: runtimeVariables,
+        runner,
+        triggerType,
+        config,
+        localCache: strategyStoreRef,
+        executeContext: createRuntimeCache()
       };
       return composeStrategies(strategies)(requires).then(data => {
-        if (!data.abandon) {
-          instance.setState(data);
+        if (data.abandon) {
+          return data;
         }
+        instance.setState(data);
         return data;
       });
     },
@@ -138,12 +168,12 @@ export function useStrategyExecution<T>(
 
 export function latest(): StrategyType {
   return function latestStrategy(requires): Promise<SessionState> {
-    const { runner, store } = requires;
-    store.current = store.current || 0;
-    const version = store.current + 1;
-    store.current = version;
+    const { runner, localCache } = requires;
+    localCache.current = localCache.current || 0;
+    const version = localCache.current + 1;
+    localCache.current = version;
     return runner().then(sessionData => {
-      if (store.current !== version) {
+      if (localCache.current !== version) {
         return { ...sessionData, abandon: true };
       }
       return sessionData;
@@ -153,16 +183,19 @@ export function latest(): StrategyType {
 
 export function block(): StrategyType {
   return function blockStrategy(requires): Promise<SessionState> {
-    const { runner, store } = requires;
-    if (store.current) {
-      return store.current.then((sessionData: SessionState) => ({
+    const { runner, localCache, triggerType } = requires;
+    if (triggerType !== 'manual') {
+      return runner();
+    }
+    if (localCache.current) {
+      return localCache.current.then((sessionData: SessionState) => ({
         ...sessionData,
         abandon: true
       }));
     }
     const promise = runner();
-    store.current = promise.then((sessionData: SessionState) => {
-      store.current = undefined;
+    localCache.current = promise.then((sessionData: SessionState) => {
+      localCache.current = undefined;
       return sessionData;
     });
     return promise;

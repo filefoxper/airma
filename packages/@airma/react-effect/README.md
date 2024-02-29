@@ -10,29 +10,18 @@
 
 # @airma/react-effect
 
-`@airma/react-effect` is designed for managing the asynchronous effect state for react components.
+`@airma/react-effect` is an asynchronous state-management tool for react.
 
 ## Document
 
 * [English](https://filefoxper.github.io/airma/#/react-effect/index)
 * [中文](https://filefoxper.github.io/airma/#/zh/react-effect/index)
 
-## Why effects
+## Code first
 
-Do asynchronous operations in `effects` is more effective.
+### useQuery
 
-1. You can pre-render a default result for asynchronous operation before it is really resolved.
-2. It makes component render with less asynchronous effects spread in event handle callbacks.
-
-If you are ready to improve your react app codes with less asynchronous operation effects, please take minutes to read the [documents](https://filefoxper.github.io/airma/#/react-effect/index) ([中文文档](https://filefoxper.github.io/airma/#/zh/react-effect/index)) of this tool. 
-
-## Basic Usage
-
-The basic hook API `useQuery` and `useMutation` maintains a promise result state. It contains promise information `data`, `error` and status `isFetching`, `isError` for a render help.
-
-### UseQuery
-
-This API is often used to query data with a promise returning callback and parameters for this callback. When `useQuery` is mounted, or the elements of parameters changed, it calls query callback.
+API `useQuery` can query data, and set it as a state.
 
 ```ts
 import React from 'react';
@@ -43,14 +32,13 @@ type UserQuery = {
     name: string;
     username: string;
 }
-// Prepare a callback which returns a promise.
-// We call it a query callback. 
+// Prepare a query promise callback.
 const fetchUsers = (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]);
 
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
-    const [state, trigger, execute] = useQuery(
+    const [state, trigger, executeWithParams] = useQuery(
         // Use query callback
         fetchUsers,
         // Set parameters for query callback
@@ -73,24 +61,87 @@ const App = ()=>{
 }
 ```
 
-The hook API `useQuery` returns a tuple `[state, trigger, execute]`. Element `state` contains informations about this query action. Element `trigger` is a no parameter callback which returns a `state` promise, it should be used just like a query trigger. Element `execute` is a callback which accepts parameters, and returns a `state` promise.
+When `useQuery` is mounted, or the dependency parameters  change, it calls the promise callback.
 
-If you don't want the auto query action happens, when the parameters are changed or setted first time, you should set optional config `manual` to stop it.
+### UseMutation
+
+API `useMutation` is similar with `useQuery`. The difference is that it should be triggered manually to work.
 
 ```ts
 import React from 'react';
-import {useQuery} from '@airma/react-effect';
+import {useMutation} from '@airma/react-effect';
 import {User} from './type';
 
-const fetchUsers = (query: UserQuery):Promise<User[]> =>
-        Promise.resolve([]);
+const saveUser = (user: User): Promise<User> => 
+    Promise.resolve(user);
+
+const App = ()=>{
+    const [user, setUser] = useState<User>({...});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = useMutation(
+        // Set mutation callback,
+        // it is a promise callback.
+        saveUser,
+        // Set mutation parameters.
+        [ user ]
+    );
+    const {
+        // User | undefined
+        data,
+        // boolean
+        isFetching,
+        // any
+        error,
+        // boolean
+        isError
+    } = result;
+
+    const handleClick = ()=>{
+        trigger();
+    }
+
+    ......
+}
+```
+
+The state of useMutation has same fields with useQuery state.
+
+### Session
+
+Both of useQuery and useMutation need a promise callback for working, the mission of promise callback is called [session](/react-effect/concepts?id=session).
+
+Use a simplified API [session](/react-effect/api?id=session) to make coding fly.
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// use `session` API to declare a query session
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
 
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
-    const [state, trigger] = useQuery(
-        fetchUsers,
-        // Set optional config manual
-        {manual: true}
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+        // call session.useQuery
+    ] = userQuerySession.useQuery(
+        // Set parameters for query callback
+        [query]
     );
     const {
         // User[] | undefined
@@ -105,161 +156,419 @@ const App = ()=>{
         loaded
     } = state;
 
-    const handleClick = async ()=>{
-        const {
-          // User[] | undefined
-          data,
-          // boolean
-          isFetching,
-          // any
-          error,
-          // boolean
-          isError,
-          // boolean
-          // the result might be abandoned,
-          // if the execution is not the newest one.
-          abandon,
-          // boolean
-          loaded
-        } = await trigger();
-    }
-
     ......
 }
 ```
 
-We do not recommend using the result promise returned by a `trigger` callback, and that's why we call it a `trigger`.
+The state of useQuery/useMutation is a local state. There are two different store state-managements: use dynamic React.Context store or use static global store.
 
-### UseMutation
-
-It is often used to mutate data with a promise returning callback and its parameters. It is always triggered or executed manually.
+### React.Context dynamic store state-management
 
 ```ts
 import React from 'react';
-import {useMutation} from '@airma/react-effect';
+import {session} from '@airma/react-effect';
 import {User} from './type';
 
-const saveUser = (user: User): Promise<User> =>Promise.resolve(user);
-
-const App = ()=>{
-    const [user, setUser] = useState({name:'', username:''});
-    const [state, trigger, execute] = useMutation(
-        // Provide mutation callback
-        saveUser,
-        // Set parameters
-        [user]
-    );
-    const {
-        // User | undefined
-        data,
-        // boolean
-        isFetching,
-        // any
-        error,
-        // boolean
-        isError
-        // boolean
-        loaded
-    } = state;
-
-    const handleClick = ()=>{
-        // Trigger it manually
-        trigger();
-    }
-
-    ......
+type UserQuery = {
+    name: string;
+    username: string;
 }
-```
 
-It only works in `manual` mode, so you don't have to worry about the auto mutation happening.
+// declare a query session dynamic store
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore();
 
-### Use Strategy
+const SearchButton = ()=>{
+    // useSession subscribes state change from session store
+    const [
+        // state from session store
+        {isFetching},
+        // call trigger function can trigger useQuery work manually 
+        triggerQuery
+    ] = userQueryStore.useSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
 
-Sometimes you want to control the running way about the promise callback.
-
-For example, we often save data oncely, and then unmount component immediately after saving success to prevent a repeat saving mistake. 
-
-```ts
-import React from 'react';
-import {useMutation, Strategy} from '@airma/react-effect';
-import {User} from './type';
-
-const saveUser = (user:User):Promise<User> => 
-    Promise.resolve(user);
-
-const App = ()=>{
-    const [user, setUser] = useState({name:'', username:''});
-    const [state, trigger] = useMutation(
-        saveUser,
-        // Set variables and strategy
-        {
-        variables: [user],
-        // Set Strategy.once()
-        strategy: Strategy.once()
-        }
+// provide dynamic store is very important
+const App = userQueryStore.provideTo(()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        // Write every query state change to store
+    ] = userQueryStore.useQuery(
+        [query]
     );
 
-    const handleClick = async ()=>{
-        trigger();
-    }
-
     ......
-}
-```
 
-## Share promise state changes
-
-There are steps you need to do for sharing promise state changes.
-
-1. Create a `session key` for every promise callback.
-2. Set `session keys` to `SessionProvider` for creating session store.
-3. Use `session key` to link a `SessionProvider` store for promise state sharing.
-
-```ts
-import React, {memo} from 'react';
-import { 
-  SessionProvider, 
-  createSessionKey, 
-  useSession, 
-  useQuery 
-} from '@airma/react-effect';
-import {User} from './type';
-
-const fetchLoginUser = (query:UserQuery):Promise<User>=> 
-    Promise.resolve({...});
-
-// Create a `session key`
-const loginUser = createSessionKey(fetchLoginUser);
-
-const Child1 = memo(()=>{
-  // Query for current login user.
-  // Update promise state into store
-  // with session key `loginUser`
-  const [ state ] = useQuery(loginUser,[]);
-
-  return ......;
-});
-
-const Child2 = memo(()=>{
-  // Take and subscribe promise state changes
-  // of session key `loginUser` in store.
-  const [ state ] = useSession(loginUser);
-
-  return ......;
-});
-
-const App = memo(()=>{
-  // Set session key `loginUser` into `SessionProvider`,
-  // and create a store inside.
-  return (
-      <SessionProvider keys={loginUser}>
-        <Child1/>
-        <Child2/>
-      </SessionProvider>
-  );
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
 })
 ```
 
-## Summary
+Why support React.Context store? Refer to [@airma/react-state explain](/react-state/index?id=why-support-context-store).
 
-The common usages about `@airma/react-effect` are listed above, if you want to know more about it, please take this [document](https://filefoxper.github.io/airma/#/react-effect/index).
+The dynamic store is a special session [key](/react-effect/concepts?id=key) collection not a real store. It persist an actual store in [Provider](/react-effect/api?id=provider) component. 
+
+When a Provider is mounting in, it creates store, and when the provider has been unmounted, it destroys this store.
+
+### Global static store state-management
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// declare a query session global static store
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore().asGlobal();
+
+const SearchButton = ()=>{
+    const [
+        {
+            isFetching,
+            // User[] | undefined
+            data
+        },
+        triggerQuery
+    ] = userQueryStore.useSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+// global static store needs no Provider.
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQueryStore.useQuery(
+        [query]
+    );
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+}
+```
+
+The state `data` from useSession is always has a `undefined` union type. API [useLoadedSession](/react-effect/api?id=useloadedsession) can be helpful if the session `state.data` is not empty from initializing time.
+
+```ts
+import React from 'react';
+import {session} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQueryStore = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+).createStore().asGlobal();
+
+const SearchButton = ()=>{
+    // store.useLoadedSession can give out the promise resolve type without `empty`.
+    const [
+        {
+            isFetching,
+            // User[]
+            data
+        },
+        triggerQuery
+    ] = userQueryStore.useLoadedSession();
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQueryStore.useQuery(
+        // use object config to set default data
+        {
+            variables: [query],
+            // To make `state.data` not empty,
+            // a default data is needed.
+            defaultData: []
+        }
+    );
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+}
+```
+
+Want to do something when query or mutation responses?
+
+```ts
+import React from 'react';
+import {session, useResponse} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state
+    ] = userQuerySession.useQuery(
+        [query]
+    );
+    
+    // When useQuery/useMutation responses, 
+    // useResponse calls the response callback.
+    useResponse(
+        // response callback
+        (sessionState)=>{
+            // accept a newest session state.
+            const {
+                data,
+                isError,
+                error,
+                ......
+            } = sessionState;
+            doSomething(sessionState);
+        }, 
+        // listen to the session state of useQuery
+        state
+    );
+
+    // When useQuery/useMutation responses successfully, 
+    // useResponse.useSuccess calls the response callback.
+    useResponse.useSuccess(
+        (data, sessionState)=>{
+            // accept a newst session state data.
+            // accept a newest session state.
+            doSomething(data);
+        }, 
+        // listen to the session state of useQuery
+        state
+    );
+
+    // When useQuery/useMutation responses unsuccessfully, 
+    // useResponse.useFailure calls the response callback.
+    useResponse.useFailure(
+        (error, sessionState)=>{
+            // accept a newst session state error.
+            // accept a newest session state.
+            doSomething(error);
+        }, 
+        // listen to the session state of useQuery
+        state
+    );
+    ......
+}
+```
+
+Want to run useQuery or useMutation with some features like debounce?
+
+### Strategy
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            // set a debouce strategy to take debounce query feature.
+            strategy: Strategy.debounce(300)
+        }
+    );
+
+    ......
+}
+```
+
+The [Strategy](/react-effect/api?id=strategy) API contains some useful strategies for useQuery and useMutation. Compose some strategies together can make the session of useQuery/useMutation performance wonderfully.
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            // compose different strategies.
+            strategy: [
+                // Validate query.name is not empty,
+                // if it is empty, then stop execute query
+                Strategy.validate(()=>!!query.name),
+                // Query with debounce feature
+                Strategy.debounce(300),
+                // If the response data equals current state.data,
+                // keeps current state.data.
+                Strategy.memo()
+            ]
+        }
+    );
+
+    ......
+}
+```
+
+Want to use SWR(stale-while-revalidate)?
+
+```ts
+import React from 'react';
+import {session, Strategy} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+const userQuerySession = session(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const App = ()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        trigger, 
+        executeWithParams
+    ] = userQuerySession.useQuery(
+        {
+            variables: [query],
+            strategy: [
+                // use swr strategy
+                Strategy.cache({
+                    capacity:10, 
+                    staleTime:5*60*1000
+                })
+            ]
+        }
+    );
+
+    ......
+}
+```
+
+## Introduce
+
+`@airma/react-effect` is an asynchronous state-management tool for react. It dependents [@airma/react-state](/react-state/index), and there are some similar apis between both packages, so, use a common package [@airma/react-hooks](/react-hooks/index) is a better choice.
+
+### Why not use setState in asynchronous callback?
+
+Setting state in asynchronous callback is more easy to take a stale state usage bug in code. And it often makes [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) problem too.
+
+### When useQuery works?
+
+API useQuery works when it is mounted, or the dependency parameters change, just like React.useEffect performance. It also can be triggered manually.
+
+## Install and Support
+
+The package lives in [npm](https://www.npmjs.com/get-npm). To install the latest stable version, run the following command:
+
+### Install command
+
+```
+npm i @airma/react-effect
+```
+
+### Browser support
+
+```
+chrome: '>=91',
+edge: '>=91',
+firefox: '=>90',
+safari: '>=15'
+```

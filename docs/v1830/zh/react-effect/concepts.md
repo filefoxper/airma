@@ -1,0 +1,321 @@
+# 概念
+
+`@airma/react-effect` 涉及三个核心概念：会话、键、策略。
+
+1. [会话](/zh/react-effect/concepts?id=会话)
+2. [键](/zh/react-effect/concepts?id=键)
+3. [策略](/zh/react-effect/concepts?id=策略)
+
+## 会话
+
+会话是指一个可持续的异步状态管理单元。API [useQuery](/zh/react-effect/api?id=usequery) 可创建一个查询会话； [useMutation](/zh/react-effect/api?id=usemutation) 建立的则是一个修改会话；[useSession](/zh/react-effect/api?id=usesession) 获取会话；API [session](/zh/react-effect/api?id=session) 预设会话。会话的核心为**异步函数**，所有会话的目标就是将异步函数的执行过程以状态变更的形式描述出来。
+
+```ts
+// 创建会话
+const session = useQuery(promiseCallback, variablesOrConfig);
+// 创建会话
+const session = useMutation(promiseCallback, variablesOrConfig);
+
+const [
+    // 会话状态
+    sessionState, 
+    // 人工触发会话，
+    // 触发会话并不需要提供任何参数，
+    // 会话会使用创建时传入的 variables 作参数
+    trigger, 
+    // 人工执行会话，
+    // 执行会话需要传入异步函数的所有参数
+    execute
+] = session;
+```
+
+### 会话状态
+
+会话状态是指会话所获取的异步函数执行的过程信息，从会话创建（还未执行）开始一直存在，并随异步函数执行过程不断更新。
+
+```ts
+const session = useQuery(promiseCallback, variablesOrConfig);
+
+const [
+    // 会话状态 
+    sessionState, 
+    trigger,
+    execute
+] = session;
+
+const {
+    // 会话数据
+    data,
+    // 会话参数
+    variables,
+    // 会话是否正在执行
+    // true/false
+    isFetching,
+    // 会话最新执行是否出错
+    // true/false
+    isError,
+    // 会话错误
+    error,
+    ......
+} = sessionState;
+```
+
+全量会话状态字段：
+
+* **data** - 会话数据，类型：`T（异步函数执行结果类型）`，即最后一次成功执行完异步函数得到的结果。默认初始值为 undefined，如在会话配置中设置了 defaultData，则以 defaultData 为初始值。只要会话成功执行过，该值就会留存，并不受最新执行是否出错的影响。
+* **error** - 会话错误，类型：`unknown`，即最后一次执行完异步函数的出错信息。初始值 undefined，最后一次执行完异步函数的出错时才可能有值。如最新一次执行为成功执行，该值将变成 undefined.
+* **variables** - 会话参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，即最后一次执行完异步函数使用的参数记录。初始值为 undefined，参数 array 类型。
+* **isFetching** - 会话是否正在执行，类型：`boolean`。
+* **isError** - 会话最新执行结果是否出错，类型：`boolean`，当该值为 `true` 时，error 可能有值，否则 error 为 undefined。
+* **sessionLoaded** - 会话是否经历过一次成功执行，类型：`boolean`。
+* **loaded** - 会话是否已加载，类型：`boolean`，即会话是否经历过一次成功执行，如设置了会话配置项 defaultData，该值恒为 true。
+* **triggerType** - 用于描述会话最新执行使用的触发方式，类型：`'mount' | 'update' | 'manual'`。该值在会话被触发时被设定。
+* **round** - 会话回合数，类型：`number`，会话每执行完一次异步函数记为一个回合，该值自动加 1，初始值为 0。
+* **abandon** - 本次会话执行结果是否被放弃，类型：`boolean`，该值在会话状态中始终为 false。 [策略](/zh/react-effect/concepts?id=策略) 系统会根据策略需求对执行结果进行废弃与否的标记，如执行结果被标记 abandon: true，则该结果被废弃，再也不会被设置为新的会话状态。
+
+关于 **triggerType**
+
+* **mount** - 加载时触发会话。
+* **update** - 配置项依赖 config.deps 或 config.variables 更新时触发会话。
+* **manual** - 通过调用 trigger 触发器或 execute 执行器触发会话。
+
+### 会话配置
+
+会话配置可用于设定会话数据的默认值，会话参数，会话触发方式，会话使用策略等特性。
+
+最简单的会话配置为会话参数数组形态：
+
+```ts
+useQuery(
+  promiseCallback, 
+  // 会话参数
+  [param1, param2, ...]
+);
+
+const [
+    ,
+    trigger,
+    execute
+] = useMutation(
+  promiseCallback,
+  // 会话参数 
+  [param1, param2, ...]
+);
+```
+
+如需使用其他设置项，则需要选用 object 配置对象的形式：
+
+```ts
+useQuery(promiseCallback, {
+    // 会话参数
+    variables: [param1, param2, ...],
+    // 默认会话数据
+    defaultData: defaultData,
+    // 支持的触发方式
+    triggerOn: ['update', 'manual'],
+    // 会话策略
+    strategy: [
+        Strategy.debounce(300),
+        Strategy.response.success((data)=>{
+            console.log(data);
+        })
+    ]
+});
+
+useMutation(promiseCallback, {
+    variables: [param1, param2, ...],
+    // useMutation 默认支持的触发方式只有 'manual'，
+    // 通过 triggerOn 可扩充当前 useMutation 的触发方式。
+    triggerOn: ['update', 'manual'],
+    strategy: [
+        Strategy.response.success((data)=>{
+            console.log(data);
+        })
+    ]
+});
+```
+
+全量会话配置字段：
+
+* **triggerOn** - 会话触发方式，类型：`('mount'|'update'|'manual')[]`，可选。useQuery 默认支持全量触发方式，useMutation 默认只支持 `manual` 人工触发模式。
+* **deps** - 会话加载更新触发模式依赖项，类型：`any[]`，可选。当依赖项发生更新，则触发会话以 variables 为参数执行异步函数。相当于通过 useEffect 调用异步函数。
+* **variables** - 推荐会话执行参数，类型：`Parameter（异步函数传参元组类型）`，可选。如未设置 *deps* 配置项，则默认充当其作为加载更新触发依赖项的功能。
+* **defaultData** - 会话默认数据，类型：`T（异步函数执行结果类型）`，可选。如设置此项，当会话处于尚未执行的初始状态时，会话数据 *data* 为当前设置值，且会话是否已加载数据 *loaded* 恒为 true。
+* **strategy** - 会话[策略](/zh/react-effect/concepts?id=策略)，类型：`Array<StrategyType>|StrategyType`，用于干预会话执行过程和结果的函数。
+
+所有配置项均可不设置，这时会话处于强制人工执行模式。
+
+### 触发和执行
+
+如果一个会话支持 **manual** 人工触发模式，则可以通过调用 trigger 或 execute 的方式去触发会话执行。
+
+* **trigger** - 触发方法，无入参函数。调用该回调方法可触发会话使用配置项中的推荐会话执行参数 *variables* 做入参执行异步函数。
+* **execute** - 执行方法，需要提供异步执行函数所需的参数。
+
+当会话配置中不存在 *variables*，则进入强制人工执行模式。强制人工执行模式不允许使用 **trigger** 触发方法，也无法依靠加载或更新触发会话，只能通过调用 **execute** 执行方法，人工触发。
+
+```ts
+const [
+    querySessionState,
+    // 查询触发方法
+    triggerQuery,
+    // 查询执行方法
+    executeQuery
+] = useQuery(promiseCallback, [param1, param2]);
+const [
+    mutationSessionState,
+    // 修改触发方法，因无 variables 设置，无法使用
+    triggerMutation,
+    // 修改执行方法
+    executeMutation
+] = useMutation(promiseCallback);
+
+const callTriggerQuery = ()=>{
+    // 触发执行查询
+    triggerQuery();
+};
+
+const callExecuteQuery = ()=>{
+    // 执行查询方法
+    executeQuery(param1, param2);
+};
+
+const callTriggerMutation = ()=>{
+    // 因无 variables 参数，处于强制人工执行模式，无法使用触发方法，会报错
+    triggerMutation();
+};
+
+const callExecuteMutation = ()=>{
+    // 允许执行修改方法
+    executeMutation(param1, param2);
+};
+```
+
+## 键
+
+**键**是用于创建和监听库的函数。在使用 React.Context 动态库维护会话状态的过程中，[Provider](/zh/react-effect/api?id=provider) 组件使用**键**生成内部库；useQuery/useMutation 通过**键**获取最新库存会话状态数据，执行库存异步函数，更新库的会话状态；useSession 也可通过**键**同步库中的会话状态，人工触发会话工作。
+
+```ts
+import React from 'react';
+import {
+    createSessionKey, 
+    provide,
+    useQuery, 
+    useSession
+} from '@airma/react-effect';
+import {User} from './type';
+
+type UserQuery = {
+    name: string;
+    username: string;
+}
+
+// 创建会话键
+const userQueryKey = createSessionKey(
+    (query: UserQuery):Promise<User[]> =>
+        Promise.resolve([]),
+    'query'
+);
+
+const SearchButton = ()=>{
+    // useSession 通过键获取库状态，触发同键会话 useQuery 工作。
+    const [
+        // 库中的会话状态
+        {isFetching},
+        // 触发同键会话 useQuery 工作
+        triggerQuery
+    ] = useSession(userQueryKey);
+    return (
+        <button 
+            disabled={isFetching} 
+            onClick={triggerQuery}
+        >
+        query
+        </button>
+    );
+}
+
+// 使用会话键在 Provider 包囊组件中创建库 
+const App = provide(userQueryKey)(()=>{
+    const [query, setQuery] = useState({name:'', username:''});
+    const [
+        state, 
+        // useQuery 通过键获取库状态，并持续更新库中的会话状态
+    ] = useQuery(userQueryKey, [query]);
+
+    ......
+
+    return (
+        <>
+            <SearchButton />
+            ......
+        </>
+    );
+})
+```
+
+[session](/zh/react-effect/api?id=session) API 通过 `session(promiseCallback, 'query').createStore()` 产生的动态库是并非真库，而是融合了 [provide](/zh/react-effect/api?id=provide) 高阶组件的**键**库形态。
+
+因为会话的**键**库系统完全利用了 `@airma/react-state` 的[键](/zh/react-state/concepts?id=键)库系统，会话**键**就是一种特殊的模型**键**，因此，两者的键库是可以通用的。关于[库](/zh/react-state/guides?id=createkey-与-provide)的理解也可以参考 `@airma/react-state` 中的介绍。
+
+## 策略
+
+策略是一种用于干预会话执行过程和结果的插件性函数。`@airma/react-effect` 没有采用大量规范配置来支持各种执行修饰性功能，而选择了更灵活的插件设计方案。
+
+```ts
+type Runtime = {
+    getSessionState: () => SessionState;
+    variables: any[];
+    triggerType: 'mount' | 'update' | 'manual';
+    runner: (
+        setFetchingSessionState?: (s: SessionState) => SessionState
+    ) => Promise<SessionState>;
+    localCache: { current: any };
+    executeContext: {
+      set: (key: any, value: any) => void;
+      get: (key: any) => any;
+    };
+  };
+
+function stratey(
+    runtime: Runtime
+): Promise<SessionState>;
+```
+
+策略函数可使用 **runtime** 参数对象来控制会话的执行过程，并通过返回一个 resolve 值类型为会话状态类型（SessionState）的 Promise 来更新会话状态值。
+
+执行控制对象 **runtime** 的字段如下：
+
+* **getSessionState** - 获取当前运行会话状态的方法。
+* **varaibles** - 当前执行使用的参数。
+* **triggerType** - 当前执行的触发类型，`'mount' | 'update' | 'manual'`。
+* **runner** - 当前策略函数的*后续策略函数*。最终执行的会话异步函数被包装成了一个终端策略函数，所以策略的尽头依然是策略。
+* **localCache** - 用于缓存策略状态的本地缓存对象，该对象只能在本地策略中使用。
+* **executeContext** - 用于暂存策略链式处理过程中状态的执行上下文对象，该对象支持跨策略函数调用。
+
+会话的执行过程中，所有策略函数总是会通过至前往后的调用顺序形成一个策略链函数。会话所执行的最终异步函数即该策略链函数。即便没有通过会话配置提供任何策略，每个会话依然有自己的默认策略。
+
+* [useQuery](/zh/react-effect/api?id=usequery) - useQuery 作为查询用会话，默认兜底策略为始终选取最新请求数据的 latest 策略。 
+* [useMutation](/zh/react-effect/api?id=usemutation) - useMutation 作为修改用会话，默认兜底策略为在人工触发时使用阻塞运行方式，更新触发时直接运行的策略。
+
+策略执行顺序如下:
+
+```ts
+useQuery(
+    promiseCallback,
+    {
+        variables: [query],
+        // 策略链
+        strategy: [
+            // 进入 1, 返回 3
+            Strategy.validate(()=>!!query.name),
+            // 进入 2, 返回 2
+            Strategy.debounce(300),
+            // 进入 3, 返回 1 
+            Strategy.memo()
+        ]
+    }
+);
+```
+
+下一节[引导](/zh/react-effect/guides)

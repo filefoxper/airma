@@ -1,7 +1,6 @@
 import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   createKey,
-  useControlledModel,
   useModel,
   useSelector,
   createSessionKey,
@@ -12,11 +11,17 @@ import {
   useQuery,
   useSession,
   useUpdate,
-  useResponse
+  useResponse,
+  useControlledModel
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
-import { ErrorSessionState, useLazyComponent } from '@airma/react-effect';
+import {
+  ErrorSessionState,
+  session,
+  useLazyComponent
+} from '@airma/react-effect';
+import { model, shallowEqual } from '@airma/react-state';
 
 const { rest } = cli(c => ({
   ...c,
@@ -43,7 +48,7 @@ type Query = {
 };
 
 const defaultCondition: Condition = {
-  name: '',
+  name: 'Mr',
   username: '',
   age: undefined
 };
@@ -53,34 +58,48 @@ const userQuery = (validQuery: Condition) =>
     .path('list')
     .setParams(validQuery)
     .get<User[]>()
-    .then(
-      d =>
-        new Promise<User[]>(resolve => {
-          setTimeout(() => {
-            resolve(d);
-          }, 2000);
-        })
-    );
+    .then(d => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(d);
+        }, 700);
+      }) as Promise<User[]>;
+    });
 
-export const fetchSessionKey = createSessionKey(userQuery);
+export const fetchSession = session(userQuery, 'query')
+  .createStore()
+  .asGlobal();
 
-const test = (state: number) => {
+const test = model((state: number) => {
   return {
     state,
     add() {
-      console.log('run', state + 1);
       return state + 1;
+    }
+  };
+}).store(0);
+
+const counting = (state: number) => {
+  return {
+    value: state,
+    increase() {
+      return state + 1;
+    },
+    decrease() {
+      return state - 1;
     }
   };
 };
 
-const testKey = createKey(test, 0);
-
-const conditionModel = (query: Query) => {
+const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
+  const queryData = model.context().memo(() => {
+    return { ...query.valid };
+  }, [query.valid]);
   return {
+    queryData,
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
@@ -98,57 +117,58 @@ const conditionModel = (query: Query) => {
     },
     query: handleQuery
   };
-};
-
-const conditionKey = createKey(conditionModel, {
-  valid: defaultCondition,
-  display: defaultCondition,
-  creating: true
-});
+})
+  .createStore()
+  .asGlobal();
 
 const Info = memo(() => {
-  const [{ isFetching, isError, error }] = useSession(fetchSessionKey);
+  const [{ isFetching, isError, error }] = fetchSession.useSession();
   if (isFetching) {
     return <span>fetching...</span>;
   }
   return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
 });
 
+const creatingStore = model((userData: Omit<User, 'id'>) => {
+  return {
+    user: userData,
+    changeUsername(username: string) {
+      return { ...userData, username };
+    },
+    changeName(name: string) {
+      return { ...userData, name };
+    },
+    update() {
+      return { ...userData };
+    }
+  };
+}).createStore();
+
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
-    const creating = useSelector(conditionKey, s => s.creating);
-    const { user, changeUsername, changeName } = useModel(
-      (userData: Omit<User, 'id'>) => {
-        return {
-          user: userData,
-          changeUsername(username: string) {
-            return { ...userData, username };
-          },
-          changeName(name: string) {
-            return { ...userData, name };
-          },
-          update() {
-            return { ...userData };
-          }
-        };
-      },
-      {
-        name: '',
-        username: '',
-        age: 10
-      }
-    );
+    const creating = store.useSelector(s => s.creating);
+    const { user, changeUsername, changeName } = creatingStore.useModel({
+      name: '',
+      username: '',
+      age: 10
+    });
 
-    const [{ variables }, query] = useSession(fetchSessionKey);
+    const [{ variables }, query] = fetchSession.useSession();
 
     const [q] = variables ?? [];
 
     const [, save] = useMutation(
       (u: Omit<User, 'id'>) =>
-        rest('/api/user')
-          .setBody(u)
-          .post<null>()
-          .then(() => true),
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            resolve(
+              rest('/api/user')
+                .setBody(u)
+                .post<null>()
+                .then(() => true)
+            );
+          }, 1000);
+        }),
       {
         variables: [user],
         strategy: [
@@ -194,44 +214,11 @@ const Creating = memo(
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, create, changeDisplay, query } = useModel(conditionKey);
+  const { displayQuery, create, changeDisplay, query } = store.useModel();
 
-  const session = useQuery(fetchSessionKey, {
-    variables: [q],
-    defaultData: [],
-    strategy: Strategy.response.success((a, s) =>
-      console.log('effect strategy', a, s)
-    )
-  });
-
-  const [state, conditionTrigger] = session;
-
-  const [{ isFetching }, trigger] = useSession(fetchSessionKey, 'query');
-
-  useResponse(s => {
-    if (s.isError) {
-      console.log('rsp', s.error);
-      return;
-    }
-    console.log('rsp', s.data?.length);
-  }, state);
-
-  useResponse.success((d, s) => {
-    const [{ name }] = s.variables;
-    console.log(
-      'rsp s',
-      d.map(u => u.name)
-    );
-  }, state);
-
-  useResponse.error(e => {
-    console.log('rsp e', e);
-  }, state);
-
-  useIsFetching(state);
+  const [{ isFetching }, trigger] = fetchSession.useSession();
 
   const handleTrigger = () => {
-    conditionTrigger();
     parentTrigger();
   };
 
@@ -276,58 +263,76 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   );
 });
 
-export default provide({ conditionKey, fetchSessionKey, testKey })(
-  function App() {
-    const { validQuery, creating, cancel } = useSelector(conditionKey, s =>
-      pick(s, 'validQuery', 'creating', 'cancel')
-    );
+export default test.with(creatingStore).provideTo(function App() {
+  store.useModel({
+    valid: defaultCondition,
+    display: defaultCondition,
+    creating: false
+  });
+  const { queryData, creating, cancel } = store.useSelector(s =>
+    pick(s, 'queryData', 'creating', 'cancel')
+  );
 
-    const querySession = useQuery(fetchSessionKey, {
-      variables: [validQuery],
-      defaultData: [],
-      strategy: Strategy.success((a, s) => console.log(a, s))
-    });
+  console.log('render...');
 
-    const [{ data, variables }, t] = querySession;
+  const querySession = fetchSession.useQuery({
+    variables: [queryData],
+    defaultData: [],
+    strategy: [
+      Strategy.cache({
+        capacity: 5,
+        key: JSON.stringify
+      }),
+      Strategy.memo(),
+      Strategy.response.success((a, s) => {
+        const [v] = s.variables;
+        console.log('name', v.name);
+      })
+    ]
+  });
 
-    const [q] = variables ?? [];
+  const [queryState] = querySession;
 
-    console.log(q?.name);
+  useResponse.useSuccess(state => {
+    console.log('response success', state);
+  }, queryState);
 
-    const Creator = useLazyComponent(
-      () => Promise.resolve(Creating) as Promise<typeof Creating>,
-      querySession
-    );
+  const [{ data, variables }, t] = querySession;
 
-    useUpdate(
-      ([d]) => {
-        console.log('update...', d);
-      },
-      [data, 1]
-    );
+  const [q] = variables ?? [];
 
-    return (
-      <div style={{ padding: '12px 24px' }}>
-        <Condition parentTrigger={t} />
-        <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
-          {creating ? (
-            <Suspense>
-              <Creator onClose={cancel} />
-            </Suspense>
-          ) : (
-            <Info />
-          )}
-        </div>
-        <div>
-          {data.map(user => (
-            <div key={user.id} style={{ padding: '4px 0' }}>
-              <span style={{ marginRight: 12 }}>name: {user.name}</span>
-              <span style={{ marginRight: 12 }}>username: {user.username}</span>
-              <span style={{ marginRight: 12 }}>age: {user.age}</span>
-            </div>
-          ))}
-        </div>
+  const [count, setCount] = useState(0);
+
+  const instance = useControlledModel(counting, count, s => setCount(s));
+
+  const { value, increase, decrease } = instance;
+
+  return (
+    <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
+      <div style={{ margin: '8px 0' }}>
+        <button type="button" onClick={increase}>
+          +
+        </button>
+        <span style={{ margin: '0 8px' }}>
+          {count} : {value}
+        </span>
+        <button type="button" onClick={decrease}>
+          -
+        </button>
       </div>
-    );
-  }
-);
+      <Condition parentTrigger={t} />
+      <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
+        {creating ? <Creating onClose={cancel} /> : <Info />}
+      </div>
+      <div>
+        {data.map(user => (
+          <div key={user.id} style={{ padding: '4px 0' }}>
+            <span style={{ marginRight: 12 }}>name: {user.name}</span>
+            <span style={{ marginRight: 12 }}>username: {user.username}</span>
+            <span style={{ marginRight: 12 }}>age: {user.age}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});

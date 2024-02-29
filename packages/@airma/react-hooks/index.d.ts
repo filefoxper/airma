@@ -13,8 +13,9 @@ export {
   createKey,
   useModel,
   useControlledModel,
-  useRealtimeInstance,
-  useSelector
+  useSelector,
+  model,
+  useRealtimeInstance
 } from '@airma/react-state';
 
 export {
@@ -25,7 +26,9 @@ export {
   useSession,
   useLoadedSession,
   useResponse,
-  useIsFetching
+  useIsFetching,
+  useLazyComponent,
+  session
 } from '@airma/react-effect';
 
 export declare function provide(

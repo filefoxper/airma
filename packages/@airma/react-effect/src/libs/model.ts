@@ -16,7 +16,11 @@ export function effectModel(state: SessionState & { version?: number }) {
     if (s.isFetching) {
       return s;
     }
-    return { ...s, fetchVersion: (state.fetchVersion || 0) + 1 };
+    return {
+      ...s,
+      fetchVersion: (state.fetchVersion || 0) + 1,
+      round: state.round + 1
+    };
   };
   return {
     state: rest,
@@ -88,6 +92,9 @@ export const defaultPromiseResult = (config?: {
     triggerType: undefined,
     loaded: false,
     sessionLoaded: false,
+    cache: [],
+    maxCacheCapacity: 1,
+    round: 0,
     ...config
   } as SessionState);
 
@@ -175,24 +182,19 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   return [stableInstance, configuration, effectCallback];
 }
 
-export function createSessionKey<
-  E extends (...params: any[]) => Promise<any>,
-  T = E extends (...params: any[]) => Promise<infer R> ? R : never
->(effectCallback: E, sessionType?: SessionType): SessionKey<E> {
-  const context = { implemented: false };
+export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
+  effectCallback: E,
+  sessionType?: SessionType
+): SessionKey<E> {
   const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
+  const effectCallbackReplace: E = function effectCallbackReplace(
+    ...params: any[]
+  ) {
+    return effectCallback(...params);
+  } as E;
   model.effect = [
-    function effectCallbackReplace(...params: any[]) {
-      return effectCallback(...params);
-    } as E,
+    effectCallbackReplace,
     sessionType ? { sessionType } : {}
   ] as [E, { sessionType?: SessionType }];
-  model.implement = function impl(callback: E) {
-    if (context.implemented) {
-      return;
-    }
-    model.effect[0] = callback;
-    context.implemented = true;
-  };
   return model as SessionKey<E>;
 }

@@ -6,23 +6,29 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
   <meta name="description" content="Description">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <link rel="stylesheet" href="./lib/buble.css">
+  <link rel="stylesheet" href="/libs/vue.css">
+  <link rel="stylesheet" href="/libs/plugins/version.css">
 </head>
 <body>
   <div id="app"></div>
   <script>
+    const basePath = '/v1830';
     window.$docsify = {
       name: '',
       repo: '',
       loadSidebar: true,
       loadNavbar: true,
-      subMaxLevel: 2
+      subMaxLevel: 2,
+      versions:[
+        { folder: 'v1830', label: 'v18.3.0', default: true }
+      ],
+      versionSelectorLabel: 'Version'
     }
   </script>
   <!-- Docsify v4 -->
-  <script src="./lib/doc.js"></script>
-  <script src="./lib/ts.mini.js"></script>
-  <script src="./lib/js.js"></script>
-  <script src="./lib/tsx.js"></script>
+  <script src="/libs/core.js" data-ga="UA-XXXXX-Y"></script>
+  <script src="/libs/plugins/version.js"></script>
+  <script src="/libs/plugins/ts.mini.js"></script>
+  <script src="/libs/plugins/tsx.js"></script>
 </body>
 </html>

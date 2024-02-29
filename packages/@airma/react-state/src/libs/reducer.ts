@@ -1,4 +1,4 @@
-import type {
+import {
   Action,
   AirModelInstance,
   AirReducer,
@@ -8,15 +8,74 @@ import type {
   Dispatch,
   ActionWrap,
   FirstActionWrap,
-  UpdaterConfig
+  UpdaterConfig,
+  StaticFactoryInstance,
+  Collection,
+  Creation,
+  ModelFactoryStore,
+  ModelContext,
+  Contexts,
+  ModelContextFactory
 } from './type';
-import { createProxy, noop, toMapObject } from './tools';
-import { Collection, Creation, ModelFactoryStore } from './type';
+import { createProxy, noop, shallowEqual, toMapObject } from './tools';
+
+const lazyIdentify = {};
+
+const lazyIdentifyKey = '@@lazyIdentify';
 
 function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   dispatches.forEach(callback => {
     callback(action);
   });
+}
+
+const systemRuntime: { context: ModelContext | null } = {
+  context: null
+};
+
+export function getRuntimeContext() {
+  const { context } = systemRuntime;
+  if (context == null) {
+    throw new Error('Can not use context out of the model refresh time.');
+  }
+  return context;
+}
+
+function refreshModel<S, T extends AirModelInstance, D extends S>(
+  reducer: AirReducer<S, T>,
+  state: D,
+  runtime: ModelContextFactory
+) {
+  runtime.start();
+  systemRuntime.context = runtime.context;
+  const instance = reducer(state);
+  systemRuntime.context = null;
+  runtime.end();
+  if ((instance as any)[lazyIdentifyKey] === lazyIdentify) {
+    runtime.reset();
+  }
+  return instance;
+}
+
+function destroyDispatching<S, T extends AirModelInstance>(
+  updater: Updater<S, T>
+) {
+  const { dispatching } = updater;
+  if (!dispatching) {
+    return;
+  }
+  let wrapper: ActionWrap | undefined = dispatching;
+  while (wrapper) {
+    const { next } = wrapper as ActionWrap;
+    wrapper.next = undefined;
+    wrapper.prev = undefined;
+    if (next) {
+      next.prev = undefined;
+    }
+    wrapper = next;
+  }
+  dispatching.tail = undefined;
+  updater.dispatching = undefined;
 }
 
 function generateNotification<S, T extends AirModelInstance>(
@@ -32,6 +91,9 @@ function generateNotification<S, T extends AirModelInstance>(
       return;
     }
     const { tail } = dispatching;
+    if (!tail) {
+      return;
+    }
     const current: ActionWrap = { prev: tail, value };
     tail.next = current;
     dispatching.tail = current;
@@ -44,6 +106,7 @@ function generateNotification<S, T extends AirModelInstance>(
     }
     const { next, tail } = dispatching;
     if (tail === dispatching || !next) {
+      dispatching.tail = undefined;
       updater.dispatching = undefined;
       return dispatching;
     }
@@ -84,9 +147,81 @@ function generateNotification<S, T extends AirModelInstance>(
   };
 }
 
+function generateModelContextFactory(): ModelContextFactory {
+  const contexts: Contexts = {
+    data: [],
+    current: 0,
+    initialized: false,
+    working: false
+  };
+  const ref = function ref<C>(current: C) {
+    const { data, initialized, working } = contexts;
+    if (!working) {
+      throw new Error(
+        'Context hook only can be used in model refreshing time.'
+      );
+    }
+    const currentIndex = contexts.current;
+    const memoData = data[currentIndex];
+    contexts.current += 1;
+    if (memoData) {
+      return memoData as { current: C };
+    }
+    if (initialized) {
+      throw new Error(
+        'Context hook should be used everytime, when model is refreshing.'
+      );
+    }
+    const refData = { current };
+    data[currentIndex] = refData;
+    return refData;
+  };
+  const memo = function memo<M extends () => any>(
+    call: M,
+    deps: unknown[] = []
+  ) {
+    const memoRef = ref<undefined | [ReturnType<M>, unknown[]]>(undefined);
+    const [memoData, memoDeps] = (function generate(): [
+      ReturnType<M>,
+      unknown[] | undefined
+    ] {
+      if (memoRef.current == null) {
+        return [call(), deps];
+      }
+      const [d, p] = memoRef.current;
+      if (shallowEqual(p, deps)) {
+        return [d, undefined];
+      }
+      return [call(), deps];
+    })();
+    if (memoDeps) {
+      memoRef.current = [memoData, memoDeps];
+    }
+    return memoData;
+  };
+  return {
+    context: { ref, memo },
+    reset() {
+      contexts.working = false;
+      contexts.current = 0;
+      contexts.initialized = false;
+      contexts.data = [];
+    },
+    start() {
+      contexts.working = true;
+      contexts.current = 0;
+    },
+    end() {
+      contexts.working = false;
+      contexts.initialized = true;
+    }
+  };
+}
+
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
-  type: string
+  type: string,
+  runtime: ModelContextFactory
 ) {
   if (updater.cacheMethods[type]) {
     return updater.cacheMethods[type];
@@ -100,7 +235,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
       updater.notify(methodAction);
       return result;
     }
-    updater.current = reducer(result);
+    updater.current = refreshModel(reducer, result, runtime);
     updater.state = result;
     updater.cacheState = { state: result };
     updater.notify({ type, state: result });
@@ -115,7 +250,8 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   defaultState: D,
   updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
-  const defaultModel = reducer(defaultState);
+  const modelContextFactory = generateModelContextFactory();
+  const defaultModel = refreshModel(reducer, defaultState, modelContextFactory);
   const { controlled, batchUpdate } = updaterConfig || {};
   const updater: Updater<S, T> = {
     current: defaultModel,
@@ -153,7 +289,11 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       outState && outState.cache
         ? { state: outState.state }
         : updater.cacheState;
-    updater.current = updateReducer(updater.state);
+    updater.current = refreshModel(
+      updateReducer,
+      updater.state,
+      modelContextFactory
+    );
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
@@ -196,7 +336,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
       ) {
-        return rebuildDispatchMethod<S, T>(updater, p);
+        return rebuildDispatchMethod<S, T>(updater, p, modelContextFactory);
       }
       return value;
     }
@@ -252,6 +392,15 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
         }
       };
     },
+    destroy() {
+      updater.dispatch = null;
+      updater.dispatches = [];
+      destroyDispatching(updater);
+      updater.state = defaultState;
+      updater.cacheState = null;
+      updater.notify = noop;
+      updater.cacheMethods = {};
+    },
     connect(dispatchCall) {
       const needNotice = subscribe(dispatchCall);
       if (!needNotice) {
@@ -263,9 +412,36 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   };
 }
 
+export function checkIfLazyIdentifyConnection(
+  connection: Connection<any, any>
+) {
+  const agent = connection.agent as any;
+  if (agent[lazyIdentifyKey]) {
+    throw new Error(
+      'A stateless connection should be initialized before it is accessed.'
+    );
+  }
+}
+
+export function staticFactory<T extends AirReducer<any, any>>(
+  reducer: FactoryInstance<T>
+): StaticFactoryInstance<T> {
+  const replaceModel: StaticFactoryInstance<T> = function replaceModel(s: any) {
+    return reducer(s);
+  } as StaticFactoryInstance<T>;
+  replaceModel.effect = reducer.effect;
+  replaceModel.connection = reducer.creation();
+  replaceModel.pipe = reducer.pipe;
+  replaceModel.global = function self() {
+    return replaceModel;
+  };
+  return replaceModel as StaticFactoryInstance<T>;
+}
+
 export function factory<T extends AirReducer<any, any>>(
   reducer: T,
-  state?: T extends AirReducer<infer S, any> ? S : never
+  state?: T extends AirReducer<infer S, any> ? S : never,
+  lazy?: boolean
 ): FactoryInstance<T> {
   const replaceModel = function replaceModel(s: any) {
     return reducer(s);
@@ -273,6 +449,15 @@ export function factory<T extends AirReducer<any, any>>(
   replaceModel.creation = function creation(
     updaterConfig?: UpdaterConfig
   ): Connection {
+    if (lazy) {
+      return createModel(
+        (s: undefined) => {
+          return { [lazyIdentifyKey]: lazyIdentify };
+        },
+        undefined,
+        updaterConfig
+      ) as any;
+    }
     return createModel(replaceModel, state, updaterConfig);
   };
   replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
@@ -285,6 +470,9 @@ export function factory<T extends AirReducer<any, any>>(
       return replaceModel;
     };
     return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
+  };
+  replaceModel.global = function staticFactoryForModel() {
+    return staticFactory<T>(replaceModel as FactoryInstance<T>);
   };
   return replaceModel as FactoryInstance<T>;
 }
@@ -341,7 +529,7 @@ function toInstances(collections: Collection[]) {
   };
 }
 
-export function createStore<
+export function createStoreCollection<
   T extends Array<any> | ((...args: any) => any) | Record<string, any>
 >(fact: T, updaterConfig?: UpdaterConfig): ModelFactoryStore<T> {
   const handler = fact;
@@ -395,7 +583,7 @@ export function createStore<
         } as Collection;
       })
       .filter((d): d is Collection => !!d);
-    deletions.forEach(({ connection }) => connection.disconnect());
+    deletions.forEach(({ connection }) => connection.destroy());
     return [...additions, ...updates];
   }
   const currentCollections = collectConnections(fact, updaterConfig);
@@ -429,7 +617,7 @@ export function createStore<
       return factoryCollections === handler;
     },
     destroy() {
-      holder.connections.forEach(connection => connection.disconnect());
+      holder.connections.forEach(connection => connection.destroy());
     }
   };
   return { ...store };

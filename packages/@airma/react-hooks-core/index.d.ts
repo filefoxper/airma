@@ -23,3 +23,14 @@ export declare function useRefresh<T extends (...args: any[]) => any>(
 export declare function useUnmount(destroy: () => void): void;
 
 export declare function shallowEqual<R>(prev: R, current: R): boolean;
+
+declare type Promisify<F extends (...args: any[]) => any> = F extends (
+  ...args: infer A
+) => infer R
+  ? (...args: A) => Promise<R>
+  : never;
+
+export declare function useDebounceFn<F extends (...args: any[]) => any>(
+  fn: F,
+  option: number | { lead?: boolean; ms: number }
+): Promisify<F>;

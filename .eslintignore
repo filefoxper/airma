@@ -4,6 +4,7 @@ es/
 esm/
 dist/
 coverage/
+docs/
 jest.config.js
 babel.config.js
 index.js
