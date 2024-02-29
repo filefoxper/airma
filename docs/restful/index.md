@@ -447,3 +447,7 @@ export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
 ### v18.3.0
 
 * add `configRuntime` method in client instance.
+
+### v18.3.2
+
+* When use config callback, the parameter config data contains request implement.
