@@ -455,3 +455,7 @@ export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
 ### v18.3.0
 
 * 加入 `configRuntime` 配置方法。
+
+### v18.3.2
+
+* 当使用回调函数配置时，函数参数配置信息默认携带默认 request 实现。
