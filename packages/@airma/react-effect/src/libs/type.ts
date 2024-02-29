@@ -78,11 +78,12 @@ export interface AbstractSessionState {
   sessionLoaded: boolean;
   uniqueKey: unknown;
   round: number;
+  cache: SessionCache[];
+  maxCacheCapacity: number;
   /**
    * @deprecated
    */
   fetchVersion?: number;
-  cache: SessionCache[];
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {

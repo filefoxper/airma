@@ -21,7 +21,7 @@ import {
   session,
   useLazyComponent
 } from '@airma/react-effect';
-import { model } from '@airma/react-state';
+import { model, shallowEqual } from '@airma/react-state';
 
 const { rest } = cli(c => ({
   ...c,
@@ -145,73 +145,71 @@ const creatingStore = model((userData: Omit<User, 'id'>) => {
 }).createStore();
 
 const Creating = memo(
-  creatingStore.provideTo(
-    ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
-      const creating = store.useSelector(s => s.creating);
-      const { user, changeUsername, changeName } = creatingStore.useModel({
-        name: '',
-        username: '',
-        age: 10
-      });
+  ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
+    const creating = store.useSelector(s => s.creating);
+    const { user, changeUsername, changeName } = creatingStore.useModel({
+      name: '',
+      username: '',
+      age: 10
+    });
 
-      const [{ variables }, query] = fetchSession.useSession();
+    const [{ variables }, query] = fetchSession.useSession();
 
-      const [q] = variables ?? [];
+    const [q] = variables ?? [];
 
-      const [, save] = useMutation(
-        (u: Omit<User, 'id'>) =>
-          new Promise((resolve, reject) => {
-            setTimeout(() => {
-              resolve(
-                rest('/api/user')
-                  .setBody(u)
-                  .post<null>()
-                  .then(() => true)
-              );
-            }, 1000);
-          }),
-        {
-          variables: [user],
-          strategy: [
-            Strategy.once(),
-            Strategy.success(() => {
-              query();
-              onClose();
-            })
-          ]
-        }
-      );
+    const [, save] = useMutation(
+      (u: Omit<User, 'id'>) =>
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            resolve(
+              rest('/api/user')
+                .setBody(u)
+                .post<null>()
+                .then(() => true)
+            );
+          }, 1000);
+        }),
+      {
+        variables: [user],
+        strategy: [
+          Strategy.once(),
+          Strategy.success(() => {
+            query();
+            onClose();
+          })
+        ]
+      }
+    );
 
-      return (
+    return (
+      <div>
         <div>
-          <div>
-            <input
-              type="text"
-              value={user.name}
-              placeholder="input name"
-              onChange={e => changeName(e.target.value)}
-            />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <input
-              type="text"
-              value={user.username}
-              placeholder="input username"
-              onChange={e => changeUsername(e.target.value)}
-            />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <button type="button" style={{ marginLeft: 12 }} onClick={save}>
-              submit
-            </button>
-            <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
-              cancel
-            </button>
-          </div>
+          <input
+            type="text"
+            value={user.name}
+            placeholder="input name"
+            onChange={e => changeName(e.target.value)}
+          />
         </div>
-      );
-    }
-  )
+        <div style={{ marginTop: 12 }}>
+          <input
+            type="text"
+            value={user.username}
+            placeholder="input username"
+            onChange={e => changeUsername(e.target.value)}
+          />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+            submit
+          </button>
+          <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
+            cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 );
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
@@ -265,7 +263,7 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   );
 });
 
-export default test.provideTo(function App() {
+export default test.with(creatingStore).provideTo(function App() {
   store.useModel({
     valid: defaultCondition,
     display: defaultCondition,
@@ -274,6 +272,8 @@ export default test.provideTo(function App() {
   const { queryData, creating, cancel } = store.useSelector(s =>
     pick(s, 'queryData', 'creating', 'cancel')
   );
+
+  console.log('render...');
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],

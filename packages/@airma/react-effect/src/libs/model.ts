@@ -93,6 +93,7 @@ export const defaultPromiseResult = (config?: {
     loaded: false,
     sessionLoaded: false,
     cache: [],
+    maxCacheCapacity: 1,
     round: 0,
     ...config
   } as SessionState);

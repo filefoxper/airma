@@ -373,7 +373,7 @@ function now() {
 }
 
 function cacheOperation<T>(
-  cache: [string, { data: T; lastUpdateTime: number }][],
+  cacheRecords: [string, { data: T; lastUpdateTime: number }][],
   size: number | undefined
 ) {
   const cacheLimit = size == null ? 1 : size;
@@ -388,19 +388,16 @@ function cacheOperation<T>(
   }
   return {
     get: (k: string) => {
-      if (cacheLimit < 1) {
-        return undefined;
-      }
-      return getByKey(cache, k);
+      return getByKey(cacheRecords, k);
     },
     set(k: string, data: T): [string, { data: T; lastUpdateTime: number }][] {
       if (cacheLimit < 1) {
         return [];
       }
       const updater = { data, lastUpdateTime: now() };
-      const target = getByKey(cache, k);
+      const target = getByKey(cacheRecords, k);
       if (target != null) {
-        return cache.map(([ke, va]) => {
+        return cacheRecords.map(([ke, va]) => {
           if (k !== ke) {
             return [ke, va];
           }
@@ -408,7 +405,7 @@ function cacheOperation<T>(
         });
       }
       const cacheData: [string, { data: T; lastUpdateTime: number }][] = [
-        ...cache,
+        ...cacheRecords,
         [k, updater]
       ];
       return cacheData.length > cacheLimit
@@ -426,13 +423,17 @@ function cache(option?: {
   function defaultKeyBy(vars: any[]) {
     return JSON.stringify(vars);
   }
-  const { key: keyBy = defaultKeyBy, staleTime, capacity = 1 } = option || {};
+  const {
+    key: keyBy = defaultKeyBy,
+    staleTime,
+    capacity: cp = 1
+  } = option || {};
   return function cacheStrategy(requies) {
     const { getSessionState, runner, variables } = requies;
     const currentState = getSessionState();
-    const { cache: cacheInState, ...rest } = currentState;
+    const { cache: cacheInState } = currentState;
     const variableKey = keyBy(variables);
-    const cacheData = cacheOperation(cacheInState, capacity).get(variableKey);
+    const cacheData = cacheOperation(cacheInState, cp).get(variableKey);
     if (
       cacheData &&
       staleTime &&
@@ -454,11 +455,13 @@ function cache(option?: {
         return next;
       }
       const nextKey = keyBy(next.variables || []);
+      const { maxCacheCapacity } = getSessionState();
+      const capacity = maxCacheCapacity < cp ? cp : maxCacheCapacity;
       const nextCache = cacheOperation(next.cache, capacity).set(
         nextKey,
         next.data
       );
-      return { ...next, cache: nextCache };
+      return { ...next, cache: nextCache, maxCacheCapacity: capacity };
     });
   };
 }
