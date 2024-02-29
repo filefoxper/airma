@@ -83,7 +83,12 @@ export function rest(url: string | HttpProperties): HttpType {
   ): RuntimeRestConfig => {
     const { restConfig, meta } = properties;
     const metaConfig = meta.runtimeConfig
-      ? meta.runtimeConfig({ ...meta.config, ...restConfig, ...config })
+      ? meta.runtimeConfig({
+          request,
+          ...meta.config,
+          ...restConfig,
+          ...config
+        })
       : meta.config;
     return restConfig === defaultRestConfig
       ? { ...metaConfig, ...config }
@@ -157,7 +162,9 @@ export function client(
   config: RestConfig | ((c: RestConfig) => RestConfig) = defaultRestConfig
 ): Client {
   const restConfig =
-    typeof config === 'function' ? config(defaultRestConfig) : config;
+    typeof config === 'function'
+      ? config({ request, ...defaultRestConfig })
+      : config;
   const meta: Meta = { config: restConfig, runtimeConfig: null };
   return {
     rest(basePath: string): HttpType {
@@ -166,7 +173,10 @@ export function client(
     config(cg: RestConfig | ((c: RestConfig) => RestConfig)): void {
       const restfulConfig = meta.config;
       if (typeof cg === 'function') {
-        meta.config = Object.assign(restfulConfig, cg(restfulConfig));
+        meta.config = Object.assign(
+          restfulConfig,
+          cg({ request, ...restfulConfig })
+        );
         return;
       }
       meta.config = Object.assign(restfulConfig, cg);
