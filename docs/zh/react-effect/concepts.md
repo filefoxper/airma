@@ -152,7 +152,7 @@ useMutation(promiseCallback, {
 * **trigger** - 触发方法，无入参函数。调用该回调方法可触发会话使用配置项中的推荐会话执行参数 *variables* 做入参执行异步函数。
 * **execute** - 执行方法，需要提供异步执行函数所需的参数。
 
-当会话配置中不存在 *variables*，则进入强制人工执行模式。强制人工执行模式不允许使用 **trigger** 触发方法，也无法依靠加载或更新触发会话，只能通过调用 **execute** 执行方法，人工触发。
+当会话配置中不存在 *variables*，则进入强制人工执行模式。强制人工执行模式只有通过调用 **execute** 执行方法人工触发才是安全的，其他触发方式会以无入参的形式运行异步函数。
 
 ```ts
 const [
@@ -181,7 +181,7 @@ const callExecuteQuery = ()=>{
 };
 
 const callTriggerMutation = ()=>{
-    // 因无 variables 参数，处于强制人工执行模式，无法使用触发方法，会报错
+    // 无 variables 参数，处于强制人工执行模式，采取无入参形式运行，不安全。
     triggerMutation();
 };
 
