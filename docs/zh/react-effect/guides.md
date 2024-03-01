@@ -162,12 +162,12 @@ const [sessionState] = useQuery(fetchUsers, {
 
 ```ts
 const [sessionState, , execute] = useQuery(fetchUsers, {
-    // 无 variables 参数，默认进入强制手工执行模式
+    // 无 variables 参数，进入强制手工执行模式
     defaultData: [],
 }); 
 
 const callExecute=()=>{
-    // 强制手工执行模式，必须使用 execute 执行函数，传参执行。
+    // 强制手工执行模式，使用 execute 执行函数才是安全的做法。
     execute(query);
 }
 ```
