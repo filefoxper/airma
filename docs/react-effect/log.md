@@ -61,3 +61,7 @@
 
 * optimize interfaces
 * add `session` API
+
+# v18.3.1
+
+* change throw Error about no variables auto trigger to console.error.
