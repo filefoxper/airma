@@ -54,6 +54,7 @@ import {
   toStrategies,
   useStrategyExecution
 } from './libs/strategy';
+import { logger } from './libs/tools';
 
 function toNoRejectionPromiseCallback<
   T,
@@ -154,12 +155,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       });
     }
     if (['mount', 'update'].includes(triggerType) && variables == null) {
-      throw new Error(
+      logger.warn(
         'Can not execute with `mount` or `update` dependency mode. There is no variables found in config.'
       );
     }
     if (triggerType === 'manual' && variables == null && vars == null) {
-      throw new Error(
+      logger.warn(
         'Can not trigger session to execute. There is no variables found in config.'
       );
     }
