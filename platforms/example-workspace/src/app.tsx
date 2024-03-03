@@ -216,9 +216,8 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, validQuery, create, changeDisplay } = store.useModel();
 
-  fetchSession.useQuery([q]);
-
-  const [{ isFetching }, trigger, query] = fetchSession.useSession();
+  const isFetching = useIsFetching();
+  const [, trigger, query] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -247,7 +246,7 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
       <button
         type="button"
         style={{ marginLeft: 12 }}
-        onClick={() => query(validQuery)}
+        onClick={() => query(displayQuery)}
       >
         query
       </button>
@@ -310,6 +309,8 @@ export default test.with(creatingStore).provideTo(function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
+
+  console.log('render...');
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>

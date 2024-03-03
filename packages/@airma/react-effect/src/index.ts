@@ -13,7 +13,8 @@ import {
   useModel,
   useRealtimeInstance,
   useSelector,
-  provide as provideKeys
+  provide as provideKeys,
+  useStaticModel
 } from '@airma/react-state';
 import {
   useMount,
@@ -165,10 +166,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const controller = useController(callback);
   const fetchingKeyController = useFetchingKey(controller);
 
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
+  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useStaticModel(
     globalControllerKey,
     defaultIsFetchingState,
-    { autoLink: true }
+    {
+      autoLink: true
+    }
   );
 
   const sessionRunner = function sessionRunner(
