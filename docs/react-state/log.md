@@ -88,3 +88,7 @@
 * remove old deprecated APIs.
 * simplify APIs.
 * add `model` API.
+
+## v18.3.1 2024-03-03
+
+* add `useStaticModel` API

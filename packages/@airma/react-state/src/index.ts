@@ -548,14 +548,6 @@ export const model = function model<S, T extends AirModelInstance>(
     return useModel(...params);
   };
 
-  const useApiStaticModel = function useApiStaticModel(s?: S) {
-    const params = (arguments.length ? [m, s] : [m]) as [
-      typeof m,
-      (S | undefined)?
-    ];
-    return useStaticModel(...params);
-  };
-
   const useApiControlledModel = function useApiControlledModel(
     state: S | undefined,
     setState: (s: S | undefined) => any
@@ -679,7 +671,6 @@ export const model = function model<S, T extends AirModelInstance>(
 
   return Object.assign(m, {
     useModel: useApiModel,
-    useStaticModel: useApiStaticModel,
     useControlledModel: useApiControlledModel,
     store: createStoreApi,
     createStore: createStoreApi

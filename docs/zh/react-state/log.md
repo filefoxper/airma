@@ -48,3 +48,7 @@
 * 移除废弃 API
 * 简化当前 API
 * 新增流式调用 API model
+
+## v18.3.1
+
+* 新增了API useStaticModel
