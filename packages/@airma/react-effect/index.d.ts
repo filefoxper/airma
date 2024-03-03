@@ -221,24 +221,44 @@ declare interface UnloadedUseSessionConfig extends UseSessionConfig {
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config: LoadedUseSessionConfig
-): [LoadedSessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
+): [
+  LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
+];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config: SessionType
-): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
+): [
+  SessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
+];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: UnloadedUseSessionConfig
-): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
+): [
+  SessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
+];
 export declare function useSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
+): [
+  SessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
+];
 
 export declare function useLoadedSession<D extends SessionKey<any>>(
   sessionKey: D,
   config?: UseSessionConfig | SessionType
-): [LoadedSessionState<PCR<D>, Parameters<MCC<D>>>, () => void];
+): [
+  LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
+];
 
 export declare function createSessionKey<
   E extends (...params: any[]) => Promise<any>
@@ -487,12 +507,14 @@ declare type UseMutationShort<
 
 declare type UseSessionShort<D extends PromiseCallback<any>> = () => [
   SessionState<PCR<D>, Parameters<MCC<D>>>,
-  () => void
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
 ];
 
 declare type UseLoadedSessionShort<D extends PromiseCallback<any>> = () => [
   LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
-  () => void
+  () => void,
+  (...variables: Parameters<MCC<D>>) => void
 ];
 
 declare interface SessionStoreApi<D extends PromiseCallback<any>> {

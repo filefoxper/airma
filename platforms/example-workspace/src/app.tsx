@@ -214,9 +214,11 @@ const Creating = memo(
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, create, changeDisplay, query } = store.useModel();
+  const { displayQuery, validQuery, create, changeDisplay } = store.useModel();
 
-  const [{ isFetching }, trigger] = fetchSession.useQuery([q]);
+  fetchSession.useQuery([q]);
+
+  const [{ isFetching }, trigger, query] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -242,7 +244,11 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
         value={displayQuery.age}
         onChange={e => changeDisplay({ age: e.target.value })}
       />
-      <button type="button" style={{ marginLeft: 12 }} onClick={query}>
+      <button
+        type="button"
+        style={{ marginLeft: 12 }}
+        onClick={() => query(validQuery)}
+      >
         query
       </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>

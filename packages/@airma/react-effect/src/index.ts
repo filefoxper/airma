@@ -114,10 +114,7 @@ function useController<T, C extends PromiseCallback<T>>(
   }, []);
 }
 
-function useFetchingKey<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>
-) {
-  const controller = useController(callback);
+function useFetchingKey(controller: Controller) {
   return useMemo(() => {
     return {
       getFetchingKey() {
@@ -165,7 +162,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const instance = useRealtimeInstance(stableInstance);
 
-  const fetchingKeyController = useFetchingKey(callback);
+  const controller = useController(callback);
+  const fetchingKeyController = useFetchingKey(controller);
 
   const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
     globalControllerKey,
@@ -255,7 +253,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    trigger();
+    const preparedVariables = controller.getData('variables');
+    if (!preparedVariables) {
+      trigger();
+      return;
+    }
+    execute(...preparedVariables);
   }, [stableInstance.version]);
 
   useEffect(() => {
@@ -354,13 +357,14 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void] {
+): [SessionState<T>, () => void, (variables: any[]) => void] {
   const [, padding] = sessionKey.effect;
   const { sessionType: sessionKeyType } = padding;
   const session = useSelector(
     sessionKey,
     s => [s.state, s.trigger] as [SessionState<T>, () => void]
   );
+  const controller = useController(sessionKey);
   const { loaded: shouldLoaded, sessionType } =
     typeof config === 'string'
       ? { sessionType: config, loaded: undefined }
@@ -376,7 +380,16 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  return session;
+  const [sessionState, triggerCallback] = session;
+  const trigger = usePersistFn(() => {
+    controller.setData('variables', undefined);
+    triggerCallback();
+  });
+  const execute = usePersistFn((...variables: any[]) => {
+    controller.setData('variables', variables);
+    triggerCallback();
+  });
+  return [sessionState, trigger, execute];
 }
 
 export function useIsFetching(
@@ -493,7 +506,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 export function useLoadedSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void] {
+): [SessionState<T>, () => void, (variables: any[]) => void] {
   return useSession(
     sessionKey,
     typeof config === 'string'

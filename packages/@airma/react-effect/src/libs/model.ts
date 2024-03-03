@@ -76,6 +76,7 @@ export const defaultPromiseResult = (config?: {
     cache: [],
     maxCacheCapacity: 1,
     round: 0,
+    executeVariables: undefined,
     ...config
   } as SessionState);
 

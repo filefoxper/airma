@@ -31,12 +31,6 @@ export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
     state: SessionState;
     version: number;
     setState: (s: SessionState) => SessionState & { version?: number };
-    setFetchingKey: (
-      fetchingKey: unknown
-    ) => SessionState & { version?: number };
-    removeFetchingKey: (
-      fetchingKey: unknown
-    ) => SessionState & { version?: number };
     trigger: () => SessionState & { version?: number };
   }
 > & {
@@ -80,6 +74,7 @@ export interface AbstractSessionState {
   round: number;
   cache: SessionCache[];
   maxCacheCapacity: number;
+  executeVariables: any[] | undefined;
   /**
    * @deprecated
    */
