@@ -118,6 +118,12 @@ It is used for subscribing store state change. It can trigger useQuery/useMutati
 function useSession(sessionKey):[sessionState, trigger]
 ```
 
+**From version v18.3.2**, useSession support execute method.
+
+```ts
+function useSession(sessionKey):[sessionState, trigger, execute]
+```
+
 ### Parameters
 
 * sessionKey - A session [key](/react-effect/concepts?id=key).
@@ -126,13 +132,20 @@ function useSession(sessionKey):[sessionState, trigger]
 
 * sessionState - [session state](/react-effect/concepts?id=session-state).
 * trigger - A callback to trigger useQuery/useMutation work manually. It need no parameter, useQuery/useMutation uses setted `variables` as parameters for execution.
+* execute - A callback to execute useQuery/useMutation work manually. It need parameters for the execute function. **Support from v18.3.2**.
 
 ## useLoadedSession
 
-It is a special useSession when the usage is ensure, a [session](/react-effect/concepts?id=session) has been loaded.
+It is a special useSession when the usage is ensure that the [session](/react-effect/concepts?id=session) has been loaded.
 
 ```ts
-function useSession(sessionKey):[sessionState, trigger]
+function useLoadedSession(sessionKey):[sessionState, trigger]
+```
+
+**From version v18.3.2**, useLoadedSession support execute method.
+
+```ts
+function useLoadedSession(sessionKey):[sessionState, trigger, execute]
 ```
 
 ### Parameters
@@ -143,6 +156,7 @@ function useSession(sessionKey):[sessionState, trigger]
 
 * sessionState - A loaded [session state](/react-effect/concepts?id=session-state).
 * trigger - A callback to trigger useQuery/useMutation work manually. It need no parameter, useQuery/useMutation uses setted `variables` as parameters for execution.
+* execute - A callback to execute useQuery/useMutation work manually. It need parameters for the execute function. **Support from v18.3.2**.
 
 
 ## Strategy

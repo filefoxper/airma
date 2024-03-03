@@ -122,34 +122,51 @@ function provide(keys){
 function useSession(sessionKey):[sessionState, trigger]
 ```
 
+自 **@airma/react-effect v18.3.2** 开始，useSession 支持使用 execute 传参触发方法。
+
+```ts
+// v18.3.2
+function useSession(sessionKey):[sessionState, trigger, execute]
+```
+
 ### 参数
 
 * sessionKey - 会话键，可通过 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建。
 
 ### 返回
 
-元组 `[sessionState, trigger]`
+元组 `[sessionState, trigger, execute@18.3.2]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)
-* **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)
+* **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)，不能传参，只能触发。
+* **execute** - [会话执行器](/zh/react-effect/concepts?id=触发和执行)，允许传参触发。**至  v18.3.2 开始支持**。
 
 ## useLoadedSession
 
 确认会话已加载（至少成功运行过一次）时，使用的 useSession，功能与 useSession 一致，但返回会话状态的数据与异步函数返回数据类型完全一致，且 loaded 字段恒为 true。
 
 ```ts
-function useSession(sessionKey):[sessionState, trigger]
+function useLoadedSession(sessionKey):[sessionState, trigger]
 ```
+
+自 **@airma/react-effect v18.3.2** 开始，useLoadedSession 支持使用 execute 传参触发方法。
+
+```ts
+// v18.3.2
+function useLoadedSession(sessionKey):[sessionState, trigger, execute]
+```
+
 ### 参数
 
 * sessionKey - 会话键，可通过 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建。
 
 ### 返回
 
-元组 `[sessionState, trigger]`
+元组 `[sessionState, trigger, execute@18.3.2]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)，sessionState.data 类型与异步函数返回数据类型相同，且 sessionState.loaded 为 true。
 * **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)
+* **execute** - [会话执行器](/zh/react-effect/concepts?id=触发和执行)，允许传参触发。**至  v18.3.2 开始支持**。
 
 ## Strategy
 
