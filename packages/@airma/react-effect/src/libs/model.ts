@@ -33,25 +33,6 @@ export function effectModel(state: SessionState & { version?: number }) {
       }
       return mergeFetchVersion(mergeVersion(s(state)));
     },
-    setFetchingKey(fetchingKey: unknown): SessionState & { version?: number } {
-      return mergeVersion({
-        ...state,
-        fetchingKey,
-        finalFetchingKey:
-          fetchingKey != null ? fetchingKey : state.finalFetchingKey
-      });
-    },
-    removeFetchingKey(
-      fetchingKey: unknown
-    ): SessionState & { version?: number } {
-      if (state.fetchingKey !== fetchingKey) {
-        return state;
-      }
-      return mergeVersion({
-        ...state,
-        fetchingKey: undefined
-      });
-    },
     trigger(): SessionState & { version?: number } {
       return { ...state, version: (version || 0) + 1 };
     }

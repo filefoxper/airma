@@ -221,3 +221,19 @@ export type PromiseHolder = {
   reject: (data: any) => void;
   loaded?: boolean;
 };
+
+export type ControlData = {
+  variables?: any[];
+  fetchingKey?: any;
+  finalFetchingKey?: any;
+};
+
+export type FullControlData = {
+  sessionType?: SessionType;
+  data?: ControlData;
+};
+
+export type Controller = {
+  getData: (key: keyof ControlData) => ControlData[typeof key] | null;
+  setData: (key: keyof ControlData, data: ControlData[typeof key]) => void;
+};

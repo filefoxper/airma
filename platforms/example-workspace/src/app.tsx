@@ -48,7 +48,7 @@ type Query = {
 };
 
 const defaultCondition: Condition = {
-  name: 'Mr',
+  name: '',
   username: '',
   age: undefined
 };
@@ -216,7 +216,7 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, create, changeDisplay, query } = store.useModel();
 
-  const [{ isFetching }, trigger] = fetchSession.useSession();
+  const [{ isFetching }, trigger] = fetchSession.useQuery([q]);
 
   const handleTrigger = () => {
     parentTrigger();
@@ -272,8 +272,6 @@ export default test.with(creatingStore).provideTo(function App() {
   const { queryData, creating, cancel } = store.useSelector(s =>
     pick(s, 'queryData', 'creating', 'cancel')
   );
-
-  console.log('render...');
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],

@@ -36,7 +36,10 @@ import type {
   AbstractSessionResult,
   PromiseHolder,
   CheckLazyComponentSupportType,
-  LazyComponentSupportType
+  LazyComponentSupportType,
+  FullControlData,
+  Controller,
+  ControlData
 } from './libs/type';
 import {
   parseConfig,
@@ -87,6 +90,59 @@ function toNoRejectionPromiseCallback<
   };
 }
 
+function useController<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>
+): Controller {
+  const { effect } = callback as SessionKey<C>;
+  const [, d] = effect || [];
+  const controller = d as FullControlData | undefined;
+  return useMemo(() => {
+    return {
+      getData(key: keyof ControlData) {
+        if (controller == null || controller.data == null) {
+          return null;
+        }
+        return controller.data[key];
+      },
+      setData(key: keyof ControlData, data: ControlData[typeof key]) {
+        if (controller == null) {
+          return;
+        }
+        controller.data = { ...(controller.data || {}), [key]: data };
+      }
+    };
+  }, []);
+}
+
+function useFetchingKey<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>
+) {
+  const controller = useController(callback);
+  return useMemo(() => {
+    return {
+      getFetchingKey() {
+        return controller.getData('fetchingKey');
+      },
+      getFinalFetchingKey() {
+        return controller.getData('finalFetchingKey');
+      },
+      setFetchingKey(key: unknown) {
+        controller.setData('fetchingKey', key);
+        if (key == null) {
+          return;
+        }
+        controller.setData('finalFetchingKey', key);
+      },
+      removeFetchingKey(key: unknown) {
+        if (key !== controller.getData('fetchingKey')) {
+          return;
+        }
+        controller.setData('fetchingKey', undefined);
+      }
+    };
+  }, []);
+}
+
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -109,6 +165,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const instance = useRealtimeInstance(stableInstance);
 
+  const fetchingKeyController = useFetchingKey(callback);
+
   const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
     globalControllerKey,
     defaultIsFetchingState,
@@ -124,8 +182,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     );
     return noRejectionPromiseCallback(vars).then(data => {
       const abandon =
-        instance.state.finalFetchingKey != null &&
-        keyRef.current !== instance.state.finalFetchingKey;
+        fetchingKeyController.getFinalFetchingKey() != null &&
+        keyRef.current !== fetchingKeyController.getFinalFetchingKey();
       return {
         ...instance.state,
         ...data,
@@ -143,7 +201,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     triggerType: 'manual' | 'mount' | 'update',
     vars?: any[]
   ): Promise<SessionState<T>> {
-    const currentFetchingKey = instance.state.fetchingKey;
+    const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
@@ -164,9 +222,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         'Can not trigger session to execute. There is no variables found in config.'
       );
     }
-    instance.setFetchingKey(keyRef.current);
+    fetchingKeyController.setFetchingKey(keyRef.current);
     Promise.resolve(undefined).then(() => {
-      instance.removeFetchingKey(keyRef.current);
+      fetchingKeyController.removeFetchingKey(keyRef.current);
     });
     return strategyExecution(triggerType, vars || variables);
   };
@@ -193,7 +251,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       return;
     }
     triggerVersionRef.current = stableInstance.version;
-    const currentFetchingKey = instance.state.fetchingKey;
+    const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
@@ -210,7 +268,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   useUnmount(() => {
     removeGlobalFetchingKey(keyRef.current);
-    instance.removeFetchingKey(keyRef.current);
+    fetchingKeyController.removeFetchingKey(keyRef.current);
   });
 
   useEffect(() => {
