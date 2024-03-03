@@ -243,23 +243,23 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     sessionExecution('update');
   }, effectDeps);
 
-  const triggerVersionRef = useRef(stableInstance.version);
+  const triggerRequestRef = useRef(stableInstance.request);
   useEffect(() => {
-    if (triggerVersionRef.current === stableInstance.version) {
+    if (triggerRequestRef.current === stableInstance.request) {
       return;
     }
-    triggerVersionRef.current = stableInstance.version;
+    triggerRequestRef.current = stableInstance.request;
     const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    const preparedVariables = controller.getData('variables');
-    if (!preparedVariables) {
+    const { variables: requestVariables } = stableInstance.request || {};
+    if (!requestVariables) {
       trigger();
       return;
     }
-    execute(...preparedVariables);
-  }, [stableInstance.version]);
+    execute(...(requestVariables as Parameters<C>));
+  }, [stableInstance.request]);
 
   useEffect(() => {
     if (stableInstance.state.isFetching) {
@@ -362,9 +362,13 @@ export function useSession<T, C extends PromiseCallback<T>>(
   const { sessionType: sessionKeyType } = padding;
   const session = useSelector(
     sessionKey,
-    s => [s.state, s.trigger] as [SessionState<T>, () => void]
+    s =>
+      [s.state, s.trigger, s.execute] as [
+        SessionState<T>,
+        () => void,
+        (variables: any[]) => void
+      ]
   );
-  const controller = useController(sessionKey);
   const { loaded: shouldLoaded, sessionType } =
     typeof config === 'string'
       ? { sessionType: config, loaded: undefined }
@@ -380,14 +384,9 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  const [sessionState, triggerCallback] = session;
-  const trigger = usePersistFn(() => {
-    controller.setData('variables', undefined);
-    triggerCallback();
-  });
+  const [sessionState, trigger, executeCallback] = session;
   const execute = usePersistFn((...variables: any[]) => {
-    controller.setData('variables', variables);
-    triggerCallback();
+    executeCallback(variables);
   });
   return [sessionState, trigger, execute];
 }

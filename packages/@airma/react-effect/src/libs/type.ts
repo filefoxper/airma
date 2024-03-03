@@ -26,12 +26,18 @@ export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export type SessionType = 'query' | 'mutation';
 
+export type SessionRequest = {
+  version: number;
+  variables?: any[];
+};
+
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { version?: number }) => {
+  (st: SessionState & { request?: SessionRequest }) => {
     state: SessionState;
-    version: number;
-    setState: (s: SessionState) => SessionState & { version?: number };
-    trigger: () => SessionState & { version?: number };
+    request: SessionRequest | undefined;
+    setState: (s: SessionState) => SessionState & { request?: SessionRequest };
+    trigger: () => SessionState & { request?: SessionRequest };
+    execute: (variables: any[]) => SessionState & { request?: SessionRequest };
   }
 > & {
   effect: [E, { sessionType?: SessionType }];
