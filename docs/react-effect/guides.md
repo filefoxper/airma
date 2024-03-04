@@ -637,7 +637,6 @@ import type {GlobalConfig} from '@airma/react-effect';
 
 const globalConfig: GlobalConfig = {
     batchUpdate: unstable_batchedUpdates,
-    useGlobalFetching: true,
     // set common strategies
     strategy: (
         // a running session strategy chain
@@ -768,8 +767,6 @@ import type {GlobalConfig} from '@airma/react-effect';
 const globalConfig: GlobalConfig = {
     // use batchUpdate to optimize update performance.
     batchUpdate: unstable_batchedUpdates,
-    // support global useIsFetching API.
-    useGlobalFetching: true,
     // set common strategies
     strategy: (
         s: StrategyType[], 
@@ -795,7 +792,7 @@ const App = ()=>{
 ```
 
 * batchUpdate - It can use `unstable_batchedUpdates` from react-dom to optimize update performance.
-* useGlobalFetching - It can support a global isFetching state detection.
+* ~~useGlobalFetching~~ - It can support a global isFetching state detection. **It is deprecated from v18.3.2**.
 * strategy - It can be used for composing a common strategy chain for every session.
 
 Next section [feature](/react-effect/feature).

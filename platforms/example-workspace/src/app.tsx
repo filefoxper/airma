@@ -48,7 +48,7 @@ type Query = {
 };
 
 const defaultCondition: Condition = {
-  name: 'Mr',
+  name: '',
   username: '',
   age: undefined
 };
@@ -214,9 +214,10 @@ const Creating = memo(
 
 const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, create, changeDisplay, query } = store.useModel();
+  const { displayQuery, validQuery, create, changeDisplay } = store.useModel();
 
-  const [{ isFetching }, trigger] = fetchSession.useSession();
+  const isFetching = useIsFetching();
+  const [, trigger, query] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -242,7 +243,11 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
         value={displayQuery.age}
         onChange={e => changeDisplay({ age: e.target.value })}
       />
-      <button type="button" style={{ marginLeft: 12 }} onClick={query}>
+      <button
+        type="button"
+        style={{ marginLeft: 12 }}
+        onClick={() => query(displayQuery)}
+      >
         query
       </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={trigger}>
@@ -272,8 +277,6 @@ export default test.with(creatingStore).provideTo(function App() {
   const { queryData, creating, cancel } = store.useSelector(s =>
     pick(s, 'queryData', 'creating', 'cancel')
   );
-
-  console.log('render...');
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],
@@ -306,6 +309,8 @@ export default test.with(creatingStore).provideTo(function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
+
+  console.log('render...');
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>

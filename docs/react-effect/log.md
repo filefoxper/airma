@@ -65,3 +65,8 @@
 # v18.3.1
 
 * change throw Error about no variables auto trigger to console.error.
+
+# v18.3.2
+
+* less render
+* make useSession support execute with parameters.

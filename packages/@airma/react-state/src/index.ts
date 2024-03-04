@@ -212,6 +212,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     autoLink?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
+    updateDeps?: (instance: T) => any[];
   }
 ): [S | undefined, T, (s: S | undefined) => void] {
   const defaultOpt = {
@@ -220,7 +221,14 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     autoLink: false,
     realtimeInstance: false
   };
-  const { refresh, required, autoLink, useDefaultState, realtimeInstance } = {
+  const {
+    refresh,
+    required,
+    autoLink,
+    useDefaultState,
+    realtimeInstance,
+    updateDeps
+  } = {
     ...defaultOpt,
     ...option
   };
@@ -258,11 +266,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     current.update(model);
   }
   const [agent, setAgent] = useState(current.getCurrent());
+  const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
   const dispatch = () => {
     if (unmountRef.current) {
       return;
     }
-    setAgent(current.getCurrent());
+    const currentAgent = current.getCurrent();
+    const currentAgentDeps = updateDeps ? updateDeps(currentAgent) : undefined;
+    if (
+      updateDepsRef.current &&
+      currentAgentDeps &&
+      shallowEq(updateDepsRef.current, currentAgentDeps)
+    ) {
+      return;
+    }
+    setAgent(currentAgent);
   };
   const persistDispatch = usePersistFn(dispatch);
   const prevStateRef = useRef<{ state: D | undefined }>({ state });
@@ -322,6 +340,7 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     autoLink?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
+    updateDeps?: (instance: T) => any[];
   }
 ): [S, T];
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
@@ -333,6 +352,7 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     autoLink?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
+    updateDeps?: (instance: T) => any[];
   }
 ): [S | undefined, T] {
   const { getSourceFrom } = model as AirReducerLike;
@@ -357,6 +377,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
     autoLink?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
+    updateDeps?: (instance: T) => any[];
   }
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
@@ -367,6 +388,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
     autoLink?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
+    updateDeps?: (instance: T) => any[];
   }
 ): T {
   const { pipe } = model as FactoryInstance<any>;
@@ -378,6 +400,28 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
     required,
     useDefaultState,
     ...option
+  });
+  return agent;
+}
+
+export function useStaticModel<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  state?: D,
+  option?: {
+    autoLink?: boolean;
+    realtimeInstance?: boolean;
+  }
+) {
+  const { pipe } = model as FactoryInstance<any>;
+  const { getSourceFrom } = model as AirReducerLike;
+  const required =
+    typeof pipe === 'function' || typeof getSourceFrom === 'function';
+  const useDefaultState = arguments.length > 1;
+  const [, agent] = useTupleModel(model, state, {
+    required,
+    useDefaultState,
+    ...option,
+    updateDeps: () => []
   });
   return agent;
 }
@@ -528,6 +572,14 @@ export const model = function model<S, T extends AirModelInstance>(
       return useModel(...params);
     };
 
+    const useApiStaticStoreModel = function useApiStaticStoreModel(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useStaticModel(...params);
+    };
+
     const useApiStoreSelector = function useApiStoreSelector(
       c: (i: T) => any,
       eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
@@ -562,6 +614,12 @@ export const model = function model<S, T extends AirModelInstance>(
         ) as [typeof staticModelKey, (S | undefined)?];
         return useModel(...params);
       };
+      const useApiStaticGlobalModel = function useApiStaticGlobalModel(s?: S) {
+        const params = (
+          arguments.length ? [staticModelKey, s] : [staticModelKey]
+        ) as [typeof staticModelKey, (S | undefined)?];
+        return useStaticModel(...params);
+      };
       const useApiGlobalSelector = function useApiGlobalSelector(
         c: (i: T) => any,
         eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
@@ -570,6 +628,7 @@ export const model = function model<S, T extends AirModelInstance>(
       };
       return {
         useModel: useApiGlobalModel,
+        useStaticModel: useApiStaticGlobalModel,
         useSelector: useApiGlobalSelector
       };
     }
@@ -578,6 +637,7 @@ export const model = function model<S, T extends AirModelInstance>(
       key,
       keys,
       useModel: useApiStoreModel,
+      useStaticModel: useApiStaticStoreModel,
       useSelector: useApiStoreSelector,
       asGlobal: global,
       provide: apiStoreProvide,

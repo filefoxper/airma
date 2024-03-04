@@ -13,7 +13,8 @@ import {
   useModel,
   useRealtimeInstance,
   useSelector,
-  provide as provideKeys
+  provide as provideKeys,
+  useStaticModel
 } from '@airma/react-state';
 import {
   useMount,
@@ -36,7 +37,10 @@ import type {
   AbstractSessionResult,
   PromiseHolder,
   CheckLazyComponentSupportType,
-  LazyComponentSupportType
+  LazyComponentSupportType,
+  FullControlData,
+  Controller,
+  ControlData
 } from './libs/type';
 import {
   parseConfig,
@@ -45,7 +49,7 @@ import {
 } from './libs/model';
 import {
   defaultIsFetchingState,
-  globalControllerKey,
+  globalControllerStore,
   useGlobalConfig
 } from './libs/global';
 import {
@@ -87,6 +91,56 @@ function toNoRejectionPromiseCallback<
   };
 }
 
+function useController<T, C extends PromiseCallback<T>>(
+  callback: C | SessionKey<C>
+): Controller {
+  const { effect } = callback as SessionKey<C>;
+  const [, d] = effect || [];
+  const controller = d as FullControlData | undefined;
+  return useMemo(() => {
+    return {
+      getData(key: keyof ControlData) {
+        if (controller == null || controller.data == null) {
+          return null;
+        }
+        return controller.data[key];
+      },
+      setData(key: keyof ControlData, data: ControlData[typeof key]) {
+        if (controller == null) {
+          return;
+        }
+        controller.data = { ...(controller.data || {}), [key]: data };
+      }
+    };
+  }, []);
+}
+
+function useFetchingKey(controller: Controller) {
+  return useMemo(() => {
+    return {
+      getFetchingKey() {
+        return controller.getData('fetchingKey');
+      },
+      getFinalFetchingKey() {
+        return controller.getData('finalFetchingKey');
+      },
+      setFetchingKey(key: unknown) {
+        controller.setData('fetchingKey', key);
+        if (key == null) {
+          return;
+        }
+        controller.setData('finalFetchingKey', key);
+      },
+      removeFetchingKey(key: unknown) {
+        if (key !== controller.getData('fetchingKey')) {
+          return;
+        }
+        controller.setData('fetchingKey', undefined);
+      }
+    };
+  }, []);
+}
+
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
@@ -109,11 +163,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const instance = useRealtimeInstance(stableInstance);
 
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    { autoLink: true }
-  );
+  const controller = useController(callback);
+  const fetchingKeyController = useFetchingKey(controller);
+
+  const { setGlobalFetchingKey, removeGlobalFetchingKey } =
+    globalControllerStore.useStaticModel();
 
   const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
@@ -124,8 +178,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     );
     return noRejectionPromiseCallback(vars).then(data => {
       const abandon =
-        instance.state.finalFetchingKey != null &&
-        keyRef.current !== instance.state.finalFetchingKey;
+        fetchingKeyController.getFinalFetchingKey() != null &&
+        keyRef.current !== fetchingKeyController.getFinalFetchingKey();
       return {
         ...instance.state,
         ...data,
@@ -143,7 +197,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     triggerType: 'manual' | 'mount' | 'update',
     vars?: any[]
   ): Promise<SessionState<T>> {
-    const currentFetchingKey = instance.state.fetchingKey;
+    const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
         resolve({ ...instance.state, abandon: true } as SessionState<T>);
@@ -164,9 +218,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         'Can not trigger session to execute. There is no variables found in config.'
       );
     }
-    instance.setFetchingKey(keyRef.current);
+    fetchingKeyController.setFetchingKey(keyRef.current);
     Promise.resolve(undefined).then(() => {
-      instance.removeFetchingKey(keyRef.current);
+      fetchingKeyController.removeFetchingKey(keyRef.current);
     });
     return strategyExecution(triggerType, vars || variables);
   };
@@ -187,18 +241,23 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     sessionExecution('update');
   }, effectDeps);
 
-  const triggerVersionRef = useRef(stableInstance.version);
+  const triggerRequestRef = useRef(stableInstance.request);
   useEffect(() => {
-    if (triggerVersionRef.current === stableInstance.version) {
+    if (triggerRequestRef.current === stableInstance.request) {
       return;
     }
-    triggerVersionRef.current = stableInstance.version;
-    const currentFetchingKey = instance.state.fetchingKey;
+    triggerRequestRef.current = stableInstance.request;
+    const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return;
     }
-    trigger();
-  }, [stableInstance.version]);
+    const { variables: requestVariables } = stableInstance.request || {};
+    if (!requestVariables) {
+      trigger();
+      return;
+    }
+    execute(...(requestVariables as Parameters<C>));
+  }, [stableInstance.request]);
 
   useEffect(() => {
     if (stableInstance.state.isFetching) {
@@ -210,7 +269,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   useUnmount(() => {
     removeGlobalFetchingKey(keyRef.current);
-    instance.removeFetchingKey(keyRef.current);
+    fetchingKeyController.removeFetchingKey(keyRef.current);
   });
 
   useEffect(() => {
@@ -296,12 +355,17 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void] {
+): [SessionState<T>, () => void, (variables: any[]) => void] {
   const [, padding] = sessionKey.effect;
   const { sessionType: sessionKeyType } = padding;
   const session = useSelector(
     sessionKey,
-    s => [s.state, s.trigger] as [SessionState<T>, () => void]
+    s =>
+      [s.state, s.trigger, s.execute] as [
+        SessionState<T>,
+        () => void,
+        (variables: any[]) => void
+      ]
   );
   const { loaded: shouldLoaded, sessionType } =
     typeof config === 'string'
@@ -318,7 +382,11 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  return session;
+  const [sessionState, trigger, executeCallback] = session;
+  const execute = usePersistFn((...variables: any[]) => {
+    executeCallback(variables);
+  });
+  return [sessionState, trigger, execute];
 }
 
 export function useIsFetching(
@@ -334,18 +402,8 @@ export function useIsFetching(
     });
     return states.some(d => d.isFetching);
   }, sessionStates);
-  const isMatchedInStore = useIsModelMatchedInStore(globalControllerKey);
-  const { isFetching: isGlobalFetching } = useModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    { autoLink: true }
-  );
-  if (!isMatchedInStore && !sessionStates.length) {
-    throw new Error(
-      'You should provide a `GlobalRefreshProvider` to support a global `isFetching` detect.'
-    );
-  }
-  if (isMatchedInStore && !sessionStates.length) {
+  const isGlobalFetching = globalControllerStore.useSelector(i => i.isFetching);
+  if (!sessionStates.length) {
     return isGlobalFetching;
   }
   return isLocalFetching;
@@ -435,7 +493,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 export function useLoadedSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void] {
+): [SessionState<T>, () => void, (variables: any[]) => void] {
   return useSession(
     sessionKey,
     typeof config === 'string'

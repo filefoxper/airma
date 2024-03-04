@@ -122,34 +122,51 @@ function provide(keys){
 function useSession(sessionKey):[sessionState, trigger]
 ```
 
+自 **@airma/react-effect v18.3.2** 开始，useSession 支持使用 execute 传参触发方法。
+
+```ts
+// v18.3.2
+function useSession(sessionKey):[sessionState, trigger, execute]
+```
+
 ### 参数
 
 * sessionKey - 会话键，可通过 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建。
 
 ### 返回
 
-元组 `[sessionState, trigger]`
+元组 `[sessionState, trigger, execute@18.3.2]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)
-* **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)
+* **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)，不能传参，只能触发。
+* **execute** - [会话执行器](/zh/react-effect/concepts?id=触发和执行)，允许传参触发。**至  v18.3.2 开始支持**。
 
 ## useLoadedSession
 
 确认会话已加载（至少成功运行过一次）时，使用的 useSession，功能与 useSession 一致，但返回会话状态的数据与异步函数返回数据类型完全一致，且 loaded 字段恒为 true。
 
 ```ts
-function useSession(sessionKey):[sessionState, trigger]
+function useLoadedSession(sessionKey):[sessionState, trigger]
 ```
+
+自 **@airma/react-effect v18.3.2** 开始，useLoadedSession 支持使用 execute 传参触发方法。
+
+```ts
+// v18.3.2
+function useLoadedSession(sessionKey):[sessionState, trigger, execute]
+```
+
 ### 参数
 
 * sessionKey - 会话键，可通过 [createSessionKey](/zh/react-effect/api?id=createsessionkey) API 创建。
 
 ### 返回
 
-元组 `[sessionState, trigger]`
+元组 `[sessionState, trigger, execute@18.3.2]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)，sessionState.data 类型与异步函数返回数据类型相同，且 sessionState.loaded 为 true。
 * **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)
+* **execute** - [会话执行器](/zh/react-effect/concepts?id=触发和执行)，允许传参触发。**至  v18.3.2 开始支持**。
 
 ## Strategy
 
@@ -298,6 +315,24 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 * **process** - 会话执行失败后的回调函数。可接收执行失败后的会话状态错误和会话状态做参数。
 
+## useIsFetching
+
+可用于检测是否有 useQuery 或 useMutation 处于正在执行异步函数的过程状态。
+
+```ts
+function useIsFetching(
+  ...sessionStates: SessionState[]
+): boolean;
+```
+
+### 参数
+
+* sessionStates - 可选，被检测的会话状态。如不提供，则检测全局所有会话状态。
+
+### 返回
+
+是否有 useQuery 或 useMutation 处于正在执行异步函数的过程状态，boolean 值。
+
 ## ConfigProvider
 
 用于配置优化全局会话的 React Context Provider 组件。
@@ -305,6 +340,9 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 ```ts
 type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  /**
+   * @deprecated 已废弃 
+   **/
   useGlobalFetching?: boolean;
   strategy?:(
     strategies:(StrategyType | undefined | null)[], 

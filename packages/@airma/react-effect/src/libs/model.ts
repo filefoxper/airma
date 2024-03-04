@@ -4,13 +4,16 @@ import type {
   SessionType,
   SessionKey,
   PromiseCallback,
-  QueryConfig
+  QueryConfig,
+  SessionRequest
 } from './type';
 
-export function effectModel(state: SessionState & { version?: number }) {
-  const { version, ...rest } = state;
+export function effectModel(
+  state: SessionState & { request?: SessionRequest }
+) {
+  const { request, ...rest } = state;
   const mergeVersion = (s: SessionState) => {
-    return { ...s, version, uniqueKey: state.uniqueKey };
+    return { ...s, request, uniqueKey: state.uniqueKey };
   };
   const mergeFetchVersion = (s: SessionState) => {
     if (s.isFetching) {
@@ -22,38 +25,23 @@ export function effectModel(state: SessionState & { version?: number }) {
       round: state.round + 1
     };
   };
+  const requestVersion = request ? request.version : 0;
   return {
     state: rest,
-    version: version || 0,
+    request,
     setState(
       s: SessionState | ((p: SessionState) => SessionState)
-    ): SessionState & { version?: number } {
+    ): SessionState & { request?: SessionRequest } {
       if (typeof s !== 'function') {
         return mergeFetchVersion(mergeVersion(s));
       }
       return mergeFetchVersion(mergeVersion(s(state)));
     },
-    setFetchingKey(fetchingKey: unknown): SessionState & { version?: number } {
-      return mergeVersion({
-        ...state,
-        fetchingKey,
-        finalFetchingKey:
-          fetchingKey != null ? fetchingKey : state.finalFetchingKey
-      });
+    trigger(): SessionState & { request?: SessionRequest } {
+      return { ...state, request: { version: requestVersion + 1 } };
     },
-    removeFetchingKey(
-      fetchingKey: unknown
-    ): SessionState & { version?: number } {
-      if (state.fetchingKey !== fetchingKey) {
-        return state;
-      }
-      return mergeVersion({
-        ...state,
-        fetchingKey: undefined
-      });
-    },
-    trigger(): SessionState & { version?: number } {
-      return { ...state, version: (version || 0) + 1 };
+    execute(variables: any[]): SessionState & { request?: SessionRequest } {
+      return { ...state, request: { version: requestVersion + 1, variables } };
     }
   };
 }
@@ -95,6 +83,7 @@ export const defaultPromiseResult = (config?: {
     cache: [],
     maxCacheCapacity: 1,
     round: 0,
+    executeVariables: undefined,
     ...config
   } as SessionState);
 

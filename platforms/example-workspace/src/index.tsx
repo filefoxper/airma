@@ -10,7 +10,7 @@ const root = document.getElementById('root');
 const config: GlobalConfig = {
   batchUpdate: unstable_batchedUpdates,
   useGlobalFetching: true,
-  strategy: s => [...s, Strategy.error(e => console.log('final...', e))]
+  strategy: s => [...s, Strategy.failure(e => console.log('final...', e))]
 };
 
 // render(

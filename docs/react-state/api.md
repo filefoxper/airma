@@ -3,17 +3,36 @@
 ## useModel
 
 ```ts
-function useModel(modelFn, defaultState?): instance
+function useModel(modelFnOrKey, defaultState?): instance
 ```
 
 Parameters:
 
-* modelFn - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* modelFnOrKey - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
 * defaultState - Optional, a default state for model initializing.
 
 Returns
 
 * A instance object (Proxy object). Call the action method from instance, can generate a next state, and refreshes instance.
+
+## useStaticModel
+
+The different with useModel is that useStaticModel can change store state, but can not subscribe store. It is useful for reducing the render frequency. 
+
+```ts
+function useStaticModel(modelKey, defaultState?): instance
+```
+
+**Support>=18.3.1**
+
+Parameters:
+
+* modelKey - It should be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* defaultState - Optional, a default state for model initializing.
+
+Returns
+
+* A instance object (Proxy object). Call the action method from instance, can generate a next state, and refreshes instance in store.
 
 ## useControlledModel
 
@@ -326,6 +345,7 @@ It is a simplified API for use `hooks` in `@airma/react-state`. It also can be u
 ```ts
 interface GlobalStoreApi {
   useModel,
+  useStaticModel,
   useSelector
 }
 
@@ -341,6 +361,7 @@ interface StoreApi {
   ) => typeof component,
   Provider: FC<{ children?: ReactNode }>,
   useModel,
+  useStaticModel,
   useSelector
 }
 

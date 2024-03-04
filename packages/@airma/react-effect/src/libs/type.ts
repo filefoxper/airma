@@ -26,18 +26,18 @@ export type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export type SessionType = 'query' | 'mutation';
 
+export type SessionRequest = {
+  version: number;
+  variables?: any[];
+};
+
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { version?: number }) => {
+  (st: SessionState & { request?: SessionRequest }) => {
     state: SessionState;
-    version: number;
-    setState: (s: SessionState) => SessionState & { version?: number };
-    setFetchingKey: (
-      fetchingKey: unknown
-    ) => SessionState & { version?: number };
-    removeFetchingKey: (
-      fetchingKey: unknown
-    ) => SessionState & { version?: number };
-    trigger: () => SessionState & { version?: number };
+    request: SessionRequest | undefined;
+    setState: (s: SessionState) => SessionState & { request?: SessionRequest };
+    trigger: () => SessionState & { request?: SessionRequest };
+    execute: (variables: any[]) => SessionState & { request?: SessionRequest };
   }
 > & {
   effect: [E, { sessionType?: SessionType }];
@@ -80,6 +80,7 @@ export interface AbstractSessionState {
   round: number;
   cache: SessionCache[];
   maxCacheCapacity: number;
+  executeVariables: any[] | undefined;
   /**
    * @deprecated
    */
@@ -220,4 +221,20 @@ export type PromiseHolder = {
   resolve: (data: any) => void;
   reject: (data: any) => void;
   loaded?: boolean;
+};
+
+export type ControlData = {
+  variables?: any[];
+  fetchingKey?: any;
+  finalFetchingKey?: any;
+};
+
+export type FullControlData = {
+  sessionType?: SessionType;
+  data?: ControlData;
+};
+
+export type Controller = {
+  getData: (key: keyof ControlData) => ControlData[typeof key] | null;
+  setData: (key: keyof ControlData, data: ControlData[typeof key]) => void;
 };

@@ -3,13 +3,35 @@
 ## useModel
 
 ```ts
-function useModel(modelFn, defaultState?): instance;
+function useModel(modelFnOrKey, defaultState?): instance;
 ```
 
 参数：
 
-* modelFn - [模型](/zh/react-state/concepts?id=模型)函数或[键](/zh/react-state/concepts?id=键) 。
-* state - 默认状态值，当 modelFn 为键(/zh/react-state/guides?id=键) 时为可选项。
+* modelFnOrKey - [模型](/zh/react-state/concepts?id=模型)函数或[键](/zh/react-state/concepts?id=键) 。
+* state - 默认状态值，当 modelFnOrKey 为键(/zh/react-state/guides?id=键) 时为可选项。
+
+返回：
+
+模型实例对象
+
+## useStaticModel
+
+与 useModel 唯一的不同的是，useStaticModel 不会订阅库状态变更，不会主动导致组件重渲染。因此，更适合用于 render 中初始化库状态，或纯粹触发行为方法节省渲染性能的场景。 
+
+```ts
+function useStaticModel(
+  modelKey, 
+  defaultState?
+): instance;
+```
+
+**支持版本>=18.3.1**
+
+参数：
+
+* modelKey - [键](/zh/react-state/concepts?id=键) 。
+* state - 默认状态值，当 modelFnOrKey 为键(/zh/react-state/guides?id=键) 时为可选项。
 
 返回：
 
@@ -151,15 +173,15 @@ export default ()=>{
 function useRealtimeInstance<T>(instance: T): T;
 ```
 
-### 参数
+参数
 
 * **instance** - useModel API 返回的实例对象
 
-### 返回
+返回
 
 实时动态实例对象
 
-### 例子
+例子
 
 ```ts
 import {
@@ -342,6 +364,7 @@ model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API
 ```ts
 interface GlobalStoreApi {
   useModel,
+  useStaticModel,
   useSelector
 }
 
@@ -357,6 +380,7 @@ interface StoreApi {
   ) => typeof component,
   Provider: FC<{ children?: ReactNode }>,
   useModel,
+  useStaticModel,
   useSelector
 }
 
