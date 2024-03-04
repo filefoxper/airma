@@ -40,6 +40,26 @@ export declare function useModel<
 ): ReturnType<R>;
 ```
 
+## useStaticModel
+
+与 useModel 唯一的不同的是，useStaticModel 不会订阅库状态变更，不会主动导致组件重渲染。因此，更适合用于 render 中初始化库状态，或纯粹触发行为方法节省渲染性能的场景。[引用](/zh/react-state/api?id=usestaticmodel) 
+
+```ts
+function useStaticModel(
+  modelKey, 
+  defaultState?
+): instance;
+```
+
+参数：
+
+* modelKey - [键](/zh/react-state/concepts?id=键) 。
+* state - 默认状态值，当 modelFnOrKey 为键(/zh/react-state/guides?id=键) 时为可选项。
+
+返回：
+
+模型实例对象
+
 ### useControlledModel
 
 [hook API] 用于将模型实例状态链接至外部状态，并完全受控于该外部状态， 如: `useState`, [引用](/zh/react-state/api?id=usecontrolledmodel)

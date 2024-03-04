@@ -34,6 +34,24 @@ export declare function useModel<
 ): ReturnType<R>;
 ```
 
+## useStaticModel
+
+The different with useModel is that useStaticModel can change store state, but can not subscribe store. It is useful for reducing the render frequency. [ref](/react-state/api?id=usestaticmodel). 
+
+```ts
+function useStaticModel(modelKey, defaultState?): instance
+```
+
+Parameters:
+
+* modelKey - It should be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* defaultState - Optional, a default state for model initializing.
+
+Returns
+
+* A instance object (Proxy object). Call the action method from instance, can generate a next state, and refreshes instance in store.
+
+
 ### useControlledModel
 
 [hook API] It is used to connect model function instance with an exist state system, like: `useState`, [ref](/react-state/api?id=usecontrolledmodel).
