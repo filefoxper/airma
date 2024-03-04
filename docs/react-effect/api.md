@@ -306,11 +306,14 @@ It allows to process callback when a session execution is failed.
 
 ## ConfigProvider
 
-It is a global config provider. It can be used for preseting common strategies, providing batch update callback, and opening global fetching mode.
+It is a global config provider. It can be used for preseting common strategies and providing batch update callback.
 
 ```ts
 type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  /**
+   * @deprecated
+   **/
   useGlobalFetching?: boolean;
   strategy?:(
     strategies:(StrategyType | undefined | null)[], 
@@ -343,7 +346,7 @@ function useIsFetching(
 
 Parameters
 
-* sessionStates - Session states for detecting, it is optional. If it is void, and the **GlobalConfig.useGlobalFetching** has been setted, useIsFetching detecting all sessions.
+* sessionStates - Session states for detecting, it is optional. If it is void, useIsFetching detecting all sessions.
 
 Returns
 

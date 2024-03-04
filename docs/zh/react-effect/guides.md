@@ -788,7 +788,7 @@ function once(): StrategyType {
 ConfigProvider 组件用于全局配置 ：
 
 * batchUpdate - 批量更新方法。当环境中 react 版本 < 18.0.0 时，需要使用 react-dom 的批量更新状态方法  unstable_batchedUpdates 优化状态更新过程。
-* useGlobalFetching - 支持通过 [useIsFetching](/zh/react-effect/api?id=useisfetching) 监听所有会话的 fetching 状态。
+* useGlobalFetching - 支持通过 [useIsFetching](/zh/react-effect/api?id=useisfetching) 监听所有会话的 fetching 状态。**（自v18.3.2开始，该字段被废弃）**
 * strategy - 公共策略链定义函数。用于定义运行时的动态公共策略链。
 
 ```ts
@@ -803,8 +803,6 @@ import type {GlobalConfig} from '@airma/react-effect';
 const globalConfig: GlobalConfig = {
     // 使用 unstable_batchedUpdates 优化渲染性能
     batchUpdate: unstable_batchedUpdates,
-    // 支持使用 useIsFetching 获取所有会话的 isFetching 状态
-    useGlobalFetching: true,
     // 设置公共策略链动态组合函数
     strategy: (
         s: StrategyType[], 
@@ -819,7 +817,7 @@ const globalConfig: GlobalConfig = {
 }
 
 const App = ()=>{
-    // ConfigProvider 范围内所有会话的 isFetching 状态。
+    // 所有会话的 isFetching 状态。
     const isFetching = useIsFetching();
     return isFetching? <Fetching/> : <Content/>
 }

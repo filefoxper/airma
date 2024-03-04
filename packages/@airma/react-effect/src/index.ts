@@ -49,7 +49,7 @@ import {
 } from './libs/model';
 import {
   defaultIsFetchingState,
-  globalControllerKey,
+  globalControllerStore,
   useGlobalConfig
 } from './libs/global';
 import {
@@ -166,13 +166,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const controller = useController(callback);
   const fetchingKeyController = useFetchingKey(controller);
 
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } = useStaticModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    {
-      autoLink: true
-    }
-  );
+  const { setGlobalFetchingKey, removeGlobalFetchingKey } =
+    globalControllerStore.useStaticModel();
 
   const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
@@ -407,18 +402,8 @@ export function useIsFetching(
     });
     return states.some(d => d.isFetching);
   }, sessionStates);
-  const isMatchedInStore = useIsModelMatchedInStore(globalControllerKey);
-  const { isFetching: isGlobalFetching } = useModel(
-    globalControllerKey,
-    defaultIsFetchingState,
-    { autoLink: true }
-  );
-  if (!isMatchedInStore && !sessionStates.length) {
-    throw new Error(
-      'You should provide a `GlobalRefreshProvider` to support a global `isFetching` detect.'
-    );
-  }
-  if (isMatchedInStore && !sessionStates.length) {
+  const isGlobalFetching = globalControllerStore.useSelector(i => i.isFetching);
+  if (!sessionStates.length) {
     return isGlobalFetching;
   }
   return isLocalFetching;

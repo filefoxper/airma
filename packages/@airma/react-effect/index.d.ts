@@ -374,6 +374,9 @@ export declare const Provider: FC<
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  /**
+   * @deprecated
+   */
   useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
