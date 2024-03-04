@@ -52,3 +52,7 @@
 ## v18.3.1
 
 * 新增了API useStaticModel
+
+## v18.3.2
+
+* 优化了全局 store 的订阅过程。

@@ -80,7 +80,9 @@ function destroyDispatching<S, T extends AirModelInstance>(
 
 function generateNotification<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
-  batchUpdate?: (callback: () => void) => void
+  optimize: {
+    batchUpdate?: (callback: () => void) => void;
+  }
 ) {
   function pendAction(value: Action) {
     const { dispatching } = updater;
@@ -129,8 +131,8 @@ function generateNotification<S, T extends AirModelInstance>(
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
         try {
-          if (typeof batchUpdate === 'function') {
-            batchUpdate(() => {
+          if (typeof optimize.batchUpdate === 'function') {
+            optimize.batchUpdate(() => {
               defaultNotifyImplement(dispatchCallbacks, wrap.value);
             });
           } else {
@@ -245,7 +247,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   return newMethod;
 }
 
-export default function createModel<S, T extends AirModelInstance, D extends S>(
+export function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   defaultState: D,
   updaterConfig?: UpdaterConfig
@@ -253,6 +255,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
   const modelContextFactory = generateModelContextFactory();
   const defaultModel = refreshModel(reducer, defaultState, modelContextFactory);
   const { controlled, batchUpdate } = updaterConfig || {};
+  const optimize = { batchUpdate };
   const updater: Updater<S, T> = {
     current: defaultModel,
     reducer,
@@ -265,7 +268,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
     notify: noop
   };
 
-  updater.notify = generateNotification(updater, batchUpdate);
+  updater.notify = generateNotification(updater, optimize);
 
   function update(
     updateReducer: AirReducer<S, T>,
@@ -400,6 +403,7 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       updater.cacheState = null;
       updater.notify = noop;
       updater.cacheMethods = {};
+      optimize.batchUpdate = undefined;
     },
     connect(dispatchCall) {
       const needNotice = subscribe(dispatchCall);
@@ -408,7 +412,13 @@ export default function createModel<S, T extends AirModelInstance, D extends S>(
       }
       notice(dispatchCall);
     },
-    disconnect
+    disconnect,
+    optimize(batchUpdateCallback?: (callback: () => void) => void) {
+      if (optimize.batchUpdate === batchUpdateCallback) {
+        return;
+      }
+      optimize.batchUpdate = batchUpdateCallback;
+    }
   };
 }
 

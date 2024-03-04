@@ -20,7 +20,8 @@ import type {
   Connection,
   FactoryInstance
 } from './libs/type';
-import createModel, {
+import {
+  createModel,
   checkIfLazyIdentifyConnection,
   createStoreCollection,
   factory as createFactory,
@@ -140,6 +141,12 @@ export function useRefresh<T extends (...args: any[]) => any>(
 
 const ReactStateContext = createContext<Selector | null>(null);
 
+function useOptimize() {
+  const config = useContext(ConfigContext);
+  const { batchUpdate } = config || {};
+  return useMemo(() => ({ batchUpdate }), [batchUpdate]);
+}
+
 export const Provider: FC<{
   keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
   value?: Array<any> | ((...args: any) => any) | Record<string, any>;
@@ -149,8 +156,7 @@ export const Provider: FC<{
   if (storeKeys == null) {
     throw new Error('You need to provide keys to `Provider`');
   }
-  const config = useContext(ConfigContext);
-  const { batchUpdate } = config || {};
+  const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
   const storeMemo = useMemo(
     () => createStoreCollection(storeKeys, { batchUpdate }),
@@ -232,6 +238,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ...defaultOpt,
     ...option
   };
+  const { batchUpdate } = useOptimize();
   const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
   const connection = required ? findConnection(context, model) : undefined;
@@ -260,6 +267,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     )
   );
   const instance = instanceRef.current;
+  instance.optimize(batchUpdate);
   const current = connection || instance;
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
@@ -445,12 +453,14 @@ export function useSelector<
   callback: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {
+  const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
   const connection = findConnection(context, factoryModel);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
   checkIfLazyIdentifyConnection(connection);
+  connection.optimize(batchUpdate);
   const current = callback(connection.getCurrent());
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);

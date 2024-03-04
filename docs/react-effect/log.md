@@ -70,3 +70,7 @@
 
 * less render
 * make useSession support execute with parameters.
+
+# v18.3.3
+
+* modify the no variables trigger warning content.

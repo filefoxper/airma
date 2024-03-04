@@ -70,6 +70,7 @@ export interface Connection<
   destroy: () => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
+  optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;
 }
 
 export interface ActionWrap {
