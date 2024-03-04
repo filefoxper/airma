@@ -8,6 +8,7 @@ export * from '@airma/react-hooks-core';
 export {
   createKey,
   useModel,
+  useStaticModel,
   useControlledModel,
   useSelector,
   model,
