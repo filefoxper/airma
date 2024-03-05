@@ -210,12 +210,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     }
     if (['mount', 'update'].includes(triggerType) && variables == null) {
       logger.warn(
-        'Can not execute with `mount` or `update` dependency mode. There is no variables found in config.'
+        'Trigger Session with no variables is dangerous. It means calling async function with no parameter.'
       );
     }
     if (triggerType === 'manual' && variables == null && vars == null) {
       logger.warn(
-        'Can not trigger session to execute. There is no variables found in config.'
+        'Trigger Session with no variables is dangerous. It means calling async function with no parameter.'
       );
     }
     fetchingKeyController.setFetchingKey(keyRef.current);

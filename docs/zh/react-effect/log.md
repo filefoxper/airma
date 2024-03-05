@@ -79,3 +79,7 @@
 
 * 优化触发会话的渲染过程
 * useSession 支持 execute 传参执行方法。
+
+## v18.3.3
+
+* 修改了没有 variables 设置时，trigger的警告信息。

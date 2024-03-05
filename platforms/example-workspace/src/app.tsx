@@ -77,7 +77,9 @@ const test = model((state: number) => {
       return state + 1;
     }
   };
-}).store(0);
+})
+  .store(0)
+  .asGlobal();
 
 const counting = (state: number) => {
   return {
@@ -142,7 +144,9 @@ const creatingStore = model((userData: Omit<User, 'id'>) => {
       return { ...userData };
     }
   };
-}).createStore();
+})
+  .createStore()
+  .asGlobal();
 
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
@@ -212,7 +216,7 @@ const Creating = memo(
   }
 );
 
-const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
+function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, validQuery, create, changeDisplay } = store.useModel();
 
@@ -222,6 +226,8 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
   const handleTrigger = () => {
     parentTrigger();
   };
+
+  console.log('render...');
 
   return (
     <div>
@@ -266,9 +272,9 @@ const Condition = memo(({ parentTrigger }: { parentTrigger: () => void }) => {
       </button>
     </div>
   );
-});
+}
 
-export default test.with(creatingStore).provideTo(function App() {
+export default function App() {
   store.useModel({
     valid: defaultCondition,
     display: defaultCondition,
@@ -310,7 +316,7 @@ export default test.with(creatingStore).provideTo(function App() {
 
   const { value, increase, decrease } = instance;
 
-  console.log('render...');
+  useIsFetching();
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
@@ -340,4 +346,4 @@ export default test.with(creatingStore).provideTo(function App() {
       </div>
     </div>
   );
-});
+}
