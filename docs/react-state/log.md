@@ -93,6 +93,6 @@
 
 * add `useStaticModel` API
 
-## v18.3.2
+## v18.3.2 2024-03-05
 
 * optimize global subscribing process in ConfigProvider.
