@@ -38,7 +38,7 @@ const {
 } = instance;
 ```
 
-上例通过使用类 `reducer` 的 `function` 创建了一个计数状态管理器。在 `@airma/react-state` 中，这个类 `reducer function` 被称为[模型](/zh/react-state/concepts?id=模型) `model`。
+上例通过使用类 `reducer` 的 `function` 创建了一个计数状态管理器。在 `@airma/react-state` 中，这个类 `reducer function` 被称为[模型](/zh/react-state/concepts?id=模型)（model）。
 
 使用 [model](/zh/react-state/api?id=model) API，可以简化使用步骤，让相关的 hooks 使用更加清晰明了。
 
@@ -48,7 +48,7 @@ const {
 import {model} from '@airma/react-state';
 
 // model API 通过包装模型函数，返回一个与源模型接口相同的新模型，
-// 并在新模型上提供了一套完整的模型操作常用 API 集合。
+// 并在新模型上挂载了一套常用模型操作 API 集合。
 const counting = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
@@ -62,12 +62,12 @@ const counting = model(function counting(state:number){
     };
 });
 ......
-// 我们可以直接通过 get 的形式使用 useModel
+// 直接通过 counting.useModel 的形式使用 useModel
 const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-`model` API 优化了 `React.useReducer` 的使用方式，更便于管理复杂行为状态。除了与 `React.useReducer` 一样出色的本地状态管理功能，`model` API 还支持 `React.Context` 共享状态管理模式和全局共享状态管理模式。
+model API 优化了 `React.useReducer` 的使用方式，更便于管理复杂行为状态。除了与 `React.useReducer` 一样出色的本地状态管理功能，model API 还支持 React.Context 动态管理模式和全局静态库管理模式。
 
 ### React.Context 动态库管理
 
@@ -87,19 +87,19 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0);
-// model(modelFn).createStore(defaultState) 可创建一个 动态库 store，
+// model(modelFn).createStore(defaultState) 可创建一个动态库，
 // 并预设库存模型实例的默认状态 defaultState。
 ......
 const Increase = memo(()=>{
-    // store.useSelector 可用于重选库模型实例的有用字段,
-    // 当选出的字段值发生改变，即可触发组件再渲染。
-    // 当前组件重选出一个模型实例方法，
+    // useSelector 可用于重组库存模型实例的有用字段,
+    // 当库存状态变更前后，重组结果发生改变，即可触发组件再渲染。
+    // 当前组件选出一个模型实例方法为结果，
     // 模型实例方法是稳定不变的，所以该组件不会发生再渲染。
     const increase = countingStore.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    // store.useModel 可直接共享来自库的状态变更。
+    // useModel 可直接共享来自本地库的状态变更。
     const {count} = countingStore.useModel();
     return <span>{count}</span>;
 });
@@ -107,7 +107,7 @@ const Decrease = memo(()=>{
     const decrease = countingStore.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// 通过 store 的 provideTo 高阶组件方式，可为子组件提供一个 `React.Context` 库共享环境，即 Provider 外包装组件。
+// 通过 provideTo 高阶组件方式，可为子组件提供一个 React.Context 本地库环境，即 Provider 外包装组件。
 const Component = countingStore.provideTo(function Comp() {
     return (
         <div>
@@ -120,7 +120,7 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-注意，`store` 动态库并不负责维护模型实例状态，它并不是传统意义上的静态库。模型实例状态是维护在由 `provideTo` 生成的 [Provider](/zh/react-state/api?id=provider) 组件元素（Element）中的。每个由 `Provider` 组件生成的 React 元素内存放着各自`不同`的库存模型实例，每个 `Provider` 组件元素的库存实例随当前元素的销毁而销毁。关于库存实例的跨域查找，及支持 React.Context 共享模式的原由可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
+注意，动态库并不负责维护模型实例状态，它并不是传统意义上的静态库。模型实例状态是维护在由 `provideTo` 生成的 [Provider](/zh/react-state/api?id=provider) 组件元素（React Element）中的。每个由 `Provider` 组件生成的 React 元素内存放着各自**不同**的本地库存模型实例，每个 `Provider` 组件元素的库存实例随当前元素的销毁而销毁。关于库存实例的跨域查找，及支持 React.Context 动态库的原由可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
 
 ### 全局静态库管理
 
@@ -139,7 +139,7 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0).asGlobal();
-// 通过简单调用 store 对象的 asGlobal 方法，可创建一个全局共享库。
+// 通过简单调用 asGlobal 方法，可创建一个全局静态库。
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -153,7 +153,7 @@ const Decrease = memo(()=>{
     const decrease = countingStore.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// 全局共享库不需要 provideTo 即可全局使用
+// 全局静态库不需要 provideTo 即可全局使用
 const Component = function Comp() {
     return (
         <div>
@@ -165,7 +165,7 @@ const Component = function Comp() {
 };
 ```
 
-相比 `React.Context` 状态共享模式，全局状态共享在使用上会更加简单，但也会遇到各种其他全局状态共享库共同的问题，可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
+相比 React.Context 动态库，全局静态库在使用上会更加简单，但也会遇到各种其他全局静态库共同的问题，可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
 
 ### render 运行时设置默认状态
 
@@ -214,7 +214,7 @@ const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultC
 });
 ```
 
-相对其他状态共享库静态初始化默认状态的方式，`@airma/react-state` 可在 render 运行时初始化库存实例默认状态的能力显得特别实用。
+相较其他工具库的静态初始化默认状态的方式，`@airma/react-state` 可在 render 运行时初始化库存实例默认状态的能力显得特别实用。
 
 ## 异步状态管理
 

@@ -78,7 +78,7 @@ function createSessionKey(
 
 ## Provider
 
-React Context Provider 类型组件，可根据会话键创建内部库，并为使用会话键订阅库存会话状态提供上下文环境。
+React Context Provider 类型组件，可根据会话键创建内部本地库，并为使用会话键订阅库存会话状态提供上下文环境。
 
 ```ts
 Provider props:{
@@ -122,7 +122,7 @@ function provide(keys){
 function useSession(sessionKey):[sessionState, trigger]
 ```
 
-自 **@airma/react-effect v18.3.2** 开始，useSession 支持使用 execute 传参触发方法。
+自 **@airma/react-effect v18.3.2** 开始，useSession 支持使用 execute 传参执行方法。
 
 ```ts
 // v18.3.2
@@ -143,13 +143,13 @@ function useSession(sessionKey):[sessionState, trigger, execute]
 
 ## useLoadedSession
 
-确认会话已加载（至少成功运行过一次）时，使用的 useSession，功能与 useSession 一致，但返回会话状态的数据与异步函数返回数据类型完全一致，且 loaded 字段恒为 true。
+确认会话已加载（至少成功运行过一次）时，可用该 API 代替 useSession。功能与 useSession 一致，但返回的会话状态数据与异步函数返回数据类型完全一致，且会话状态的 loaded 字段恒为 true。
 
 ```ts
 function useLoadedSession(sessionKey):[sessionState, trigger]
 ```
 
-自 **@airma/react-effect v18.3.2** 开始，useLoadedSession 支持使用 execute 传参触发方法。
+自 **@airma/react-effect v18.3.2** 开始，useLoadedSession 支持使用 execute 传参执行方法。
 
 ```ts
 // v18.3.2
@@ -212,9 +212,9 @@ const Strategy: {
 
 SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通过缓存键快速获取缓存记录中的值作为新的会话状态数据，如缓存键对应的记录不存在，则等待异步操作结果做键对应的缓存记录值。
 
-如未设置 **staleTime** 缓存有效期，且当前键对应缓存记录存在，则在每次异步操开始时获取缓存记录值做临时会话状态数据，同时等待异步操作结果做最终会话状态数据，并缓存该数据。
+如未设置 **staleTime** 缓存有效期，且当前键对应的缓存记录存在，则在每次异步操开始时获取缓存记录值做临时会话状态数据，同时等待异步操作结果做最终会话状态数据，并缓存最终会话状态数据。
 
-如设置 **staleTime** 缓存有效期，且当前键对应的缓存记录有效，则不再执行异步函数，直接返回有效记录值做最终会话状态数据；如缓存记录不存在或已过期，则等待异步操作结果做最终会话状态数据，并缓存该数据。
+如设置 **staleTime** 缓存有效期，且当前键对应的缓存记录有效，则不再执行异步函数，直接返回有效记录值做最终会话状态数据；如缓存记录不存在或已过期，则等待异步操作结果做最终会话状态数据，并缓存最终会话状态数据。
 
 #### 参数
 
@@ -241,7 +241,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 **注意**，该策略在异步函数返回的 promise 对象 reject 时执行。
 
-**如果在策略链中有多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
+**如果在策略链中存在多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
 
 #### 参数
 
@@ -273,7 +273,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 返回 boolean 值得回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。
+* **process** - 返回 boolean 值的回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。
 
 ### Strategy.reduce
 
@@ -309,7 +309,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 **当前策略在会话状态更新完毕的副作用（useEffect）中运行回调函数。**
 
-**如果在策略链中有多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
+**如果在策略链中存在多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
 
 #### 参数
 
@@ -365,7 +365,7 @@ interface ConfigProviderProps:{
 
 ## useLazyComponent
 
-监听多个会话是否已执行过或已加载，异步加载组件，返回一个 React.lazy 包装组件。如被监听会话均已加载，则 React.lazy 正常渲染；如被监听会话均已执行且部分会话出错，则 React.lazy 组件接收到一个 名为 'error'，值类型为[会话状态](/zh/react-effect/concepts?id=会话状态)类型的 Props 属性。 
+监听多个会话是否已执行过或已加载，异步加载组件，返回一个 React.lazy 包装组件。如被监听会话均已加载，则 React.lazy 正常渲染；如被监听会话均已执行且部分会话出错，则 React.lazy 组件接收到一个名为 'error'，值类型为[会话状态](/zh/react-effect/concepts?id=会话状态)类型的 Props 属性。 
 
 ```ts
 function useLazyComponent(
@@ -522,7 +522,7 @@ useResponse.useFailure((err)=>{
 
 ## session
 
-用于包装声明会话的函数形 API。该API可封装一个异步函数，并返回一个针对会话的常用API集合。
+用于包装声明会话的函数 API。该API可封装一个异步函数，并返回一个针对会话的常用API集合。
 
 ```ts
 type StaticStoreApi = {

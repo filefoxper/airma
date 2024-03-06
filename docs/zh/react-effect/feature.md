@@ -2,11 +2,11 @@
 
 ## 无 zombie child 问题
 
-异步操作响应可能发生在使用组件卸载之后，如果这时进行状态更新，则容易带来 setState 内存泄漏问题，俗称 [僵尸娃问题 (zombie-children)](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) 。`@airma/react-effect` 检查了这种情况，并避免了 zombie-children 问题的发生。
+异步操作响应可能发生在使用组件卸载之后，如果这时进行状态更新，很容易带来 setState 内存泄漏问题，俗称 [僵尸娃问题 (zombie-children)](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) 。`@airma/react-effect` 检查了这种情况，并避免了 zombie-children 问题的发生。
 
 ## 同键会话无法同时运行
 
-当多个使用相同会话键的会话（useQuery/useMutation）同时被触发，只有一个会话被允许执行。其他会话只能监听库中的会话状态更新。这一特性在开发无参查询公共组件时非常有用。
+当多个使用相同会话键的会话（useQuery/useMutation）同时被触发时，只有一个会话被允许执行。其他会话只能监听库中的会话状态更新。这一特性在开发无参查询公共组件时非常有用。
 
 ```ts
 import {session} from '@airma/react-effect';
@@ -43,7 +43,7 @@ export const RelationShipSelector = (props: Props)=>{
 };
 
 const App = ()=>{
-    // 多个 RelationShipSelector 组件同时触发加载执行。
+    // 多个 RelationShipSelector 组件同时通过加载触发会话执行。
     // 只有一个 queryStore.useQuery 会被允许执行。
     return (
         <Page>
@@ -66,6 +66,7 @@ const App = ()=>{
 import {provide, createKey} from '@airma/react-state';
 import {createSessionKey} from '@airma/react-effect';
 
+// 模型键
 const countKey = createKey((count: number)=>{
     return {
         count,
@@ -74,6 +75,7 @@ const countKey = createKey((count: number)=>{
     }
 }, 0);
 
+// 会话键
 const querySessionKey = createSessionKey(fetchUsers, 'query');
 
 // 模型键和会话键可整合在一起使用
