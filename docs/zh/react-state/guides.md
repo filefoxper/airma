@@ -1,10 +1,10 @@
 # 引导
 
-`@airma/react-state` 的基础 API [useModel](/zh/react-state/api?id=usemodel)、[useSelector](/zh/react-state/api?id=useselector)、[provide](/zh/react-state/api?id=provide)、[model](/zh/react-state/api?id=model) 提供了一整套完善的状态管理方案。
+本节主要介绍 `@airma/react-state` 中各种常用 API 的功能、用法。
 
 ## useModel
 
-API useModel 可用于管理本地模型状态，也可用于连接管理 React.Context 动态库中的模型状态。
+API useModel 可用于管理本地或库模型的状态。
 
 ### 本地状态管理
 
@@ -42,19 +42,19 @@ const {
 );
 ```
 
-可以把它当作简化版的 useReducer 来使用。
+可以把它当作简化版的 React.useReducer。
 
 ### React.Context 动态库管理
 
-useModel 在动态库状态管理中的使用参数与本地状态管理有所不同。
+用于管理动态库状态的 useModel 与管理本地状态的 useModel 所需参数略有不同。
 
-1. 本地管理中的模型函数，需要换成[键](/zh/react-state/concepts?id=键)。
-2. 如果使用的键有预设默认状态，或者已经有使用了相同键的 useModel 初始化了默认状态，则可以不提供默认状态。
+1. 其中本地管理使用的模型函数，需要换成[键](/zh/react-state/concepts?id=键)。
+2. 如果使用的键有预设默认状态，或其他同键 useModel 已做初始化处理，则可不提供默认状态。
 
 ```ts
-// 已预设过默认状态
+// 已预设过默认状态的键，不需要再次初始化
 const storeInstance = useModel(modelKey);
-// 在 render 运行时初始化默认状态
+// 没有预设过默认状态的键，可在 render 运行时初始化
 const storeInstance = useModel(modelKey, defaultState);
 ```
 
@@ -62,38 +62,39 @@ const storeInstance = useModel(modelKey, defaultState);
 
 ## useSelector
 
-useSelector API 可用于筛选来自库中模型实例的字段，以减少不必要的渲染。
+useSelector API 可用于重组库模型实例的字段，并通过对比状态变更前后 useSelector 的重组结果是否相等，来决定是否需要重新渲染。可用于提升渲染性能。
 
 ```ts
 const xxx = useSelector(modelKey, (instance)=>instance.xxx);
 ```
 
-当选取的字段为复杂对象时，可为 useSelector 提供第三个参数 equalFn 判断当前选取值是否与变更前的选取值相等，若返回 true，即相等，则忽略本次渲染。
+可通过第三个参数 equalFn 可自定义如何判断重组值是否相等。推荐使用 [shallowEqual](/zh/react-state/api?id=shallowequal) API。
 
 ```ts
 import {pick} from 'lodash';
 import {useSelector, shallowEqual} from '@airma/react-state';
 
-const xxx = useSelector(modelKey, (instance)=>pick(instance,['xxx']), shallowEqual);
+const {xxx} = useSelector(modelKey, (instance)=>pick(instance,['xxx']), shallowEqual);
+// shallowEqual 以浅对比的方式进行等值判断
 ```
 
 [更多例子](/zh/react-state/concepts?id=键)
 
 ## createKey 与 provide
 
-API [provide](/zh/react-state/api?id=provide) 是一个用于提供 [Provider](/zh/react-state/api?id=provider) 组件包装的高阶组件。
+API [provide](/zh/react-state/api?id=provide) 用于提供使用动态库所需的 [Provider](/zh/react-state/api?id=provider) 外包装组件环境。
 
 ```ts
 /**
- * @params modelKeys 键或键的集合对象（对象、数组均可
- * @params Component 需要使用 store 的组件
+ * @params modelKeys 键或键的集合（对象、数组均可）
+ * @params Component 需要使用 Provider 库的自定义组件
  * 
  * @returns WrappedComponent 被 Provider 组件包囊后的组件
  **/
 const WrappedComponent = provide(modelKeys)(Component)
 ```
 
-API [createKey](/zh/react-state/api?id=createkey) 用于为模型生成[键](/zh/react-state/concepts?id=键)，键可用于生成库，同时作为连接库的通道用于 useModel、useSelector。
+API [createKey](/zh/react-state/api?id=createkey) 可以为**模型**生成[键](/zh/react-state/concepts?id=键)，键可用于生成本地库，同时作为连接本地库的通道。
 
 ```ts
 /**
@@ -182,7 +183,7 @@ const key2 = createKey(myModel2);
 const Child = provide(key2)(()=>{
     // 在当前的 provide 中无法找到 key,
     // 向上查找，
-    // 在 const Component = provide(key) 中找到 key 的库
+    // 在 const Component = provide(key) 中找到 key 对应的库
     useModel(key);
     useModel(key2, defaultState);
     return ......;
@@ -194,7 +195,7 @@ const Component = provide(key)(function Component(){
 });
 ```
 
-想要同模型，不同库？
+想要创建模型相同的不同库？
 
 ```ts
 import {myModel} from './model';
@@ -204,7 +205,7 @@ const key = createKey(myModel);
 
 const key2 = createKey(myModel);
 
-// key 和 key2 有相同的模型，却是两个不同的键，
+// key 和 key2 拥有有相同的模型，但却是两个不同的键，
 // 因此它们会生成两个不同的库
 const keys = {key, key2};
 
@@ -215,7 +216,7 @@ const Component = provide(keys)(function Component(){
 
 ## useControlledModel
 
-关键数据状态完全通过 props 进行传递和回传的 React 组件被称为受控组件。受控组件具有非常良好的复用性，状态控制权交由使用者掌控。在受控组件中可使用 [useControlledModel](/zh/react-state/api?id=usecontrolledmodel) 适配通用模型来完成复杂的受控交互任务。
+关键渲染数据完全依赖 props 提供和回传的 React 组件被称为受控组件。受控组件具有非常良好的复用性，状态控制权交由使用者掌控。在受控组件中可使用 [useControlledModel](/zh/react-state/api?id=usecontrolledmodel) 可适配通用模型来完成较复杂的受控交互任务。
 
 useControlledModel 用于管理模型的受控状态。
 
@@ -223,7 +224,7 @@ useControlledModel 用于管理模型的受控状态。
 /**
  * @params modelFn 模型函数
  * @params value 受控状态
- * @params onChange 受控状态变更回调
+ * @params onChange 受控状态变更后的回传函数
  * 
  * @returns 模型实例
  **/
@@ -248,6 +249,7 @@ import {toggleModel} from '../common/model';
 import {useModel} from '@airma/react-state';
 
 const UnControlledCheckbox = ()=>{
+    // 拥有本地状态，完全不依赖外界
     const [
         selected,
         toggle
@@ -276,9 +278,9 @@ const ControlledCheckbox = (props:{
         toggle
     ] = useControlledModel(
         toggleModel,
-        // set the controlled state from props 
+        // 完全依赖外界提供当前状态 
         checked, 
-        // set the controlled onChange from props
+        // 通过外界提供的回调函数回传变更后的状态
         onChange
     );
 
@@ -286,7 +288,7 @@ const ControlledCheckbox = (props:{
 }
 ```
 
-受控、非受控自支持组件中使用模型
+受控、非受控兼容组件使用模型
 
 ```ts
 import {toggleModel} from '../common/model';
@@ -301,10 +303,12 @@ const Checkbox = (props:{
     const handleChange = (c: boolean)=>{
         onChange?.(c);
     }
+    // 非受控模型实例
     const instance = useModel(
         toggleModel, 
         checked ?? false
     );
+    // 受控模型实例
     const cInstance = useControlledModel(
         toggleModel,
         checked ?? false, 
@@ -324,7 +328,7 @@ const Checkbox = (props:{
 
 ## model
 
-API [model](/zh/react-state/api?id=model) 整合了常用模型 API，提供了一套流调用的使用方式。
+模型声明 API [model](/zh/react-state/api?id=model) 整合了常用的模型 API，提供了一套流调用的使用方式。
 
 ```ts
 import {model} from '@airma/react-state';
@@ -353,7 +357,7 @@ const toggleModel = model((selected:boolean)=>([
 // 创建 React.Context 动态库
 const toggleStore = toggleModel.createStore(false);
 
-// 复制出全局静态库，
+// 将动态库转换成全局静态库，
 // 全局静态库不需要 Provider
 const toggleGlobalStore = toggleStore.asGlobal();
 ......
@@ -390,7 +394,7 @@ const countStore = model((count:number)=>([
 ] as const)).createStore(0);
 
 ......
-// 通过 store.with 可整合多个库
+// 使用库的 with 方法可整合多个库
 toggleStore.with(countStore,...).provideTo(
     function Component(){
         const [, toggle] = toggleStore.useModel();
@@ -404,7 +408,7 @@ toggleStore.with(countStore,...).provideTo(
 
 ## ConfigProvider
 
-由于 `@airma/react-state` 采用的是订阅更新模式，库状态变更会通知每个使用点进行状态更新（setState），在 react<18.0.0 版本中需要 unstable_batchedUpdates 进行更新效率优化，而 `@airma/react-state` 并没有依赖 `react-dom` 包，因此需要通过配置的方式引入 unstable_batchedUpdates。
+由于 `@airma/react-state` 采用的是订阅更新模式，库存状态数据的变更会通知每个使用点，使用点在收到变更通知后独立进行 React 状态更新（setState）。在 react<18.0.0 版本中需要 unstable_batchedUpdates 进行更新效率优化，而 `@airma/react-state` 并没有依赖 `react-dom` 包，因此需要通过配置的方式引入 unstable_batchedUpdates。
 
 ```ts
 import { unstable_batchedUpdates } from 'react-dom';
