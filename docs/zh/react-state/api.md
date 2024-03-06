@@ -17,7 +17,7 @@ function useModel(modelFnOrKey, defaultState?): instance;
 
 ## useStaticModel
 
-与 useModel 唯一的不同的是，useStaticModel 不会订阅库状态变更，不会主动导致组件重渲染。因此，更适合用于 render 中初始化库状态，或纯粹触发行为方法节省渲染性能的场景。 
+与 useModel 不同的是，useStaticModel 不会订阅库存状态变更，不会主动导致组件重渲染。因此，更适用于 render 中初始化库状态，或纯粹触发行为方法。当前 hook 可用于优化渲染性能。 
 
 ```ts
 function useStaticModel(
@@ -51,7 +51,7 @@ function useControlledModel(
 
 * modelFn - 模型函数。
 * state - 外部状态值。
-* onChange - 对外反馈变化状态的 callback 接口。
+* onChange - 对外反馈变化状态的回调函数。
 
 解释：
 
@@ -104,14 +104,14 @@ function useSelector(
 参数：
 
 * key - [键](/zh/react-state/concepts?id=键)。
-* selector - 回调函数，可选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
-* equalFn - 可选对比函数，用于对比库状态更新前后，实例选取字段值是否相等。默认以 `===` 作为对比方案。
+* selector - 回调函数，用于重组或选取匹配[库](/zh/react-state/guides?id=库)链接的实例字段。
+* equalFn - 可选对比函数，用于自定义如何判断库状态更新前后，重组或选取值是否相等。默认以 `===` 作为对比方案。
 
 解释：
 
-`useSelector` 用于选取`库`实例中的部分数据，当实例更新前后选取值相等，则不触发渲染，否则刷新选取值，触发使用组件渲染。对比标准 `equalFn`。
+若 `useSelector` 选取值在状态更新前后相等，则不触发组件再渲染，否则更新选取值并触发组件渲染。对比标准 `equalFn`。
 
-该 API 大最大作用就是降低渲染频率，提高渲染性能。
+该 API 的最大作用就是降低渲染频率，提升渲染性能。
 
 返回：
 
@@ -167,7 +167,7 @@ export default ()=>{
 
 ## useRealtimeInstance
 
- useModel 返回的静态实例对象字段值是相对固定的，只随组件的 render 发生改变，就像 useState 值一样。useRealtimeInstance 可从该值中提取一个动态实例对象，它的字段值随字段的获取，始终保持当前最新。
+ useModel 返回的静态实例对象字段值在一次组件 render 上下文中是固定不变的，就像 useState 值一样。useRealtimeInstance 可从该值中提取一个动态实例对象，它的字段值随字段的获取，始终保持当前最新值。
 
 ```ts
 function useRealtimeInstance<T>(instance: T): T;
@@ -216,8 +216,8 @@ const callSetAge = (age: number)=>{
 const saveUser =()=>{
   // 在 setTimeout 开始时立即运行 callSetAge 修改 instance.user.age，
   // 按期望，在 setTimeout 时间到期时 instance.user.age 应该发生了改变，
-  // 实时却不是这样的。
-  // 而动态实例对象对应的 age 值，在获取时是最新的。
+  // 但 instance 在本次 render 上下文中是固定不变的，因此时间到期后， age 值依然没有发生变更。
+  // 而动态实例对象中的 age 值，在获取时始终保持最新。
   setTimeout(()=>{
     // instance.user.age 是旧值
     instance.user.age;
@@ -241,15 +241,15 @@ const Provider: FC<{
 Props
 
 * value - [键](/zh/react-state/concepts?id=键)集合，可以是单个键，也可以是键的数组或对象集合形式。
-* children - react elements
+* children - React 节点（React Nodes）
 
 作用
 
-根据键创建本地库，提供通过键访问本地库的上下文环境。
+根据键创建本地库，提供通过键访问本地库的 React.Context 环境。
 
 返回
 
-* react elements
+* React 节点（React Nodes）
 
 ## provide
 
@@ -347,7 +347,7 @@ import {
 
 const Counter = ()=>{
     // select 结果是一个复杂对象，
-    // 这会导致 useSelector 每次更新时的默认对比失败，
+    // 这会导致 useSelector 在状态更新前后的默认对比值始终不等，
     // 使用浅对比，可以解决该问题，并提神渲染效率
     const {count, isNegative} = useSelector(counter, instance=>({
         count:instance.count,
@@ -420,7 +420,7 @@ export declare const ConfigProvider: FC<{
 
 属性 
 
-* value - 全局 API 配置，可通过对 `batchUpdate` 使用 `ReactDOM.unstable_batchedUpdates` 来提供公共模型的 state 更新效率。（注意：若使用 react 版本已经超过 18.0.0 可忽略该配置）
+* value - 全局 API 配置，可通过对 `batchUpdate` 使用 `ReactDOM.unstable_batchedUpdates` 来提升公共模型的 state 更新渲染性能。（注意：若使用 react 版本已经超过 18.0.0 可忽略该配置）
 * children - React 节点
 
 例子

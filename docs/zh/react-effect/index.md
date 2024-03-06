@@ -33,10 +33,10 @@ const fetchUsers = (query: UserQuery):Promise<User[]> =>
 
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
-    const [state, trigger, executeWithParams] = useQuery(
-        // 使用异步查询函数
+    const [state, trigger, execute] = useQuery(
+        // 异步查询函数
         fetchUsers,
-        // 设置查询函数参数
+        // 查询参数
         [query]
     );
     const {
@@ -56,7 +56,7 @@ const App = ()=>{
 }
 ```
 
-当 useQuery 被加载或其依赖的参数发生变化时会自动触发查询，不用怀疑，这套自动触发机制采用的就是 React 渲染副作用机制 useEffect。
+当 useQuery 被加载或其依赖参数发生变化时会自动触发查询。不用怀疑，这套自动触发机制采用的就是 React 渲染副作用机制 useEffect。
 
 ### useMutation
 
@@ -75,11 +75,11 @@ const App = ()=>{
     const [
         state, 
         trigger, 
-        executeWithParams
+        execute
     ] = useMutation(
-        // 使用异步修改函数
+        // 异步修改函数
         saveUser,
-        // 设置修改参数
+        // 修改参数
         [ user ]
     );
     const {
@@ -94,19 +94,27 @@ const App = ()=>{
     } = result;
 
     const handleClick = ()=>{
-        // 手动触发异步修改
+        // 人工触发异步修改，
+        // 触发器使用 useMutation 设置的参数，
+        // 不需要另外传入。
         trigger();
+    }
+
+    const handleClickWithParameters = ()=>{
+        // 人工执行异步修改，
+        // 执行器需要额外提供参数。
+        execute(user);
     }
 
     ......
 }
 ```
 
-不同于 useQuery，useMutation 需要手动触发异步修改操作，不能随渲染副作用自动执行。
+不同于 useQuery，useMutation 需要人工触发异步修改操作，默认情况下，是不能随渲染副作用自动执行的。
 
 ### Session
 
-每个异步状态管理单元都被称为[会话](/zh/react-effect/concepts?id=会话) (session)，无论 useQuery 还是 useMutation 都是创建会话的工具。通过 session API 来使用 useQuery 和 useMutation 更自然。
+每个异步状态管理单元都被称为[会话](/zh/react-effect/concepts?id=会话) (session)，无论 useQuery 还是 useMutation 都是创建会话的工具。通过 [session](/zh/react-effect/api?id=session) 会话声明 API 来使用 useQuery 和 useMutation 更自然，更流畅。
 
 ```ts
 import React from 'react';
@@ -130,10 +138,10 @@ const App = ()=>{
     const [
         state, 
         trigger, 
-        executeWithParams
+        execute
         // 使用 session.useQuery
     ] = userQuerySession.useQuery(
-        // 设置查询参数
+        // 查询参数
         [query]
     );
     const {
@@ -153,11 +161,11 @@ const App = ()=>{
 }
 ```
 
-session.useQuery/session.useMutation 的运行规则与 useQuery/useMutation 相同，不同的只有 session 预设了异步操作函数。
+ session 预设了异步操作函数。session.useQuery/session.useMutation 的运行规则与 useQuery/useMutation 相同。
 
-useQuery/useMutation 与异步函数的直接组合只能创建一个本地会话。通过 session.createStore() 的方式可以创建一个状态库，并使用库的方式管理异步状态。
+useQuery/useMutation 直接使用异步函数创建的是一个本地会话。通过 session.createStore() 的方式可以创建一个动态会话库，并使用库的方式管理异步状态。
 
-### React.Context 动态库状态管理
+### React.Context 动态会话库
 
 ```ts
 import React from 'react';
@@ -169,7 +177,7 @@ type UserQuery = {
     username: string;
 }
 
-// 创建一个动态库
+// 创建一个动态会话库
 const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
@@ -177,11 +185,11 @@ const userQueryStore = session(
 ).createStore();
 
 const SearchButton = ()=>{
-    // 通过 useSession 可监听库状态的变化
+    // 通过 useSession 可监听本地库状态的变化
     const [
-        // 库状态
+        // 本地库状态
         {isFetching},
-        // 调用 triggerQuery 可以触发当前库下的 useQuery 工作 
+        // 调用 triggerQuery 可以触发当前库下的 useQuery 执行会话。
         triggerQuery
     ] = userQueryStore.useSession();
     return (
@@ -196,13 +204,13 @@ const SearchButton = ()=>{
 
 // 动态库采用的是 React.Context 技术，
 // 因此需要通过 provideTo 创建一个 Provider 高阶包装组件。
-// 动态库并不维护会话状态，而是键的集合。
-// 真正的库和会话状态维护在 Provider 组件库中
+// 动态库并不维护会话状态，其实质是键的库状形态。
+// 真正用于维护会话状态的库创建于 Provider 组件中
 const App = userQueryStore.provideTo(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
         state, 
-        // Write every query state change to store
+        // useQuery 可以将每次执行产生的会话状态存储到本地库中
     ] = userQueryStore.useQuery(
         [query]
     );
@@ -218,15 +226,15 @@ const App = userQueryStore.provideTo(()=>{
 })
 ```
 
-关于为什么支持 React.Context 动态库的原因可参考 [@airma/react-state 中的解释](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)。
+关于支持 React.Context 动态库的原因可参考 [@airma/react-state 中的解释](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)。
 
-动态库是[键](/zh/react-effect/concepts?id=键)的集合；键是创建 Provider 内部库的模板，也是连接库的通道。所以需要使用 [provide](/zh/react-effect/api?id=provide) 高阶组件创建一个 Provider 包装组件进行使用。
+**动态库**是包装成库形态的[键](/zh/react-effect/concepts?id=键)；键是创建 Provider 内部**本地库**的模板，也是连接本地库的通道。
 
-当同一个 Provider 组件元素化成不同的 React.Element 时，每个元素（React.Element）拥有不同的内部库，这些库随着组件的销毁而销毁。
+动态库可以在不同的 Provider 组件元素中产生不同的本地库。这些依附于 Provider 元素的本地库互不干扰，并随依附组件元素的卸载而销毁。
 
-### 全局静态库状态管理
+### 全局静态库
 
-不同于 `@airma/react-state` 中的模型库，异步状态似乎更适合全局静态状态管理模式。全局静态库的会话状态是直接维护在当前静态库对象中的，是真正意义上的库。
+与 `@airma/react-state` 不同的是，异步状态似乎更适合全局静库的状态管理模式。全局静态库的会话状态是直接维护在当前静态库对象中的，是真正意义上的库。
 
 ```ts
 import React from 'react';
@@ -238,7 +246,7 @@ type UserQuery = {
     username: string;
 }
 
-// 创建全局静态库
+// 使用动态库的 asGlobal 方法，可创建全局静态库
 const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
@@ -286,7 +294,7 @@ const App = ()=>{
 }
 ```
 
-通过 useSession API 获取的[会话状态](/zh/react-effect/concepts?id=会话状态) data 值类型始终可能是 undefined。如果可以保证会话库中的会话状态已经成功加载，可使用 useLoadedSession API 来代替 useSession 工作，这时获取的会话状态 data 值类型完全与异步函数返回的 Promise resolve 类型相同。
+通过 useSession API 获取的[会话状态](/zh/react-effect/concepts?id=会话状态)数据类型（data）可能是 undefined。如确认使用的会话已成功加载（执行成功过或有默认数据），可使用 useLoadedSession API 来代替 useSession 工作，这时获取的**会话状态数据**类型完全与异步函数返回的 Promise resolve 类型相同。
 
 ```ts
 import React from 'react';
@@ -305,8 +313,8 @@ const userQueryStore = session(
 ).createStore().asGlobal();
 
 const SearchButton = ()=>{
-    // 当确信当前会话为已加载会话时，
-    // store.useLoadedSession 可用于稳定 data 的数据类型
+    // 确认当前会话已加载，
+    // useLoadedSession 可用于稳定 data 的数据类型
     const [
         {
             isFetching,
@@ -334,8 +342,8 @@ const App = ()=>{
         {
             // 参数
             variables: [query],
-            // 默认值
-            // 如果一个会话设置了默认值，
+            // 默认会话数据
+            // 如果一个会话设置了默认会话数据，
             // 那么该会话永远处于已加载状态
             defaultData: []
         }
@@ -418,7 +426,7 @@ const App = ()=>{
 }
 ```
 
-想使用类似 debounce 这样的防抖异步执行方式？
+想使用 debounce 防抖异步执行方式？
 
 ### Strategy
 
@@ -456,7 +464,7 @@ const App = ()=>{
 }
 ```
 
-[Strategy](/zh/react-effect/api=strategy) API 提供了丰富的常用策略库。这些[策略](/zh/react-effect/concepts?id=策略)可单独或组合使用，以改变部分会话特性。
+[Strategy](/zh/react-effect/api=strategy) API 提供了丰富的常用策略。单独或组合使用这些[策略](/zh/react-effect/concepts?id=策略)，可修改会话的运行效果。
 
 ```ts
 import React from 'react';
@@ -491,9 +499,9 @@ const App = ()=>{
                 Strategy.validate(()=>!!query.name),
                 // 防抖策略
                 Strategy.debounce(300),
-                // 会话数据更新缓存策略，
+                // 会话数据渲染缓存策略，
                 // 如旧会话状态数据与本次执行结果数据等价，
-                // 则继续使用旧会话状态数据，以提高渲染效率
+                // 则继续使用旧会话状态数据，以提升渲染性能
                 Strategy.memo()
             ]
         }
@@ -533,9 +541,9 @@ const App = ()=>{
             strategy: [
                 // 开启 swr 缓存策略
                 Strategy.cache({
-                    // 总数据容量 10 条
+                    // 缓存容量
                     capacity:10, 
-                    // 每条缓存数据的陈旧时间 5 分钟
+                    // 每条缓存数据的有效期
                     staleTime:5*60*1000
                 })
             ]
@@ -548,7 +556,7 @@ const App = ()=>{
 
 ## 介绍
 
-`@airma/react-effect` 主要负责异步状态管理工作，它依赖了 [@airma/react-state](/zh/react-state/index) 工具包，并借助了如键、动态库等诸多概念，因此在 API 上多有重叠。如果需要同时使用两个工具包，[@airma/react-hooks](/zh/react-hooks/index) 包将会是更优选择，它整合了两个包的通用 API，同时包囊了各自不同的常用 API，非常的实用。
+`@airma/react-effect` 主要负责异步状态管理工作，它依赖了 [@airma/react-state](/zh/react-state/index) 工具包，并借助了如键、动态库等诸多概念，因此在 API 上多有重叠。如果需要同时使用这两个工具包，推荐选用 [@airma/react-hooks](/zh/react-hooks/index)，它整合了两个包的通用 API，同时包囊了各自不同的常用 API。
 
 ### 为什么不推荐使用在异步函数中调用同步的 setState 来管理异步状态？
 

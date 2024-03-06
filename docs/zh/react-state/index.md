@@ -10,18 +10,20 @@
 
 # @airma/react-state
 
-`@airma/react-state` 是一款基于模型对象，类似于 redux 的状态管理工具，通过调用行为方法进行事件分发，改变模型状态。
+`@airma/react-state` 是一款融合了**面向对象**与**函数式编程**两种不同风格的 react 状态管理工具。其工作原理接近 redux，却采用了更自然的**方法调用**方式来分发行为事件（dispatch action）。
 
 ## 使用方式
 
 ```ts
 import {useModel} from '@airma/react-state';
 
-const instance = useModel((count:number)=>({
+const instance = useModel(
+    // 模型
+    (count:number)=>({
     // 渲染数据
     count,
     isNegative: count<0,
-    // 行为方法，用于生成行为后的状态
+    // 行为方法，用来生成行为发生后所处的状态
     increase:()=> count + 1,
     decrease:()=> count - 1
 }),0); // 默认状态 0
@@ -29,23 +31,22 @@ const instance = useModel((count:number)=>({
 const {
     count, 
     isNegative,
-    // 调用行为方法触发状态变更与重渲染
+    // 调用行为方法，触发状态更新
     decrease, 
     increase
-} = instance;
+} = instance; // 模型实例
 ```
 
-上例通过使用类 `reducer` 的 `function` 创建了一个计数状态管理器。在 `@airma/react-state` 中，这个类 `reducer function` 被称为[模型](/zh/react-state/concepts?id=模型) `model`。
+以类 reducer 的函数为核心可创建了一个状态管理对象。该函数被称作[模型](/zh/react-state/concepts?id=模型)（model），创建的对象为**模型实例**。调用模型实例上的行为方法可触发状态更新。
 
-使用 [model](/zh/react-state/api?id=model) API，可以简化使用步骤，让相关的 hooks 使用更加清晰明了。
+[model](/zh/react-state/api?id=model) 声明式 API，可更清晰地表现出函数将被作为模型的意图。
 
 ### 本地状态管理
 
 ```ts
 import {model} from '@airma/react-state';
 
-// model API 通过包装模型函数，返回一个与源模型接口相同的新模型，
-// 并在新模型上提供了一套完整的模型操作常用 API 集合。
+// 通过 model API 声明模型，可获取模型相关的常用 API集合。
 const counting = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
@@ -59,14 +60,14 @@ const counting = model(function counting(state:number){
     };
 });
 ......
-// 我们可以直接通过 get 的形式使用 useModel
+// 通过 model(xxx).useModel 的方式使用 useModel API。
 const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-`model` API 优化了 `React.useReducer` 的使用方式，更便于管理复杂行为状态。除了与 `React.useReducer` 一样出色的本地状态管理功能，`model` API 还支持 `React.Context` 共享状态管理模式和全局共享状态管理模式。
+除了类似 React.useReducer 的本地状态管理方案，API 还提供了采用 React.Context 动态技术和全局静态技术的**库状态管理**方式。
 
-### React.Context 动态库管理
+### React.Context 动态库
 
 ```ts
 import {memo} from 'react';
@@ -84,19 +85,20 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0);
-// model(modelFn).createStore(defaultState) 可创建一个 动态库 store，
-// 并预设库存模型实例的默认状态 defaultState。
+// model(modelFn).createStore(defaultState) 可创建动态库，
+// 并预设库的默认状态。
 ......
 const Increase = memo(()=>{
-    // store.useSelector 可用于重选库模型实例的有用字段,
-    // 当选出的字段值发生改变，即可触发组件再渲染。
-    // 当前组件重选出一个模型实例方法，
-    // 模型实例方法是稳定不变的，所以该组件不会发生再渲染。
+    // countingStore.useSelector 可重组库模型实例的字段。
+    // 若库存状态更新前后，重组结果发生变化，则触发当前组件渲染。
+    // 注意，模型实例对象中的行为方法是恒定不变的。
+    // 当前组件选取的 increase 是一个行为方法，
+    // 所以无论库状态如何更新，useSelector 都不会触发当前组件再渲染。 
     const increase = countingStore.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    // store.useModel 可直接共享来自库的状态变更。
+    // countingStore.useModel 会随库存状态的变更重渲染当前组件。
     const {count} = countingStore.useModel();
     return <span>{count}</span>;
 });
@@ -104,7 +106,7 @@ const Decrease = memo(()=>{
     const decrease = countingStore.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// 通过 store 的 provideTo 高阶组件方式，可为子组件提供一个 `React.Context` 库共享环境，即 Provider 外包装组件。
+// 使用动态库的 provideTo 方法，可建立一个 Provider 级的本地状态库，并为子组件提供访问该本地库的环境。
 const Component = countingStore.provideTo(function Comp() {
     return (
         <div>
@@ -117,9 +119,9 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-注意，`store` 动态库并不负责维护模型实例状态，它并不是传统意义上的静态库。模型实例状态是维护在由 `provideTo` 生成的 [Provider](/zh/react-state/api?id=provider) 组件元素（Element）中的。每个由 `Provider` 组件生成的 React 元素内存放着各自`不同`的库存模型实例，每个 `Provider` 组件元素的库存实例随当前元素的销毁而销毁。关于库存实例的跨域查找，及支持 React.Context 共享模式的原由可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
+注意，通过 createStore 创建的**动态库**并非传统意义上的库，而是包装成库形态的[键](/zh/react-state/concepts?id=键)，键是 Provider 组件用于创建**本地库**的模型，只有本地库才具备存储维护状态的能力。动态库的 provideTo 方法可为参数组件提供一个具备本地库环境的 Provider 组件外包装，这时在参数组件内部使用动态库提供的 useModel/useSelector 就可以连接上当前 Provider 外包组件的本地库了。
 
-### 全局静态库管理
+### 全局静态库
 
 ```ts
 import {model} from '@airma/react-state';
@@ -136,7 +138,7 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0).asGlobal();
-// 通过简单调用 store 对象的 asGlobal 方法，可创建一个全局共享库。
+// 使用动态库的 asGlobal 方法，可创建一个全局静态库。
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -150,7 +152,7 @@ const Decrease = memo(()=>{
     const decrease = countingStore.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// 全局共享库不需要 provideTo 即可全局使用
+// 全局静态库是真正意义上的库，不需要 provideTo
 const Component = function Comp() {
     return (
         <div>
@@ -162,7 +164,9 @@ const Component = function Comp() {
 };
 ```
 
-相比 `React.Context` 状态共享模式，全局状态共享在使用上会更加简单，但也会遇到各种其他全局状态共享库共同的问题，可参考 [为什么要支持 React.Context 共享状态模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
+与 React.Context 动态库不同，全局静态库是真正意义的库，其本身维护了实例和状态，在使用上会更加简单，不需要使用 Provider 外包装组件。
+
+当然，如其他静态库状态管理工具一样，选用静态库来管理组件状态虽然简单，却会遇到一些特定的麻烦，具体可参考 [为什么要支持 React.Context 库管理模式](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？) 中的内容。
 
 ### render 运行时设置默认状态
 
@@ -181,7 +185,7 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore();
-// 可创建一个无默认状态库
+// 可创建一个无默认状态的动态库
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -211,26 +215,26 @@ const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultC
 });
 ```
 
-相对其他状态共享库静态初始化默认状态的方式，`@airma/react-state` 可在 render 运行时初始化库存实例默认状态的能力显得特别实用。
+相较 redux、zustand 等静态库而言，`@airma/react-state` 可在 render 运行时初始化默认状态是其特有的能力，该能力在动态库管理过程中非常实用。
 
 ## 介绍
 
-作为一款 `redux` 升级版状态管理工具，`@airma/react-state` 提供了 `本地状态管理`、`React.Context 局部共享状态管理`、`全局共享状态管理` 三种方式，让状态管理变得更灵活，更便捷；而模型实例可保护部分状态的私有化，从而优化了使用渲染数据接口，方便后续维护。
+作为一款融合了**面向对象**与**函数式编程**两种不同风格的 react 状态管理工具，`@airma/react-state` 提供了**组件级**、**React.Context 动态库级**、**全局静态库级** 三种不同层次的状态管理方案，让状态管理变得更加方便灵活；而[模型](/zh/react-state/concepts?id=模型)函数中渲染数据与状态数据分离的设计模式，允许使用者按需设置私有状态，让模型实例更安全，更规范，更易维护使用。
 
 ### 模型是如何工作的？
 
-在 `@airma/react-state` 中，[模型](/zh/react-state/concepts?id=模型) 是指一个返回实例对象的函数。 [useModel](/zh/react-state/api?id=usemodel) API 通过调用该函数可得到一个模型实例对象。调用实例对象方法可产生一个新状态值，系统会使用该值作为参数再次调用模型函数，从而刷新实例对象，并造成再度渲染。
+在 `@airma/react-state` 中，[模型](/zh/react-state/concepts?id=模型)是指一个返回实例对象的函数。 [useModel](/zh/react-state/api?id=usemodel) API 通过调用该函数可得到一个模型实例对象。调用实例对象上的行为方法可产生一个新状态，系统会使用新状态作为参数再次调用模型函数，从而实现刷新实例对象，渲染组件的功能。
 
 ### 为什么要支持 React.Context 库管理模式？
 
-`React.Context` 区块化状态共享有很多全局共享不具备的优点，如限定状态共享的范围、共享库的生成和销毁可随 `Context.Provider` 组件元素的加载和卸载动态进行。
+React.Context 动态库有很多全局静态库不具备的先天优势，如：相同的动态库可通过不同的 Provider 生成不同的本地库、本地库存的状态随 Provider 组件的销毁而销毁，相当于一个天然的状态销毁重置能力。
 
-场景：
+静态库做不到场景：
 
-1. 构建一个内部层次较深的复杂组件，该组件在使用场景中允许同时产生多个 react 元素（Element）实例，且元素状态互不影响。
-2. 组件元素（Element）销毁时重置库状态，这可以避免很多不必要的问题。
+1. 对使用了库的组件，动态创建或删除其对应的元素（React.Element），且要求每个元素的库状态数据互不干扰。
+2. 组件元素（React.Element）销毁时重置库状态，如页面的部分刷新功能。
 
-通过使用 `model(modelFn).createStore(defaultState)` 可创建一个`动态库 store` 。`store.provideTo(Component)` 产生一个使用 [Provider](/zh/react-state/api?id=provider) 包囊 Component 的高阶组件。该高阶组件负责将动态库 store 映射成 Provider 组件内部的`本地库`，并提供可通过动态库 store 访问本地库的 React.Context 内部环境。
+动态库依靠 Provider 组件生成可维护的本地库，这个过程是在 Provider 元素化（React.createElement(Provider, keys)）的过程中进行的，故每个元素必然对应不同的本地库，且这些库中的状态数据或不干扰；当 Provider 元素销毁（unmount）时，自然就可以自动销毁本地库状态了。
 
 ```ts
 import {model} from '@airma/react-state';
@@ -255,7 +259,7 @@ const userModifyStore = model(function userModify(state: User){
 }).createStore();
 
 const NameInput = ()=>{
-    // 通过动态库链接访问本地库
+    // 通过动态库链接访问本地库的实例字段
     const name = userModifyStore.useSelector(i=>i.name);
     const changeName = userModifyStore.useSelector(i=>{
         return i.changeName;
@@ -298,11 +302,11 @@ const UserList = ({users}:{users:User[]})=>{
 }
 ```
 
-动态库其实是[键](/zh/react-state/concepts?id=键)的库状表现形式，理解基础概念键，有助于更好的理解动态库。
+动态库其实是[键](/zh/react-state/concepts?id=键)的库状表现形式，理解基础概念键，有助于更好地理解动态库。
 
 #### 如何跨 Provider 订阅共享状态？
 
-`@airma/react-state` 的 `Provider` 组件群可形成一个树状结构的动态库查找系统。库的查找是至近及远，至下往上遍历 Provider 库的过程。所以即便有其他非当前使用库提供者（Provider）的拦截，也一样可以顺利通过 API useModel、useSelector 查找到最近的库。
+与原始 React.Context.Provider 系统不同的是，不同层级的 [Provider](/zh/react-state/api?id=provider) 组件元素可形成一颗支持至近及远，至下往上遍历查找连接的 **Provider 树**。因此不存在类似 React.Context.Provider 被同类型 Context.Provider 阻拦的问题。
 
 #### 共享状态变更是否会引起整个 Provider 组件重新渲染？
 
