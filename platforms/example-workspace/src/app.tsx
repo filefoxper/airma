@@ -227,8 +227,6 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
     parentTrigger();
   };
 
-  console.log('render...');
-
   return (
     <div>
       <span>name:</span>
@@ -275,15 +273,23 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
 }
 
 export default function App() {
-  store.useModel({
+  const conditionSignal = store.useSignal({
     valid: defaultCondition,
     display: defaultCondition,
     creating: false
   });
-  const { queryData, creating, cancel } = store.useSelector(s =>
-    pick(s, 'queryData', 'creating', 'cancel')
+  const { queryData, creating, cancel } = store.useSelector(
+    s => pick(s, 'queryData', 'creating', 'cancel'),
+    shallowEqual
   );
 
+  const item = creating ? conditionSignal() : undefined;
+  if (item && item.displayQuery.name !== 'Mr') {
+    console.log('change display');
+    item.changeDisplay({ name: 'Mr' });
+  }
+
+  console.log('render...', item?.displayQuery.username);
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],
@@ -303,6 +309,8 @@ export default function App() {
   const [queryState] = querySession;
 
   useResponse.useSuccess(state => {
+    const { changeDisplay } = conditionSignal();
+    changeDisplay({ username: '' });
     console.log('response success', state);
   }, queryState);
 
@@ -315,8 +323,6 @@ export default function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
-
-  useIsFetching();
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>

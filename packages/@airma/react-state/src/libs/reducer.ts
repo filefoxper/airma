@@ -119,6 +119,18 @@ function generateNotification<S, T extends AirModelInstance>(
     return dispatching;
   }
 
+  function consumeTemporaries() {
+    const { temporaryDispatches } = updater;
+    if (!temporaryDispatches.length) {
+      updater.dispatches = updater.dispatches.concat(temporaryDispatches);
+      updater.temporaryDispatches = [];
+    }
+    const initializedAction = { state: updater.state, type: '' };
+    temporaryDispatches.forEach(call => {
+      call(initializedAction);
+    });
+  }
+
   return function dispatch(action: Action): void {
     const { dispatching } = updater;
     pendAction(action);
@@ -131,7 +143,10 @@ function generateNotification<S, T extends AirModelInstance>(
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
         try {
-          if (typeof optimize.batchUpdate === 'function') {
+          if (
+            typeof optimize.batchUpdate === 'function' &&
+            dispatchCallbacks.length
+          ) {
             optimize.batchUpdate(() => {
               defaultNotifyImplement(dispatchCallbacks, wrap.value);
             });
@@ -146,6 +161,8 @@ function generateNotification<S, T extends AirModelInstance>(
         updater.dispatching = undefined;
       }
     }
+    updater.version += 1;
+    consumeTemporaries();
   };
 }
 
@@ -257,15 +274,18 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   const { controlled, batchUpdate } = updaterConfig || {};
   const optimize = { batchUpdate };
   const updater: Updater<S, T> = {
+    version: 0,
     current: defaultModel,
     reducer,
     dispatch: null,
     dispatches: [],
+    temporaryDispatches: [],
     cacheMethods: {},
     state: defaultState,
     cacheState: null,
     controlled: !!controlled,
-    notify: noop
+    notify: noop,
+    isSubscribing: false
   };
 
   updater.notify = generateNotification(updater, optimize);
@@ -298,38 +318,57 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       modelContextFactory
     );
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
+      updater.version += 1;
       return;
     }
     updater.notify({ state: updater.state, type: '' });
   }
 
-  function subscribe(dispatchCall: Dispatch): boolean {
-    const { dispatches, controlled: isControlled } = updater;
-    const copied = [...dispatches];
+  function notice(...dispatchCall: Dispatch[]) {
+    const initializedAction = { state: updater.state, type: '' };
+    dispatchCall.forEach(call => {
+      call(initializedAction);
+    });
+  }
+
+  function subscribe(dispatchCall: Dispatch) {
+    const {
+      dispatches,
+      temporaryDispatches,
+      controlled: isControlled
+    } = updater;
+    const copied = [...dispatches, ...temporaryDispatches];
     const exist = copied.indexOf(dispatchCall) >= 0;
     if (exist) {
-      return false;
+      return;
     }
     if (isControlled) {
       updater.dispatches = [dispatchCall];
-      return false;
+      return;
     }
-    updater.dispatches = copied.concat(dispatchCall);
-    return true;
-  }
-
-  function notice(dispatchCall: Dispatch) {
-    dispatchCall({ state: updater.state, type: '' });
+    updater.temporaryDispatches.push(dispatchCall);
+    if (updater.dispatching) {
+      return;
+    }
+    updater.dispatches = [
+      ...updater.dispatches,
+      ...updater.temporaryDispatches
+    ];
+    updater.temporaryDispatches = [];
+    notice(...temporaryDispatches);
   }
 
   function disconnect(dispatchCall: Dispatch | undefined) {
     if (!dispatchCall) {
       updater.dispatches = [];
+      updater.temporaryDispatches = [];
       return;
     }
-    const { dispatches } = updater;
-    const copied = [...dispatches];
-    updater.dispatches = copied.filter(d => d !== dispatchCall);
+    const { dispatches, temporaryDispatches } = updater;
+    updater.dispatches = dispatches.filter(d => d !== dispatchCall);
+    updater.temporaryDispatches = temporaryDispatches.filter(
+      d => d !== dispatchCall
+    );
   }
 
   const agent = createProxy(defaultModel, {
@@ -351,6 +390,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     },
     getState(): S {
       return updater.state;
+    },
+    getVersion() {
+      return updater.version;
     },
     getCurrent(): T {
       if (Array.isArray(updater.current)) {
@@ -384,11 +426,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     tunnel(dispatchCall) {
       return {
         connect() {
-          const needNotice = subscribe(dispatchCall);
-          if (!needNotice) {
-            return;
-          }
-          notice(dispatchCall);
+          subscribe(dispatchCall);
         },
         disconnect() {
           disconnect(dispatchCall);
@@ -399,6 +437,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.dispatch = null;
       updater.dispatches = [];
       destroyDispatching(updater);
+      updater.temporaryDispatches = [];
       updater.state = defaultState;
       updater.cacheState = null;
       updater.notify = noop;
@@ -406,17 +445,14 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       optimize.batchUpdate = undefined;
     },
     connect(dispatchCall) {
-      const needNotice = subscribe(dispatchCall);
-      if (!needNotice) {
-        return;
-      }
-      notice(dispatchCall);
+      subscribe(dispatchCall);
     },
     disconnect,
     optimize(batchUpdateCallback?: (callback: () => void) => void) {
       if (optimize.batchUpdate === batchUpdateCallback) {
         return;
       }
+      optimize.batchUpdate = undefined;
       optimize.batchUpdate = batchUpdateCallback;
     }
   };
@@ -440,6 +476,7 @@ export function staticFactory<T extends AirReducer<any, any>>(
     return reducer(s);
   } as StaticFactoryInstance<T>;
   replaceModel.effect = reducer.effect;
+  replaceModel.payload = reducer.payload;
   replaceModel.connection = reducer.creation();
   replaceModel.pipe = reducer.pipe;
   replaceModel.global = function self() {

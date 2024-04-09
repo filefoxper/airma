@@ -100,8 +100,11 @@ function parseEffect<
   if (!isSessionKey) {
     return [effectModel as SessionKey<E>, callback as E, config, false];
   }
-  const { effect } = callback as SessionKey<E>;
-  const [effectCallback, { sessionType: keyType }] = effect;
+  const { payload } = callback as SessionKey<E>;
+  const [effectCallback, { sessionType: keyType }] = payload as [
+    E,
+    { sessionType?: SessionType }
+  ];
   if (keyType != null && keyType !== sessionType) {
     throw new Error(
       `The sessionType is not matched, can not use '${keyType} type' sessionKey with '${
@@ -181,7 +184,7 @@ export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
   ) {
     return effectCallback(...params);
   } as E;
-  model.effect = [
+  model.payload = [
     effectCallbackReplace,
     sessionType ? { sessionType } : {}
   ] as [E, { sessionType?: SessionType }];

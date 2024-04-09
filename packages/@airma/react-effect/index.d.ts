@@ -67,7 +67,7 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
       get: (key: any) => any;
     };
   }): Promise<SessionState<T, V>>;
-  effect?: (state: SessionState<T, V>) => void;
+  effect?: (state: SessionState<T, V>, prevState: SessionState<T, V>) => void;
 }
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
@@ -80,17 +80,17 @@ export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
     trigger: () => SessionState & { version?: number };
   }
 > & {
-  effect: [E, { sessionType?: SessionType }];
+  payload: [E, { sessionType?: SessionType }];
 };
 
 export declare interface QuerySessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
-  effect: [E, { sessionType?: 'query' }];
+  payload: [E, { sessionType?: 'query' }];
 }
 
 export declare interface MutationSessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
-  effect: [E, { sessionType?: 'mutation' }];
+  payload: [E, { sessionType?: 'mutation' }];
 }
 
 declare type StrategyCollectionType<T = any, V extends any[] = any[]> =

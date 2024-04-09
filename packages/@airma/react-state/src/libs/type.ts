@@ -51,6 +51,7 @@ export interface Connection<
   getCacheState(): { state: S } | null;
   getState(): S;
   getCurrent(): T;
+  getVersion(): number;
   getListeners(): Dispatch[];
   update: (
     reducer: AirReducer<S, T>,
@@ -85,12 +86,15 @@ export interface FirstActionWrap extends ActionWrap {
 
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
+  version: number;
+  isSubscribing: boolean;
   dispatching?: FirstActionWrap;
   current: T;
   controlled: boolean;
   reducer: AirReducer<S, T>;
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
+  temporaryDispatches: Dispatch[];
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;
@@ -123,6 +127,7 @@ export type ModelFactoryStore<T> = {
 
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
   connection: Connection;
+  payload?: unknown;
   effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P
@@ -132,6 +137,7 @@ export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
 
 export type FactoryInstance<T extends AirReducer<any, any>> = T & {
   creation(updateConfig?: UpdaterConfig): Connection;
+  payload?: unknown;
   effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P

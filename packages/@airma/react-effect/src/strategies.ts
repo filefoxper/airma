@@ -1,3 +1,4 @@
+import { LoadedSessionState } from 'index';
 import { SessionState, StrategyType } from './libs/type';
 
 function debounce(
@@ -314,7 +315,12 @@ function response<T>(callback: (state: SessionState<T>) => void): StrategyType {
     const { runner } = value;
     return runner();
   };
-  sc.response = callback;
+  sc.effect = function responseEffect(s: SessionState<T>, p: SessionState<T>) {
+    if (s.round === 0 || s.round === p.round) {
+      return;
+    }
+    callback(s);
+  };
   return sc;
 }
 
@@ -325,7 +331,13 @@ response.success = function responseSuccess<T>(
     const { runner } = value;
     return runner();
   };
-  sc.response = function effectCallback(state) {
+  sc.effect = function effectCallback(
+    state: SessionState<T>,
+    prevState: SessionState<T>
+  ) {
+    if (state.round === 0 || state.round === prevState.round || !state.loaded) {
+      return;
+    }
     if (state.isError || state.isFetching || !state.sessionLoaded) {
       return;
     }
@@ -342,7 +354,13 @@ response.error = function responseError<T>(
     runtimeCache.set(error, true);
     return runner();
   };
-  sc.response = function effectCallback(state) {
+  sc.effect = function effectCallback(
+    state: SessionState<T>,
+    prevState: SessionState<T>
+  ) {
+    if (state.round === 0 || state.round === prevState.round || !state.loaded) {
+      return;
+    }
     if (!state.isError || state.isFetching) {
       return;
     }

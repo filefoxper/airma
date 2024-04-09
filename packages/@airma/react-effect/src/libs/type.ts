@@ -40,17 +40,17 @@ export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
     execute: (variables: any[]) => SessionState & { request?: SessionRequest };
   }
 > & {
-  effect: [E, { sessionType?: SessionType }];
+  payload: [E, { sessionType?: SessionType }];
 };
 
 export interface QuerySessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
-  effect: [E, { sessionType?: 'query' }];
+  payload: [E, { sessionType?: 'query' }];
 }
 
 export interface MutationSessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
-  effect: [E, { sessionType?: 'mutation' }];
+  payload: [E, { sessionType?: 'mutation' }];
 }
 
 export type TriggerType = 'mount' | 'update' | 'manual';
@@ -115,7 +115,10 @@ export type CheckLazyComponentSupportType<
     : never
   : never;
 
-export type StrategyEffect<T> = (state: SessionState<T>) => void;
+export type StrategyEffect<T> = (
+  state: SessionState<T>,
+  prevState: SessionState<T>
+) => void;
 
 export interface StrategyType<T = any> {
   (value: {
