@@ -43,6 +43,11 @@ export type AirReducer<S, T extends AirModelInstance> = (
   state: S
 ) => ValidInstance<S, T>;
 
+export interface InstanceActionRuntime {
+  methodsCache: Record<string, (...args: any[]) => any>;
+  middleWare?: (action: Action) => Action | null;
+}
+
 export interface Connection<
   S = any,
   T extends AirModelInstance = AirModelInstance
@@ -50,7 +55,7 @@ export interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
-  getCurrent(): T;
+  getCurrent(runtime?: InstanceActionRuntime): T;
   getVersion(): number;
   getListeners(): Dispatch[];
   update: (
@@ -98,7 +103,7 @@ export type Updater<S, T extends AirModelInstance> = {
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;
-  notify: (action: Action) => void;
+  notify: (action: Action | null) => void;
 };
 
 export type UpdaterConfig = {

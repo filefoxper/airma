@@ -15,7 +15,8 @@ import {
   ModelFactoryStore,
   ModelContext,
   Contexts,
-  ModelContextFactory
+  ModelContextFactory,
+  InstanceActionRuntime
 } from './type';
 import { createProxy, noop, shallowEqual, toMapObject } from './tools';
 
@@ -131,7 +132,10 @@ function generateNotification<S, T extends AirModelInstance>(
     });
   }
 
-  return function dispatch(action: Action): void {
+  return function dispatch(action: Action | null): void {
+    if (action == null) {
+      return;
+    }
     const { dispatching } = updater;
     pendAction(action);
     if (dispatching) {
@@ -161,7 +165,6 @@ function generateNotification<S, T extends AirModelInstance>(
         updater.dispatching = undefined;
       }
     }
-    updater.version += 1;
     consumeTemporaries();
   };
 }
@@ -240,10 +243,14 @@ function generateModelContextFactory(): ModelContextFactory {
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string,
-  runtime: ModelContextFactory
+  runtime: {
+    context: ModelContextFactory;
+    methodsCache: Record<string, (...args: any[]) => any>;
+    middleWare?: (action: Action) => Action | null;
+  }
 ) {
-  if (updater.cacheMethods[type]) {
-    return updater.cacheMethods[type];
+  if (runtime.methodsCache[type]) {
+    return runtime.methodsCache[type];
   }
   const newMethod = function newMethod(...args: unknown[]) {
     const method = updater.current[type] as (...args: unknown[]) => S;
@@ -254,13 +261,18 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
       updater.notify(methodAction);
       return result;
     }
-    updater.current = refreshModel(reducer, result, runtime);
+    updater.current = refreshModel(reducer, result, runtime.context);
     updater.state = result;
+    updater.version += 1;
     updater.cacheState = { state: result };
-    updater.notify({ type, state: result });
+    const actionResult: Action = { type, state: result };
+    const action = runtime.middleWare
+      ? runtime.middleWare(actionResult)
+      : actionResult;
+    updater.notify(action);
     return result;
   };
-  updater.cacheMethods[type] = newMethod;
+  runtime.methodsCache[type] = newMethod;
   return newMethod;
 }
 
@@ -306,6 +318,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       return;
     }
     const nextState = outState ? outState.state : state;
+    if (nextState !== state && !updater.controlled) {
+      updater.version += 1;
+    }
     updater.reducer = updateReducer;
     updater.state = nextState;
     updater.cacheState =
@@ -318,7 +333,6 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       modelContextFactory
     );
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
-      updater.version += 1;
       return;
     }
     updater.notify({ state: updater.state, type: '' });
@@ -378,7 +392,10 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
       ) {
-        return rebuildDispatchMethod<S, T>(updater, p, modelContextFactory);
+        return rebuildDispatchMethod<S, T>(updater, p, {
+          context: modelContextFactory,
+          methodsCache: updater.cacheMethods
+        });
       }
       return value;
     }
@@ -394,11 +411,16 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     getVersion() {
       return updater.version;
     },
-    getCurrent(): T {
+    getCurrent(runtime?: InstanceActionRuntime): T {
       if (Array.isArray(updater.current)) {
         return updater.current.map((d, i) => {
           if (typeof d === 'function') {
-            return agent[i];
+            return runtime
+              ? rebuildDispatchMethod<S, T>(updater, i.toString(), {
+                  context: modelContextFactory,
+                  ...runtime
+                })
+              : agent[i];
           }
           return d;
         }) as unknown as T;
@@ -408,7 +430,12 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       keys.forEach((key: keyof T) => {
         const value = result[key];
         if (typeof value === 'function') {
-          result[key] = agent[key];
+          result[key] = runtime
+            ? (rebuildDispatchMethod<S, T>(updater, key as string, {
+                context: modelContextFactory,
+                ...runtime
+              }) as T[typeof key])
+            : agent[key];
         }
       });
       return result;

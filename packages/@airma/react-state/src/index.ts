@@ -19,7 +19,9 @@ import type {
   AirReducer,
   Action,
   Connection,
-  FactoryInstance
+  FactoryInstance,
+  InstanceActionRuntime,
+  Dispatch
 } from './libs/type';
 import {
   createModel,
@@ -210,6 +212,22 @@ function findConnection<S, T extends AirModelInstance>(
   return d as Connection<S | undefined, T> | undefined;
 }
 
+function useInstanceActionRuntime(): InstanceActionRuntime {
+  const methodsCacheRef = useRef({});
+  const isRenderRef = useRef(true);
+  isRenderRef.current = true;
+  useLayoutEffect(() => {
+    isRenderRef.current = false;
+  });
+  const middleWare = usePersistFn((action: Action) => {
+    if (isRenderRef.current) {
+      return null;
+    }
+    return action;
+  });
+  return { methodsCache: methodsCacheRef.current, middleWare };
+}
+
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -264,6 +282,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   if (connection != null) {
     checkIfLazyIdentifyConnection(connection);
   }
+  const runtime = useInstanceActionRuntime();
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -280,21 +299,23 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     modelRef.current = model;
     current.update(model);
   }
-  const [agent, setAgent] = useState(current.getCurrent());
+  const [agent, setAgent] = useState(current.getCurrent(runtime));
+  const updateVersionRef = useRef(current.getVersion());
   const syncRef = useRef(false);
   const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
   const dispatch = () => {
     if (unmountRef.current) {
       return;
     }
-    if (!isEffectStageRef.current) {
-      syncRef.current = true;
-      return;
-    }
     if (signal && !openSignalRef.current) {
       return;
     }
-    const currentAgent = current.getCurrent();
+    const currentVersion = current.getVersion();
+    if (updateVersionRef.current === currentVersion) {
+      return;
+    }
+    updateVersionRef.current = currentVersion;
+    const currentAgent = current.getCurrent(runtime);
     const currentAgentDeps = updateDeps ? updateDeps(currentAgent) : undefined;
     if (
       updateDepsRef.current &&
@@ -325,8 +346,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   useEffect(() => {
     tunnel.connect();
     return () => {
-      unmountRef.current = true;
       tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    return () => {
+      unmountRef.current = true;
       if (connection == null) {
         current.destroy();
       }
@@ -339,19 +365,12 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  useEffect(() => {
-    if (syncRef.current) {
-      syncRef.current = false;
-      dispatch();
-    }
-  });
-
   if (realtimeInstance || signal) {
     const signalCallback = function signalCallback() {
       if (!isEffectStageRef.current) {
         openSignalRef.current = true;
       }
-      return current.getCurrent();
+      return current.getCurrent(runtime);
     };
     return [
       current.getState(),
@@ -519,25 +538,30 @@ export function useSelector<
 ): ReturnType<C> {
   const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
+  const runtime = useInstanceActionRuntime();
   const connection = findConnection(context, factoryModel);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
   checkIfLazyIdentifyConnection(connection);
   connection.optimize(batchUpdate);
-  const current = callback(connection.getCurrent());
+  const current = callback(connection.getCurrent(runtime));
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);
-  const isEffectStageRef = useRef(false);
-  isEffectStageRef.current = false;
   const unmountRef = useRef(false);
+  const updateVersionRef = useRef(connection.getVersion());
   const [s, setS] = useState({ data: current });
 
   const dispatch = usePersistFn(() => {
     if (unmountRef.current) {
       return;
     }
-    const next = callback(connection.getCurrent());
+    const currentVersion = connection.getVersion();
+    if (updateVersionRef.current === currentVersion) {
+      return;
+    }
+    updateVersionRef.current = currentVersion;
+    const next = callback(connection.getCurrent(runtime));
     if (eqCallback(s.data, next)) {
       return;
     }
@@ -547,15 +571,16 @@ export function useSelector<
   // connection.connect(dispatch);
   const tunnel = connection.tunnel(dispatch);
 
-  useLayoutEffect(() => {
-    isEffectStageRef.current = true;
-  });
-
   useEffect(() => {
     tunnel.connect();
     return () => {
-      unmountRef.current = true;
       tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    return () => {
+      unmountRef.current = true;
     };
   }, []);
 
