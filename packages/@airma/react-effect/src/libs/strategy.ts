@@ -94,7 +94,7 @@ function createRuntimeCache() {
 }
 
 export function useStrategyExecution<T>(
-  instance: ReturnType<typeof effectModel>,
+  signal: () => ReturnType<typeof effectModel>,
   sessionRunner: (
     triggerType: TriggerType,
     variables: any[]
@@ -131,7 +131,7 @@ export function useStrategyExecution<T>(
       const runner = function runner(
         setSessionState?: (s: SessionState<T>) => SessionState<T>
       ) {
-        const { state: current, setState } = instance;
+        const { state: current, setState } = signal();
         const initialFetchingState = { ...current, isFetching: true };
         const fetchingState = setSessionState
           ? setSessionState(initialFetchingState)
@@ -145,7 +145,7 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        getSessionState: () => instance.state,
+        getSessionState: () => signal().state,
         variables: runtimeVariables,
         runner,
         triggerType,
@@ -157,7 +157,7 @@ export function useStrategyExecution<T>(
         if (data.abandon) {
           return data;
         }
-        instance.setState(data);
+        signal().setState(data);
         return data;
       });
     },

@@ -1,4 +1,4 @@
-import { createKey, useModel } from '@airma/react-state';
+import { createKey, useSignal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
@@ -128,7 +128,12 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   uniqueKey: unknown,
   config?: QueryConfig<T, C> | Parameters<C>
-): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
+): [
+  ReturnType<typeof effectModel>,
+  () => ReturnType<typeof effectModel>,
+  QueryConfig<T, C>,
+  C
+] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con, isSessionKey] = parseEffect<
     C,
@@ -163,15 +168,14 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
           ]
         : [model];
     })();
-  const stableInstance = useModel(
-    ...(modelParams as [typeof model, SessionState<T>])
-  );
+  const signal = useSignal(...(modelParams as [typeof model, SessionState<T>]));
+  const stableInstance = signal();
   if (loaded && !stableInstance.state.loaded) {
     throw new Error(
       'This session is not loaded, you should remove "config.loaded" option.'
     );
   }
-  return [stableInstance, configuration, effectCallback];
+  return [stableInstance, signal, configuration, effectCallback];
 }
 
 export function createSessionKey<E extends (...params: any[]) => Promise<any>>(

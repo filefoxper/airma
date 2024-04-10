@@ -351,7 +351,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       if (!isEffectStageRef.current) {
         openSignalRef.current = true;
       }
-      return current.agent;
+      return current.getCurrent();
     };
     return [
       current.getState(),
@@ -459,7 +459,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   return agent;
 }
 
-function useSignal<S, T extends AirModelInstance, D extends S>(
+export function useSignal<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D
 ): () => T {

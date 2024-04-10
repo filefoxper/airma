@@ -9,7 +9,6 @@ import {
 } from 'react';
 import {
   Provider as ModelProvider,
-  useRealtimeInstance,
   useSelector,
   provide as provideKeys,
   AirReducer
@@ -143,7 +142,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const keyRef = useRef({});
-  const [stableInstance, con, promiseCallback] = useSessionBuildModel(
+  const [stableInstance, signal, con, promiseCallback] = useSessionBuildModel(
     callback,
     keyRef.current,
     config
@@ -153,8 +152,6 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     deps,
     triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
-
-  const instance = useRealtimeInstance(stableInstance);
 
   const controller = useController(callback);
   const fetchingKeyController = useFetchingKey(controller);
@@ -173,7 +170,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
       return {
-        ...instance.state,
+        ...signal().state,
         ...data,
         abandon,
         isFetching: false,
@@ -183,7 +180,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(instance, sessionRunner, con);
+    useStrategyExecution(signal, sessionRunner, con);
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
@@ -192,12 +189,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as SessionState<T>);
+        resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });
     }
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as SessionState<T>);
+        resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });
     }
     if (['mount', 'update'].includes(triggerType) && variables == null) {
