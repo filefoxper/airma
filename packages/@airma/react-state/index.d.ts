@@ -108,27 +108,38 @@ export declare function useModel<R extends AirReducer, D extends PickState<R>>(
   }
 ): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
 
+export declare interface SignalConfig {
+  withDangerousLayoutEffectClosureOptimize?: boolean;
+}
+
+export declare type SignalHandler<R extends AirReducer> = {
+  (): ValidReducerReturnType<R>;
+  (conf: SignalConfig): ValidReducerReturnType<R>;
+  <D>(selector: (ins: ValidReducerReturnType<R>) => D): D;
+  <D>(selector: (ins: ValidReducerReturnType<R>) => any, conf: SignalConfig): D;
+};
+
 export declare function useSignal<R extends AirReducer>(
   model: ModelKey<R>
-): () => ValidReducerReturnType<R>;
+): SignalHandler<R>;
 export declare function useSignal<R extends AirReducer>(
   model: R
-): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
+): undefined extends PickState<R> ? SignalHandler<R> : never;
 export declare function useSignal<R extends AirReducer>(
   model: R & { getSourceFrom: () => any }
-): () => ValidReducerReturnType<R>;
+): SignalHandler<R>;
 export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
   model: ModelKey<R>,
   state: D
-): () => ValidReducerReturnType<R>;
+): SignalHandler<R>;
 export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
   model: R,
   state: D
-): () => ValidReducerReturnType<R>;
+): SignalHandler<R>;
 export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
   model: R,
   state?: D
-): undefined extends PickState<R> ? () => ValidReducerReturnType<R> : never;
+): undefined extends PickState<R> ? SignalHandler<R> : never;
 
 /**
  * @deprecated
@@ -316,8 +327,8 @@ declare type ModelUsage<R extends AirReducer> = undefined extends PickState<R>
   : (state: PickState<R>) => ValidReducerReturnType<R>;
 
 declare type SignalUsage<R extends AirReducer> = undefined extends PickState<R>
-  ? (state?: PickState<R>) => () => ValidReducerReturnType<R>
-  : (state: PickState<R>) => () => ValidReducerReturnType<R>;
+  ? (state?: PickState<R>) => SignalHandler<R>
+  : (state: PickState<R>) => SignalHandler<R>;
 
 declare type ControlledModelUsage<R extends AirReducer> = (
   value: PickState<R>,
@@ -326,7 +337,7 @@ declare type ControlledModelUsage<R extends AirReducer> = (
 
 declare interface StoreUsageApi<R extends AirReducer> {
   useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
-  useSignal: (state?: PickState<R>) => () => ValidReducerReturnType<R>;
+  useSignal: (state?: PickState<R>) => SignalHandler<R>;
   /**
    * @deprecated
    * @param state

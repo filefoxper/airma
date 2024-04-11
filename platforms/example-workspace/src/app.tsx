@@ -1,4 +1,11 @@
-import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
+import React, {
+  memo,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState
+} from 'react';
 import {
   createKey,
   useModel,
@@ -272,6 +279,11 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   );
 }
 
+const Test = memo(({ signal }: { signal: any }) => {
+  console.log('render test');
+  return null;
+});
+
 export default function App() {
   const conditionSignal = store.useSignal({
     valid: defaultCondition,
@@ -283,13 +295,10 @@ export default function App() {
     shallowEqual
   );
 
-  const item = creating ? conditionSignal() : undefined;
-  if (item && item.displayQuery.name !== 'Mr') {
-    console.log('change display');
-    item.changeDisplay({ name: 'Mr' });
-  }
+  const item = conditionSignal(ins => pick(ins, 'changeDisplay'));
+  conditionSignal(ins => ins.displayQuery);
 
-  console.log('render...', item?.displayQuery.username);
+  console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],
@@ -309,8 +318,6 @@ export default function App() {
   const [queryState] = querySession;
 
   useResponse.useSuccess(state => {
-    const { changeDisplay } = conditionSignal();
-    changeDisplay({ username: '' });
     console.log('response success', state);
   }, queryState);
 

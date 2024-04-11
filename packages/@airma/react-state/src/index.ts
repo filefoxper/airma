@@ -228,6 +228,20 @@ function useInstanceActionRuntime(): InstanceActionRuntime {
   return { methodsCache: methodsCacheRef.current, middleWare };
 }
 
+function equalByKeys<T extends Record<string | number, any>>(
+  obj: T,
+  reference: T,
+  keys: string[]
+) {
+  let result = true;
+  keys.forEach(k => {
+    if (obj[k] !== reference[k]) {
+      result = false;
+    }
+  });
+  return result;
+}
+
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -261,6 +275,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   };
   const isEffectStageRef = useRef(false);
   const openSignalRef = useRef(false);
+  const prevOpenSignalRef = useRef(false);
   openSignalRef.current = false;
   isEffectStageRef.current = false;
   const { batchUpdate } = useOptimize();
@@ -301,8 +316,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   }
   const [agent, setAgent] = useState(current.getCurrent(runtime));
   const updateVersionRef = useRef(current.getVersion());
-  const syncRef = useRef(false);
   const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
+  const prevSelectionRef = useRef<null | string[] | false>(null);
+  prevSelectionRef.current = null;
   const dispatch = () => {
     if (unmountRef.current) {
       return;
@@ -324,6 +340,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ) {
       return;
     }
+    updateDepsRef.current = currentAgentDeps;
+    if (
+      prevSelectionRef.current &&
+      equalByKeys(currentAgent, agent, prevSelectionRef.current)
+    ) {
+      return;
+    }
     setAgent(currentAgent);
   };
   const persistDispatch = usePersistFn(dispatch);
@@ -331,6 +354,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   useLayoutEffect(() => {
     isEffectStageRef.current = true;
+    prevOpenSignalRef.current = openSignalRef.current;
   });
 
   useEffect(() => {
@@ -365,18 +389,73 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  if (realtimeInstance || signal) {
-    const signalCallback = function signalCallback() {
-      if (!isEffectStageRef.current) {
-        openSignalRef.current = true;
+  const signalCallback = function signalCallback(
+    signalOptionOrSelector?:
+      | {
+          withDangerousLayoutEffectClosureOptimize?: boolean;
+        }
+      | ((instance: T) => any),
+    signalOption?: { withDangerousLayoutEffectClosureOptimize?: boolean }
+  ) {
+    const conf = (function extractConf() {
+      if (signalOption) {
+        return signalOption;
       }
-      return current.getCurrent(runtime);
-    };
+      if (
+        signalOptionOrSelector &&
+        typeof signalOptionOrSelector !== 'function'
+      ) {
+        return signalOptionOrSelector;
+      }
+      return {};
+    })();
+    const selector =
+      typeof signalOptionOrSelector === 'function'
+        ? signalOptionOrSelector
+        : undefined;
+    const { withDangerousLayoutEffectClosureOptimize } = conf;
+    if (!withDangerousLayoutEffectClosureOptimize) {
+      openSignalRef.current = true;
+    }
+    if (withDangerousLayoutEffectClosureOptimize && !isEffectStageRef.current) {
+      openSignalRef.current = true;
+    }
+    const ins = current.getCurrent(runtime);
+    if (typeof selector === 'function') {
+      const insGetter =
+        prevSelectionRef.current === false
+          ? ins
+          : createProxy(ins, {
+              get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
+                const v = target[p];
+                if (prevSelectionRef.current !== false) {
+                  const selection = prevSelectionRef.current || [];
+                  const selectionMap: Record<string, true> = {};
+                  selection.forEach(k => {
+                    selectionMap[k] = true;
+                  });
+                  if (!selectionMap[p as string]) {
+                    selection.push(p as string);
+                  }
+                  prevSelectionRef.current = selection;
+                }
+                return v;
+              }
+            });
+      return selector(insGetter);
+    }
+    prevSelectionRef.current = false;
+    return ins;
+  };
+
+  const signalCallbackRef = useRef(signalCallback);
+
+  if (realtimeInstance || signal) {
     return [
       current.getState(),
       current.agent,
       current.updateState,
-      signalCallback
+      prevOpenSignalRef.current ? signalCallback : signalCallbackRef.current
     ];
   }
 
@@ -495,6 +574,12 @@ export function useSignal<S, T extends AirModelInstance, D extends S>(
   return createSignal;
 }
 
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export function useStaticModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
