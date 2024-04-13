@@ -250,7 +250,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   useEffect(() => {
     const { setGlobalFetchingKey, removeGlobalFetchingKey } =
-      globalControlSignal({ withDangerousLayoutEffectClosureOptimize: true });
+      globalControlSignal();
     if (stableInstance.state.isFetching) {
       setGlobalFetchingKey(keyRef.current);
     } else {
@@ -259,9 +259,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.state.isFetching]);
 
   useUnmount(() => {
-    const { removeGlobalFetchingKey } = globalControlSignal({
-      withDangerousLayoutEffectClosureOptimize: true
-    });
+    const { removeGlobalFetchingKey } = globalControlSignal();
     removeGlobalFetchingKey(keyRef.current);
     fetchingKeyController.removeFetchingKey(keyRef.current);
   });

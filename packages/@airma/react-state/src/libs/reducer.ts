@@ -255,7 +255,10 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   const newMethod = function newMethod(...args: unknown[]) {
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
-    const { reducer, controlled } = updater;
+    const { reducer, controlled, isDestroyed } = updater;
+    if (isDestroyed) {
+      return result;
+    }
     const methodAction = { type, state: result };
     if (controlled) {
       updater.notify(methodAction);
@@ -287,6 +290,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   const optimize = { batchUpdate };
   const updater: Updater<S, T> = {
     version: 0,
+    isDestroyed: false,
     current: defaultModel,
     reducer,
     dispatch: null,
@@ -311,7 +315,10 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       ignoreDispatch?: boolean;
     }
   ): void {
-    const { state } = updater;
+    const { state, isDestroyed } = updater;
+    if (isDestroyed) {
+      return;
+    }
     const isDefaultUpdate = !!(outState && outState.isDefault);
     const ignoreDispatch = !!(outState && outState.ignoreDispatch);
     if (isDefaultUpdate && updater.cacheState) {
@@ -339,6 +346,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   }
 
   function notice(...dispatchCall: Dispatch[]) {
+    if (updater.isDestroyed) {
+      return;
+    }
     const initializedAction = { state: updater.state, type: '' };
     dispatchCall.forEach(call => {
       call(initializedAction);
@@ -349,8 +359,12 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     const {
       dispatches,
       temporaryDispatches,
-      controlled: isControlled
+      controlled: isControlled,
+      isDestroyed
     } = updater;
+    if (isDestroyed) {
+      return;
+    }
     const copied = [...dispatches, ...temporaryDispatches];
     const exist = copied.indexOf(dispatchCall) >= 0;
     if (exist) {
@@ -412,6 +426,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       return updater.version;
     },
     getCurrent(runtime?: InstanceActionRuntime): T {
+      if (updater.isDestroyed) {
+        return updater.current;
+      }
       if (Array.isArray(updater.current)) {
         return updater.current.map((d, i) => {
           if (typeof d === 'function') {
@@ -468,6 +485,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.state = defaultState;
       updater.cacheState = null;
       updater.notify = noop;
+      updater.isDestroyed = true;
       updater.cacheMethods = {};
       optimize.batchUpdate = undefined;
     },

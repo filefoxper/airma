@@ -92,6 +92,7 @@ export interface FirstActionWrap extends ActionWrap {
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
   version: number;
+  isDestroyed: boolean;
   isSubscribing: boolean;
   dispatching?: FirstActionWrap;
   current: T;

@@ -108,16 +108,8 @@ export declare function useModel<R extends AirReducer, D extends PickState<R>>(
   }
 ): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
 
-export declare interface SignalConfig {
-  withDangerousLayoutEffectClosureOptimize?: boolean;
-}
-
-export declare type SignalHandler<R extends AirReducer> = {
-  (): ValidReducerReturnType<R>;
-  (conf: SignalConfig): ValidReducerReturnType<R>;
-  <D>(selector: (ins: ValidReducerReturnType<R>) => D): D;
-  <D>(selector: (ins: ValidReducerReturnType<R>) => any, conf: SignalConfig): D;
-};
+export declare type SignalHandler<R extends AirReducer> =
+  () => ValidReducerReturnType<R>;
 
 export declare function useSignal<R extends AirReducer>(
   model: ModelKey<R>
@@ -355,6 +347,7 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
   asGlobal: () => StoreUsageApi<R>;
+  static: () => StoreUsageApi<R>;
   provide: <P>() => (
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;

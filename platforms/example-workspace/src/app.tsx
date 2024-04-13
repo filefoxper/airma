@@ -295,8 +295,10 @@ export default function App() {
     shallowEqual
   );
 
-  const item = conditionSignal(ins => pick(ins, 'changeDisplay'));
-  conditionSignal(ins => ins.displayQuery);
+  const item = conditionSignal();
+  if (creating) {
+    console.log(item.displayQuery);
+  }
 
   console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({

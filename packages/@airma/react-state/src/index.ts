@@ -317,8 +317,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const [agent, setAgent] = useState(current.getCurrent(runtime));
   const updateVersionRef = useRef(current.getVersion());
   const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
-  const prevSelectionRef = useRef<null | string[] | false>(null);
-  prevSelectionRef.current = null;
+  const prevSelectionRef = useRef<null | string[]>(null);
   const dispatch = () => {
     if (unmountRef.current) {
       return;
@@ -342,6 +341,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
     updateDepsRef.current = currentAgentDeps;
     if (
+      signal &&
       prevSelectionRef.current &&
       equalByKeys(currentAgent, agent, prevSelectionRef.current)
     ) {
@@ -377,6 +377,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   useEffect(() => {
     return () => {
       unmountRef.current = true;
+      prevSelectionRef.current = null;
       if (connection == null) {
         current.destroy();
       }
@@ -389,73 +390,38 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  const signalCallback = function signalCallback(
-    signalOptionOrSelector?:
-      | {
-          withDangerousLayoutEffectClosureOptimize?: boolean;
-        }
-      | ((instance: T) => any),
-    signalOption?: { withDangerousLayoutEffectClosureOptimize?: boolean }
-  ) {
-    const conf = (function extractConf() {
-      if (signalOption) {
-        return signalOption;
-      }
-      if (
-        signalOptionOrSelector &&
-        typeof signalOptionOrSelector !== 'function'
-      ) {
-        return signalOptionOrSelector;
-      }
-      return {};
-    })();
-    const selector =
-      typeof signalOptionOrSelector === 'function'
-        ? signalOptionOrSelector
-        : undefined;
-    const { withDangerousLayoutEffectClosureOptimize } = conf;
-    if (!withDangerousLayoutEffectClosureOptimize) {
-      openSignalRef.current = true;
-    }
-    if (withDangerousLayoutEffectClosureOptimize && !isEffectStageRef.current) {
-      openSignalRef.current = true;
-    }
+  const selection: string[] = [];
+  prevSelectionRef.current = selection;
+
+  const signalCallback = function signalCallback() {
+    openSignalRef.current = true;
     const ins = current.getCurrent(runtime);
-    if (typeof selector === 'function') {
-      const insGetter =
-        prevSelectionRef.current === false
-          ? ins
-          : createProxy(ins, {
-              get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
-                const v = target[p];
-                if (prevSelectionRef.current !== false) {
-                  const selection = prevSelectionRef.current || [];
-                  const selectionMap: Record<string, true> = {};
-                  selection.forEach(k => {
-                    selectionMap[k] = true;
-                  });
-                  if (!selectionMap[p as string]) {
-                    selection.push(p as string);
-                  }
-                  prevSelectionRef.current = selection;
-                }
-                return v;
-              }
-            });
-      return selector(insGetter);
-    }
-    prevSelectionRef.current = false;
-    return ins;
+
+    return createProxy(ins, {
+      get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
+        const v = target[p];
+        if (selection === prevSelectionRef.current && !unmountRef.current) {
+          const selectionMap: Record<string, true> = {};
+          selection.forEach(k => {
+            selectionMap[k] = true;
+          });
+          if (!selectionMap[p as string]) {
+            selection.push(p as string);
+          }
+        }
+        return v;
+      }
+    });
   };
 
-  const signalCallbackRef = useRef(signalCallback);
+  const persistSignalCallback = usePersistFn(signalCallback);
 
   if (realtimeInstance || signal) {
     return [
       current.getState(),
       current.agent,
       current.updateState,
-      prevOpenSignalRef.current ? signalCallback : signalCallbackRef.current
+      prevOpenSignalRef.current ? signalCallback : persistSignalCallback
     ];
   }
 
@@ -728,8 +694,12 @@ export const ConfigProvider: FC<{
 };
 
 export const model = function model<S, T extends AirModelInstance>(
-  m: AirReducer<S | undefined, T>
+  reducerLike: AirReducer<S | undefined, T>
 ) {
+  const m = function modelWrapper(s: S | undefined) {
+    return reducerLike(s);
+  };
+  m.meta = {} as Record<string, any>;
   const useApiModel = function useApiModel(s?: S) {
     const params = (arguments.length ? [m, s] : [m]) as [
       typeof m,
@@ -856,6 +826,7 @@ export const model = function model<S, T extends AirModelInstance>(
       useStaticModel: useApiStaticStoreModel,
       useSelector: useApiStoreSelector,
       asGlobal: global,
+      static: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
       Provider: ApiStoreProvider
