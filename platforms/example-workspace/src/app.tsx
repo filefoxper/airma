@@ -296,9 +296,13 @@ export default function App() {
   );
 
   const item = conditionSignal();
-  if (creating) {
-    console.log(item.displayQuery);
-  }
+  console.log('display', item.creating);
+  conditionSignal.effect((instance, action) => {
+    console.log('effect');
+    if (action.on(instance.create, instance.cancel)) {
+      instance.changeDisplay({ name: '' });
+    }
+  });
 
   console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({

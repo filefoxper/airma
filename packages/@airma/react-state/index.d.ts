@@ -108,8 +108,21 @@ export declare function useModel<R extends AirReducer, D extends PickState<R>>(
   }
 ): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
 
+declare type SignalEffectAction<R extends AirReducer> = {
+  type: keyof ValidReducerReturnType<R>;
+  state: PickState<R>;
+  on: (...actionMethods: ((...args: any[]) => any)[]) => boolean;
+};
+
+declare type SignalEffect<R extends AirReducer> = (
+  instance: ValidReducerReturnType<R>,
+  action: SignalEffectAction<R>
+) => void;
+
 export declare type SignalHandler<R extends AirReducer> =
-  () => ValidReducerReturnType<R>;
+  (() => ValidReducerReturnType<R>) & {
+    effect: (callback: SignalEffect<R>) => void;
+  };
 
 export declare function useSignal<R extends AirReducer>(
   model: ModelKey<R>

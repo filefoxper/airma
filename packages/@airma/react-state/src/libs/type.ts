@@ -1,5 +1,6 @@
 export type Action = {
   type: string;
+  method: null | ((...args: any[]) => any);
   state?: any;
   prevState?: any;
   params?: any[];

@@ -126,7 +126,7 @@ function generateNotification<S, T extends AirModelInstance>(
       updater.dispatches = updater.dispatches.concat(temporaryDispatches);
       updater.temporaryDispatches = [];
     }
-    const initializedAction = { state: updater.state, type: '' };
+    const initializedAction = { state: updater.state, type: '', method: null };
     temporaryDispatches.forEach(call => {
       call(initializedAction);
     });
@@ -247,19 +247,22 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     context: ModelContextFactory;
     methodsCache: Record<string, (...args: any[]) => any>;
     middleWare?: (action: Action) => Action | null;
+    sourceTo?: (...args: any[]) => any;
   }
 ) {
   if (runtime.methodsCache[type]) {
     return runtime.methodsCache[type];
   }
-  const newMethod = function newMethod(...args: unknown[]) {
+  const newMethod: ((...args: unknown[]) => S) & {
+    dispatchId: undefined | ((...args: any[]) => any);
+  } = function newMethod(...args: unknown[]) {
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
     const { reducer, controlled, isDestroyed } = updater;
     if (isDestroyed) {
       return result;
     }
-    const methodAction = { type, state: result };
+    const methodAction = { type, state: result, method: newMethod };
     if (controlled) {
       updater.notify(methodAction);
       return result;
@@ -268,13 +271,14 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     updater.state = result;
     updater.version += 1;
     updater.cacheState = { state: result };
-    const actionResult: Action = { type, state: result };
+    const actionResult: Action = { type, state: result, method: newMethod };
     const action = runtime.middleWare
       ? runtime.middleWare(actionResult)
       : actionResult;
     updater.notify(action);
     return result;
   };
+  newMethod.dispatchId = runtime.sourceTo;
   runtime.methodsCache[type] = newMethod;
   return newMethod;
 }
@@ -342,14 +346,14 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
-    updater.notify({ state: updater.state, type: '' });
+    updater.notify({ state: updater.state, type: '', method: null });
   }
 
   function notice(...dispatchCall: Dispatch[]) {
     if (updater.isDestroyed) {
       return;
     }
-    const initializedAction = { state: updater.state, type: '' };
+    const initializedAction = { state: updater.state, type: '', method: null };
     dispatchCall.forEach(call => {
       call(initializedAction);
     });
@@ -435,7 +439,8 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
             return runtime
               ? rebuildDispatchMethod<S, T>(updater, i.toString(), {
                   context: modelContextFactory,
-                  ...runtime
+                  ...runtime,
+                  sourceTo: agent[i] as (...args: any[]) => any
                 })
               : agent[i];
           }
@@ -450,7 +455,8 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
           result[key] = runtime
             ? (rebuildDispatchMethod<S, T>(updater, key as string, {
                 context: modelContextFactory,
-                ...runtime
+                ...runtime,
+                sourceTo: agent[key] as (...args: any[]) => any
               }) as T[typeof key])
             : agent[key];
         }
