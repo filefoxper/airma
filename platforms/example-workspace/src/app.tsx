@@ -300,6 +300,7 @@ export default function App() {
     item.changeDisplay({ name: '' });
   }
   conditionSignal.effect((instance, action) => {
+    console.log('effect...');
     if (action.on(instance.changeDisplay)) {
       console.log('effect of changeDisplay');
     }

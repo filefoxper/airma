@@ -11,18 +11,18 @@ const config: GlobalConfig = {
   strategy: s => [...s, Strategy.failure(e => console.log('final...', e))]
 };
 
-// render(
-//   <React.StrictMode>
-//     <ConfigProvider value={config}>
-//       <App />
-//     </ConfigProvider>
-//   </React.StrictMode>,
-//   root
-// );
-
 render(
-  <ConfigProvider value={config}>
-    <App />
-  </ConfigProvider>,
+  <React.StrictMode>
+    <ConfigProvider value={config}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>,
   root
 );
+
+// render(
+//   <ConfigProvider value={config}>
+//     <App />
+//   </ConfigProvider>,
+//   root
+// );

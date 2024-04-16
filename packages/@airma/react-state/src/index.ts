@@ -285,6 +285,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const prevOpenSignalRef = useRef(false);
   openSignalRef.current = false;
   isEffectStageRef.current = false;
+
   const { batchUpdate } = useOptimize();
   const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
@@ -397,32 +398,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   };
 
   const signalStale: {
-    blockActions: Array<ModelAction> | null;
     selection: Array<string> | null;
     effects: Array<SignalEffect<T>> | null;
     watches: Array<SignalEffect<T>> | null;
   } = {
-    blockActions: [],
     selection: [],
     effects: [],
     watches: []
   };
-  blockActionsRef.current = signalStale.blockActions;
   prevSelectionRef.current = signalStale.selection;
   signalEffectsRef.current = signalStale.effects;
   signalWatchesRef.current = signalStale.watches;
 
   const pushBlockAction = function pushBlockAction(action: ModelAction) {
-    if (signalStale.blockActions !== blockActionsRef.current) {
-      signalStale.blockActions = null;
-    }
-    if (
-      !signalStale.blockActions ||
-      signalStale.blockActions !== blockActionsRef.current
-    ) {
-      return;
-    }
-    signalStale.blockActions.push(action);
+    blockActionsRef.current = blockActionsRef.current || [];
+    blockActionsRef.current.push(action);
   };
 
   const dispatch = (currentAction: Action) => {
@@ -492,7 +482,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     blockActionsRef.current.forEach(action => {
       dispatch({ ...action, payload: { type: 'unblock' } } as ModelAction);
     });
-    blockActionsRef.current = [];
+    blockActionsRef.current = null;
   };
 
   useEffect(() => {
@@ -534,12 +524,10 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   const signalCallback = function signalCallback() {
     openSignalRef.current = true;
-    const ins = current.getCurrent(runtime);
-
     if (signalStale.selection !== prevSelectionRef.current) {
       signalStale.selection = null;
     }
-
+    const ins = current.getCurrent(runtime);
     return createProxy(ins, {
       get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
         const v = target[p];
