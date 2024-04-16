@@ -296,11 +296,18 @@ export default function App() {
   );
 
   const item = conditionSignal();
-  console.log('display', item.creating);
+  if (item.creating && item.displayQuery.name !== '') {
+    item.changeDisplay({ name: '' });
+  }
   conditionSignal.effect((instance, action) => {
-    console.log('effect');
-    if (action.on(instance.create, instance.cancel)) {
-      instance.changeDisplay({ name: '' });
+    if (action.on(instance.changeDisplay)) {
+      console.log('effect of changeDisplay');
+    }
+  });
+  conditionSignal.watch((instance, action) => {
+    console.log('watch ...');
+    if (action.on(instance.changeDisplay)) {
+      console.log('watch of changeDisplay');
     }
   });
 

@@ -12,7 +12,11 @@ export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
 };
 
-export type SignalEffectAction = Action & {
+export interface ModelAction extends Action {
+  payload?: { type: 'block' | 'initialize' | 'unblock' };
+}
+
+export type SignalEffectAction = ModelAction & {
   on: (...actionMethods: ((...args: any[]) => any)[]) => boolean;
 };
 

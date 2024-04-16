@@ -255,6 +255,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   }
   const newMethod: ((...args: unknown[]) => S) & {
     dispatchId: undefined | ((...args: any[]) => any);
+    dispatchType: string;
   } = function newMethod(...args: unknown[]) {
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
@@ -278,6 +279,7 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     updater.notify(action);
     return result;
   };
+  newMethod.dispatchType = type;
   newMethod.dispatchId = runtime.sourceTo;
   runtime.methodsCache[type] = newMethod;
   return newMethod;

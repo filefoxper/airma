@@ -4,6 +4,7 @@ export type Action = {
   state?: any;
   prevState?: any;
   params?: any[];
+  payload?: unknown;
 };
 
 export type Dispatch = ((action: Action) => unknown) & { confirmed?: boolean };

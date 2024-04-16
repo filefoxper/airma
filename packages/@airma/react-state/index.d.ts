@@ -121,6 +121,7 @@ declare type SignalEffect<R extends AirReducer> = (
 
 export declare type SignalHandler<R extends AirReducer> =
   (() => ValidReducerReturnType<R>) & {
+    watch: (callback: SignalEffect<R>) => void;
     effect: (callback: SignalEffect<R>) => void;
   };
 
