@@ -299,18 +299,16 @@ export default function App() {
   if (item.creating && item.displayQuery.name !== '') {
     item.changeDisplay({ name: '' });
   }
-  conditionSignal.effect((instance, action) => {
-    console.log('effect...');
-    if (action.on(instance.changeDisplay)) {
+  conditionSignal
+    .effect((instance, action) => {
       console.log('effect of changeDisplay');
-    }
-  });
-  conditionSignal.watch((instance, action) => {
-    console.log('watch ...');
-    if (action.on(instance.changeDisplay)) {
-      console.log('watch of changeDisplay');
-    }
-  });
+    })
+    .on(i => [i.changeDisplay]);
+  conditionSignal
+    .watch((instance, action) => {
+      console.log('watch of changeDisplay name and username');
+    })
+    .of(i => [i.displayQuery.name, i.displayQuery.username]);
 
   console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({

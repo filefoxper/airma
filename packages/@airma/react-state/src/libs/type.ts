@@ -3,6 +3,8 @@ export type Action = {
   method: null | ((...args: any[]) => any);
   state?: any;
   prevState?: any;
+  instance: any;
+  prevInstance: any;
   params?: any[];
   payload?: unknown;
 };
@@ -58,6 +60,7 @@ export interface Connection<
   getCacheState(): { state: S } | null;
   getState(): S;
   getCurrent(runtime?: InstanceActionRuntime): T;
+  getStoreInstance(): T;
   getVersion(): number;
   getListeners(): Dispatch[];
   update: (

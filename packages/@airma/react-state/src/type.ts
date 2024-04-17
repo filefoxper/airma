@@ -20,4 +20,18 @@ export type SignalEffectAction = ModelAction & {
   on: (...actionMethods: ((...args: any[]) => any)[]) => boolean;
 };
 
-export type SignalEffect<T> = (instance: T, action: SignalEffectAction) => void;
+export type SignalEffect<T> = ((
+  instance: T,
+  action: SignalEffectAction
+) => void | (() => void)) & {
+  on: ((...args: any[]) => any)[];
+  of: ((i: T) => any[])[];
+};
+
+export type SignalWatcher<T> = ((
+  instance: T,
+  action: SignalEffectAction
+) => void) & {
+  on: ((...args: any[]) => any)[];
+  of: ((i: T) => any[])[];
+};

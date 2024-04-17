@@ -126,7 +126,14 @@ function generateNotification<S, T extends AirModelInstance>(
       updater.dispatches = updater.dispatches.concat(temporaryDispatches);
       updater.temporaryDispatches = [];
     }
-    const initializedAction = { state: updater.state, type: '', method: null };
+    const initializedAction = {
+      state: updater.state,
+      prevState: updater.state,
+      instance: updater.current,
+      prevInstance: updater.current,
+      type: '',
+      method: null
+    };
     temporaryDispatches.forEach(call => {
       call(initializedAction);
     });
@@ -263,16 +270,32 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     if (isDestroyed) {
       return result;
     }
-    const methodAction = { type, state: result, method: newMethod };
+    const methodAction = {
+      type,
+      state: result,
+      prevState: result,
+      instance: updater.current,
+      prevInstance: updater.current,
+      method: newMethod
+    };
     if (controlled) {
       updater.notify(methodAction);
       return result;
     }
+    const prevState = updater.state;
+    const prevInstance = updater.current;
     updater.current = refreshModel(reducer, result, runtime.context);
     updater.state = result;
     updater.version += 1;
     updater.cacheState = { state: result };
-    const actionResult: Action = { type, state: result, method: newMethod };
+    const actionResult: Action = {
+      type,
+      state: result,
+      prevState,
+      instance: updater.current,
+      prevInstance,
+      method: newMethod
+    };
     const action = runtime.middleWare
       ? runtime.middleWare(actionResult)
       : actionResult;
@@ -334,6 +357,8 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     if (nextState !== state && !updater.controlled) {
       updater.version += 1;
     }
+    const prevState = state;
+    const prevInstance = updater.current;
     updater.reducer = updateReducer;
     updater.state = nextState;
     updater.cacheState =
@@ -348,14 +373,28 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
-    updater.notify({ state: updater.state, type: '', method: null });
+    updater.notify({
+      state: updater.state,
+      prevState,
+      instance: updater.current,
+      prevInstance,
+      type: '',
+      method: null
+    });
   }
 
   function notice(...dispatchCall: Dispatch[]) {
     if (updater.isDestroyed) {
       return;
     }
-    const initializedAction = { state: updater.state, type: '', method: null };
+    const initializedAction = {
+      state: updater.state,
+      prevState: updater.state,
+      instance: updater.current,
+      prevInstance: updater.current,
+      type: '',
+      method: null
+    };
     dispatchCall.forEach(call => {
       call(initializedAction);
     });
@@ -464,6 +503,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         }
       });
       return result;
+    },
+    getStoreInstance() {
+      return updater.current;
     },
     getListeners(): Dispatch[] {
       return updater.dispatches;
