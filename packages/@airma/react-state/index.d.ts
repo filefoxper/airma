@@ -128,7 +128,9 @@ declare type SignalEffect<R extends AirReducer> = (
 
 declare type EffectMatcher<R extends AirReducer> = {
   on: (
-    call: (i: ValidReducerReturnType<R>) => ((...args: any[]) => any)[]
+    actionMethods:
+      | ((i: ValidReducerReturnType<R>) => ((...args: any[]) => any)[])
+      | ((...args: any[]) => any)[]
   ) => EffectMatcher<R>;
   of: (call: (i: ValidReducerReturnType<R>) => any[]) => EffectMatcher<R>;
 };

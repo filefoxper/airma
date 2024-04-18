@@ -303,7 +303,7 @@ export default function App() {
     .effect((instance, action) => {
       console.log('effect of changeDisplay');
     })
-    .on(i => [i.changeDisplay]);
+    .on([item.changeDisplay]);
   conditionSignal
     .watch((instance, action) => {
       console.log('watch of changeDisplay name and username');

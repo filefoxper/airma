@@ -355,7 +355,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     const es = effects.map(effect => {
       const signalAction: SignalEffectAction = {
         ...action,
-        on(...methods: ((...args: any[]) => any)[]) {
+        on(methods: ((...args: any[]) => any)[]) {
           if (!methods.length) {
             return true;
           }
@@ -396,7 +396,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     watches.forEach(watcher => {
       const signalAction = {
         ...action,
-        on(...methods: ((...args: any[]) => any)[]) {
+        on(methods: ((...args: any[]) => any)[]) {
           if (!methods.length) {
             return true;
           }
@@ -409,7 +409,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
         }
       };
       const { on, of: ofs } = watcher;
-      const actionMatched = !on.length ? true : signalAction.on(...on);
+      const actionMatched = !on.length ? true : signalAction.on(on);
       const dataMatched = !ofs.length
         ? true
         : ofs
@@ -529,7 +529,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     const unEffects = effects.map(effect => {
       const { callback: ec, instance: ins, action: act } = effect;
       const { on, of: ofs } = ec;
-      const actionMatched = !on.length ? true : act.on(...on);
+      const actionMatched = !on.length ? true : act.on(on);
       const dataMatched = !ofs.length
         ? true
         : ofs
@@ -639,14 +639,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     effectCallback.on = [] as ((...args: any[]) => any)[];
     effectCallback.of = [] as ((i: T) => any[])[];
     const matcher = {
-      on(call: (i: T) => ((...args: any[]) => any)[]) {
+      on(
+        actionMethods:
+          | ((i: T) => ((...args: any[]) => any)[])
+          | ((...args: any[]) => any)[]
+      ) {
         if (
           signalStale.watches == null ||
           signalStale.watches !== signalWatchesRef.current
         ) {
           return matcher;
         }
-        const actions = call(agent);
+        const actions =
+          typeof actionMethods === 'function'
+            ? actionMethods(agent)
+            : actionMethods;
         effectCallback.on.push(...actions);
         return matcher;
       },
@@ -682,14 +689,21 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     effectCallback.on = [] as ((...args: any[]) => any)[];
     effectCallback.of = [] as ((i: T) => any[])[];
     const matcher = {
-      on(call: (i: T) => ((...args: any[]) => any)[]) {
+      on(
+        actionMethods:
+          | ((i: T) => ((...args: any[]) => any)[])
+          | ((...args: any[]) => any)[]
+      ) {
         if (
           signalStale.effects == null ||
           signalStale.effects !== signalEffectsRef.current
         ) {
           return matcher;
         }
-        const actions = call(signalUsage());
+        const actions =
+          typeof actionMethods === 'function'
+            ? actionMethods(signalUsage())
+            : actionMethods;
         effectCallback.on.push(...actions);
         return matcher;
       },
