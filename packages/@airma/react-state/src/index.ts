@@ -617,7 +617,8 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
         if (
           signalStale.selection != null &&
           signalStale.selection === prevSelectionRef.current &&
-          !unmountRef.current
+          !unmountRef.current &&
+          !isEffectStageRef.current
         ) {
           const selectionMap: Record<string, true> = {};
           signalStale.selection.forEach(k => {

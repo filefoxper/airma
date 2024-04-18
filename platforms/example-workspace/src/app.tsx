@@ -296,8 +296,8 @@ export default function App() {
   );
 
   const item = conditionSignal();
-  if (item.creating && item.displayQuery.name !== '') {
-    item.changeDisplay({ name: '' });
+  if (item.creating) {
+    console.log('is creating', item.displayQuery.name);
   }
   conditionSignal
     .effect((instance, action) => {
@@ -331,6 +331,7 @@ export default function App() {
 
   useResponse.useSuccess(state => {
     console.log('response success', state);
+    console.log(item.displayQuery);
   }, queryState);
 
   const [{ data, variables }, t] = querySession;

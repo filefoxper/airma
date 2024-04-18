@@ -1,6 +1,6 @@
 # Guides
 
-The core APIs are [useModel](/react-state/guides?id=usemodel), [useSelector](/react-state/guides?id=useselector), [provide](/react-state/guides?id=provide). The common entrance of these APIs is [model](/react-state/guides?id=model).
+The core APIs are [useModel](/react-state/guides?id=usemodel), [useSignal](/react-state/guides?id=usesignal), [useSelector](/react-state/guides?id=useselector), [provide](/react-state/guides?id=provide). Using them from declare API [model](/react-state/guides?id=model) makes state-management more convenient and easier.
 
 ## useModel
 
@@ -60,9 +60,46 @@ const storeInstance = useModel(modelKey, defaultState);
 
 Review [examples](/react-state/concepts?id=key) before.
 
+## useSignal
+
+API [useSignal](/react-state/api?id=usesignal) creates a instance getter callback. Calling this callback can get a newest instance object of model. And only when the fields gotten from instance are changed makes the component rerender.
+
+```ts
+const signal = useSignal(modelFn, defaultState?);
+// const signal = useSignal(modelKey);
+const instance = signal();
+```
+
+Example:
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+})
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+// Only when `isNegative` changes, it rerenders.
+// The `count` field change can not rerender this component, for it is not used in this component.
+const {isNegative} = countingSignal();
+```
+
+It is a better choice than [useSelector](/react-state/guides?id=useselector) for reducing the frequency of component render when it works with a store.
+
+A signal callback provides ways for adding effects and watchers to the model instance.
+
 ## useSelector
 
-API `useSelector` provides a way to select data from `store instance`. When the selected result is changed, it rerenders. That can reduce the frequency of component render. 
+API [useSelector](/react-state/api?id=useselector) provides a way to select data from `store instance`. When the selected result is changed, it rerenders. That can reduce the frequency of component render. 
 
 ```ts
 const xxx = useSelector(modelKey, (instance)=>instance.xxx);
