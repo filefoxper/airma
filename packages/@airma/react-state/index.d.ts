@@ -113,7 +113,12 @@ declare type SignalEffectAction<R extends AirReducer> = {
   state: PickState<R>;
   instance: ValidReducerReturnType<R>;
   prevInstance: ValidReducerReturnType<R>;
-  on: (actionMethods: ((...args: any[]) => any)[]) => boolean;
+  on: (
+    ...actionMethods: (
+      | Array<(...args: any[]) => any>
+      | ((...args: any[]) => any)
+    )[]
+  ) => boolean;
 };
 
 declare type SignalWatcher<R extends AirReducer> = (

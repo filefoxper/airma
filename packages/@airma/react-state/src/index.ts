@@ -355,7 +355,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     const es = effects.map(effect => {
       const signalAction: SignalEffectAction = {
         ...action,
-        on(methods: ((...args: any[]) => any)[]) {
+        on(
+          ...actionMethods: (
+            | Array<(...args: any[]) => any>
+            | ((...args: any[]) => any)
+          )[]
+        ) {
+          const methods = actionMethods.flat();
           if (!methods.length) {
             return true;
           }
@@ -396,7 +402,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     watches.forEach(watcher => {
       const signalAction = {
         ...action,
-        on(methods: ((...args: any[]) => any)[]) {
+        on(
+          ...actionMethods: (
+            | Array<(...args: any[]) => any>
+            | ((...args: any[]) => any)
+          )[]
+        ) {
+          const methods = actionMethods.flat();
           if (!methods.length) {
             return true;
           }

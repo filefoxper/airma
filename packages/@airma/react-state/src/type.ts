@@ -17,7 +17,12 @@ export interface ModelAction extends Action {
 }
 
 export type SignalEffectAction = ModelAction & {
-  on: (actionMethods: ((...args: any[]) => any)[]) => boolean;
+  on: (
+    ...actionMethods: (
+      | Array<(...args: any[]) => any>
+      | ((...args: any[]) => any)
+    )[]
+  ) => boolean;
 };
 
 export type SignalEffect<T> = ((
