@@ -20,7 +20,6 @@ import type {
   Connection,
   FactoryInstance,
   InstanceActionRuntime,
-  Dispatch,
   Action
 } from './libs/type';
 import {
@@ -250,6 +249,10 @@ function equalByKeys<T extends Record<string | number, any>>(
   return result;
 }
 
+const effectRuntime = {
+  isRunning: false
+};
+
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -352,27 +355,27 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!action.type && !action.payload) {
       return;
     }
-    const es = effects.map(effect => {
-      const signalAction: SignalEffectAction = {
-        ...action,
-        on(
-          ...actionMethods: (
-            | Array<(...args: any[]) => any>
-            | ((...args: any[]) => any)
-          )[]
-        ) {
-          const methods = actionMethods.flat();
-          if (!methods.length) {
-            return true;
-          }
-          if (action.method == null) {
-            return false;
-          }
-          return methods
-            .map(getDispatchId)
-            .includes(getDispatchId(action.method));
+    const signalAction: SignalEffectAction = {
+      ...action,
+      on(
+        ...actionMethods: (
+          | Array<(...args: any[]) => any>
+          | ((...args: any[]) => any)
+        )[]
+      ) {
+        const methods = actionMethods.flat();
+        if (!methods.length) {
+          return true;
         }
-      };
+        if (action.method == null) {
+          return false;
+        }
+        return methods
+          .map(getDispatchId)
+          .includes(getDispatchId(action.method));
+      }
+    };
+    const es = effects.map(effect => {
       return {
         callback: effect,
         instance: ins,
@@ -399,27 +402,27 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (!action.type && !action.payload) {
       return;
     }
-    watches.forEach(watcher => {
-      const signalAction = {
-        ...action,
-        on(
-          ...actionMethods: (
-            | Array<(...args: any[]) => any>
-            | ((...args: any[]) => any)
-          )[]
-        ) {
-          const methods = actionMethods.flat();
-          if (!methods.length) {
-            return true;
-          }
-          if (action.method == null) {
-            return false;
-          }
-          return methods
-            .map(getDispatchId)
-            .includes(getDispatchId(action.method));
+    const signalAction = {
+      ...action,
+      on(
+        ...actionMethods: (
+          | Array<(...args: any[]) => any>
+          | ((...args: any[]) => any)
+        )[]
+      ) {
+        const methods = actionMethods.flat();
+        if (!methods.length) {
+          return true;
         }
-      };
+        if (action.method == null) {
+          return false;
+        }
+        return methods
+          .map(getDispatchId)
+          .includes(getDispatchId(action.method));
+      }
+    };
+    watches.forEach(watcher => {
       const { on, of: ofs } = watcher;
       const actionMatched = !on.length ? true : signalAction.on(on);
       const dataMatched = !ofs.length
@@ -533,12 +536,10 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const processEffects = function processEffects() {
     const effects = effectsRef.current;
     if (!effects) {
-      return () => {
-        // noop
-      };
+      return;
     }
     effectsRef.current = null;
-    const unEffects = effects.map(effect => {
+    effects.forEach(effect => {
       const { callback: ec, instance: ins, action: act } = effect;
       const { on, of: ofs } = ec;
       const actionMatched = !on.length ? true : act.on(on);
@@ -548,25 +549,16 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
             .map(of => shallowEq(of(act.instance), of(act.prevInstance)))
             .some(re => !re);
       if (actionMatched && dataMatched) {
-        return ec(ins, act);
+        ec(ins, act);
       }
-      return undefined;
     });
-    return () => {
-      unEffects.forEach(unEffect => {
-        if (typeof unEffect === 'function') {
-          unEffect();
-        }
-      });
-    };
   };
 
   useEffect(() => {
     processBlockActions();
     tunnel.connect();
-    const undo = processEffects();
+    processEffects();
     return () => {
-      undo();
       tunnel.disconnect();
     };
   });
@@ -643,31 +635,30 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   signalUsage.watch = function watch(
     callback: (i: T, action: SignalEffectAction) => void
   ) {
+    if (effectRuntime.isRunning) {
+      throw new Error(
+        'can not add watchers, when watcher or effect is running.'
+      );
+    }
     const effectCallback = function effectCallback(
       i: T,
       action: SignalEffectAction
     ) {
-      return callback(i, action);
+      effectRuntime.isRunning = true;
+      callback(i, action);
+      effectRuntime.isRunning = false;
     };
     effectCallback.on = [] as ((...args: any[]) => any)[];
     effectCallback.of = [] as ((i: T) => any[])[];
     const matcher = {
-      on(
-        actionMethods:
-          | ((i: T) => ((...args: any[]) => any)[])
-          | ((...args: any[]) => any)[]
-      ) {
+      on(...actionMethods: ((...args: any[]) => any)[]) {
         if (
           signalStale.watches == null ||
           signalStale.watches !== signalWatchesRef.current
         ) {
           return matcher;
         }
-        const actions =
-          typeof actionMethods === 'function'
-            ? actionMethods(agent)
-            : actionMethods;
-        effectCallback.on.push(...actions);
+        effectCallback.on.push(...actionMethods);
         return matcher;
       },
       of(call: (i: T) => any[]) {
@@ -691,33 +682,32 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     return matcher;
   };
   signalUsage.effect = function effect(
-    callback: (i: T, action: SignalEffectAction) => void | (() => void)
+    callback: (i: T, action: SignalEffectAction) => void
   ) {
+    if (effectRuntime.isRunning) {
+      throw new Error(
+        'can not add watchers, when watcher or effect is running.'
+      );
+    }
     const effectCallback = function effectCallback(
       i: T,
       action: SignalEffectAction
     ) {
-      return callback(i, action);
+      effectRuntime.isRunning = true;
+      callback(i, action);
+      effectRuntime.isRunning = false;
     };
     effectCallback.on = [] as ((...args: any[]) => any)[];
     effectCallback.of = [] as ((i: T) => any[])[];
     const matcher = {
-      on(
-        actionMethods:
-          | ((i: T) => ((...args: any[]) => any)[])
-          | ((...args: any[]) => any)[]
-      ) {
+      on(...actionMethods: ((...args: any[]) => any)[]) {
         if (
           signalStale.effects == null ||
           signalStale.effects !== signalEffectsRef.current
         ) {
           return matcher;
         }
-        const actions =
-          typeof actionMethods === 'function'
-            ? actionMethods(signalUsage())
-            : actionMethods;
-        effectCallback.on.push(...actions);
+        effectCallback.on.push(...actionMethods);
         return matcher;
       },
       of(call: (i: T) => any[]) {

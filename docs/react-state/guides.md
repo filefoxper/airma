@@ -60,43 +60,6 @@ const storeInstance = useModel(modelKey, defaultState);
 
 Review [examples](/react-state/concepts?id=key) before.
 
-## useSignal
-
-API [useSignal](/react-state/api?id=usesignal) creates a instance getter callback. Calling this callback can get a newest instance object of model. And only when the fields gotten from instance are changed makes the component rerender.
-
-```ts
-const signal = useSignal(modelFn, defaultState?);
-// const signal = useSignal(modelKey);
-const instance = signal();
-```
-
-Example:
-
-```ts
-import {useSignal} from '@airma/react-state';
-
-const counting = (state:number)=>({
-    count: state,
-    isNegative: state<0,
-    increase(){
-        return state+1;
-    },
-    decrease(){
-        return state-1;
-    }
-})
-
-const countingSignal = useSignal(counting, props.defaultCount??0);
-
-// Only when `isNegative` changes, it rerenders.
-// The `count` field change can not rerender this component, for it is not used in this component.
-const {isNegative} = countingSignal();
-```
-
-It is a better choice than [useSelector](/react-state/guides?id=useselector) for reducing the frequency of component render when it works with a store.
-
-A signal callback provides ways for adding effects and watchers to the model instance.
-
 ## useSelector
 
 API [useSelector](/react-state/api?id=useselector) provides a way to select data from `store instance`. When the selected result is changed, it rerenders. That can reduce the frequency of component render. 
@@ -343,17 +306,20 @@ const toggleStore = toggleModel.createStore(false);
 
 const toggleGlobalStore = toggleStore.asGlobal();
 ......
-toggleModel.useModel(false);
-toggleModel.useControlledModel(props.checked, props.onChange);
+const instance =toggleModel.useModel(false);
+const signal = toggleModel.useSignal(false);
+const controlledInstance = toggleModel.useControlledModel(props.checked, props.onChange);
 ......
 toggleStore.provideTo(function Component(){
     const [, toggle] = toggleStore.useModel();
+    const [signalSelected] = toggleStore.useSignal()();
     const selected = toggleStore.useSelector(([s])=>s);
     const selectedInGlobal = toggleGlobalStore.useSelector(([s])=>s);
     return ......;
 });
 ......
 function Comp(){
+    toggleGlobalStore.useSignal();
     toggleGlobalStore.useModel();
     return ......;
 }
@@ -391,6 +357,8 @@ toggleStore.with(countStore,...).provideTo(
 
 API `model` is more simple and useful, the output from `model(myModelFn)` is still a model function, it still can be used in other model functions.
 
+The new usage `useSignal` from `v18.4.0` is very useful, take examples and explains in [useSignal](/react-state/guides?id=usesignal) section.
+
 ## ConfigProvider
 
 For `@airma/react-state` uses subscription mode to synchronous state changes, it needs a batch update way to update multiple state changes.
@@ -407,6 +375,341 @@ const config = {batchUpdate: unstable_batchedUpdates};
 ......
 </ConfigProvider>
 ```
+
+## useSignal
+
+### [>=18.4.0]
+
+API [useSignal](/react-state/api?id=usesignal) creates a instance getter callback. Calling this callback can get a newest instance object of model. And only the changes of render usage fields from instance can make component rerender.
+
+```ts
+const signal = useSignal(modelFn, defaultState?);
+// const signal = useSignal(modelKey);
+const instance = signal();
+```
+
+Example:
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+// The `isNegative` is added for rerender optimization.
+// When `isNegative` changes, it rerenders component.
+const {
+    // render usage field
+    isNegative
+} = countingSignal();
+
+if(!isNegative){
+    // When `isNegative` is false, and `count` changes, it rerenders component.
+    const {
+        // render usage field, limited by `isNegative`
+        count
+    } = countingSignal();
+    return ......;
+}
+```
+
+It is a better choice than [useSelector](/react-state/guides?id=useselector) for reducing the frequency of component render when it works with a store.
+
+A signal callback provides a way for adding effects and watchers to the model instance.
+
+### effect
+
+Signal.effect is a method for adding effects to the signal. It accepts a callback function, and calls this function when signal instance change rerenders component.
+
+Signal.effect is not a hook, it can be used in any time, even in a loop or condition scope, except another effect or watcher callback. It is recommended to used in a component render time.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // render usage field
+    isNegative,
+    // render usage field
+    count,
+    // render usage field,
+    // the action method is immutable
+    decrease,
+    // render usage field
+    // the action method is immutable
+    increase
+} = countingSignal();
+
+// Add effect
+countingSignal.effect(()=>{
+    console.log(`isNegative changed to ${isNegative}`);
+    console.log(`count changed to ${countingSignal().count}`);
+});
+
+if(!isNegative){
+    // Add effect in if scope.
+    // Effects and watchers are not hooks, they can be added in any time, even in a loop or condition scope.
+    // In this case, when `isNegative` is false, and `count` changes, this effect is called.
+    countingSignal.effect(()=>{
+        ......;
+    });
+}
+```
+
+#### effect().of()
+
+The `effect().of((instance)=>any[])` method is used for building a comparable array for judgment if the effect should be called. It can reduce the frequency of effect calling by comparing the previous and current results.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // render usage field
+    count,
+    // render usage field,
+    // the action method is immutable
+    decrease,
+    // render usage field,
+    // the action method is immutable
+    increase
+} = countingSignal();
+
+// Add effect
+countingSignal.effect(()=>{
+    // The field gotten in effect callback will not be added into render usage fields.
+    console.log(`isNegative changed to ${countingSignal().isNegative}`);
+    console.log(`count changed to ${countingSignal().count}`);
+}).of((instance)=>{
+    // Comparable array for judgment if the effect should be called.
+    // The field from parameter `instance` is added into render usage fields forcedly.
+    // In this case, only when `isNegative` changes, effect is allowed to be called.
+    return [instance.isNegative];
+});
+```
+
+The parameter of `effect().of((instance)=>any[])` callback function is the instance object of model before or after change happens. This instance is used for compute a comparable array for judgment if the effect should be called. Every field from this instance is added into render usage fields forcedly.
+
+#### effect().on()
+
+The `effect().on(...actions)` method is used for reducing the frequency of effect calling by checking if the dispatched action is one of the setted actions.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    },
+    reset(){
+        return 0;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // render usage field
+    count,
+    // render usage field,
+    // the action method is immutable
+    decrease,
+    // render usage field,
+    // the action method is immutable
+    increase,
+    // render usage field,
+    // the action method is immutable
+    reset
+} = countingSignal();
+
+// Add effect
+countingSignal.effect(()=>{
+    // Only when `increase` or `decrease` action method makes instance change, and rerenders component, this effect is called.
+    console.log('This effect is called only when `increase` or `decrease` action is dispatched.');
+}).on(increase, decrease);
+```
+
+### watch
+
+Signal.watch is a method for adding watchers to the signal. It accepts a callback function, and calls this function when signal instance changes. It is similar to signal.effect, but only can be driven by instance changes, not rerenders.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // render usage field
+    isNegative
+    // render usage field,
+    // the action method is immutable
+    decrease,
+    // render usage field,
+    // the action method is immutable
+    increase
+} = countingSignal();
+
+// Add watcher
+// A watcher is called when instance changes, so when `count` or `isNegative` changes, it is called, no matter if the component is rerendered.
+// The `count` field is not added into render usage fields, but the watcher still calls its callback when `count` changes.
+countingSignal.watch(()=>{
+    console.log(`isNegative changed to ${countingSignal().isNegative}`);
+    // The field gotten in watcher callback will not be added into render usage fields.
+    console.log(`count changed to ${countingSignal().count}`);
+});
+```
+
+#### watch().of()
+
+It is similar to `effect().of()` method. But it adds no field into render usage fields.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // render usage field
+    isNegative
+    // render usage field,
+    // the action method is immutable
+    decrease,
+    // render usage field,
+    // the action method is immutable
+    increase
+} = countingSignal();
+
+// Add watcher
+countingSignal.watch(()=>{
+    console.log(`isNegative changed to ${countingSignal().isNegative}`);
+    console.log(`count changed to ${countingSignal().count}`);
+}).of((instance)=>{
+    // It only builds a comparable array with `count` field for judgment if the watcher should be called.
+    // The `count` field won't be added into render usage fields for rerender optimization.
+    return [instance.count];
+});
+```
+
+#### watch().on()
+
+It is similar to `effect().on()` method.
+
+### useSignal from model
+
+The declare API [model](/react-state/api?id=model) can generate `useSignal` usage too.
+
+```ts
+import {model} from '@airma/react-state';
+
+const counting = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+})).createStore().static();
+// Create a static store without initializing state.
+
+const Increase = ()=>{
+    // increase is a action method from instance, it is immutable.
+    // usSignal returns a instance getter callback, it should be recalled for field usage.
+    const {increase} = counting.useSignal()();
+    return <button onClick={increase}>+</button>;
+};
+
+const Decrease = ()=>{
+    // decrease is a action method from instance, it is immutable.
+    const {decrease} = counting.useSignal()();
+    return <button onClick={decrease}>-</button>;
+}
+
+const Count = ()=>{
+    const {count} = counting.useSignal()();
+    return <span>{count}</span>;
+}
+
+const App = ()=>{
+    // Use useSignal to initialize state with 0.
+    // For this signal is not called, and no field is added into render usage fields, it won't cause component rerender.
+    counting.useSignal(0);
+    return (
+        <div>
+            <Count/>
+            <Increase/>
+            <Decrease/>
+        </div>
+    );
+}
+```
+
+### useSignal note:
+
+* The `signal` callback function returns by useSignal is not recommended to be used in a child component `useLayoutEffect stage`. For the render fields usage computing process is shuted down in `useLayoutEffect`, it may add some dirty fields which are not expected to appear in render usage.
+* Do not add effects or watchers in effect or watcher runtime, it causes some exceptions.
 
 Next Page [feature](/react-state/feature).
 

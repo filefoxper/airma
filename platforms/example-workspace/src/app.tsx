@@ -300,12 +300,12 @@ export default function App() {
     console.log('is creating', item.displayQuery.name);
   }
   conditionSignal
-    .effect((instance, action) => {
+    .effect(() => {
       console.log('effect of changeDisplay');
     })
-    .on([item.changeDisplay]);
+    .on(item.changeDisplay);
   conditionSignal
-    .watch((instance, action) => {
+    .watch(() => {
       console.log('watch of changeDisplay name and username');
     })
     .of(i => [i.displayQuery.name, i.displayQuery.username]);

@@ -406,6 +406,8 @@ toggleStore.with(countStore,...).provideTo(
 ......
 ```
 
+关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [如何通过 model 声明函数使用 useSignal](/zh/react-state/guides?id=通过-model-声明函数使用-usesignal) 中的内容。
+
 ## ConfigProvider
 
 由于 `@airma/react-state` 采用的是订阅更新模式，库存状态数据的变更会通知每个使用点，使用点在收到变更通知后独立进行 React 状态更新（setState）。在 react<18.0.0 版本中需要 unstable_batchedUpdates 进行更新效率优化，而 `@airma/react-state` 并没有依赖 `react-dom` 包，因此需要通过配置的方式引入 unstable_batchedUpdates。
@@ -420,5 +422,369 @@ const config = {batchUpdate: unstable_batchedUpdates};
 ......
 </ConfigProvider>
 ```
+
+## 高性能渲染
+
+自 `v18.4.0` 开始 `@airma/react-state` 新增了 [useSignal](/zh/react-state/api?id=usesignal) API，用于提升渲染性能，并监听模型实例变更。
+
+useSignal API 返回一个实例生成函数，调用该函数可获取当前最新的实例对象。在函数组件渲染区使用的实例对象字段会被记入渲染相关字段，当这些字段发生变更时，useSignal 会触发组件重新渲染。
+
+```ts
+const signal = useSignal(modelFn, defaultState?);
+// const signal = useSignal(modelKey);
+const instance = signal();
+```
+
+例子：
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+// isNegative 被标记为渲染相关字段，当 `isNegative` 变更时，组件会重新渲染。
+const {
+    // isNegative 被标记为渲染相关字段
+    isNegative
+} = countingSignal();
+
+if(!isNegative){
+    // 当 `isNegative` 为 false 时，`count` 字段被使用，并标记为渲染相关字段。
+    // 当 `isNegative` 为 false，且 `count` 字段变更时, 组件重新渲染。
+    const {
+        // count 被标记为渲染相关字段
+        count
+    } = countingSignal();
+    return ......;
+}
+```
+
+### signal.effect
+
+useSignal API 返回的函数可通过调用 effect 方法添加由实例变更引起的组件渲染副作用。
+
+因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等任意位置。为了保持代码清晰，这里推荐在组件渲染区使用。
+
+```ts
+signal.effect(()=>{...})
+```
+
+例子：
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // 渲染相关字段
+    isNegative,
+    // 渲染相关字段
+    count,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    decrease,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    increase
+} = countingSignal();
+
+// 使用 signal.effect 添加实例变更引起的组件渲染副作用
+countingSignal.effect(()=>{
+    console.log(`isNegative changed to ${isNegative}`);
+    console.log(`count changed to ${countingSignal().count}`);
+});
+
+if(!isNegative){
+    // 在 if 逻辑中添加副作用
+    countingSignal.effect(()=>{
+        ......;
+    });
+}
+```
+
+#### effect().of()
+
+通过调用 effect 副作用返回的限制方法 of，可限制副作用回调函数的执行时机（`effect().of((instance)=>any[])`）。
+
+of 方法的入参为变更前（或后）的实例对象，要求返回一个用于对比变更前后是否一致的数组对象，当这两个数组对象浅相等时，则不会执行当前的副作用回调函数。
+
+```ts
+signal.effect(()=>{...}).of((instance)=>[instance.x, instance.y]);
+```
+
+例子：
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    countSymbol: state<0? '-' : '+',
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // 渲染相关字段
+    count,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    decrease,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    increase
+} = countingSignal();
+
+// 添加副作用
+countingSignal.effect(()=>{
+    // countSymbol 字段只在 effect 回调函数中被使用，因此不会被添加到渲染相关字段中。
+    console.log(`countSymbol changed to ${countingSignal().countSymbol}`);
+    console.log(`count changed to ${countingSignal().count}`);
+}).of((instance)=>{
+    // 只有 isNegative 字段值被加入副作用执行对比数组。
+    // 因此，只有当变更前后 `isNegative` 字段值不一致时才会执行副作用回调函数。
+    // 通过 of 方法参数实例获取的字段会被强制添加到渲染相关字段中。
+    return [instance.isNegative];
+});
+```
+
+**注意：当使用 of 方法入参实例对象上的字段时，该字段会被强制添加到渲染相关字段中，因此当该字段发生变更时，也会触发组件重新渲染。**
+
+#### effect().on()
+
+通过调用 effect 副作用返回的限制方法 on，也可以限制副作用回调函数的执行时机（`effect().on(...actionMethods)`）。
+
+on 方法可接受多个行为方法作为行为限制参数。当被调用行为方法引起当前组件渲染，且被调用方法为限制方法之一时，会执行当前副作用回调函数。
+
+```ts
+const {action1, action2} = signal();
+signal.effect(()=>{...}).on(action1, action2);
+```
+
+例子：
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    },
+    reset(){
+        return 0;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // 渲染相关字段
+    count,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    decrease,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    increase,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    reset
+} = countingSignal();
+
+// 添加副作用
+countingSignal.effect(()=>{
+    // 当被限制的行为方法 `increase` 或 `decrease` 被调用，且造成当前组件渲染时，才会执行副作用回调函数。
+    console.log('This effect is called only when `increase` or `decrease` action is dispatched.');
+}).on(increase, decrease);
+```
+
+### signal.watch
+
+useSignal API 返回的函数可通过调用 watch 方法添加对模型实例变更的直接监听器。
+
+其用法与 signal.effect 类似，但 watch 方法的回调函数会在每次实例变更时被调用，与组件是否重新渲染无关。
+
+```ts   
+signal.watch(()=>{...})
+```
+
+例子：
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // 渲染相关字段
+    isNegative,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    decrease,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    increase
+} = countingSignal();
+
+// 添加监听器
+countingSignal.watch(()=>{
+    // 即便唯一的渲染相关字段值 `isNegative` 没有发生变更，组件也没有重新渲染，只要实例发生变更，监听器回调函数依然会被执行。
+    console.log(`count changed to ${countingSignal().count}`);
+});
+```
+
+#### watch().of()
+
+与 effect().of() 唯一的不同在于，`watch().of((instance)=>[instance.x, instance.y])` 不会向 useSignal 添加渲染相关字段，不会对组件重新渲染造成任何影响。
+
+```ts
+signal.watch(()=>{...}).of((instance)=>[instance.x, instance.y]);
+```
+
+例子：  
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    // 渲染相关字段
+    isNegative
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    decrease,
+    // 渲染相关字段，
+    // 因为该字段为行为方法，所以不会触发组件重新渲染。
+    increase
+} = countingSignal();
+
+// 添加监听器
+countingSignal.watch(()=>{
+    console.log(`isNegative changed to ${countingSignal().isNegative}`);
+    console.log(`count changed to ${countingSignal().count}`);
+}).of((instance)=>{
+    // 限制了监听 count 字段变更运行回调函数。
+    // `count` 字段不会被添加到渲染相关字段中，因此不会触发组件重新渲染。
+    return [instance.count];
+});
+```
+
+#### watch().on()
+
+与 effect().on() 用法一样。
+
+### 通过 model 声明函数使用 useSignal
+
+通过 model 声明函数，可以使用 useSignal API 的寄生形态。
+
+```ts
+import {model} from '@airma/react-state';
+
+const counting = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){       
+        return state+1;
+    },
+    decrease(){
+        return state-1;       
+    }
+})).createStore().static();
+// 创建一个未初始化的静态全局模型实例库
+
+const Increase = ()=>{
+    // increase 行为方法为渲染相关字段，因此会被添加到渲染相关字段中。但根据行为方法恒定不变的特性，该组件不会因 useSignal 发生重新渲染。
+    // 注意：useSignal 返回的是一个实例生成函数，因此需要再调用该函数获取实例对象。
+    const {increase} = counting.useSignal()();
+    return <button onClick={increase}>+</button>;
+};
+
+const Decrease = ()=>{
+    // decrease 行为方法为渲染相关字段，因此会被添加到渲染相关字段中。但根据行为方法恒定不变的特性，该组件不会因 useSignal 发生重新渲染。
+    const {decrease} = counting.useSignal()();
+    return <button onClick={decrease}>-</button>;
+}
+
+const Count = ()=>{
+    const {count} = counting.useSignal()();
+    return <span>{count}</span>;
+}
+
+const App = ()=>{
+    // 使用 useSignal 初始化模型实例库，
+    // 在不使用回调函数的情况下，useSignal 永远不会触发当前组件重新渲染。
+    counting.useSignal(0);
+    return (
+        <div>
+            <Count/>
+            <Increase/>
+            <Decrease/>
+        </div>
+    );
+}
+```
+
+### useSignal 注意点
+
+* 尽量不要在子组件的 `useLayoutEffect` 中使用父组件 useSignal 返回的 signal 回调函数。因为 useSignal 渲染相关字段的统计算法就是在当前 useSignal 使用组件的 `useLayoutEffect` 阶段终止的，而子组件的 `useLayoutEffect` 通常先于当前组件的 `useLayoutEffect` 执行。这可能导致统计所得的渲染相关字段中混入部分并不希望关联渲染的脏字段。
+* 不要在**副作用**或**监听器**的回调函数中添加副作用与监听器。这会导致被入侵副作用或监听器异常。
 
 下一节[特性](/zh/react-state/feature)

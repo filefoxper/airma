@@ -15,7 +15,7 @@ Returns
 
 * A instance object (Proxy object). Call the action method from instance, can generate a next state, and refreshes instance.
 
-## useStaticModel
+## ~~useStaticModel~~
 
 The different with useModel is that useStaticModel can change store state, but can not subscribe store. It is useful for reducing the render frequency. 
 
@@ -345,6 +345,7 @@ It is a simplified API for use `hooks` in `@airma/react-state`. It also can be u
 ```ts
 interface GlobalStoreApi {
   useModel,
+  useSignal,
   useStaticModel,
   useSelector
 }
@@ -361,12 +362,14 @@ interface StoreApi {
   ) => typeof component,
   Provider: FC<{ children?: ReactNode }>,
   useModel,
+  useSignal,
   useStaticModel,
   useSelector
 }
 
 interface Api {
   useModel,
+  useSignal,
   useControlledModel,
   createStore: (defaultState?) => StoreApi;
 }
@@ -429,3 +432,41 @@ render(
   root
 );
 ```
+
+## useSignal
+
+It is a hook Api to create a signal callback.
+
+```ts
+type EffectApi = {
+  of:(callback:(instance)=>any[])=>EffectApi;
+  on:(...actionMethods)=>EffectApi;
+}
+
+type SignalApi = {
+  effect:(callback:()=>void): EffectApi;
+  watch:(callback:()=>void): EffectApi;
+};
+
+function useSignal(modelFnOrKey, defaultState?): (()=>instance)&SignalApi;
+```
+
+* modelFnOrKey - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* defaultState - Optional, a default state for model initializing.
+
+Returns
+
+* A signal callback function to generate a current instance object of model.
+
+Explain
+
+It is different with `useModel` by returns a instance generator function. Call this function can get a newest instance object in any where. And only the fields from instance change can make component rerender.
+
+It also provide a `effect` and `watch` method to handle side effect for instance rerender and instance change.
+
+Note:
+
+* The `signal` callback function returns by useSignal is not recommended to be used in a child component `useLayoutEffect stage`. For the render fields usage computing process is shuted down in `useLayoutEffect`, it may add some dirty fields which are not expected to appear in render usage.
+* Do not add effects or watchers in effect or watcher runtime, it causes some exceptions.
+
+Take more infos from [examples](/react-state/guides?id=usesignal).

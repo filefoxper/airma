@@ -28,7 +28,7 @@ export type SignalEffectAction = ModelAction & {
 export type SignalEffect<T> = ((
   instance: T,
   action: SignalEffectAction
-) => void | (() => void)) & {
+) => void) & {
   on: ((...args: any[]) => any)[];
   of: ((i: T) => any[])[];
 };

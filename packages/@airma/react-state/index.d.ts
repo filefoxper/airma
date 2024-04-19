@@ -113,31 +113,16 @@ declare type SignalEffectAction<R extends AirReducer> = {
   state: PickState<R>;
   instance: ValidReducerReturnType<R>;
   prevInstance: ValidReducerReturnType<R>;
-  on: (
-    ...actionMethods: (
-      | Array<(...args: any[]) => any>
-      | ((...args: any[]) => any)
-    )[]
-  ) => boolean;
+  on: (...actionMethods: ((...args: any[]) => any)[]) => boolean;
 };
 
-declare type SignalWatcher<R extends AirReducer> = (
-  instance: ValidReducerReturnType<R>,
-  action: SignalEffectAction<R>
-) => void;
+declare type SignalWatcher<R extends AirReducer> = () => void;
 
-declare type SignalEffect<R extends AirReducer> = (
-  instance: ValidReducerReturnType<R>,
-  action: SignalEffectAction<R>
-) => void | (() => void);
+declare type SignalEffect<R extends AirReducer> = () => void;
 
 declare type EffectMatcher<R extends AirReducer> = {
-  on: (
-    actionMethods:
-      | ((i: ValidReducerReturnType<R>) => ((...args: any[]) => any)[])
-      | ((...args: any[]) => any)[]
-  ) => EffectMatcher<R>;
-  of: (call: (i: ValidReducerReturnType<R>) => any[]) => EffectMatcher<R>;
+  on: (...actionMethods: ((...args: any[]) => any)[]) => EffectMatcher<R>;
+  of: (comparator: (i: ValidReducerReturnType<R>) => any[]) => EffectMatcher<R>;
 };
 
 export declare type SignalHandler<R extends AirReducer> =

@@ -204,6 +204,7 @@ const Decrease = memo(()=>{
 
 const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultCount:number}) {
     // 在 render 运行时初始化库存模型实例的默认状态。
+    // 注意，无论是否使用 useModel 返回的实例对象，当实例对象变更时，必然会触发当前组件渲染。
     countingStore.useModel(defaultCount);
     return (
         <div>
@@ -216,6 +217,60 @@ const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultC
 ```
 
 相较 redux、zustand 等静态库而言，`@airma/react-state` 可在 render 运行时初始化默认状态是其特有的能力，该能力在动态库管理过程中非常实用。
+
+根据 `useModel` 的固有特性，无论是否使用其返回的实例对象，只要该实例发生变更必然造成组件的重渲染。为了避免不必要的渲染，自 `v18.4.0` 开始，`@airma/react-state` 推出了 [useSignal](/zh/react-state/api?id=usesignal) API 来解决该问题。
+
+### useSignal 高性能渲染 API
+
+```ts
+import {model} from '@airma/react-state';
+
+const counting = model(function countingModel(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore().static();
+
+......
+const Increase = memo(()=>{
+    // API `useSignal` 返回一个 signal 回调函数，用于生成最新的模型实例对象。
+    // 只有当 signal 回调返回模型实例对象中被取出的字段值发生改变时才会触发组件的再渲染。
+    // 因为 `increase` 字段值是行为方法，根据行为方法恒定不变的特性，该组件不会产生再渲染。
+    const signal = counting.useSignal();
+    return <button onClick={signal().increase}>+</button>;
+});
+
+const Count = memo(()=>{
+    const signal = counting.useSignal();
+    return <span>{signal().count}</span>;
+});
+
+const Decrease = memo(()=>{
+    const signal = counting.useSignal();
+    return <button onClick={signal().decrease}>-</button>;
+});
+
+const Component = function Comp({defaultCount}:{defaultCount:number}) {
+    // 在不调用 useSignal 返回 signal 回调的情况下初始化默认状态不会造成该处组件的再渲染，从而提升渲染性能。
+    counting.useSignal(defaultCount);
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+};
+```
+
+除了性能提升, useSignal 还提供了针对实例变更渲染副作用和监听的入口方法，可参考引导中的[高性能渲染](/zh/react-state/guides?id=高性能渲染)部分了解更多相关信息。
 
 ## 介绍
 

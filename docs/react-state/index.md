@@ -248,7 +248,7 @@ const counting = model(function countingModel(state:number){
 const Increase = memo(()=>{
     // API `useSignal` returns a signal function,
     // which can be called to get the newest instance from store.
-    // Only the required parts of this instance change makes component rerender.
+    // Only the render usage fields of this instance change makes component rerender.
     // Here, only the action method `increase` from instance is required, and as the action method is stable with no change, that makes component never rerender.
     const signal = counting.useSignal();
     return <button onClick={signal().increase}>+</button>;
@@ -266,7 +266,7 @@ const Decrease = memo(()=>{
 
 const Component = function Comp({defaultCount}:{defaultCount:number}) {
     // API `useSignal` can initialize store state in render too.
-    // The difference with `useModel` is that `useSignal` only rerenders component when the required parts of instance change.
+    // The difference with `useModel` is that `useSignal` only rerenders component when the render usage fields of instance changes.
     counting.useSignal(defaultCount);
     return (
         <div>
@@ -278,7 +278,7 @@ const Component = function Comp({defaultCount}:{defaultCount:number}) {
 };
 ```
 
-The `useSignal` API is much better than API `useSelector`, it computes out when to rerender component by the fields getting from instance automatically. And by using the `signal` function, it always provides a newest instance in usage point, so it can avoid stale data and zombie-children problems more effectively.
+The `useSignal` API is even better than API `useSelector`, it computes out when to rerender component by the fields getting from instance automatically. And by using the `signal` function, it always provides a newest instance in usage point, so it can avoid stale data and zombie-children problems more effectively.
 
 ## Introduce
 
