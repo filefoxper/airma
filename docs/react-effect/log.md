@@ -74,3 +74,7 @@
 # v18.3.3
 
 * modify the no variables trigger warning content.
+
+# v18.4.0
+
+* improve render performance.

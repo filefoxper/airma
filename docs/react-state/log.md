@@ -96,3 +96,9 @@
 ## v18.3.2 2024-03-05
 
 * optimize global subscribing process in ConfigProvider.
+
+## v18.4.0 2024-04-20
+
+* improve render performance.
+* support render actions.
+* add `useSginal` API

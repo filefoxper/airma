@@ -175,12 +175,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
       'This session is not loaded, you should remove "config.loaded" option.'
     );
   }
-  return [
-    stableInstance,
-    () => signal({ withDangerousLayoutEffectClosureOptimize: true }),
-    configuration,
-    effectCallback
-  ];
+  return [stableInstance, signal, configuration, effectCallback];
 }
 
 export function createSessionKey<E extends (...params: any[]) => Promise<any>>(

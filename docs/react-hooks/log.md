@@ -10,3 +10,7 @@
 
 * remove deprecated APIs.
 * add API model, session, useLazyComponent
+
+## v 18.4.0
+
+* add `useSignal` API from `react-state@18.4.0`.

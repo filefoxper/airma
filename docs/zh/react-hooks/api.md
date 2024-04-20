@@ -30,17 +30,27 @@ export declare function useModel<
   R extends AirReducer<S>
 >(
   model: R,
-  state?: S,
-  option?: {
-    refresh?: boolean;
-    autoLink?: boolean;
-    realtimeInstance?: boolean;
-    useDefaultState?: boolean;
-  }
+  state?: S
 ): ReturnType<R>;
 ```
 
-## useStaticModel
+### useSignal
+
+[hook API] 用于创建获取最新模型实例的函数，并维持模型与实例对象之间的状态同步。[引用](/zh/react-state/api?id=usesignal)
+
+```ts
+declare type AirReducer<S>=(state:S)=>any;
+
+export declare function useSignal<
+  S,
+  R extends AirReducer<S>
+>(
+  model: R,
+  state?: S
+): ()=>ReturnType<R>;
+```
+
+### ~~useStaticModel~~
 
 与 useModel 唯一的不同的是，useStaticModel 不会订阅库状态变更，不会主动导致组件重渲染。因此，更适合用于 render 中初始化库状态，或纯粹触发行为方法节省渲染性能的场景。[引用](/zh/react-state/api?id=usestaticmodel) 
 
@@ -95,7 +105,7 @@ export declare function useSelector<
 ): ReturnType<C>;
 ```
 
-### useRealtimeInstance
+### ~~useRealtimeInstance~~
 
  [hook API] useModel 返回的静态实例对象字段值是相对固定的，只随组件的 render 发生改变，就像 useState 值一样。useRealtimeInstance 可从该值中提取一个动态实例对象，它的字段值随字段的获取，始终保持当前最新。[引用](/zh/react-state/api?id=userealtimeinstance)
 

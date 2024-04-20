@@ -25,9 +25,9 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "@airma/react-effect": ">=18.3.3",
+    "@airma/react-effect": ">=18.4.0",
     "@airma/react-hooks-core": "^18.3.0",
-    "@airma/react-state": ">=18.3.2",
+    "@airma/react-state": ">=18.4.0",
     "react": ">=16.8.0"
   },
   "devDependencies": {
