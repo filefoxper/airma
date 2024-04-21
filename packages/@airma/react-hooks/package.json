@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/react-hooks",
-  "version": "18.3.1",
+  "version": "18.4.0",
   "description": "This is a common react hook package",
   "license": "MIT",
   "author": "Jimmy.Harding",
