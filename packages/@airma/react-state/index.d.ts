@@ -57,7 +57,11 @@ declare type PipeCallback<S> = <R extends AirReducer>(
 
 export declare type ModelKey<R extends AirReducer> = ValidReducer<R> & {
   pipe: PipeCallback<PickState<R>>;
+  /**
+   * @deprecated
+   */
   effect?: [(...params: any[]) => any, Record<string, any>?];
+  payload?: unknown;
   global: () => ModelKey<R>;
 };
 
@@ -104,9 +108,56 @@ export declare function useModel<R extends AirReducer, D extends PickState<R>>(
   }
 ): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
 
+declare type SignalWatcher<R extends AirReducer> = () => void;
+
+declare type SignalEffect<R extends AirReducer> = () => void;
+
+declare type EffectMatcher<R extends AirReducer> = {
+  on: (...actionMethods: ((...args: any[]) => any)[]) => EffectMatcher<R>;
+  of: (comparator: (i: ValidReducerReturnType<R>) => any[]) => EffectMatcher<R>;
+};
+
+export declare type SignalHandler<R extends AirReducer> =
+  (() => ValidReducerReturnType<R>) & {
+    watch: (callback: SignalWatcher<R>) => EffectMatcher<R>;
+    effect: (callback: SignalEffect<R>) => EffectMatcher<R>;
+  };
+
+export declare function useSignal<R extends AirReducer>(
+  model: ModelKey<R>
+): SignalHandler<R>;
+export declare function useSignal<R extends AirReducer>(
+  model: R
+): undefined extends PickState<R> ? SignalHandler<R> : never;
+export declare function useSignal<R extends AirReducer>(
+  model: R & { getSourceFrom: () => any }
+): SignalHandler<R>;
+export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+  model: ModelKey<R>,
+  state: D
+): SignalHandler<R>;
+export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+  model: R,
+  state: D
+): SignalHandler<R>;
+export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+  model: R,
+  state?: D
+): undefined extends PickState<R> ? SignalHandler<R> : never;
+
+/**
+ * @deprecated
+ * @param model
+ */
 export declare function useStaticModel<R extends AirReducer>(
   model: ModelKey<R>
 ): ValidReducerReturnType<R>;
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export declare function useStaticModel<
   R extends AirReducer,
   D extends PickState<R>
@@ -128,6 +179,12 @@ export declare function useControlledModel<
   onChange: (s: PickState<R>) => any
 ): ValidReducerReturnType<R>;
 
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export declare function useRefreshModel<
   R extends AirReducer,
   D extends PickState<R>
@@ -139,6 +196,12 @@ export declare function useRefreshModel<
     realtimeInstance?: boolean;
   }
 ): ValidReducerReturnType<R>;
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export declare function useRefreshModel<
   R extends AirReducer,
   D extends PickState<R>
@@ -241,8 +304,16 @@ export declare function createKey<R extends AirReducer, D extends PickState<R>>(
   defaultState?: D
 ): ModelKey<R>;
 
+/**
+ * @deprecated
+ * @param instance
+ */
 export declare function useRealtimeInstance<T>(instance: T): T;
 
+/**
+ * @deprecated
+ * @param model
+ */
 export declare function useIsModelMatchedInStore(
   model: AirReducer | ModelKey<AirReducer>
 ): boolean;
@@ -263,6 +334,10 @@ declare type ModelUsage<R extends AirReducer> = undefined extends PickState<R>
   ? (state?: PickState<R>) => ValidReducerReturnType<R>
   : (state: PickState<R>) => ValidReducerReturnType<R>;
 
+declare type SignalUsage<R extends AirReducer> = undefined extends PickState<R>
+  ? (state?: PickState<R>) => SignalHandler<R>
+  : (state: PickState<R>) => SignalHandler<R>;
+
 declare type ControlledModelUsage<R extends AirReducer> = (
   value: PickState<R>,
   onChange: (value: PickState<R>) => any
@@ -270,6 +345,11 @@ declare type ControlledModelUsage<R extends AirReducer> = (
 
 declare interface StoreUsageApi<R extends AirReducer> {
   useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
+  useSignal: (state?: PickState<R>) => SignalHandler<R>;
+  /**
+   * @deprecated
+   * @param state
+   */
   useStaticModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(
     call: C,
@@ -283,6 +363,7 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
   asGlobal: () => StoreUsageApi<R>;
+  static: () => StoreUsageApi<R>;
   provide: <P>() => (
     component: FunctionComponent<P> | NamedExoticComponent<P>
   ) => typeof component;
@@ -294,6 +375,7 @@ declare interface StoreApi<R extends AirReducer> extends StoreUsageApi<R> {
 
 declare interface Api<R extends AirReducer> {
   useModel: ModelUsage<R>;
+  useSignal: SignalUsage<R>;
   useControlledModel: ControlledModelUsage<R>;
   /**
    * @deprecated

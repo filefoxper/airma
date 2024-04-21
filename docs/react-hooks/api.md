@@ -34,7 +34,23 @@ export declare function useModel<
 ): ReturnType<R>;
 ```
 
-## useStaticModel
+### useSignal
+
+[hook API] It is used to initialize and update instance object generated from model function, [ref](/react-state/api?id=usesignal).
+
+```ts
+declare type AirReducer<S>=(state:S)=>any;
+
+export declare function useSignal<
+  S,
+  R extends AirReducer<S>
+>(
+  modelOrKey: R,
+  state?: S,
+): ()=>ReturnType<R>;
+```
+
+## ~~useStaticModel~~
 
 The different with useModel is that useStaticModel can change store state, but can not subscribe store. It is useful for reducing the render frequency. [ref](/react-state/api?id=usestaticmodel). 
 
@@ -87,7 +103,7 @@ export declare function useSelector<
 ): ReturnType<C>;
 ```
 
-### useRealtimeInstance
+### ~~useRealtimeInstance~~
 
 It extracts a realtime instance from useModel instance object. 
 

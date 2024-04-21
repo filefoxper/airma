@@ -1,4 +1,4 @@
-import { createKey, useModel } from '@airma/react-state';
+import { createKey, useSignal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
@@ -100,8 +100,11 @@ function parseEffect<
   if (!isSessionKey) {
     return [effectModel as SessionKey<E>, callback as E, config, false];
   }
-  const { effect } = callback as SessionKey<E>;
-  const [effectCallback, { sessionType: keyType }] = effect;
+  const { payload } = callback as SessionKey<E>;
+  const [effectCallback, { sessionType: keyType }] = payload as [
+    E,
+    { sessionType?: SessionType }
+  ];
   if (keyType != null && keyType !== sessionType) {
     throw new Error(
       `The sessionType is not matched, can not use '${keyType} type' sessionKey with '${
@@ -125,7 +128,12 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   uniqueKey: unknown,
   config?: QueryConfig<T, C> | Parameters<C>
-): [ReturnType<typeof effectModel>, QueryConfig<T, C>, C] {
+): [
+  ReturnType<typeof effectModel>,
+  () => ReturnType<typeof effectModel>,
+  QueryConfig<T, C>,
+  C
+] {
   const cg = Array.isArray(config) ? { variables: config } : config;
   const [model, effectCallback, con, isSessionKey] = parseEffect<
     C,
@@ -160,15 +168,14 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
           ]
         : [model];
     })();
-  const stableInstance = useModel(
-    ...(modelParams as [typeof model, SessionState<T>])
-  );
+  const signal = useSignal(...(modelParams as [typeof model, SessionState<T>]));
+  const stableInstance = signal();
   if (loaded && !stableInstance.state.loaded) {
     throw new Error(
       'This session is not loaded, you should remove "config.loaded" option.'
     );
   }
-  return [stableInstance, configuration, effectCallback];
+  return [stableInstance, signal, configuration, effectCallback];
 }
 
 export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
@@ -181,7 +188,7 @@ export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
   ) {
     return effectCallback(...params);
   } as E;
-  model.effect = [
+  model.payload = [
     effectCallbackReplace,
     sessionType ? { sessionType } : {}
   ] as [E, { sessionType?: SessionType }];

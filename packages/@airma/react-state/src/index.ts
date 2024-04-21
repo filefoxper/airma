@@ -9,16 +9,18 @@ import {
   createContext,
   createElement,
   useContext,
-  FunctionComponent
+  FunctionComponent,
+  useLayoutEffect
 } from 'react';
 
 import { usePersistFn } from '@airma/react-hooks-core';
 import type {
   AirModelInstance,
   AirReducer,
-  Action,
   Connection,
-  FactoryInstance
+  FactoryInstance,
+  InstanceActionRuntime,
+  Action
 } from './libs/type';
 import {
   createModel,
@@ -28,7 +30,15 @@ import {
   getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
-import type { AirReducerLike, GlobalConfig, Selector } from './type';
+import {
+  AirReducerLike,
+  GlobalConfig,
+  ModelAction,
+  Selector,
+  SignalEffect,
+  SignalEffectAction,
+  SignalWatcher
+} from './type';
 
 const realtimeInstanceMountProperty =
   '@@_airmaReactStateRealtimeInstancePropertyV18_@@';
@@ -209,6 +219,40 @@ function findConnection<S, T extends AirModelInstance>(
   return d as Connection<S | undefined, T> | undefined;
 }
 
+function useInstanceActionRuntime(): InstanceActionRuntime {
+  const methodsCacheRef = useRef({});
+  const isRenderRef = useRef(true);
+  isRenderRef.current = true;
+  useLayoutEffect(() => {
+    isRenderRef.current = false;
+  });
+  const middleWare = usePersistFn((action: Action) => {
+    if (isRenderRef.current) {
+      return { ...action, payload: { type: 'block' } } as ModelAction;
+    }
+    return action;
+  });
+  return { methodsCache: methodsCacheRef.current, middleWare };
+}
+
+function equalByKeys<T extends Record<string | number, any>>(
+  obj: T,
+  reference: T,
+  keys: string[]
+) {
+  let result = true;
+  keys.forEach(k => {
+    if (obj[k] !== reference[k]) {
+      result = false;
+    }
+  });
+  return result;
+}
+
+const effectRuntime = {
+  isRunning: false
+};
+
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -216,11 +260,12 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
+    signal?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
     updateDeps?: (instance: T) => any[];
   }
-): [S | undefined, T, (s: S | undefined) => void] {
+): [S | undefined, T, (s: S | undefined) => void, () => T] {
   const defaultOpt = {
     refresh: false,
     required: false,
@@ -233,11 +278,18 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     autoLink,
     useDefaultState,
     realtimeInstance,
+    signal,
     updateDeps
   } = {
     ...defaultOpt,
     ...option
   };
+  const isEffectStageRef = useRef(false);
+  const openSignalRef = useRef(false);
+  const prevOpenSignalRef = useRef(false);
+  openSignalRef.current = false;
+  isEffectStageRef.current = false;
+
   const { batchUpdate } = useOptimize();
   const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
@@ -257,6 +309,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   if (connection != null) {
     checkIfLazyIdentifyConnection(connection);
   }
+  const runtime = useInstanceActionRuntime();
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
   const instanceRef = useRef(
     useMemo(
@@ -273,13 +326,163 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     modelRef.current = model;
     current.update(model);
   }
-  const [agent, setAgent] = useState(current.getCurrent());
+  const [agent, setAgent] = useState(current.getCurrent(runtime));
+  const updateVersionRef = useRef(current.getVersion());
   const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
-  const dispatch = () => {
+  const prevSelectionRef = useRef<null | string[]>(null);
+  const signalEffectsRef = useRef<null | Array<SignalEffect<T>>>(null);
+  const signalWatchesRef = useRef<null | Array<SignalWatcher<T>>>(null);
+  const blockActionsRef = useRef<null | Array<ModelAction>>(null);
+  const effectsRef = useRef<null | Array<{
+    callback: SignalEffect<T>;
+    instance: T;
+    action: SignalEffectAction;
+  }>>(null);
+
+  const packSignalEffects = function packSignalEffects(
+    ins: T,
+    action: ModelAction
+  ) {
+    function getDispatchId(
+      m: ((...args: any[]) => any) & { dispatchId?: (...args: any[]) => any }
+    ) {
+      return m.dispatchId || m;
+    }
+    const effects = signalEffectsRef.current;
+    if (effects == null) {
+      return;
+    }
+    if (!action.type && !action.payload) {
+      return;
+    }
+    const signalAction: SignalEffectAction = {
+      ...action,
+      on(
+        ...actionMethods: (
+          | Array<(...args: any[]) => any>
+          | ((...args: any[]) => any)
+        )[]
+      ) {
+        const methods = actionMethods.flat();
+        if (!methods.length) {
+          return true;
+        }
+        if (action.method == null) {
+          return false;
+        }
+        return methods
+          .map(getDispatchId)
+          .includes(getDispatchId(action.method));
+      }
+    };
+    const es = effects.map(effect => {
+      return {
+        callback: effect,
+        instance: ins,
+        action: signalAction
+      };
+    });
+    effectsRef.current = effectsRef.current || [];
+    effectsRef.current.push(...es);
+  };
+
+  const runSignalWatches = function runSignalWatches(
+    ins: T,
+    action: ModelAction
+  ) {
+    function getDispatchId(
+      m: ((...args: any[]) => any) & { dispatchId?: (...args: any[]) => any }
+    ) {
+      return m.dispatchId || m;
+    }
+    const watches = signalWatchesRef.current;
+    if (watches == null) {
+      return;
+    }
+    if (!action.type && !action.payload) {
+      return;
+    }
+    const signalAction = {
+      ...action,
+      on(
+        ...actionMethods: (
+          | Array<(...args: any[]) => any>
+          | ((...args: any[]) => any)
+        )[]
+      ) {
+        const methods = actionMethods.flat();
+        if (!methods.length) {
+          return true;
+        }
+        if (action.method == null) {
+          return false;
+        }
+        return methods
+          .map(getDispatchId)
+          .includes(getDispatchId(action.method));
+      }
+    };
+    watches.forEach(watcher => {
+      const { on, of: ofs } = watcher;
+      const actionMatched = !on.length ? true : signalAction.on(on);
+      const dataMatched = !ofs.length
+        ? true
+        : ofs
+            .map(of =>
+              shallowEq(
+                of(signalAction.instance),
+                of(signalAction.prevInstance)
+              )
+            )
+            .some(re => !re);
+      if (actionMatched && dataMatched) {
+        watcher(ins, signalAction);
+      }
+    });
+  };
+
+  const signalStale: {
+    selection: Array<string> | null;
+    effects: Array<SignalEffect<T>> | null;
+    watches: Array<SignalWatcher<T>> | null;
+  } = {
+    selection: [],
+    effects: [],
+    watches: []
+  };
+  prevSelectionRef.current = signalStale.selection;
+  signalEffectsRef.current = signalStale.effects;
+  signalWatchesRef.current = signalStale.watches;
+
+  const pushBlockAction = function pushBlockAction(action: ModelAction) {
+    blockActionsRef.current = blockActionsRef.current || [];
+    blockActionsRef.current.push(action);
+  };
+
+  const dispatch = (currentAction: Action) => {
+    const action = currentAction as ModelAction;
     if (unmountRef.current) {
       return;
     }
-    const currentAgent = current.getCurrent();
+    const currentVersion = current.getVersion();
+    const currentAgent = current.getCurrent(runtime);
+    if (action.payload && action.payload.type === 'block') {
+      pushBlockAction(action);
+      return;
+    }
+    runSignalWatches(currentAgent, action);
+    if (
+      updateVersionRef.current === currentVersion &&
+      (!action.payload || action.payload.type !== 'unblock')
+    ) {
+      return;
+    }
+    if (!action.payload || action.payload.type !== 'unblock') {
+      updateVersionRef.current = currentVersion;
+    }
+    if (signal && !openSignalRef.current) {
+      return;
+    }
     const currentAgentDeps = updateDeps ? updateDeps(currentAgent) : undefined;
     if (
       updateDepsRef.current &&
@@ -288,10 +491,28 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ) {
       return;
     }
+    updateDepsRef.current = currentAgentDeps;
+    if (
+      signal &&
+      prevSelectionRef.current &&
+      equalByKeys(currentAgent, agent, prevSelectionRef.current)
+    ) {
+      return;
+    }
+    packSignalEffects(currentAgent, action);
+    if (action.payload && action.payload.type === 'unblock') {
+      return;
+    }
     setAgent(currentAgent);
   };
   const persistDispatch = usePersistFn(dispatch);
   const prevStateRef = useRef<{ state: D | undefined }>({ state });
+
+  useLayoutEffect(() => {
+    isEffectStageRef.current = true;
+    prevOpenSignalRef.current = openSignalRef.current;
+  });
+
   useEffect(() => {
     const prevState = prevStateRef.current;
     prevStateRef.current = { state };
@@ -300,13 +521,70 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [state]);
 
-  const tunnel = current.tunnel(persistDispatch);
+  const tunnel = useMemo(() => current.tunnel(persistDispatch), []);
+
+  const processBlockActions = function processBlockActions() {
+    if (!blockActionsRef.current) {
+      return;
+    }
+    blockActionsRef.current.forEach(action => {
+      dispatch({ ...action, payload: { type: 'unblock' } } as ModelAction);
+    });
+    blockActionsRef.current = null;
+  };
+
+  const processEffects = function processEffects() {
+    const effects = effectsRef.current;
+    if (!effects) {
+      return;
+    }
+    effectsRef.current = null;
+    effects.forEach(effect => {
+      const { callback: ec, instance: ins, action: act } = effect;
+      const { on, of: ofs } = ec;
+      const actionMatched = !on.length ? true : act.on(on);
+      const dataMatched = !ofs.length
+        ? true
+        : ofs
+            .map(of => shallowEq(of(act.instance), of(act.prevInstance)))
+            .some(re => !re);
+      if (actionMatched && dataMatched) {
+        ec(ins, act);
+      }
+    });
+  };
 
   useEffect(() => {
+    processBlockActions();
     tunnel.connect();
+    processEffects();
+    return () => {
+      tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    const startState = current.getState();
+    const startInstance = current.getStoreInstance();
+    const startAction: ModelAction = {
+      type: '',
+      method: null,
+      state: startState,
+      prevState: startState,
+      instance: startInstance,
+      prevInstance: startInstance,
+      payload: { type: 'initialize' }
+    };
+    runSignalWatches(agent, startAction);
+    if (prevSelectionRef.current != null && prevSelectionRef.current.length) {
+      packSignalEffects(agent, startAction);
+    }
     return () => {
       unmountRef.current = true;
-      tunnel.disconnect();
+      prevSelectionRef.current = null;
+      signalEffectsRef.current = null;
+      signalWatchesRef.current = null;
+      blockActionsRef.current = null;
       if (connection == null) {
         current.destroy();
       }
@@ -319,8 +597,151 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  if (realtimeInstance) {
-    return [current.getState(), current.agent, current.updateState];
+  const signalCallback = function signalCallback() {
+    openSignalRef.current = true;
+    if (signalStale.selection !== prevSelectionRef.current) {
+      signalStale.selection = null;
+    }
+    const ins = current.getCurrent(runtime);
+    return createProxy(ins, {
+      get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
+        const v = target[p];
+        if (
+          signalStale.selection != null &&
+          signalStale.selection === prevSelectionRef.current &&
+          !unmountRef.current &&
+          !isEffectStageRef.current
+        ) {
+          const selectionMap: Record<string, true> = {};
+          signalStale.selection.forEach(k => {
+            selectionMap[k] = true;
+          });
+          if (!selectionMap[p as string]) {
+            signalStale.selection.push(p as string);
+          }
+        }
+        return v;
+      }
+    });
+  };
+
+  const persistSignalCallback = usePersistFn(signalCallback);
+
+  const signalUsage: (() => T) & {
+    watch?: (callback: (i: T, action: Action) => void | (() => void)) => void;
+    effect?: (callback: (i: T, action: Action) => void | (() => void)) => void;
+  } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
+
+  signalUsage.watch = function watch(
+    callback: (i: T, action: SignalEffectAction) => void
+  ) {
+    if (effectRuntime.isRunning) {
+      throw new Error(
+        'can not add watchers, when watcher or effect is running.'
+      );
+    }
+    const effectCallback = function effectCallback(
+      i: T,
+      action: SignalEffectAction
+    ) {
+      effectRuntime.isRunning = true;
+      callback(i, action);
+      effectRuntime.isRunning = false;
+    };
+    effectCallback.on = [] as ((...args: any[]) => any)[];
+    effectCallback.of = [] as ((i: T) => any[])[];
+    const matcher = {
+      on(...actionMethods: ((...args: any[]) => any)[]) {
+        if (
+          signalStale.watches == null ||
+          signalStale.watches !== signalWatchesRef.current
+        ) {
+          return matcher;
+        }
+        effectCallback.on.push(...actionMethods);
+        return matcher;
+      },
+      of(call: (i: T) => any[]) {
+        if (
+          signalStale.watches == null ||
+          signalStale.watches !== signalWatchesRef.current
+        ) {
+          return matcher;
+        }
+        effectCallback.of.push(call);
+        return matcher;
+      }
+    };
+    if (
+      signalStale.watches == null ||
+      signalStale.watches !== signalWatchesRef.current
+    ) {
+      return matcher;
+    }
+    signalStale.watches.push(effectCallback);
+    return matcher;
+  };
+  signalUsage.effect = function effect(
+    callback: (i: T, action: SignalEffectAction) => void
+  ) {
+    if (effectRuntime.isRunning) {
+      throw new Error(
+        'can not add watchers, when watcher or effect is running.'
+      );
+    }
+    const effectCallback = function effectCallback(
+      i: T,
+      action: SignalEffectAction
+    ) {
+      effectRuntime.isRunning = true;
+      callback(i, action);
+      effectRuntime.isRunning = false;
+    };
+    effectCallback.on = [] as ((...args: any[]) => any)[];
+    effectCallback.of = [] as ((i: T) => any[])[];
+    const matcher = {
+      on(...actionMethods: ((...args: any[]) => any)[]) {
+        if (
+          signalStale.effects == null ||
+          signalStale.effects !== signalEffectsRef.current
+        ) {
+          return matcher;
+        }
+        effectCallback.on.push(...actionMethods);
+        return matcher;
+      },
+      of(call: (i: T) => any[]) {
+        if (
+          signalStale.effects == null ||
+          signalStale.effects !== signalEffectsRef.current
+        ) {
+          return matcher;
+        }
+        call(signalUsage());
+        effectCallback.of.push(call);
+        return matcher;
+      }
+    };
+    if (signalStale.effects !== signalEffectsRef.current) {
+      signalStale.effects = null;
+    }
+    if (
+      signalStale.effects == null ||
+      signalStale.effects !== signalEffectsRef.current
+    ) {
+      return matcher;
+    }
+    signalStale.effects.push(effectCallback);
+    return matcher;
+  };
+
+  if (realtimeInstance || signal) {
+    return [
+      current.getState(),
+      current.agent,
+      current.updateState,
+      signalUsage
+    ];
   }
 
   const stableInstance = createProxy(agent, {
@@ -332,13 +753,20 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       return v;
     }
   });
-
-  return [current.getState(), stableInstance, current.updateState];
+  const stableSignalCallback = function stableSignalCallback() {
+    return stableInstance;
+  };
+  return [
+    current.getState(),
+    stableInstance,
+    current.updateState,
+    stableSignalCallback
+  ];
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>
-): [S | undefined, T];
+): [S | undefined, T, () => T];
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
@@ -346,11 +774,12 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
+    signal?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
     updateDeps?: (instance: T) => any[];
   }
-): [S, T];
+): [S, T, () => T];
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -358,20 +787,21 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     refresh?: boolean;
     required?: boolean;
     autoLink?: boolean;
+    signal?: boolean;
     useDefaultState?: boolean;
     realtimeInstance?: boolean;
     updateDeps?: (instance: T) => any[];
   }
-): [S | undefined, T] {
+): [S | undefined, T, () => T] {
   const { getSourceFrom } = model as AirReducerLike;
   const sourceFrom =
     typeof getSourceFrom === 'function' ? getSourceFrom() : undefined;
   const result = useSourceTupleModel(sourceFrom || model, state, option);
-  const [s, agent, updateState] = result;
+  const [s, agent, updateState, createSignal] = result;
   const controlledAgent = useSourceControlledModel(model, s, updateState, {
     disabled: !sourceFrom
   });
-  return [s, sourceFrom ? controlledAgent : agent];
+  return [s, sourceFrom ? controlledAgent : agent, createSignal];
 }
 
 export function useModel<S, T extends AirModelInstance, D extends S>(
@@ -412,6 +842,29 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   return agent;
 }
 
+export function useSignal<S, T extends AirModelInstance, D extends S>(
+  model: AirReducer<S | undefined, T>,
+  state?: D
+): () => T {
+  const { pipe } = model as FactoryInstance<any>;
+  const { getSourceFrom } = model as AirReducerLike;
+  const required =
+    typeof pipe === 'function' || typeof getSourceFrom === 'function';
+  const useDefaultState = arguments.length > 1;
+  const [, , createSignal] = useTupleModel(model, state, {
+    required,
+    useDefaultState,
+    signal: true
+  });
+  return createSignal;
+}
+
+/**
+ * @deprecated
+ * @param model
+ * @param state
+ * @param option
+ */
 export function useStaticModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
@@ -455,23 +908,30 @@ export function useSelector<
 ): ReturnType<C> {
   const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
+  const runtime = useInstanceActionRuntime();
   const connection = findConnection(context, factoryModel);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }
   checkIfLazyIdentifyConnection(connection);
   connection.optimize(batchUpdate);
-  const current = callback(connection.getCurrent());
+  const current = callback(connection.getCurrent(runtime));
   const eqCallback = (s: any, t: any) =>
     equalFn ? equalFn(s, t) : Object.is(s, t);
   const unmountRef = useRef(false);
+  const updateVersionRef = useRef(connection.getVersion());
   const [s, setS] = useState({ data: current });
 
   const dispatch = usePersistFn(() => {
     if (unmountRef.current) {
       return;
     }
-    const next = callback(connection.getCurrent());
+    const currentVersion = connection.getVersion();
+    if (updateVersionRef.current === currentVersion) {
+      return;
+    }
+    updateVersionRef.current = currentVersion;
+    const next = callback(connection.getCurrent(runtime));
     if (eqCallback(s.data, next)) {
       return;
     }
@@ -484,8 +944,13 @@ export function useSelector<
   useEffect(() => {
     tunnel.connect();
     return () => {
-      unmountRef.current = true;
       tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    return () => {
+      unmountRef.current = true;
     };
   }, []);
 
@@ -548,14 +1013,26 @@ export const ConfigProvider: FC<{
 };
 
 export const model = function model<S, T extends AirModelInstance>(
-  m: AirReducer<S | undefined, T>
+  reducerLike: AirReducer<S | undefined, T>
 ) {
+  const m = function modelWrapper(s: S | undefined) {
+    return reducerLike(s);
+  };
+  m.meta = {} as Record<string, any>;
   const useApiModel = function useApiModel(s?: S) {
     const params = (arguments.length ? [m, s] : [m]) as [
       typeof m,
       (S | undefined)?
     ];
     return useModel(...params);
+  };
+
+  const useApiSignal = function useApiSignal(s?: S) {
+    const params = (arguments.length ? [m, s] : [m]) as [
+      typeof m,
+      (S | undefined)?
+    ];
+    return useSignal(...params);
   };
 
   const useApiControlledModel = function useApiControlledModel(
@@ -580,6 +1057,14 @@ export const model = function model<S, T extends AirModelInstance>(
         (S | undefined)?
       ];
       return useModel(...params);
+    };
+
+    const useApiStoreSignal = function useApiStoreSignal(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useSignal(...params);
     };
 
     const useApiStaticStoreModel = function useApiStaticStoreModel(s?: S) {
@@ -624,6 +1109,14 @@ export const model = function model<S, T extends AirModelInstance>(
         ) as [typeof staticModelKey, (S | undefined)?];
         return useModel(...params);
       };
+
+      const useApiGlobalSignal = function useApiGlobalSignal(s?: S) {
+        const params = (
+          arguments.length ? [staticModelKey, s] : [staticModelKey]
+        ) as [typeof staticModelKey, (S | undefined)?];
+        return useSignal(...params);
+      };
+
       const useApiStaticGlobalModel = function useApiStaticGlobalModel(s?: S) {
         const params = (
           arguments.length ? [staticModelKey, s] : [staticModelKey]
@@ -638,6 +1131,7 @@ export const model = function model<S, T extends AirModelInstance>(
       };
       return {
         useModel: useApiGlobalModel,
+        useSignal: useApiGlobalSignal,
         useStaticModel: useApiStaticGlobalModel,
         useSelector: useApiGlobalSelector
       };
@@ -647,9 +1141,11 @@ export const model = function model<S, T extends AirModelInstance>(
       key,
       keys,
       useModel: useApiStoreModel,
+      useSignal: useApiStoreSignal,
       useStaticModel: useApiStaticStoreModel,
       useSelector: useApiStoreSelector,
       asGlobal: global,
+      static: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
       Provider: ApiStoreProvider
@@ -681,6 +1177,7 @@ export const model = function model<S, T extends AirModelInstance>(
 
   return Object.assign(m, {
     useModel: useApiModel,
+    useSignal: useApiSignal,
     useControlledModel: useApiControlledModel,
     store: createStoreApi,
     createStore: createStoreApi

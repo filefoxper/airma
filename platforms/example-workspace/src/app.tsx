@@ -1,4 +1,11 @@
-import React, { memo, Suspense, useEffect, useMemo, useState } from 'react';
+import React, {
+  memo,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState
+} from 'react';
 import {
   createKey,
   useModel,
@@ -227,8 +234,6 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
     parentTrigger();
   };
 
-  console.log('render...');
-
   return (
     <div>
       <span>name:</span>
@@ -274,16 +279,38 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   );
 }
 
+const Test = memo(({ signal }: { signal: any }) => {
+  console.log('render test');
+  return null;
+});
+
 export default function App() {
-  store.useModel({
+  const conditionSignal = store.useSignal({
     valid: defaultCondition,
     display: defaultCondition,
     creating: false
   });
-  const { queryData, creating, cancel } = store.useSelector(s =>
-    pick(s, 'queryData', 'creating', 'cancel')
+  const { queryData, creating, cancel } = store.useSelector(
+    s => pick(s, 'queryData', 'creating', 'cancel'),
+    shallowEqual
   );
 
+  const item = conditionSignal();
+  if (item.creating) {
+    console.log('is creating', item.displayQuery.name);
+  }
+  conditionSignal
+    .effect(() => {
+      console.log('effect of changeDisplay');
+    })
+    .on(item.changeDisplay);
+  conditionSignal
+    .watch(() => {
+      console.log('watch of changeDisplay name and username');
+    })
+    .of(i => [i.displayQuery.name, i.displayQuery.username]);
+
+  console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],
@@ -304,6 +331,7 @@ export default function App() {
 
   useResponse.useSuccess(state => {
     console.log('response success', state);
+    console.log(item.displayQuery);
   }, queryState);
 
   const [{ data, variables }, t] = querySession;
@@ -315,8 +343,6 @@ export default function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
-
-  useIsFetching();
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>

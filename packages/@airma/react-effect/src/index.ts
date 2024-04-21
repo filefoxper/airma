@@ -9,12 +9,9 @@ import {
 } from 'react';
 import {
   Provider as ModelProvider,
-  useIsModelMatchedInStore,
-  useModel,
-  useRealtimeInstance,
   useSelector,
   provide as provideKeys,
-  useStaticModel
+  AirReducer
 } from '@airma/react-state';
 import {
   useMount,
@@ -22,7 +19,6 @@ import {
   useUnmount,
   useUpdate
 } from '@airma/react-hooks-core';
-import { AirReducer } from '@airma/react-state/src/libs/type';
 import type {
   SessionState,
   PromiseCallback,
@@ -47,11 +43,7 @@ import {
   useSessionBuildModel,
   createSessionKey
 } from './libs/model';
-import {
-  defaultIsFetchingState,
-  globalControllerStore,
-  useGlobalConfig
-} from './libs/global';
+import { globalControllerStore, useGlobalConfig } from './libs/global';
 import {
   block,
   latest,
@@ -94,8 +86,8 @@ function toNoRejectionPromiseCallback<
 function useController<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>
 ): Controller {
-  const { effect } = callback as SessionKey<C>;
-  const [, d] = effect || [];
+  const { payload } = callback as SessionKey<C>;
+  const [, d] = payload || [];
   const controller = d as FullControlData | undefined;
   return useMemo(() => {
     return {
@@ -150,7 +142,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
   const keyRef = useRef({});
-  const [stableInstance, con, promiseCallback] = useSessionBuildModel(
+  const [stableInstance, signal, con, promiseCallback] = useSessionBuildModel(
     callback,
     keyRef.current,
     config
@@ -161,13 +153,10 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
 
-  const instance = useRealtimeInstance(stableInstance);
-
   const controller = useController(callback);
   const fetchingKeyController = useFetchingKey(controller);
 
-  const { setGlobalFetchingKey, removeGlobalFetchingKey } =
-    globalControllerStore.useStaticModel();
+  const globalControlSignal = globalControllerStore.useSignal();
 
   const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
@@ -181,7 +170,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
       return {
-        ...instance.state,
+        ...signal().state,
         ...data,
         abandon,
         isFetching: false,
@@ -191,7 +180,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(instance, sessionRunner, con);
+    useStrategyExecution(signal, sessionRunner, con);
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
@@ -200,12 +189,12 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     const currentFetchingKey = fetchingKeyController.getFetchingKey();
     if (triggerTypes.indexOf(triggerType) < 0) {
       return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as SessionState<T>);
+        resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });
     }
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
       return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...instance.state, abandon: true } as SessionState<T>);
+        resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });
     }
     if (['mount', 'update'].includes(triggerType) && variables == null) {
@@ -260,6 +249,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.request]);
 
   useEffect(() => {
+    const { setGlobalFetchingKey, removeGlobalFetchingKey } =
+      globalControlSignal();
     if (stableInstance.state.isFetching) {
       setGlobalFetchingKey(keyRef.current);
     } else {
@@ -268,24 +259,20 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.state.isFetching]);
 
   useUnmount(() => {
+    const { removeGlobalFetchingKey } = globalControlSignal();
     removeGlobalFetchingKey(keyRef.current);
     fetchingKeyController.removeFetchingKey(keyRef.current);
   });
 
-  useEffect(() => {
-    strategyEffects.forEach(effectCallback => {
-      effectCallback(stableInstance.state);
-    });
-  }, [stableInstance.state]);
+  const prevStateRef = useRef(stableInstance.state);
 
   useEffect(() => {
-    if (stableInstance.state.round === 0) {
-      return;
-    }
-    strategyResponses.forEach(effectCallback => {
-      effectCallback(stableInstance.state);
+    const prevState = prevStateRef.current;
+    strategyEffects.forEach(effectCallback => {
+      effectCallback(stableInstance.state, prevState);
     });
-  }, [stableInstance.state.round]);
+    prevStateRef.current = stableInstance.state;
+  }, [stableInstance.state]);
 
   return [stableInstance.state, trigger, execute];
 }
@@ -356,7 +343,7 @@ export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [SessionState<T>, () => void, (variables: any[]) => void] {
-  const [, padding] = sessionKey.effect;
+  const [, padding] = sessionKey.payload;
   const { sessionType: sessionKeyType } = padding;
   const session = useSelector(
     sessionKey,
@@ -625,9 +612,9 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const withKeys = function withKeys(
       ...stores: (
         | {
-            key: AirReducer<any, any>;
+            key: AirReducer;
           }
-        | AirReducer<any, any>
+        | AirReducer
       )[]
     ) {
       const nks = keys.concat(

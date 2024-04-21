@@ -133,7 +133,7 @@ Using `model(xxx).createStore(defaultState?).asGlobal()` can build a global stor
 ```ts
 import {model} from '@airma/react-state';
 
-const countingStore = model(function counting(state:number){
+const counting = model(function countingModel(state:number){
     return {
         count: `mount: ${state}`,
         increase:()=>count + 1,
@@ -145,18 +145,19 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0).asGlobal(); 
-// mark store to be global
+// mark store to be global;
+// Use `...createStore(0).static()` can create a global store too.
 ......
 const Increase = memo(()=>{
-    const increase = countingStore.useSelector(i => i.increase);
+    const increase = counting.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    const {count} = countingStore.useModel();
+    const {count} = counting.useModel();
     return <span>{count}</span>;
 });
 const Decrease = memo(()=>{
-    const decrease = countingStore.useSelector(i => i.decrease);
+    const decrease = counting.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
 // use global store without provider.
@@ -175,12 +176,12 @@ The `useSelector` API is helpful for reducing render frequency, only when the se
 
 ### Initialize a dynamic state for store in render
 
-Sometimes, provides a static initialized state for store is very difficult. Use `useModel` API to initialize a dynamic state for store in render is a better solution in that case.
+Sometimes, provides a static state for initializing store is not a easy work. Use `useModel` API to initialize a dynamic state for store in render is a better solution in that case.
 
 ```ts
 import {model} from '@airma/react-state';
 
-const countingStore = model(function counting(state:number){
+const counting = model(function countingModel(state:number){
     return {
         count: `mount: ${state}`,
         increase:()=>count + 1,
@@ -191,27 +192,30 @@ const countingStore = model(function counting(state:number){
             }, count);
         }
     };
-}).createStore();
+}).createStore().static();
+// The store declare method `static` is same with `asGlobal`.
 // Give default state later in component render.
 ......
 const Increase = memo(()=>{
-    const increase = countingStore.useSelector(i => i.increase);
+    const increase = counting.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 
 const Count = memo(()=>{
-    const {count} = countingStore.useModel();
+    const {count} = counting.useModel();
     return <span>{count}</span>;
 });
 
 const Decrease = memo(()=>{
-    const decrease = countingStore.useSelector(i => i.decrease);
+    const decrease = counting.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
 
-const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultCount:number}) {
-    // initialize default state in render.
-    countingStore.useModel(defaultCount);
+const Component = function Comp({defaultCount}:{defaultCount:number}) {
+    // Initialize default state in render.
+    // API `useModel` always rerender component when state changes, even there is no state dependency.
+    // From `@airma/react-state@18.4.0`, a higher performance optional API `useSignal` is provided for resolving this problem.
+    counting.useModel(defaultCount);
     return (
         <div>
             <Increase/>
@@ -219,8 +223,62 @@ const Component = countingStore.provideTo(function Comp({defaultCount}:{defaultC
             <Decrease/>
         </div>
     );
-});
+};
 ```
+
+### Higher performance usage
+
+```ts
+import {model} from '@airma/react-state';
+
+const counting = model(function countingModel(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore().static();
+// Give default state later in component render.
+......
+const Increase = memo(()=>{
+    // API `useSignal` returns a signal function,
+    // which can be called to get the newest instance from store.
+    // Only the render usage fields of this instance change makes component rerender.
+    // Here, only the action method `increase` from instance is required, and as the action method is stable with no change, that makes component never rerender.
+    const signal = counting.useSignal();
+    return <button onClick={signal().increase}>+</button>;
+});
+
+const Count = memo(()=>{
+    const signal = counting.useSignal();
+    return <span>{signal().count}</span>;
+});
+
+const Decrease = memo(()=>{
+    const signal = counting.useSignal();
+    return <button onClick={signal().decrease}>-</button>;
+});
+
+const Component = function Comp({defaultCount}:{defaultCount:number}) {
+    // API `useSignal` can initialize store state in render too.
+    // The difference with `useModel` is that `useSignal` only rerenders component when the render usage fields of instance changes.
+    counting.useSignal(defaultCount);
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+};
+```
+
+The `useSignal` API is even better than API `useSelector`, it computes out when to rerender component by the fields getting from instance automatically. And by using the `signal` function, it always provides a newest instance in usage point, so it can avoid stale data and zombie-children problems more effectively.
 
 ## Introduce
 
@@ -249,7 +307,7 @@ In `@airma/react-state`, store is dynamic, every `provider` copies a working ins
 
  ### Why not async action methods
 
- Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](/react-effect/index) with it.
+ Async action often makes stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) problems. So, a special tool to resolve this problem is necessary; another package [@airma/react-effect](/react-effect/index) is designed for it.
 
  ## Install and support
 

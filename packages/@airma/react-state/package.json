@@ -1,6 +1,6 @@
 {
   "name": "@airma/react-state",
-  "version": "18.3.2",
+  "version": "18.4.0",
   "description": "the purpose of this project is make useReducer more simplify",
   "license": "MIT",
   "author": "Jimmy.Harding",
@@ -42,7 +42,7 @@
     "prettier-eslint-cli": "^5.0.1",
     "regenerator-runtime": "0.13.5",
     "rewire": "5.0.0",
-    "typescript": "4.9.4"
+    "typescript": "4.9.5"
   },
   "keywords": [
     "agent",

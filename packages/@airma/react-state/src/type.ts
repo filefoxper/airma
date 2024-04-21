@@ -1,4 +1,4 @@
-import type { AirReducer, ModelFactoryStore } from './libs/type';
+import type { Action, AirReducer, ModelFactoryStore } from './libs/type';
 
 export type AirReducerLike = AirReducer<any, any> & {
   getSourceFrom?: () => AirReducer<any, any>;
@@ -10,4 +10,33 @@ export type Selector = {
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+};
+
+export interface ModelAction extends Action {
+  payload?: { type: 'block' | 'initialize' | 'unblock' };
+}
+
+export type SignalEffectAction = ModelAction & {
+  on: (
+    ...actionMethods: (
+      | Array<(...args: any[]) => any>
+      | ((...args: any[]) => any)
+    )[]
+  ) => boolean;
+};
+
+export type SignalEffect<T> = ((
+  instance: T,
+  action: SignalEffectAction
+) => void) & {
+  on: ((...args: any[]) => any)[];
+  of: ((i: T) => any[])[];
+};
+
+export type SignalWatcher<T> = ((
+  instance: T,
+  action: SignalEffectAction
+) => void) & {
+  on: ((...args: any[]) => any)[];
+  of: ((i: T) => any[])[];
 };

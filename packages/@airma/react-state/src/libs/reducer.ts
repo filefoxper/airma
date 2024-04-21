@@ -15,7 +15,8 @@ import {
   ModelFactoryStore,
   ModelContext,
   Contexts,
-  ModelContextFactory
+  ModelContextFactory,
+  InstanceActionRuntime
 } from './type';
 import { createProxy, noop, shallowEqual, toMapObject } from './tools';
 
@@ -119,7 +120,29 @@ function generateNotification<S, T extends AirModelInstance>(
     return dispatching;
   }
 
-  return function dispatch(action: Action): void {
+  function consumeTemporaries() {
+    const { temporaryDispatches } = updater;
+    if (!temporaryDispatches.length) {
+      updater.dispatches = updater.dispatches.concat(temporaryDispatches);
+      updater.temporaryDispatches = [];
+    }
+    const initializedAction = {
+      state: updater.state,
+      prevState: updater.state,
+      instance: updater.current,
+      prevInstance: updater.current,
+      type: '',
+      method: null
+    };
+    temporaryDispatches.forEach(call => {
+      call(initializedAction);
+    });
+  }
+
+  return function dispatch(action: Action | null): void {
+    if (action == null) {
+      return;
+    }
     const { dispatching } = updater;
     pendAction(action);
     if (dispatching) {
@@ -131,7 +154,10 @@ function generateNotification<S, T extends AirModelInstance>(
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
         try {
-          if (typeof optimize.batchUpdate === 'function') {
+          if (
+            typeof optimize.batchUpdate === 'function' &&
+            dispatchCallbacks.length
+          ) {
             optimize.batchUpdate(() => {
               defaultNotifyImplement(dispatchCallbacks, wrap.value);
             });
@@ -146,6 +172,7 @@ function generateNotification<S, T extends AirModelInstance>(
         updater.dispatching = undefined;
       }
     }
+    consumeTemporaries();
   };
 }
 
@@ -223,27 +250,61 @@ function generateModelContextFactory(): ModelContextFactory {
 function rebuildDispatchMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string,
-  runtime: ModelContextFactory
-) {
-  if (updater.cacheMethods[type]) {
-    return updater.cacheMethods[type];
+  runtime: {
+    context: ModelContextFactory;
+    methodsCache: Record<string, (...args: any[]) => any>;
+    middleWare?: (action: Action) => Action | null;
+    sourceTo?: (...args: any[]) => any;
   }
-  const newMethod = function newMethod(...args: unknown[]) {
+) {
+  if (runtime.methodsCache[type]) {
+    return runtime.methodsCache[type];
+  }
+  const newMethod: ((...args: unknown[]) => S) & {
+    dispatchId: undefined | ((...args: any[]) => any);
+    dispatchType: string;
+  } = function newMethod(...args: unknown[]) {
     const method = updater.current[type] as (...args: unknown[]) => S;
     const result = method(...args);
-    const { reducer, controlled } = updater;
-    const methodAction = { type, state: result };
+    const { reducer, controlled, isDestroyed } = updater;
+    if (isDestroyed) {
+      return result;
+    }
+    const methodAction = {
+      type,
+      state: result,
+      prevState: result,
+      instance: updater.current,
+      prevInstance: updater.current,
+      method: newMethod
+    };
     if (controlled) {
       updater.notify(methodAction);
       return result;
     }
-    updater.current = refreshModel(reducer, result, runtime);
+    const prevState = updater.state;
+    const prevInstance = updater.current;
+    updater.current = refreshModel(reducer, result, runtime.context);
     updater.state = result;
+    updater.version += 1;
     updater.cacheState = { state: result };
-    updater.notify({ type, state: result });
+    const actionResult: Action = {
+      type,
+      state: result,
+      prevState,
+      instance: updater.current,
+      prevInstance,
+      method: newMethod
+    };
+    const action = runtime.middleWare
+      ? runtime.middleWare(actionResult)
+      : actionResult;
+    updater.notify(action);
     return result;
   };
-  updater.cacheMethods[type] = newMethod;
+  newMethod.dispatchType = type;
+  newMethod.dispatchId = runtime.sourceTo;
+  runtime.methodsCache[type] = newMethod;
   return newMethod;
 }
 
@@ -257,15 +318,19 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   const { controlled, batchUpdate } = updaterConfig || {};
   const optimize = { batchUpdate };
   const updater: Updater<S, T> = {
+    version: 0,
+    isDestroyed: false,
     current: defaultModel,
     reducer,
     dispatch: null,
     dispatches: [],
+    temporaryDispatches: [],
     cacheMethods: {},
     state: defaultState,
     cacheState: null,
     controlled: !!controlled,
-    notify: noop
+    notify: noop,
+    isSubscribing: false
   };
 
   updater.notify = generateNotification(updater, optimize);
@@ -279,13 +344,21 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       ignoreDispatch?: boolean;
     }
   ): void {
-    const { state } = updater;
+    const { state, isDestroyed } = updater;
+    if (isDestroyed) {
+      return;
+    }
     const isDefaultUpdate = !!(outState && outState.isDefault);
     const ignoreDispatch = !!(outState && outState.ignoreDispatch);
     if (isDefaultUpdate && updater.cacheState) {
       return;
     }
     const nextState = outState ? outState.state : state;
+    if (nextState !== state && !updater.controlled) {
+      updater.version += 1;
+    }
+    const prevState = state;
+    const prevInstance = updater.current;
     updater.reducer = updateReducer;
     updater.state = nextState;
     updater.cacheState =
@@ -300,36 +373,75 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
-    updater.notify({ state: updater.state, type: '' });
+    updater.notify({
+      state: updater.state,
+      prevState,
+      instance: updater.current,
+      prevInstance,
+      type: '',
+      method: null
+    });
   }
 
-  function subscribe(dispatchCall: Dispatch): boolean {
-    const { dispatches, controlled: isControlled } = updater;
-    const copied = [...dispatches];
+  function notice(...dispatchCall: Dispatch[]) {
+    if (updater.isDestroyed) {
+      return;
+    }
+    const initializedAction = {
+      state: updater.state,
+      prevState: updater.state,
+      instance: updater.current,
+      prevInstance: updater.current,
+      type: '',
+      method: null
+    };
+    dispatchCall.forEach(call => {
+      call(initializedAction);
+    });
+  }
+
+  function subscribe(dispatchCall: Dispatch) {
+    const {
+      dispatches,
+      temporaryDispatches,
+      controlled: isControlled,
+      isDestroyed
+    } = updater;
+    if (isDestroyed) {
+      return;
+    }
+    const copied = [...dispatches, ...temporaryDispatches];
     const exist = copied.indexOf(dispatchCall) >= 0;
     if (exist) {
-      return false;
+      return;
     }
     if (isControlled) {
       updater.dispatches = [dispatchCall];
-      return false;
+      return;
     }
-    updater.dispatches = copied.concat(dispatchCall);
-    return true;
-  }
-
-  function notice(dispatchCall: Dispatch) {
-    dispatchCall({ state: updater.state, type: '' });
+    updater.temporaryDispatches.push(dispatchCall);
+    if (updater.dispatching) {
+      return;
+    }
+    updater.dispatches = [
+      ...updater.dispatches,
+      ...updater.temporaryDispatches
+    ];
+    updater.temporaryDispatches = [];
+    notice(...temporaryDispatches);
   }
 
   function disconnect(dispatchCall: Dispatch | undefined) {
     if (!dispatchCall) {
       updater.dispatches = [];
+      updater.temporaryDispatches = [];
       return;
     }
-    const { dispatches } = updater;
-    const copied = [...dispatches];
-    updater.dispatches = copied.filter(d => d !== dispatchCall);
+    const { dispatches, temporaryDispatches } = updater;
+    updater.dispatches = dispatches.filter(d => d !== dispatchCall);
+    updater.temporaryDispatches = temporaryDispatches.filter(
+      d => d !== dispatchCall
+    );
   }
 
   const agent = createProxy(defaultModel, {
@@ -339,7 +451,10 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
       ) {
-        return rebuildDispatchMethod<S, T>(updater, p, modelContextFactory);
+        return rebuildDispatchMethod<S, T>(updater, p, {
+          context: modelContextFactory,
+          methodsCache: updater.cacheMethods
+        });
       }
       return value;
     }
@@ -352,11 +467,23 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     getState(): S {
       return updater.state;
     },
-    getCurrent(): T {
+    getVersion() {
+      return updater.version;
+    },
+    getCurrent(runtime?: InstanceActionRuntime): T {
+      if (updater.isDestroyed) {
+        return updater.current;
+      }
       if (Array.isArray(updater.current)) {
         return updater.current.map((d, i) => {
           if (typeof d === 'function') {
-            return agent[i];
+            return runtime
+              ? rebuildDispatchMethod<S, T>(updater, i.toString(), {
+                  context: modelContextFactory,
+                  ...runtime,
+                  sourceTo: agent[i] as (...args: any[]) => any
+                })
+              : agent[i];
           }
           return d;
         }) as unknown as T;
@@ -366,10 +493,19 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       keys.forEach((key: keyof T) => {
         const value = result[key];
         if (typeof value === 'function') {
-          result[key] = agent[key];
+          result[key] = runtime
+            ? (rebuildDispatchMethod<S, T>(updater, key as string, {
+                context: modelContextFactory,
+                ...runtime,
+                sourceTo: agent[key] as (...args: any[]) => any
+              }) as T[typeof key])
+            : agent[key];
         }
       });
       return result;
+    },
+    getStoreInstance() {
+      return updater.current;
     },
     getListeners(): Dispatch[] {
       return updater.dispatches;
@@ -384,11 +520,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     tunnel(dispatchCall) {
       return {
         connect() {
-          const needNotice = subscribe(dispatchCall);
-          if (!needNotice) {
-            return;
-          }
-          notice(dispatchCall);
+          subscribe(dispatchCall);
         },
         disconnect() {
           disconnect(dispatchCall);
@@ -399,24 +531,23 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.dispatch = null;
       updater.dispatches = [];
       destroyDispatching(updater);
+      updater.temporaryDispatches = [];
       updater.state = defaultState;
       updater.cacheState = null;
       updater.notify = noop;
+      updater.isDestroyed = true;
       updater.cacheMethods = {};
       optimize.batchUpdate = undefined;
     },
     connect(dispatchCall) {
-      const needNotice = subscribe(dispatchCall);
-      if (!needNotice) {
-        return;
-      }
-      notice(dispatchCall);
+      subscribe(dispatchCall);
     },
     disconnect,
     optimize(batchUpdateCallback?: (callback: () => void) => void) {
       if (optimize.batchUpdate === batchUpdateCallback) {
         return;
       }
+      optimize.batchUpdate = undefined;
       optimize.batchUpdate = batchUpdateCallback;
     }
   };
@@ -440,6 +571,7 @@ export function staticFactory<T extends AirReducer<any, any>>(
     return reducer(s);
   } as StaticFactoryInstance<T>;
   replaceModel.effect = reducer.effect;
+  replaceModel.payload = reducer.payload;
   replaceModel.connection = reducer.creation();
   replaceModel.pipe = reducer.pipe;
   replaceModel.global = function self() {

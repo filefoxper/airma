@@ -1,8 +1,12 @@
 export type Action = {
   type: string;
+  method: null | ((...args: any[]) => any);
   state?: any;
   prevState?: any;
+  instance: any;
+  prevInstance: any;
   params?: any[];
+  payload?: unknown;
 };
 
 export type Dispatch = ((action: Action) => unknown) & { confirmed?: boolean };
@@ -43,6 +47,11 @@ export type AirReducer<S, T extends AirModelInstance> = (
   state: S
 ) => ValidInstance<S, T>;
 
+export interface InstanceActionRuntime {
+  methodsCache: Record<string, (...args: any[]) => any>;
+  middleWare?: (action: Action) => Action | null;
+}
+
 export interface Connection<
   S = any,
   T extends AirModelInstance = AirModelInstance
@@ -50,7 +59,9 @@ export interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
-  getCurrent(): T;
+  getCurrent(runtime?: InstanceActionRuntime): T;
+  getStoreInstance(): T;
+  getVersion(): number;
   getListeners(): Dispatch[];
   update: (
     reducer: AirReducer<S, T>,
@@ -85,16 +96,20 @@ export interface FirstActionWrap extends ActionWrap {
 
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
+  version: number;
+  isDestroyed: boolean;
+  isSubscribing: boolean;
   dispatching?: FirstActionWrap;
   current: T;
   controlled: boolean;
   reducer: AirReducer<S, T>;
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
+  temporaryDispatches: Dispatch[];
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;
-  notify: (action: Action) => void;
+  notify: (action: Action | null) => void;
 };
 
 export type UpdaterConfig = {
@@ -123,6 +138,7 @@ export type ModelFactoryStore<T> = {
 
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
   connection: Connection;
+  payload?: unknown;
   effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P
@@ -132,6 +148,7 @@ export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
 
 export type FactoryInstance<T extends AirReducer<any, any>> = T & {
   creation(updateConfig?: UpdaterConfig): Connection;
+  payload?: unknown;
   effect?: [(...params: any[]) => any, Record<string, any>?];
   pipe<P extends AirReducer<any, any>>(
     reducer: P

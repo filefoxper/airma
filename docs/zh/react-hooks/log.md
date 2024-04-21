@@ -8,3 +8,7 @@
 
 * 移除被废弃的 API.
 * 添加 API model, session, useLazyComponent
+
+## v 18.4.0
+
+* 添加来自 `@airma/react-state@18.4.0` 的 `useSignal` API。
