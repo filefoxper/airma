@@ -149,6 +149,7 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createStore(0).asGlobal();
+// `createStore(0).static()` is same with `createStore(0).asGlobal()`.
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -175,6 +176,63 @@ const Component = function Comp() {
 ```
 
 The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
+
+### A high performance usage about useSignal
+
+In `@airma/react-state@18.4.0`, a more simple and higher performance API `useSignal` is provided.
+
+```ts
+import {model} from '@airma/react-state';
+
+const counting = model(function countingModel(state:number){
+    return {
+        count: `mount: ${state}`,
+        increase:()=>count + 1,
+        decrease:()=>count - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, count);
+        }
+    };
+}).createStore().static();
+// Give initialized state later in component render time.
+......
+const Increase = memo(()=>{
+    // API `useSignal` returns a signal function,
+    // which can be called to get the newest instance from store.
+    // Only the render usage fields of this instance change makes component rerender.
+    // Here, only the action method `increase` from instance is required, and as the action method is stable with no change, that makes component never rerender.
+    const signal = counting.useSignal();
+    return <button onClick={signal().increase}>+</button>;
+});
+
+const Count = memo(()=>{
+    const signal = counting.useSignal();
+    return <span>{signal().count}</span>;
+});
+
+const Decrease = memo(()=>{
+    const signal = counting.useSignal();
+    return <button onClick={signal().decrease}>-</button>;
+});
+
+const Component = function Comp({defaultCount}:{defaultCount:number}) {
+    // API `useSignal` can initialize store state in render too.
+    // The difference with `useModel` is that `useSignal` only rerenders component when the render usage fields of instance changes.
+    counting.useSignal(defaultCount);
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+};
+```
+
+The `useSignal` API is even better than API `useSelector`, it computes out when to rerender component by the fields getting from instance automatically. And by using the `signal` function, it always provides a newest instance in usage point, so it can avoid stale data and zombie-children problems more effectively.
+
 
 ## Why support context store?
 

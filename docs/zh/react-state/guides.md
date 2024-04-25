@@ -474,7 +474,7 @@ if(!isNegative){
 
 useSignal API 返回的函数可通过调用 effect 方法添加由实例变更引起的组件渲染副作用。
 
-因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等任意位置。为了保持代码清晰，这里推荐在组件渲染区使用。
+因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等位置。为了保持代码清晰，这里推荐在组件渲染区使用。
 
 ```ts
 signal.effect(()=>{...})
@@ -786,5 +786,6 @@ const App = ()=>{
 
 * 尽量不要在子组件的 `useLayoutEffect` 中使用父组件 useSignal 返回的 signal 回调函数。因为 useSignal 渲染相关字段的统计算法就是在当前 useSignal 使用组件的 `useLayoutEffect` 阶段终止的，而子组件的 `useLayoutEffect` 通常先于当前组件的 `useLayoutEffect` 执行。这可能导致统计所得的渲染相关字段中混入部分并不希望关联渲染的脏字段。
 * 不要在**副作用**或**监听器**的回调函数中添加副作用与监听器。这会导致被入侵副作用或监听器异常。
+* 不要在**非 render 阶段**添加副作用与监听器。
 
 下一节[特性](/zh/react-state/feature)
