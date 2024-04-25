@@ -640,6 +640,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
         'can not add watchers, when watcher or effect is running.'
       );
     }
+    if (isEffectStageRef.current) {
+      throw new Error('can not add watchers after render.');
+    }
     const effectCallback = function effectCallback(
       i: T,
       action: SignalEffectAction
@@ -686,8 +689,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   ) {
     if (effectRuntime.isRunning) {
       throw new Error(
-        'can not add watchers, when watcher or effect is running.'
+        'can not add effects, when watcher or effect is running.'
       );
+    }
+    if (isEffectStageRef.current) {
+      throw new Error('can not add effects after render.');
     }
     const effectCallback = function effectCallback(
       i: T,

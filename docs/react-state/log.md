@@ -102,3 +102,7 @@
 * improve render performance.
 * support render actions.
 * add `useSginal` API
+
+## v18.4.1 2024-04-25
+
+ * limit `signal.effect` and `signal.watch` can only be used in render stage.

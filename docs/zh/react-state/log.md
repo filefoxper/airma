@@ -62,3 +62,7 @@
 * 提升渲染性能
 * 支持在 render 运行时使用行为方法。
 * 新增了 `useSginal` API
+
+## v18.4.1
+
+* 限定 signal.effect 和 signal.watch 只能在 render 阶段调用。
