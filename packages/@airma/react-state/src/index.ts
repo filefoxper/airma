@@ -475,9 +475,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       return;
     }
     packSignalEffects(currentAgent, action);
-    if (action.payload && action.payload.type === 'unblock') {
-      return;
-    }
     setAgent(currentAgent);
   };
   const persistDispatch = usePersistFn(dispatch);
