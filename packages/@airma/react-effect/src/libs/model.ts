@@ -1,4 +1,4 @@
-import { createKey, useSignal } from '@airma/react-state';
+import { createKey, useModel, useSignal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
@@ -169,7 +169,9 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
         : [model];
     })();
   const signal = useSignal(...(modelParams as [typeof model, SessionState<T>]));
-  const stableInstance = signal();
+  const stableInstance = useModel(
+    ...(modelParams as [typeof model, SessionState<T>])
+  );
   if (loaded && !stableInstance.state.loaded) {
     throw new Error(
       'This session is not loaded, you should remove "config.loaded" option.'

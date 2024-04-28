@@ -27,7 +27,7 @@
   "dependencies": {
     "@airma/react-effect": ">=18.4.0",
     "@airma/react-hooks-core": "^18.3.0",
-    "@airma/react-state": ">=18.4.0",
+    "@airma/react-state": ">=18.4.1",
     "react": ">=16.8.0"
   },
   "devDependencies": {
