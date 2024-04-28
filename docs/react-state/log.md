@@ -106,3 +106,7 @@
 ## v18.4.1 2024-04-25
 
  * limit `signal.effect` and `signal.watch` can only be used in render stage.
+
+ ## v18.4.2 2024-04-29
+
+ * fix bug about useModel, useSelector and useSignal can not subscribe the model actions dispatched in asynchronous time(this bug is from v18.4.0).

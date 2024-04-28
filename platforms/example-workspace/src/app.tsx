@@ -287,6 +287,10 @@ export default function App() {
   );
 
   const item = conditionSignal();
+  if(creating&&item.displayQuery.name!=='Mr'){
+      console.log(item.displayQuery);
+      item.changeDisplay({name:'Mr'})
+  }
   conditionSignal
     .effect(() => {
       console.log('effect of changeDisplay');

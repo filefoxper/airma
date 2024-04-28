@@ -1,7 +1,4 @@
 import {
-  ComponentType,
-  FC,
-  ReactNode,
   useRef,
   useEffect,
   useMemo,
@@ -9,19 +6,10 @@ import {
   createContext,
   createElement,
   useContext,
-  FunctionComponent,
   useLayoutEffect
 } from 'react';
-
 import { usePersistFn } from '@airma/react-hooks-core';
-import type {
-  AirModelInstance,
-  AirReducer,
-  Connection,
-  FactoryInstance,
-  InstanceActionRuntime,
-  Action
-} from './libs/type';
+import type { ComponentType, FC, ReactNode, FunctionComponent } from 'react';
 import {
   createModel,
   checkIfLazyIdentifyConnection,
@@ -30,7 +18,7 @@ import {
   getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy } from './libs/tools';
-import {
+import type {
   AirReducerLike,
   GlobalConfig,
   ModelAction,
@@ -39,6 +27,14 @@ import {
   SignalEffectAction,
   SignalWatcher
 } from './type';
+import type {
+  AirModelInstance,
+  AirReducer,
+  Connection,
+  FactoryInstance,
+  InstanceActionRuntime,
+  Action
+} from './libs/type';
 
 const realtimeInstanceMountProperty =
   '@@_airmaReactStateRealtimeInstancePropertyV18_@@';
@@ -221,15 +217,7 @@ function findConnection<S, T extends AirModelInstance>(
 
 function useInstanceActionRuntime(): InstanceActionRuntime {
   const methodsCacheRef = useRef({});
-  const isRenderRef = useRef(true);
-  isRenderRef.current = true;
-  useLayoutEffect(() => {
-    isRenderRef.current = false;
-  });
   const middleWare = usePersistFn((action: Action) => {
-    if (isRenderRef.current) {
-      return { ...action, payload: { type: 'block' } } as ModelAction;
-    }
     return action;
   });
   return { methodsCache: methodsCacheRef.current, middleWare };
@@ -332,7 +320,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const prevSelectionRef = useRef<null | string[]>(null);
   const signalEffectsRef = useRef<null | Array<SignalEffect<T>>>(null);
   const signalWatchesRef = useRef<null | Array<SignalWatcher<T>>>(null);
-  const blockActionsRef = useRef<null | Array<ModelAction>>(null);
   const effectsRef = useRef<null | Array<{
     callback: SignalEffect<T>;
     instance: T;
@@ -454,11 +441,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   signalEffectsRef.current = signalStale.effects;
   signalWatchesRef.current = signalStale.watches;
 
-  const pushBlockAction = function pushBlockAction(action: ModelAction) {
-    blockActionsRef.current = blockActionsRef.current || [];
-    blockActionsRef.current.push(action);
-  };
-
   const dispatch = (currentAction: Action) => {
     const action = currentAction as ModelAction;
     if (unmountRef.current) {
@@ -466,18 +448,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
     const currentVersion = current.getVersion();
     const currentAgent = current.getCurrent(runtime);
-    if (action.payload && action.payload.type === 'block') {
-      pushBlockAction(action);
-      return;
-    }
     runSignalWatches(currentAgent, action);
-    if (
-      updateVersionRef.current === currentVersion &&
-      (!action.payload || action.payload.type !== 'unblock')
-    ) {
+    if (updateVersionRef.current === currentVersion && !action.payload) {
       return;
     }
-    if (!action.payload || action.payload.type !== 'unblock') {
+    if (!action.payload) {
       updateVersionRef.current = currentVersion;
     }
     if (signal && !openSignalRef.current) {
@@ -523,16 +498,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   const tunnel = useMemo(() => current.tunnel(persistDispatch), []);
 
-  const processBlockActions = function processBlockActions() {
-    if (!blockActionsRef.current) {
-      return;
-    }
-    blockActionsRef.current.forEach(action => {
-      dispatch({ ...action, payload: { type: 'unblock' } } as ModelAction);
-    });
-    blockActionsRef.current = null;
-  };
-
   const processEffects = function processEffects() {
     const effects = effectsRef.current;
     if (!effects) {
@@ -555,7 +520,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   };
 
   useEffect(() => {
-    processBlockActions();
     tunnel.connect();
     processEffects();
     return () => {
@@ -584,7 +548,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       prevSelectionRef.current = null;
       signalEffectsRef.current = null;
       signalWatchesRef.current = null;
-      blockActionsRef.current = null;
       if (connection == null) {
         current.destroy();
       }
