@@ -78,3 +78,7 @@
 # v18.4.0
 
 * improve render performance.
+
+# v18.4.2
+
+* fix bug about the trigger action from `useSession` and `useQuery` is not working problem.

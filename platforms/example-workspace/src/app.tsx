@@ -164,33 +164,29 @@ const Creating = memo(
       age: 10
     });
 
-    const [{ variables }, query] = fetchSession.useSession();
+    const [, query] = fetchSession.useSession();
 
-    const [q] = variables ?? [];
-
-    const [, save] = useMutation(
+    const [sessionState, save] = useMutation(
       (u: Omit<User, 'id'>) =>
         new Promise((resolve, reject) => {
-          setTimeout(() => {
             resolve(
-              rest('/api/user')
-                .setBody(u)
-                .post<null>()
-                .then(() => true)
+                rest('/api/user')
+                    .setBody(u)
+                    .post<null>()
+                    .then(() => true)
             );
-          }, 1000);
         }),
       {
         variables: [user],
-        strategy: [
-          Strategy.once(),
-          Strategy.success(() => {
-            query();
-            onClose();
-          })
-        ]
+        strategy: [Strategy.once()]
       }
     );
+
+    useResponse.useSuccess(() => {
+      console.log('save success');
+      query();
+      onClose();
+    }, sessionState);
 
     return (
       <div>
@@ -279,11 +275,6 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   );
 }
 
-const Test = memo(({ signal }: { signal: any }) => {
-  console.log('render test');
-  return null;
-});
-
 export default function App() {
   const conditionSignal = store.useSignal({
     valid: defaultCondition,
@@ -296,8 +287,9 @@ export default function App() {
   );
 
   const item = conditionSignal();
-  if (item.creating) {
-    console.log('is creating', item.displayQuery.name);
+  if(creating&&item.displayQuery.name!=='Mr'){
+      console.log(item.displayQuery);
+      item.changeDisplay({name:'Mr'})
   }
   conditionSignal
     .effect(() => {
@@ -310,7 +302,6 @@ export default function App() {
     })
     .of(i => [i.displayQuery.name, i.displayQuery.username]);
 
-  console.log('render...', queryData?.name);
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],

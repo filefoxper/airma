@@ -87,3 +87,7 @@
 ## v18.4.0
 
 * 提升渲染性能。
+
+## v18.4.2
+
+* 修复了由 @airma/react-state 升级导致的 useQuery/useSession 手动 trigger 失效问题。

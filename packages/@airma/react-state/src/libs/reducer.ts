@@ -1,4 +1,5 @@
-import {
+import { createProxy, noop, shallowEqual, toMapObject } from './tools';
+import type {
   Action,
   AirModelInstance,
   AirReducer,
@@ -18,7 +19,6 @@ import {
   ModelContextFactory,
   InstanceActionRuntime
 } from './type';
-import { createProxy, noop, shallowEqual, toMapObject } from './tools';
 
 const lazyIdentify = {};
 
@@ -149,7 +149,7 @@ function generateNotification<S, T extends AirModelInstance>(
       return;
     }
     while (updater.dispatching) {
-      const wrap = unshiftAction();
+      const wrap = updater.dispatching;
       if (wrap) {
         const { dispatches } = updater;
         const dispatchCallbacks = [...dispatches];
@@ -168,6 +168,7 @@ function generateNotification<S, T extends AirModelInstance>(
           updater.dispatching = undefined;
           throw e;
         }
+        unshiftAction();
       } else {
         updater.dispatching = undefined;
       }

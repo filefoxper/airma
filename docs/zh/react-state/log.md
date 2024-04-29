@@ -66,3 +66,7 @@
 ## v18.4.1
 
 * 限定 signal.effect 和 signal.watch 只能在 render 阶段调用。
+
+## v18.4.2
+
+* 修复了自 v18.4.0 版本开始 model 无法订阅异步阶段发生的 action 问题。
