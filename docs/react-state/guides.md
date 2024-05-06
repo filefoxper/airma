@@ -429,7 +429,7 @@ A signal callback provides a way for adding effects and watchers to the model in
 
 ### effect
 
-Signal.effect is a method for adding effects to the signal. It accepts a callback function, and calls this function when signal instance change rerenders component.
+Signal.effect is a method for adding effects to the signal. It accepts a callback function, and calls this function when signal instance change renders component.
 
 Signal.effect is not a hook, it can be used in a loop or a condition scope, but not in another effect or watcher callback. It is recommended to used in a component render time.
 

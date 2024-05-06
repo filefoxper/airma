@@ -412,18 +412,77 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     watches.forEach(watcher => {
       const { on, of: ofs } = watcher;
       const actionMatched = !on.length ? true : signalAction.on(on);
-      const dataMatched = !ofs.length
-        ? true
-        : ofs
-            .map(of =>
-              shallowEq(
-                of(signalAction.instance),
-                of(signalAction.prevInstance)
+      const dataMatched =
+        !ofs.length ||
+        (signalAction.payload && signalAction.payload.type === 'initialize')
+          ? true
+          : ofs
+              .map(of =>
+                shallowEq(
+                  of(signalAction.instance),
+                  of(signalAction.prevInstance)
+                )
               )
-            )
-            .some(re => !re);
+              .some(re => !re);
       if (actionMatched && dataMatched) {
         watcher(ins, signalAction);
+      }
+    });
+  };
+
+  const runSignalEffects = function runSignalEffects(
+    ins: T,
+    action: ModelAction
+  ) {
+    function getDispatchId(
+      m: ((...args: any[]) => any) & { dispatchId?: (...args: any[]) => any }
+    ) {
+      return m.dispatchId || m;
+    }
+    const effects = signalEffectsRef.current;
+    if (effects == null) {
+      return;
+    }
+    if (!action.type && !action.payload) {
+      return;
+    }
+    const signalAction = {
+      ...action,
+      on(
+        ...actionMethods: (
+          | Array<(...args: any[]) => any>
+          | ((...args: any[]) => any)
+        )[]
+      ) {
+        const methods = actionMethods.flat();
+        if (!methods.length) {
+          return true;
+        }
+        if (action.method == null) {
+          return false;
+        }
+        return methods
+          .map(getDispatchId)
+          .includes(getDispatchId(action.method));
+      }
+    };
+    effects.forEach(effect => {
+      const { on, of: ofs } = effect;
+      const actionMatched = !on.length ? true : signalAction.on(on);
+      const dataMatched =
+        !ofs.length ||
+        (signalAction.payload && signalAction.payload.type === 'initialize')
+          ? true
+          : ofs
+              .map(of =>
+                shallowEq(
+                  of(signalAction.instance),
+                  of(signalAction.prevInstance)
+                )
+              )
+              .some(re => !re);
+      if (actionMatched && dataMatched) {
+        effect(ins, signalAction);
       }
     });
   };
@@ -538,7 +597,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     };
     runSignalWatches(agent, startAction);
     if (prevSelectionRef.current != null && prevSelectionRef.current.length) {
-      packSignalEffects(agent, startAction);
+      runSignalEffects(agent, startAction);
     }
     return () => {
       unmountRef.current = true;

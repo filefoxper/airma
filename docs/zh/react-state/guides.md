@@ -474,7 +474,7 @@ if(!isNegative){
 
 useSignal API 返回的函数可通过调用 effect 方法添加由实例变更引起的组件渲染副作用。
 
-因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等位置。为了保持代码清晰，这里推荐在组件渲染区使用。
+因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等位置。
 
 ```ts
 signal.effect(()=>{...})
@@ -525,9 +525,11 @@ if(!isNegative){
 }
 ```
 
+在 useSignal 首次调用时，通过 effect 加载的数据变更副作用函数会直接运行。如：`effect(callback)` 或 `effect(callback).of((instance)=>any[])`
+
 #### effect().of()
 
-通过调用 effect 副作用返回的限制方法 of，可限制副作用回调函数的执行时机（`effect().of((instance)=>any[])`）。
+通过调用 effect 副作用返回的限制方法 of，可限制副作用回调函数监听的数据（`effect().of((instance)=>any[])`）。
 
 of 方法的入参为变更前（或后）的实例对象，要求返回一个用于对比变更前后是否一致的数组对象，当这两个数组对象浅相等时，则不会执行当前的副作用回调函数。
 
@@ -582,9 +584,11 @@ countingSignal.effect(()=>{
 
 #### effect().on()
 
-通过调用 effect 副作用返回的限制方法 on，也可以限制副作用回调函数的执行时机（`effect().on(...actionMethods)`）。
+通过调用 effect 副作用返回的限制方法 on，可以限制副作用监听的行为方法（`effect().on(...actionMethods)`）。
 
 on 方法可接受多个行为方法作为行为限制参数。当被调用行为方法引起当前组件渲染，且被调用方法为限制方法之一时，会执行当前副作用回调函数。
+
+与 `effect()` 或 `effect().of()` 不同，使用 on 方法的副作用只有在其监听的行为方法发生时才会执行，useSignal 的首次加载并不会执行使用了 on 方法的副作用。
 
 ```ts
 const {action1, action2} = signal();
@@ -678,6 +682,8 @@ countingSignal.watch(()=>{
     console.log(`count changed to ${countingSignal().count}`);
 });
 ```
+
+在 useSignal 首次调用时，通过 watch 加载的数据变更监听器会直接运行。如：`watch(callback)` 或 `watch(callback).of((instance)=>any[])`。
 
 #### watch().of()
 
