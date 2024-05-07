@@ -110,3 +110,8 @@
  ## v18.4.2 2024-04-29
 
  * fix bug about useModel, useSelector and useSignal can not subscribe the model actions dispatched in asynchronous time(this bug is from v18.4.0).
+
+ ## v18.4.3 2024-05-08
+
+ * fix problem about signal.watch does not run at the first time.
+ * fix problem about signal.effect does not run at the first time.

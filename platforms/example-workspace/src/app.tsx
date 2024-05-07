@@ -287,15 +287,14 @@ export default function App() {
   );
 
   const item = conditionSignal();
-  if(creating&&item.displayQuery.name!=='Mr'){
-      console.log(item.displayQuery);
-      item.changeDisplay({name:'Mr'})
-  }
+    console.log(item.displayQuery);
+  // if(creating&&item.displayQuery.name!=='Mr'){
+  //     item.changeDisplay({name:'Mr'})
+  // }
   conditionSignal
     .effect(() => {
       console.log('effect of changeDisplay');
-    })
-    .on(item.changeDisplay);
+    }).of(i => [i.displayQuery.name, i.displayQuery.username]);
   conditionSignal
     .watch(() => {
       console.log('watch of changeDisplay name and username');
