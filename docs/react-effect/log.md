@@ -82,3 +82,8 @@
 # v18.4.2
 
 * fix bug about the trigger action from `useSession` and `useQuery` is not working problem.
+
+# v18.4.3
+
+* add `static` option to `Strategy.cache`.
+* add `static` method to `sessionStore`.

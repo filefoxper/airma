@@ -437,6 +437,7 @@ function cache(option?: {
   key?: (vars: any[]) => string;
   staleTime?: number;
   capacity?: number;
+  static?: boolean;
 }): StrategyType {
   function defaultKeyBy(vars: any[]) {
     return JSON.stringify(vars);
@@ -444,7 +445,8 @@ function cache(option?: {
   const {
     key: keyBy = defaultKeyBy,
     staleTime,
-    capacity: cp = 1
+    capacity: cp = 1,
+    static: isStatic
   } = option || {};
   return function cacheStrategy(requies) {
     const { getSessionState, runner, variables } = requies;
@@ -454,8 +456,7 @@ function cache(option?: {
     const cacheData = cacheOperation(cacheInState, cp).get(variableKey);
     if (
       cacheData &&
-      staleTime &&
-      now() < staleTime + cacheData.lastUpdateTime
+      ((staleTime && now() < staleTime + cacheData.lastUpdateTime) || isStatic)
     ) {
       const cacheState: SessionState = {
         ...currentState,

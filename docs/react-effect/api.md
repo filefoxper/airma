@@ -201,7 +201,7 @@ const Strategy: {
 
 ### Strategy.cache
 
-Used for opening SWR query mode. When the query key (default `JSON.stringify(variables)`) can be found in cache, the cache data can be picked out as [session state](/react-effect/concepts?id=session-state).data immediately. In that case, if the **staleTime** is setted, the execution skips.
+Used for opening SWR query mode. When the query key (default `JSON.stringify(variables)`) can be found in cache, the cache data can be picked out as [session state](/react-effect/concepts?id=session-state).data immediately. In that case, if the **staleTime** is set, the execution skips.
 
 If the query key is not in cache data, it store execution result with this key into cache. 
 
@@ -210,6 +210,7 @@ If the query key is not in cache data, it store execution result with this key i
 * **op.key** - It is an optional callback, accept executing variables, returns a string value as key for every cache data.
 * **op.staleTime** - It is an optional millisecond number value, to describe the time for caching a data.
 * **op.capacity** - It is an optional number value, to describe how many record can be cached.
+* **op.static** - It is an optional boolean value, if it is true, the session execution always fetches data once, and then uses the cached data. It is useful for fetching a static data.
 
 ### Strategy.debounce
 
@@ -526,6 +527,7 @@ type StaticStoreApi = {
 
 type StoreApi = {
   asGlobal(): StaticStoreApi;
+  static(): StaticStoreApi; // same as `asGlobal`
   provideTo<P extends object>(
     component: ComponentType<P>
   ):ComponentType<P>;

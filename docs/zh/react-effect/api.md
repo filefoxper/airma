@@ -221,6 +221,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 * **op.key** - 可选回调函数。用于生成当前异步操作的键，可接受当前运行的 variables 做参数。如不设置，默认以每次运行时的 variables 异步函数参数的 *JSON.Stringify* 值做键。
 * **op.staleTime** - 可选时间，单位毫秒。用于设置单条记录缓存有效期。每次异步操作，策略会删除过期缓存记录。
 * **op.capacity** - 可选数字，缓存记录容量。当缓存记录数大于等于设定容量时，策略会清除早期记录以满足容量限定，默认值为 1。
+* **op.static** - 可选，boolean 类型。用于设置是否为静态缓存。静态缓存不会被清除，且缓存记录值不会被更新。
 
 ### Strategy.debounce
 
@@ -538,6 +539,7 @@ type StaticStoreApi = {
 
 type StoreApi = {
   asGlobal(): StaticStoreApi;
+  static(): StaticStoreApi; // 与 asGlobal 相同
   provideTo<P extends object>(
     component: ComponentType<P>
   ):ComponentType<P>;
