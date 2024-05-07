@@ -665,6 +665,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
       key,
       with: withKeys,
       asGlobal: globalApi,
+      static: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
       provide: storeApiProvide,

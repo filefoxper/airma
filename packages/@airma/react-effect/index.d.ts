@@ -394,6 +394,7 @@ export declare const Strategy: {
     key?: (vars: V) => string;
     staleTime?: number;
     capacity?: number;
+    static?: boolean;
   }) => StrategyType<T, V>;
   debounce: <T = any, V extends any[] = any[]>(
     op: { duration: number; lead?: boolean } | number
@@ -544,12 +545,22 @@ declare interface QueryStoreApi<D extends PromiseCallback<any>>
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
   };
+  static: () => {
+    useQuery: UseQueryShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
 }
 
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useMutation: UseMutationShort<D>;
   asGlobal: () => {
+    useMutation: UseMutationShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
+  static: () => {
     useMutation: UseMutationShort<D>;
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
