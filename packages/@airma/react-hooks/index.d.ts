@@ -13,11 +13,9 @@ export {
   createKey,
   useModel,
   useSignal,
-  useStaticModel,
   useControlledModel,
   useSelector,
-  model,
-  useRealtimeInstance
+  model
 } from '@airma/react-state';
 
 export {
@@ -34,7 +32,7 @@ export {
 } from '@airma/react-effect';
 
 export declare function provide(
-  keys: ModelKeys
+  modelOrSessionKeyOrStores: ModelKeys
 ): <P extends Record<string, any>>(
   component: FunctionComponent<P> | NamedExoticComponent<P>
 ) => typeof component;

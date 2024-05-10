@@ -8,6 +8,9 @@ import {
   LazyExoticComponent,
   ExoticComponent
 } from 'react';
+import type { SessionRequest } from './src/libs/type';
+
+declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -20,7 +23,13 @@ declare interface AbstractSessionState {
   error?: any;
   isError: boolean;
   isFetching: boolean;
+  /**
+   * @deprecated
+   */
   fetchingKey?: unknown;
+  /**
+   * @deprecated
+   */
   finalFetchingKey?: unknown;
   abandon: boolean;
   triggerType: undefined | TriggerType;
@@ -71,14 +80,12 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
   effect?: (state: SessionState<T, V>, prevState: SessionState<T, V>) => void;
 }
 
-declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
-
 export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { version?: number }) => {
+  (st: SessionState) => {
     state: SessionState;
-    version: number;
-    setState: (s: SessionState) => SessionState & { version?: number };
-    trigger: () => SessionState & { version?: number };
+    setState: (s: SessionState) => SessionState;
+    trigger: () => SessionState;
+    execute: (variables: any[]) => SessionState;
   }
 > & {
   payload: [E, { sessionType?: SessionType }];
@@ -314,27 +321,6 @@ export declare const useResponse: {
     process: (state: ImportantVariable<T>) => any,
     sessionState: T
   ): void;
-  /**
-   * @deprecated
-   * @param process
-   * @param sessionState
-   */
-  success: <T extends SessionState>(
-    process: (
-      data: SuccessStateOf<T>['data'],
-      sessionState: SuccessStateOf<T>
-    ) => any,
-    sessionState: T
-  ) => void;
-  /**
-   * @deprecated
-   * @param process
-   * @param sessionState
-   */
-  error: <T extends SessionState>(
-    process: (error: unknown, sessionState: ImportantVariable<T>) => any,
-    sessionState: T
-  ) => void;
   useSuccess: <T extends SessionState>(
     process: (
       data: SuccessStateOf<T>['data'],
@@ -347,20 +333,6 @@ export declare const useResponse: {
     sessionState: T
   ) => void;
 };
-
-/**
- * @deprecated
- */
-export declare const SessionProvider: FC<
-  | {
-      keys: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
->;
 
 export declare const Provider: FC<
   | {
@@ -375,10 +347,6 @@ export declare const Provider: FC<
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
-  /**
-   * @deprecated
-   */
-  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: SessionType

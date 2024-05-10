@@ -541,25 +541,6 @@ useResponse.useFailure = function useResponseFailure(
   }, [sessionState.round]);
 };
 
-/**
- * @deprecated
- * @param process
- * @param sessionState
- */
-useResponse.success = useResponse.useSuccess;
-
-/**
- * @deprecated
- * @param process
- * @param sessionState
- */
-useResponse.error = useResponse.useFailure;
-
-/**
- * @deprecated
- */
-export const SessionProvider = ModelProvider;
-
 export const Provider = ModelProvider;
 
 export const provide = provideKeys;
