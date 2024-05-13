@@ -71,6 +71,12 @@ const userQuery = (validQuery: Condition) =>
           resolve(d);
         }, 700);
       }) as Promise<User[]>;
+    },e=>{
+        return new Promise((resolve, reject)=>{
+            setTimeout(()=>{
+                reject(e);
+            },700)
+        }) as Promise<User[]>
     });
 
 export const fetchSession = session(userQuery, 'query')

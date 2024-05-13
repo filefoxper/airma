@@ -96,3 +96,7 @@
 
 * 为 Strategy.cache 策略增加了 static 字段，用于表示静态数据。
 * 为 store 增加了 `static` 方法，用于定义静态库。
+
+## v18.4.4
+
+* 修复了 Strategy.cache 缓存查询失败时未回滚数据的问题。
