@@ -15,6 +15,11 @@ const users: User[] = Array.from({ length: 15 }).map((d, i) => ({
   age: casual.integer(10, 40)
 }));
 
+declare global {
+  // eslint-disable-next-line no-var,vars-on-top
+  var ex: number | undefined;
+}
+
 @request('/api/user')
 export default class UserRoute {
   @get('/list')
@@ -29,6 +34,15 @@ export default class UserRoute {
     );
     if (invalid) {
       res.status(500).send(`There is valid query key: ${invalid}`);
+      return;
+    }
+    const n = query.name as string;
+    if ((n || '').indexOf('Mr') >= 0) {
+      global.ex = (global.ex ?? 0) + 1;
+    }
+    if ((global.ex ?? 0) >= 3) {
+      global.ex = 0;
+      res.status(500).send(`There is valid query key: ${'name'}`);
       return;
     }
     const result = users

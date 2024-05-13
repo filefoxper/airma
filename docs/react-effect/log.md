@@ -87,3 +87,7 @@
 
 * add `static` option to `Strategy.cache`.
 * add `static` method to `sessionStore`.
+
+# v18.4.4
+
+* fix problem about when `Strategy.cache` works failed, the temporary data can not be rollback.
