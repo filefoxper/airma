@@ -15,6 +15,7 @@ declare type SessionType = 'query' | 'mutation';
 
 declare interface AbstractSessionState {
   data: unknown;
+  stale?: { data: unknown };
   variables: any[] | undefined;
   error?: any;
   isError: boolean;

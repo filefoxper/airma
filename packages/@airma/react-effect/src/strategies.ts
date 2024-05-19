@@ -465,14 +465,16 @@ function cache(option?: {
       };
       return Promise.resolve(cacheState);
     }
-    const staleData = getSessionState().data;
     return runner(c => {
       return cacheData && (!staleTime || staleTime < 0)
         ? { ...c, data: cacheData.data }
         : c;
     }).then(next => {
       if (next.isError) {
-        return { ...next, data: staleData };
+        return {
+          ...next,
+          data: next.stale ? next.stale.data : next.data
+        };
       }
       const nextKey = keyBy(next.variables || []);
       const { maxCacheCapacity } = getSessionState();

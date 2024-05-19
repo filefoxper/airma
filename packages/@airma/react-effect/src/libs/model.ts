@@ -12,17 +12,20 @@ export function effectModel(
   state: SessionState & { request?: SessionRequest }
 ) {
   const { request, ...rest } = state;
-  const mergeVersion = (s: SessionState) => {
+  const mergeVersion = (
+    s: SessionState
+  ): SessionState & { request?: SessionRequest } => {
     return { ...s, request, uniqueKey: state.uniqueKey };
   };
-  const mergeFetchVersion = (s: SessionState) => {
+  const mergeFetchVersion = (s: SessionState): SessionState => {
     if (s.isFetching) {
-      return s;
+      return { ...s, stale: state.stale || { data: state.data } };
     }
     return {
       ...s,
       fetchVersion: (state.fetchVersion || 0) + 1,
-      round: state.round + 1
+      round: state.round + 1,
+      stale: undefined
     };
   };
   const requestVersion = request ? request.version : 0;
