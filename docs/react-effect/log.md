@@ -91,3 +91,7 @@
 # v18.4.4
 
 * fix problem about when `Strategy.cache` works failed, the temporary data can not be rollback.
+
+# v18.4.5
+
+* fix problem about when `Strategy.cache` works failed, the rollback temporary data is not correct. 

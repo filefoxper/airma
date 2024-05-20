@@ -66,6 +66,7 @@ type SessionCache = [string, { data: any; lastUpdateTime: number }];
 
 export interface AbstractSessionState {
   data: unknown;
+  stale?: { data: unknown };
   variables: any[] | undefined;
   error?: any;
   isError: boolean;
