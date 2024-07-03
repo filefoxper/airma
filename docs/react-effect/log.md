@@ -94,4 +94,8 @@
 
 # v18.4.5
 
-* fix problem about when `Strategy.cache` works failed, the rollback temporary data is not correct. 
+* fix problem about when `Strategy.cache` works failed, the rollback temporary data is not correct.
+
+# v18.4.6
+
+* fix problem about `Strategy.response.failure` not work.

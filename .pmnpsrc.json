@@ -3,12 +3,12 @@
   "publishable": true,
   "buildByDependencies": false,
   "private": false,
-  "createWithReadme": true,
-  "git": true,
-  "useOldDefineName": false,
-  "plugins": [
-    "@pmnps/plugin-typescript",
-    "@pmnps/plugin-dependencies",
-    "@pmnps/plugin-vscode-workspace"
-  ]
+  "plugins": ["@pmnps/plugin-publish", "@pmnps/plugin-vscode-workspace"],
+  "name": "airma",
+  "projectType": "monorepo",
+  "useGit": true,
+  "useCommandHelp": true,
+  "usePerformanceFirst": false,
+  "useRefreshAfterInstall": false,
+  "registry": "https://registry.npmjs.org/"
 }
