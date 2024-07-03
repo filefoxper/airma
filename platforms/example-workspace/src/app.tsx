@@ -293,33 +293,22 @@ export default function App() {
   );
 
   const item = conditionSignal();
-    console.log(item.displayQuery);
   // if(creating&&item.displayQuery.name!=='Mr'){
   //     item.changeDisplay({name:'Mr'})
   // }
-  conditionSignal
-    .effect(() => {
-      console.log('effect of changeDisplay');
-    }).of(i => [i.displayQuery.name, i.displayQuery.username]);
-  conditionSignal
-    .watch(() => {
-      console.log('watch of changeDisplay name and username');
-    })
-    .of(i => [i.displayQuery.name, i.displayQuery.username]);
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],
     strategy: [
-      Strategy.cache({
-        capacity: 5,
-        key: JSON.stringify
-      }),
       Strategy.memo(),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
-        console.log('name', v.name);
-      })
+        console.log('success', v.name);
+      }),
+        Strategy.response.failure((e)=>{
+            console.log('error',e);
+        })
     ]
   });
 

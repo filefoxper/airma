@@ -377,7 +377,7 @@ response.failure = function responseFailure<T>(
     runtimeCache.set(error, true);
     return runner();
   };
-  sc.response = function effectCallback(state) {
+  sc.effect = function effectCallback(state) {
     if (!state.isError || state.isFetching) {
       return;
     }
