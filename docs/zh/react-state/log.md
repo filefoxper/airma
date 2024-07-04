@@ -74,3 +74,8 @@
 ## v18.4.3
 
 * 修复 signal.effect 和 signal.watch 无法在初始化阶段运行回调函数的问题。
+
+## v18.4.4
+
+ * **注意**：因接口设计合理性问题，去除 signal.effect 和 signal.watch 功能。
+ * 新增 signal.useEffect 功能，以方便监听模型实例变化。

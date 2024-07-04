@@ -470,17 +470,9 @@ if(!isNegative){
 }
 ```
 
-### signal.effect
+### signal.useEffect
 
-useSignal API 返回的函数可通过调用 effect 方法添加由实例变更引起的组件渲染副作用。
-
-因为 effect 方法并非 hook 函数，所以可以添加在诸如 if 逻辑区间、循环区间等位置。
-
-```ts
-signal.effect(()=>{...})
-```
-
-例子：
+通过 `signal.useEffect` API 可对模型添加行为副作用，当模型实例中的行为方法被调用时，会触发副作用回调。
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -488,166 +480,28 @@ import {useSignal} from '@airma/react-state';
 const counting = (state:number)=>({
     count: state,
     isNegative: state<0,
-    increase(){       
+    increase(){
         return state+1;
     },
     decrease(){
-        return state-1;       
+        return state-1;
     }
 });
 
 const countingSignal = useSignal(counting, props.defaultCount??0);
 
 const {
-    // 渲染相关字段
     isNegative,
-    // 渲染相关字段
-    count,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    decrease,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    increase
-} = countingSignal();
-
-// 使用 signal.effect 添加实例变更引起的组件渲染副作用
-countingSignal.effect(()=>{
-    console.log(`isNegative changed to ${isNegative}`);
-    console.log(`count changed to ${countingSignal().count}`);
-});
-
-if(!isNegative){
-    // 在 if 逻辑中添加副作用
-    countingSignal.effect(()=>{
-        ......;
-    });
-}
-```
-
-在 useSignal 首次调用时，通过 effect 加载的数据变更副作用函数会直接运行。如：`effect(callback)` 或 `effect(callback).of((instance)=>any[])`
-
-#### effect().of()
-
-通过调用 effect 副作用返回的限制方法 of，可限制副作用回调函数监听的数据（`effect().of((instance)=>any[])`）。
-
-of 方法的入参为变更前（或后）的实例对象，要求返回一个用于对比变更前后是否一致的数组对象，当这两个数组对象浅相等时，则不会执行当前的副作用回调函数。
-
-```ts
-signal.effect(()=>{...}).of((instance)=>[instance.x, instance.y]);
-```
-
-例子：
-
-```ts
-import {useSignal} from '@airma/react-state';
-
-const counting = (state:number)=>({
-    count: state,
-    isNegative: state<0,
-    countSymbol: state<0? '-' : '+',
-    increase(){       
-        return state+1;
-    },
-    decrease(){
-        return state-1;       
-    }
-});
-
-const countingSignal = useSignal(counting, props.defaultCount??0);
-
-const {
-    // 渲染相关字段
-    count,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    decrease,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    increase
-} = countingSignal();
-
-// 添加副作用
-countingSignal.effect(()=>{
-    // countSymbol 字段只在 effect 回调函数中被使用，因此不会被添加到渲染相关字段中。
-    console.log(`countSymbol changed to ${countingSignal().countSymbol}`);
-    console.log(`count changed to ${countingSignal().count}`);
-}).of((instance)=>{
-    // 只有 isNegative 字段值被加入副作用执行对比数组。
-    // 因此，只有当变更前后 `isNegative` 字段值不一致时才会执行副作用回调函数。
-    // 通过 of 方法参数实例获取的字段会被强制添加到渲染相关字段中。
-    return [instance.isNegative];
-});
-```
-
-**注意：当使用 of 方法入参实例对象上的字段时，该字段会被强制添加到渲染相关字段中，因此当该字段发生变更时，也会触发组件重新渲染。**
-
-#### effect().on()
-
-通过调用 effect 副作用返回的限制方法 on，可以限制副作用监听的行为方法（`effect().on(...actionMethods)`）。
-
-on 方法可接受多个行为方法作为行为限制参数。当被调用行为方法引起当前组件渲染，且被调用方法为限制方法之一时，会执行当前副作用回调函数。
-
-与 `effect()` 或 `effect().of()` 不同，使用 on 方法的副作用只有在其监听的行为方法发生时才会执行，useSignal 的首次加载并不会执行使用了 on 方法的副作用。
-
-```ts
-const {action1, action2} = signal();
-signal.effect(()=>{...}).on(action1, action2);
-```
-
-例子：
-
-```ts
-import {useSignal} from '@airma/react-state';
-
-const counting = (state:number)=>({
-    count: state,
-    isNegative: state<0,
-    increase(){       
-        return state+1;
-    },
-    decrease(){
-        return state-1;       
-    },
-    reset(){
-        return 0;
-    }
-});
-
-const countingSignal = useSignal(counting, props.defaultCount??0);
-
-const {
-    // 渲染相关字段
-    count,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    decrease,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
     increase,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    reset
+    decrease
 } = countingSignal();
 
-// 添加副作用
-countingSignal.effect(()=>{
-    // 当被限制的行为方法 `increase` 或 `decrease` 被调用，且造成当前组件渲染时，才会执行副作用回调函数。
-    console.log('This effect is called only when `increase` or `decrease` action is dispatched.');
-}).on(increase, decrease);
+countingSignal.useEffect(()=>{
+    console.log('countingSignal 所有行为方法的副作用');
+});
 ```
 
-### signal.watch
-
-useSignal API 返回的函数可通过调用 watch 方法添加对模型实例变更的直接监听器。
-
-其用法与 signal.effect 类似，但 watch 方法的回调函数会在每次实例变更时被调用，与组件是否重新渲染无关。
-
-```ts   
-signal.watch(()=>{...})
-```
-
-例子：
+通过使用 `signal.useEffect` 返回的 onActions 方法可过滤监听部分行为方法。
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -655,87 +509,30 @@ import {useSignal} from '@airma/react-state';
 const counting = (state:number)=>({
     count: state,
     isNegative: state<0,
-    increase(){       
+    increase(){
         return state+1;
     },
     decrease(){
-        return state-1;       
+        return state-1;
     }
 });
 
 const countingSignal = useSignal(counting, props.defaultCount??0);
 
 const {
-    // 渲染相关字段
     isNegative,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    decrease,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    increase
+    increase,
+    decrease
 } = countingSignal();
 
-// 添加监听器
-countingSignal.watch(()=>{
-    // 即便唯一的渲染相关字段值 `isNegative` 没有发生变更，组件也没有重新渲染，只要实例发生变更，监听器回调函数依然会被执行。
-    console.log(`count changed to ${countingSignal().count}`);
+countingSignal.useEffect(()=>{
+    console.log('countingSignal increase 行为方法的副作用');
+    console.log(`count: ${countingSignal().count}`);
+}).onActions((instance)=>{
+    // instance 为当前模型实例，从模型实例中获取并返回需要监听的行为方法数组。
+    return [instance.increase];
 });
 ```
-
-在 useSignal 首次调用时，通过 watch 加载的数据变更监听器会直接运行。如：`watch(callback)` 或 `watch(callback).of((instance)=>any[])`。
-
-#### watch().of()
-
-与 effect().of() 唯一的不同在于，`watch().of((instance)=>[instance.x, instance.y])` 不会向 useSignal 添加渲染相关字段，不会对组件重新渲染造成任何影响。
-
-```ts
-signal.watch(()=>{...}).of((instance)=>[instance.x, instance.y]);
-```
-
-例子：  
-
-```ts
-import {useSignal} from '@airma/react-state';
-
-const counting = (state:number)=>({
-    count: state,
-    isNegative: state<0,
-    increase(){       
-        return state+1;
-    },
-    decrease(){
-        return state-1;       
-    }
-});
-
-const countingSignal = useSignal(counting, props.defaultCount??0);
-
-const {
-    // 渲染相关字段
-    isNegative
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    decrease,
-    // 渲染相关字段，
-    // 因为该字段为行为方法，所以不会触发组件重新渲染。
-    increase
-} = countingSignal();
-
-// 添加监听器
-countingSignal.watch(()=>{
-    console.log(`isNegative changed to ${countingSignal().isNegative}`);
-    console.log(`count changed to ${countingSignal().count}`);
-}).of((instance)=>{
-    // 限制了监听 count 字段变更运行回调函数。
-    // `count` 字段不会被添加到渲染相关字段中，因此不会触发组件重新渲染。
-    return [instance.count];
-});
-```
-
-#### watch().on()
-
-与 effect().on() 用法一样。
 
 ### 通过 model 声明函数使用 useSignal
 

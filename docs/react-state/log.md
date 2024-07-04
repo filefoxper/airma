@@ -115,3 +115,8 @@
 
  * fix problem about signal.watch does not run at the first time.
  * fix problem about signal.effect does not run at the first time.
+
+ ## v18.4.4 2024-07-04
+
+ * **Note**：Remove signal.watch and signal.effect APIs.
+ * add `signal.useEffect` API.
