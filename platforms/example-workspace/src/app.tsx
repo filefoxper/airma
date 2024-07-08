@@ -297,6 +297,10 @@ export default function App() {
   //     item.changeDisplay({name:'Mr'})
   // }
 
+    conditionSignal.useEffect(()=>{
+        console.log('signal creating',conditionSignal().creating);
+    }).onActions((i)=>[i.create]);
+
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],

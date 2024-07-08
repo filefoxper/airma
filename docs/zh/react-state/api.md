@@ -454,17 +454,17 @@ render(
 hook API，用于创建模型实例的生成函数。该函数可返回当前最新的模型实例对象值。
 
 ```ts
-type EffectApi = {
-  of:(callback:(instance)=>any[])=>EffectApi;
-  on:(...actionMethods)=>EffectApi;
+interface EffectOn {
+  onActions: (
+    filter: (ins: Instance) => ActionMethod[]
+  ) => EffectOn;
 }
 
-type SignalApi = {
-  effect:(callback:()=>void): EffectApi;
-  watch:(callback:()=>void): EffectApi;
-};
+interface Signal {
+  useEffect:(call:()=>void|(()=>void))=>EffectOn
+}
 
-function useSignal(modelFnOrKey, defaultState?): (()=>instance)&SignalApi;
+function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
 ```
 
 参数：
@@ -474,14 +474,10 @@ function useSignal(modelFnOrKey, defaultState?): (()=>instance)&SignalApi;
 
 返回：
 
-模型实例对象生成函数 signal。可用于生成最新的模型实例对象，也可通过调用该函数的 effect 和 watch 方法，添加模型实例更新的副作用与监听器。
-
-模型实例对象生成函数 signal 及其自带方法 effect 和 watch 均非 React hook，因此可被应用于诸如 if 或循环的代码区间中。
+模型实例对象生成函数 signal。可用于生成最新的模型实例对象，也可通过调用该函数的 useEffect 方法，添加模型更新副作用。
 
 注意：
 
 * 尽量不要在子组件的 `useLayoutEffect` 中使用父组件 useSignal 返回的 signal 回调函数。因为 useSignal 渲染相关字段的统计算法就是在当前 useSignal 使用组件的 `useLayoutEffect` 阶段终止的，而子组件的 `useLayoutEffect` 通常先于当前组件的 `useLayoutEffect` 执行。这可能导致统计所得的渲染相关字段中混入部分并不希望关联渲染的脏字段。
-* 不要在**副作用**或**监听器**的回调函数中添加副作用与监听器。这会导致被入侵副作用或监听器异常。
-* 不要在**非 render 阶段**添加副作用与监听器。
 
 关于如何使用 useSignal，及 signal 函数的 effect 和 watch 方法，请参考引导中的[高性能渲染](/zh/react-state/guides?id=高性能渲染)章节。

@@ -16,27 +16,6 @@ export interface ModelAction extends Action {
   payload?: { type: 'block' | 'initialize' | 'unblock' };
 }
 
-export type SignalEffectAction = ModelAction & {
-  on: (
-    ...actionMethods: (
-      | Array<(...args: any[]) => any>
-      | ((...args: any[]) => any)
-    )[]
-  ) => boolean;
-};
-
-export type SignalEffect<T> = ((
-  instance: T,
-  action: SignalEffectAction
-) => void) & {
-  on: ((...args: any[]) => any)[];
-  of: ((i: T) => any[])[];
-};
-
-export type SignalWatcher<T> = ((
-  instance: T,
-  action: SignalEffectAction
-) => void) & {
-  on: ((...args: any[]) => any)[];
-  of: ((i: T) => any[])[];
-};
+export interface EffectOn<T> {
+  onActions: (callback: (ins: T) => ((...args: any[]) => any)[]) => EffectOn<T>;
+}
