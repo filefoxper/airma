@@ -104,3 +104,7 @@
 ## v18.4.5
 
 * 修复了 Strategy.cache 缓存查询失败时,回滚数据不一定正确的问题。
+
+## v18.4.7
+
+* 修复 useResponse 和 useResponse.* 响应加载时的旧响应问题。

@@ -493,7 +493,7 @@ export function useResponse<T>(
   process: (state: SessionState<T>) => any,
   sessionState: SessionState<T>
 ) {
-  useEffect(() => {
+  useUpdate(() => {
     if (sessionState.round === 0) {
       return;
     }
@@ -512,7 +512,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   process: (data: T, sessionState: SessionState<T>) => any,
   sessionState: SessionState<T>
 ) {
-  useEffect(() => {
+  useUpdate(() => {
     if (sessionState.round === 0) {
       return;
     }
@@ -530,7 +530,7 @@ useResponse.useFailure = function useResponseFailure(
   process: (error: unknown, sessionState: SessionState) => any,
   sessionState: SessionState
 ) {
-  useEffect(() => {
+  useUpdate(() => {
     if (sessionState.round === 0) {
       return;
     }

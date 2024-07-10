@@ -99,3 +99,7 @@
 # v18.4.6
 
 * fix problem about `Strategy.response.failure` not work.
+
+# v18.4.7
+
+* fix problem about `useResponse` and `useResponse.*` response the mount effect.
