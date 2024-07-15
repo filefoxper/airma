@@ -102,4 +102,9 @@
 
 # v18.4.7
 
-* fix problem about `useResponse` and `useResponse.*` response the mount effect.
+* ~~fix problem about `useResponse` and `useResponse.*` response the mount effect.~~
+
+# v18.4.8
+
+* roll `useResponse` and `useResponse.*` features back. [rollback reason](/react-effect/guides?id=useresponse)
+* add options for `useResponse` and `useResponse.*`.

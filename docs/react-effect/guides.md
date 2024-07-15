@@ -751,6 +751,57 @@ function once(): StrategyType {
 }
 ```
 
+## useResponse
+
+useResponse/useResponse.useSuccess/useResponse.useFailure responses the result of a session. If a session has loaded yet, useResponse may process it when it is mounted.
+
+Ex：
+
+```ts
+const Component = ()=>{
+    const [sessionState] = useLoadedSession(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // The session has loaded before useResponse mounted,
+        // So, useResponse processes the session state when it is mounted.
+    },sessionState);
+}
+
+const App = ()=>{
+    const [sessionState] = useQuery(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // When session responses, it works.
+    },sessionState);
+
+    return sessionState.loaded?<Component/>:null
+}
+```
+
+If you want useResponse process only when the session is responsed, add the option `{watchOnly:true}` to it.
+
+Ex：
+
+```ts
+const Component = ()=>{
+    const [sessionState] = useLoadedSession(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // use watchOnly makes useResponse only works when session is responsed
+    },[sessionState, {watchOnly:true}]);
+}
+
+const App = ()=>{
+    const [sessionState] = useQuery(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // When session responses, it works.
+    },sessionState);
+
+    return sessionState.loaded?<Component/>:null
+}
+```
+
 ## ConfigProvider
 
 It can config a common strategies for all useQuery/useMutation API usages. It also can support a global fetching usage.

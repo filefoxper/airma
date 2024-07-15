@@ -431,15 +431,15 @@ It allows to process callback after a session execution is finished (in React.us
 
 ```ts
 function useResponse(
-  process: (sessionState)=>any,
-  sessionState
+  process: (sessionState:SessionState)=>any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void
 ```
 
 ### Parameters
 
 * **process** - A process callback accepts a session state as parameter.
-* **sessionState** - The dependent session state.
+* **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 ### Example:
 
@@ -463,15 +463,15 @@ It allows to process callback after a session execution is finished successfully
 
 ```ts
 useResponse.useSuccess(
-  process: (data, sessionState) => any,
-  sessionState
+  process: (data: SessionState['data'], sessionState: SessionState) => any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### Parameters
 
 * **process** - A process callback accepts a successful execution data and a session state as parameters.
-* **sessionState** - The dependent session state.
+* **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 #### Example
 
@@ -489,15 +489,15 @@ It allows to process callback after a session execution is finished failed (in R
 
 ```ts
 useResponse.useFailure(
-  process: (error, sessionState) => any,
-  sessionState
+  process: (error: SessionState['error'], sessionState: SessionState) => any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### Parameters
 
 * **process** - A process callback accepts a failed execution data and a session state as parameters.
-* **sessionState** - The dependent session state.
+* **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 #### Example
 

@@ -309,10 +309,12 @@ declare type SuccessStateOf<T extends SessionState> = Omit<
   data: Exclude<T['data'], undefined>;
 };
 
+declare type ResponseOption = { watchOnly?: boolean };
+
 export declare const useResponse: {
   <T extends SessionState>(
     process: (state: ImportantVariable<T>) => any,
-    sessionState: T
+    sessionState: T | [T, ResponseOption?]
   ): void;
   /**
    * @deprecated
@@ -324,7 +326,7 @@ export declare const useResponse: {
       data: SuccessStateOf<T>['data'],
       sessionState: SuccessStateOf<T>
     ) => any,
-    sessionState: T
+    sessionState: T | [T, ResponseOption?]
   ) => void;
   /**
    * @deprecated
@@ -333,18 +335,18 @@ export declare const useResponse: {
    */
   error: <T extends SessionState>(
     process: (error: unknown, sessionState: ImportantVariable<T>) => any,
-    sessionState: T
+    sessionState: T | [T, ResponseOption?]
   ) => void;
   useSuccess: <T extends SessionState>(
     process: (
       data: SuccessStateOf<T>['data'],
       sessionState: SuccessStateOf<T>
     ) => any,
-    sessionState: T
+    sessionState: T | [T, ResponseOption?]
   ) => void;
   useFailure: <T extends SessionState>(
     process: (error: unknown, sessionState: ImportantVariable<T>) => any,
-    sessionState: T
+    sessionState: T | [T, ResponseOption?]
   ) => void;
 };
 

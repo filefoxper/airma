@@ -491,10 +491,18 @@ export function useLoadedSession<T, C extends PromiseCallback<T>>(
 
 export function useResponse<T>(
   process: (state: SessionState<T>) => any,
-  sessionState: SessionState<T>
+  state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
-  useUpdate(() => {
+  const sessionState = Array.isArray(state) ? state[0] : state;
+  const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    const mounted = mountedRef.current;
+    mountedRef.current = true;
     if (sessionState.round === 0) {
+      return;
+    }
+    if (watchOnly && !mounted) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -510,10 +518,18 @@ export function useResponse<T>(
 
 useResponse.useSuccess = function useResponseSuccess<T>(
   process: (data: T, sessionState: SessionState<T>) => any,
-  sessionState: SessionState<T>
+  state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
-  useUpdate(() => {
+  const sessionState = Array.isArray(state) ? state[0] : state;
+  const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    const mounted = mountedRef.current;
+    mountedRef.current = true;
     if (sessionState.round === 0) {
+      return;
+    }
+    if (watchOnly && !mounted) {
       return;
     }
     const isSuccessResponse =
@@ -528,10 +544,18 @@ useResponse.useSuccess = function useResponseSuccess<T>(
 
 useResponse.useFailure = function useResponseFailure(
   process: (error: unknown, sessionState: SessionState) => any,
-  sessionState: SessionState
+  state: SessionState | [SessionState, { watchOnly?: boolean }?]
 ) {
-  useUpdate(() => {
+  const sessionState = Array.isArray(state) ? state[0] : state;
+  const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    const mounted = mountedRef.current;
+    mountedRef.current = true;
     if (sessionState.round === 0) {
+      return;
+    }
+    if (watchOnly && !mounted) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
