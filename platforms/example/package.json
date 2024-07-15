@@ -3,7 +3,7 @@
     "start": "webpack serve --config ./webpack.dev.js",
     "build": "echo edit build script"
   },
-  "private": false,
+  "private": true,
   "name": "example",
   "version": "16.0.0",
   "description": "This is a package",

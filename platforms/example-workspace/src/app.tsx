@@ -170,7 +170,7 @@ const Creating = memo(
       age: 10
     });
 
-    const [, query] = fetchSession.useSession();
+    const [fs, query] = fetchSession.useSession();
 
     const [sessionState, save] = useMutation(
       (u: Omit<User, 'id'>) =>
@@ -187,6 +187,10 @@ const Creating = memo(
         strategy: [Strategy.once()]
       }
     );
+
+    useResponse.useSuccess(()=>{
+        console.log('fs success')
+    },[fs,{watchOnly:true}]);
 
     useResponse.useSuccess(() => {
       console.log('save success');
@@ -321,7 +325,7 @@ export default function App() {
   useResponse.useSuccess(state => {
     console.log('response success', state);
     console.log(item.displayQuery);
-  }, queryState);
+  }, [queryState]);
 
   const [{ data, variables }, t] = querySession;
 

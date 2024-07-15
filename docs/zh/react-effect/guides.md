@@ -783,6 +783,56 @@ function once(): StrategyType {
 }
 ```
 
+## useResponse
+
+useResponse 系列（包括 useResponse.useSuccess/useResponse.useFailure）默认关注会话响应的结果。当会话响应后，useResponse 系列对会话结果作出反应，这意味着一个早已完成的会话结果会在 useResponse 加载时被处理。
+
+例子：
+
+```ts
+const Component = ()=>{
+    const [sessionState] = useLoadedSession(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // 会话结果早已产生，所以在组件加载后也会响应
+    },sessionState);
+}
+
+const App = ()=>{
+    const [sessionState] = useQuery(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // 当会话结果产生后响应
+    },sessionState);
+
+    return sessionState.loaded?<Component/>:null
+}
+```
+
+若想要 useResponse 系列只监听会话响应，避免在 useResponse 加载时被处理，需要使用 watchOnly 设置，强制其只做监听工作。
+
+例子：
+
+```ts
+const Component = ()=>{
+    const [sessionState] = useLoadedSession(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // 使用 watchOnly 设置项，强制 useResponse 只做监听工作
+    },[sessionState, {watchOnly:true}]);
+}
+
+const App = ()=>{
+    const [sessionState] = useQuery(sessionKey,...);
+
+    useResponse.useSuccess(()=>{
+        // 当会话结果产生后响应
+    },sessionState);
+
+    return sessionState.loaded?<Component/>:null
+}
+```
+
 ## ConfigProvider
 
 ConfigProvider 组件用于全局配置 ：

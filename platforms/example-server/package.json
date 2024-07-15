@@ -1,5 +1,5 @@
 {
-  "private": false,
+  "private": true,
   "name": "example-server",
   "version": "15.0.0",
   "description": "This is a package",

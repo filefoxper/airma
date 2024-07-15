@@ -439,19 +439,19 @@ const App = ()=>{
 
 ## useResponse
 
-React hook，用于监听会话执行，并在执行完毕后调用回调函数。回调函数的确切执行时机发生在会话执行完毕后更新会话状态的副作用中。
+React hook，用于监听会话执行，并在执行完毕后调用回调函数。回调函数的确切执行时机发生在会话执行完毕后会话响应结果的副作用中。
 
 ```ts
 function useResponse(
-  process: (sessionState)=>any,
-  sessionState
+  process: (sessionState:SessionState)=>any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void
 ```
 
 ### 参数
 
 * **process** - 会话执行完毕后的回调函数。可接收执行完毕后的会话状态做参数。
-* **sessionState** - 被监听的会话状态。
+* **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 ### 例子:
 
@@ -471,19 +471,19 @@ useResponse 的子 API:
 
 ### useResponse.useSuccess
 
-React hook，用于监听会话执行，并在执行成功后调用回调函数。回调函数的确切执行时机发生在会话执行成功后更新会话状态的副作用中。
+React hook，用于监听会话执行，并在执行成功后调用回调函数。回调函数的确切执行时机发生在会话执行成功后会话响应结果的副作用中。
 
 ```ts
 useResponse.useSuccess(
-  process: (data, sessionState) => any,
-  sessionState
+  process: (sessionState:SessionState)=>any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### 参数
 
 * **process** - 会话执行成功后的回调函数。接收执行成功后的会话状态数据和会话状态做参数。
-* **sessionState** - 被监听的会话状态。
+* **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 #### 例子
 
@@ -497,19 +497,19 @@ useResponse.useSuccess((data, state)=>{
 
 ### useResponse.useFailure
 
-React hook，用于监听会话执行，并在执行失败后调用回调函数。回调函数的确切执行时机发生在会话执行失败后更新会话状态的副作用中。
+React hook，用于监听会话执行，并在执行失败后调用回调函数。回调函数的确切执行时机发生在会话执行失败后会话响应结果的副作用中。
 
 ```ts
 useResponse.useFailure(
-  process: (error, sessionState) => any,
-  sessionState
+  process: (sessionState:SessionState)=>any,
+  sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### 参数
 
 * **process** - 会话执行失败后的回调函数。接收执行失败后的会话状态错误和会话状态做参数。
-* **sessionState** - 被监听的会话状态。
+* **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 #### 例子
 
