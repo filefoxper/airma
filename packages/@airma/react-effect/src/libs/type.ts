@@ -82,10 +82,6 @@ export interface AbstractSessionState {
   cache: SessionCache[];
   maxCacheCapacity: number;
   executeVariables: any[] | undefined;
-  /**
-   * @deprecated
-   */
-  fetchVersion?: number;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {
@@ -171,7 +167,6 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
-  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'

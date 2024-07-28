@@ -17,13 +17,12 @@ export function effectModel(
   ): SessionState & { request?: SessionRequest } => {
     return { ...s, request, uniqueKey: state.uniqueKey };
   };
-  const mergeFetchVersion = (s: SessionState): SessionState => {
+  const checkIfANewRound = (s: SessionState): SessionState => {
     if (s.isFetching) {
       return { ...s, stale: state.stale || { data: state.data } };
     }
     return {
       ...s,
-      fetchVersion: (state.fetchVersion || 0) + 1,
       round: state.round + 1,
       stale: undefined
     };
@@ -36,9 +35,9 @@ export function effectModel(
       s: SessionState | ((p: SessionState) => SessionState)
     ): SessionState & { request?: SessionRequest } {
       if (typeof s !== 'function') {
-        return mergeFetchVersion(mergeVersion(s));
+        return checkIfANewRound(mergeVersion(s));
       }
-      return mergeFetchVersion(mergeVersion(s(state)));
+      return checkIfANewRound(mergeVersion(s(state)));
     },
     trigger(): SessionState & { request?: SessionRequest } {
       return { ...state, request: { version: requestVersion + 1 } };

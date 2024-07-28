@@ -15,7 +15,3 @@ export type GlobalConfig = {
 export interface ModelAction extends Action {
   payload?: { type: 'block' | 'initialize' | 'unblock' };
 }
-
-export interface EffectOn<T> {
-  onActions: (callback: (ins: T) => ((...args: any[]) => any)[]) => EffectOn<T>;
-}

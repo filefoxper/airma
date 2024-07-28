@@ -1,4 +1,3 @@
-import { LoadedSessionState } from 'index';
 import { SessionState, StrategyType } from './libs/type';
 
 function debounce(

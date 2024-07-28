@@ -28,10 +28,6 @@ declare interface AbstractSessionState {
   sessionLoaded: boolean;
   uniqueKey: unknown;
   round: number;
-  /**
-   * @deprecated
-   */
-  fetchVersion?: number;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
@@ -350,20 +346,6 @@ export declare const useResponse: {
   ) => void;
 };
 
-/**
- * @deprecated
- */
-export declare const SessionProvider: FC<
-  | {
-      keys: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
->;
-
 export declare const Provider: FC<
   | {
       keys: ModelKeys;
@@ -377,10 +359,6 @@ export declare const Provider: FC<
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
-  /**
-   * @deprecated
-   */
-  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: SessionType
@@ -543,6 +521,9 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>> {
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
+  /**
+   * @deprecated
+   */
   asGlobal: () => {
     useQuery: UseQueryShort<D>;
     useSession: UseSessionShort<D>;

@@ -301,9 +301,9 @@ export default function App() {
   //     item.changeDisplay({name:'Mr'})
   // }
 
-    conditionSignal.useEffect(()=>{
+    conditionSignal.useWatch(()=>{
         console.log('signal creating',conditionSignal().creating);
-    }).onActions((i)=>[i.create]);
+    },i=>[i.create]);
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],
