@@ -23,6 +23,7 @@ export function effectModel(
     }
     return {
       ...s,
+      visited: state.visited ? state.visited : !s.isError,
       round: state.round + 1,
       stale: undefined
     };
@@ -86,6 +87,7 @@ export const defaultPromiseResult = (config?: {
     maxCacheCapacity: 1,
     round: 0,
     executeVariables: undefined,
+    visited: false,
     ...config
   } as SessionState);
 
