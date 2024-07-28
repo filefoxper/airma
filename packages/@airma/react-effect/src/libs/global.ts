@@ -12,7 +12,7 @@ export const defaultIsFetchingState: any[] = [];
 
 export const globalControllerStore = model(globalController)
   .createStore(defaultIsFetchingState)
-  .asGlobal();
+  .static();
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 

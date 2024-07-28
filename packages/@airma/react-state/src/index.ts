@@ -34,9 +34,6 @@ import type {
   Action
 } from './libs/type';
 
-const realtimeInstanceMountProperty =
-  '@@_airmaReactStateRealtimeInstancePropertyV18_@@';
-
 const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
@@ -81,15 +78,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     };
   }, []);
 
-  return createProxy(current.getCurrent(), {
-    get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
-      const v = target[p];
-      if (p === realtimeInstanceMountProperty) {
-        return current.agent;
-      }
-      return v;
-    }
-  });
+  return current.getCurrent();
 }
 
 export function useControlledModel<S, T extends AirModelInstance, D extends S>(
@@ -98,49 +87,6 @@ export function useControlledModel<S, T extends AirModelInstance, D extends S>(
   onChange: (s: S) => any
 ): T {
   return useSourceControlledModel(model, state, onChange);
-}
-
-/**
- * @deprecated
- * @param method
- * @param params
- */
-export function useRefresh<T extends (...args: any[]) => any>(
-  method: T,
-  params:
-    | Parameters<T>
-    | {
-        refreshDeps?: any[];
-        variables: Parameters<T>;
-      }
-) {
-  const isVariableParams = Array.isArray(params);
-  const refreshDeps = (function computeRefreshDeps() {
-    if (isVariableParams) {
-      return params;
-    }
-    if (!params) {
-      return undefined;
-    }
-    return params.refreshDeps;
-  })();
-  const variables = (function computeVariables() {
-    if (isVariableParams) {
-      return params;
-    }
-    if (!params) {
-      return [];
-    }
-    return params.variables || [];
-  })();
-  const fn = usePersistFn(method);
-  useEffect(() => {
-    const result = fn(...variables);
-    if (typeof result === 'function') {
-      return result;
-    }
-    return () => undefined;
-  }, refreshDeps);
 }
 
 const ReactStateContext = createContext<Selector | null>(null);
@@ -183,16 +129,6 @@ export const Provider: FC<{
     children
   );
 };
-
-/**
- * @deprecated
- */
-export const StoreProvider = Provider;
-
-/**
- * @deprecated
- */
-export const ModelProvider = Provider;
 
 function findConnection<S, T extends AirModelInstance>(
   c: Selector | null | undefined,
@@ -249,8 +185,10 @@ function watch<S, T extends AirModelInstance>(
     return m.dispatchId || m;
   }
 
-  return function useEffectWrap(callback: () => void | (() => void)) {
-    const onRef = useRef<null | ((...args: any[]) => any)[]>(null);
+  return function useEffectWrap(callback: (ins: T) => void | (() => void)) {
+    const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
+    const onChangeRef = useRef<null | any[]>(null);
+    const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
     const [action, setAction] = useState<Action | null>(null);
     const runtime = useInstanceActionRuntime();
     const persistDispatch = usePersistFn((currentAction: Action) => {
@@ -262,14 +200,30 @@ function watch<S, T extends AirModelInstance>(
     const tunnel = useMemo(() => connection.tunnel(persistDispatch), []);
 
     useEffect(() => {
-      const on = onRef.current;
+      const instance = connection.getCurrent(runtime);
+      const onActions = onActionRef.current;
+      const onChangeCallback = onChangeCallbackRef.current;
+      const prevOnChanges = onChangeRef.current;
+      const currentOnChanges = onChangeCallback
+        ? onChangeCallback(instance)
+        : null;
       if (
-        action == null ||
-        (on && on.map(getDispatchId).indexOf(getDispatchId(action.method)) < 0)
+        onActions &&
+        onActions.length &&
+        (action == null ||
+          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
+            0)
       ) {
         return noop;
       }
-      return callback();
+      if (
+        currentOnChanges != null &&
+        prevOnChanges != null &&
+        shallowEq(currentOnChanges, prevOnChanges)
+      ) {
+        return noop;
+      }
+      return callback(instance);
     }, [action]);
 
     useEffect(() => {
@@ -284,10 +238,14 @@ function watch<S, T extends AirModelInstance>(
         const result = filter(connection.getCurrent(runtime));
         if (!Array.isArray(result)) {
           throw new Error(
-            'The `filter callback` for method `onActions` should return an action method array.'
+            'The `filter callback` for method `on` should return an action method array.'
           );
         }
-        onRef.current = result.filter(d => typeof d === 'function');
+        onActionRef.current = result.filter(d => typeof d === 'function');
+        return effectOn;
+      },
+      onChanges(filter: (ins: T) => any[]) {
+        onChangeCallbackRef.current = filter;
         return effectOn;
       }
     };
@@ -300,30 +258,15 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
   option?: {
-    refresh?: boolean;
     required?: boolean;
-    autoLink?: boolean;
     signal?: boolean;
     useDefaultState?: boolean;
-    realtimeInstance?: boolean;
-    updateDeps?: (instance: T) => any[];
   }
 ): [S | undefined, T, (s: S | undefined) => void, () => T] {
   const defaultOpt = {
-    refresh: false,
-    required: false,
-    autoLink: false,
-    realtimeInstance: false
+    required: false
   };
-  const {
-    refresh,
-    required,
-    autoLink,
-    useDefaultState,
-    realtimeInstance,
-    signal,
-    updateDeps
-  } = {
+  const { required, useDefaultState, signal } = {
     ...defaultOpt,
     ...option
   };
@@ -337,7 +280,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
   const connection = required ? findConnection(context, model) : undefined;
-  if (required && !autoLink && !connection) {
+  if (required && !connection) {
     throw new Error(
       'The model in usage is a `store key`, it should match with a store created by `StoreProvider`.'
     );
@@ -362,16 +305,18 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       []
     )
   );
+
   const instance = instanceRef.current;
   instance.optimize(batchUpdate);
+
   const current = connection || instance;
+
   if (modelRef.current !== model && !connection) {
     modelRef.current = model;
     current.update(model);
   }
   const [agent, setAgent] = useState(current.getCurrent(runtime));
   const updateVersionRef = useRef(current.getVersion());
-  const updateDepsRef = useRef(updateDeps ? updateDeps(agent) : undefined);
   const prevSelectionRef = useRef<null | string[]>(null);
 
   const signalStale: {
@@ -379,6 +324,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   } = {
     selection: []
   };
+
   prevSelectionRef.current = signalStale.selection;
 
   const dispatch = (currentAction: Action) => {
@@ -397,15 +343,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     if (signal && !openSignalRef.current) {
       return;
     }
-    const currentAgentDeps = updateDeps ? updateDeps(currentAgent) : undefined;
-    if (
-      updateDepsRef.current &&
-      currentAgentDeps &&
-      shallowEq(updateDepsRef.current, currentAgentDeps)
-    ) {
-      return;
-    }
-    updateDepsRef.current = currentAgentDeps;
     if (
       signal &&
       prevSelectionRef.current &&
@@ -416,20 +353,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     setAgent(currentAgent);
   };
   const persistDispatch = usePersistFn(dispatch);
-  const prevStateRef = useRef<{ state: D | undefined }>({ state });
 
   useLayoutEffect(() => {
     isEffectStageRef.current = true;
     prevOpenSignalRef.current = openSignalRef.current;
   });
-
-  useEffect(() => {
-    const prevState = prevStateRef.current;
-    prevStateRef.current = { state };
-    if (refresh && prevState.state !== state) {
-      current.update(model, { state, cache: true });
-    }
-  }, [state]);
 
   const tunnel = useMemo(() => current.tunnel(persistDispatch), []);
 
@@ -487,12 +415,12 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const persistSignalCallback = usePersistFn(signalCallback);
 
   const signalUsage: (() => T) & {
-    useEffect?: (callback: () => void | (() => void)) => EffectOn<T>;
+    useEffect?: (callback: (ins: T) => void | (() => void)) => void;
   } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
 
   signalUsage.useEffect = watch(current);
 
-  if (realtimeInstance || signal) {
+  if (signal) {
     return [
       current.getState(),
       current.agent,
@@ -501,15 +429,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ];
   }
 
-  const stableInstance = createProxy(agent, {
-    get(target: T, p: Exclude<keyof T, number>, receiver: any): any {
-      const v = target[p];
-      if (p === realtimeInstanceMountProperty) {
-        return current.agent;
-      }
-      return v;
-    }
-  });
+  const stableInstance = agent;
   const stableSignalCallback = function stableSignalCallback() {
     return stableInstance;
   };
@@ -528,26 +448,18 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
   option?: {
-    refresh?: boolean;
     required?: boolean;
-    autoLink?: boolean;
     signal?: boolean;
     useDefaultState?: boolean;
-    realtimeInstance?: boolean;
-    updateDeps?: (instance: T) => any[];
   }
 ): [S, T, () => T];
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D,
   option?: {
-    refresh?: boolean;
     required?: boolean;
-    autoLink?: boolean;
     signal?: boolean;
     useDefaultState?: boolean;
-    realtimeInstance?: boolean;
-    updateDeps?: (instance: T) => any[];
   }
 ): [S | undefined, T, () => T] {
   const { getSourceFrom } = model as AirReducerLike;
@@ -566,25 +478,11 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
-  state: D,
-  option?: {
-    refresh?: boolean;
-    autoLink?: boolean;
-    useDefaultState?: boolean;
-    realtimeInstance?: boolean;
-    updateDeps?: (instance: T) => any[];
-  }
+  state: D
 ): T;
 export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
-  state?: D,
-  option?: {
-    refresh?: boolean;
-    autoLink?: boolean;
-    useDefaultState?: boolean;
-    realtimeInstance?: boolean;
-    updateDeps?: (instance: T) => any[];
-  }
+  state?: D
 ): T {
   const { pipe } = model as FactoryInstance<any>;
   const { getSourceFrom } = model as AirReducerLike;
@@ -593,8 +491,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   const useDefaultState = arguments.length > 1;
   const [, agent] = useTupleModel(model, state, {
     required,
-    useDefaultState,
-    ...option
+    useDefaultState
   });
   return agent;
 }
@@ -616,44 +513,8 @@ export function useSignal<S, T extends AirModelInstance, D extends S>(
   return createSignal;
 }
 
-/**
- * @deprecated
- * @param model
- * @param state
- * @param option
- */
-export function useStaticModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>,
-  state?: D,
-  option?: {
-    autoLink?: boolean;
-    realtimeInstance?: boolean;
-  }
-) {
-  const { pipe } = model as FactoryInstance<any>;
-  const { getSourceFrom } = model as AirReducerLike;
-  const required =
-    typeof pipe === 'function' || typeof getSourceFrom === 'function';
-  const useDefaultState = arguments.length > 1;
-  const [, agent] = useTupleModel(model, state, {
-    required,
-    useDefaultState,
-    ...option,
-    updateDeps: () => []
-  });
-  return agent;
-}
-
-export function useRefreshModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>,
-  state: D,
-  option?: { autoLink?: boolean }
-): T {
-  return useModel(model, state, { ...option, refresh: true });
-}
-
 const requiredError = (api: string): string =>
-  `API "${api}" can not work, there is no matched StoreProvider with its store key.`;
+  `API "${api}" can not work, there is no matched Provider with its store key.`;
 
 export function useSelector<
   R extends AirReducer<any, any>,
@@ -731,26 +592,6 @@ export function provide(
   };
 }
 
-export function useRealtimeInstance<T>(
-  instance: T & { [realtimeInstanceMountProperty]?: T }
-): T {
-  const realtimeInstance = instance[realtimeInstanceMountProperty];
-  if (!realtimeInstance) {
-    return instance;
-  }
-  return realtimeInstance;
-}
-
-export function useIsModelMatchedInStore(model: AirReducer<any, any>): boolean {
-  const { pipe } = model as AirReducer<any, any> & { pipe: () => void };
-  const context = useContext(ReactStateContext);
-  if (typeof pipe !== 'function') {
-    return false;
-  }
-  const connection = context ? findConnection(context, model) : null;
-  return connection != null;
-}
-
 export const shallowEqual = shallowEq;
 
 export const createKey = function createKey<S, T extends AirModelInstance>(
@@ -824,14 +665,6 @@ export const model = function model<S, T extends AirModelInstance>(
       return useSignal(...params);
     };
 
-    const useApiStaticStoreModel = function useApiStaticStoreModel(s?: S) {
-      const params = (arguments.length ? [key, s] : [key]) as [
-        typeof key,
-        (S | undefined)?
-      ];
-      return useStaticModel(...params);
-    };
-
     const useApiStoreSelector = function useApiStoreSelector(
       c: (i: T) => any,
       eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
@@ -874,12 +707,6 @@ export const model = function model<S, T extends AirModelInstance>(
         return useSignal(...params);
       };
 
-      const useApiStaticGlobalModel = function useApiStaticGlobalModel(s?: S) {
-        const params = (
-          arguments.length ? [staticModelKey, s] : [staticModelKey]
-        ) as [typeof staticModelKey, (S | undefined)?];
-        return useStaticModel(...params);
-      };
       const useApiGlobalSelector = function useApiGlobalSelector(
         c: (i: T) => any,
         eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
@@ -889,7 +716,6 @@ export const model = function model<S, T extends AirModelInstance>(
       return {
         useModel: useApiGlobalModel,
         useSignal: useApiGlobalSignal,
-        useStaticModel: useApiStaticGlobalModel,
         useSelector: useApiGlobalSelector
       };
     }
@@ -899,7 +725,6 @@ export const model = function model<S, T extends AirModelInstance>(
       keys,
       useModel: useApiStoreModel,
       useSignal: useApiStoreSignal,
-      useStaticModel: useApiStaticStoreModel,
       useSelector: useApiStoreSelector,
       asGlobal: global,
       static: global,

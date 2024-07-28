@@ -181,8 +181,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   };
 
-  const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(signal, sessionRunner, con);
+  const [strategyExecution, strategyEffects] = useStrategyExecution(
+    signal,
+    sessionRunner,
+    con
+  );
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
@@ -580,11 +583,6 @@ useResponse.success = useResponse.useSuccess;
  * @param sessionState
  */
 useResponse.error = useResponse.useFailure;
-
-/**
- * @deprecated
- */
-export const SessionProvider = ModelProvider;
 
 export const Provider = ModelProvider;
 

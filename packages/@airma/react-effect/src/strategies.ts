@@ -1,4 +1,3 @@
-import { LoadedSessionState } from 'index';
 import { SessionState, StrategyType } from './libs/type';
 
 function debounce(
@@ -461,14 +460,15 @@ function cache(option?: {
       const cacheState: SessionState = {
         ...currentState,
         data: cacheData.data,
-        variables
+        variables,
+        visited: true
       };
       return Promise.resolve(cacheState);
     }
     return runner(c => {
       return cacheData && (!staleTime || staleTime < 0)
-        ? { ...c, data: cacheData.data }
-        : c;
+        ? { ...c, data: cacheData.data, visited: true }
+        : { ...c, visited: false };
     }).then(next => {
       if (next.isError) {
         return {

@@ -9,11 +9,9 @@ export {
   createKey,
   useModel,
   useSignal,
-  useStaticModel,
   useControlledModel,
   useSelector,
-  model,
-  useRealtimeInstance
+  model
 } from '@airma/react-state';
 
 export {
