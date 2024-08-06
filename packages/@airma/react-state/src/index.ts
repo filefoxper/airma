@@ -18,7 +18,13 @@ import {
   getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy, noop } from './libs/tools';
-import { AirReducerLike, GlobalConfig, ModelAction, Selector } from './type';
+import {
+  AirReducerLike,
+  EffectOn,
+  GlobalConfig,
+  ModelAction,
+  Selector
+} from './type';
 import type {
   AirModelInstance,
   AirReducer,
@@ -179,11 +185,10 @@ function watch<S, T extends AirModelInstance>(
     return m.dispatchId || m;
   }
 
-  return function useWatchWrap(
-    callback: () => void | (() => void),
-    on?: (instance: T) => any[]
-  ) {
-    const changesRef = useRef<null | any[]>(null);
+  return function useEffectWrap(callback: (ins: T) => void | (() => void)) {
+    const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
+    const onChangeRef = useRef<null | any[]>(null);
+    const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
     const [action, setAction] = useState<Action | null>(null);
     const runtime = useInstanceActionRuntime();
     const persistDispatch = usePersistFn((currentAction: Action) => {
@@ -195,37 +200,57 @@ function watch<S, T extends AirModelInstance>(
     const tunnel = useMemo(() => connection.tunnel(persistDispatch), []);
 
     useEffect(() => {
-      if (typeof on !== 'function') {
-        return callback();
-      }
-      const deps = on(action?.instance ?? connection.getCurrent(runtime));
-      const actions = deps.filter(d => typeof d === 'function');
-      const prevData = changesRef.current ?? [];
-      const data = deps.filter(d => typeof d !== 'function');
-      changesRef.current = data;
-
-      if (deps.length === actions.length && action == null) {
+      const instance = connection.getCurrent(runtime);
+      const onActions = onActionRef.current;
+      const onChangeCallback = onChangeCallbackRef.current;
+      const prevOnChanges = onChangeRef.current;
+      const currentOnChanges = onChangeCallback
+        ? onChangeCallback(instance)
+        : null;
+      if (
+        onActions &&
+        onActions.length &&
+        (action == null ||
+          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
+            0)
+      ) {
         return noop;
       }
-      if (action == null) {
-        return callback();
-      }
       if (
-        actions.map(getDispatchId).indexOf(getDispatchId(action.method)) >= 0 ||
-        !shallowEq(prevData, data)
+        currentOnChanges != null &&
+        prevOnChanges != null &&
+        shallowEq(currentOnChanges, prevOnChanges)
       ) {
-        return callback();
+        return noop;
       }
-      return noop;
+      return callback(instance);
     }, [action]);
 
     useEffect(() => {
       tunnel.connect();
       return () => {
-        changesRef.current = null;
         tunnel.disconnect();
       };
     }, []);
+
+    const effectOn: EffectOn<T> = {
+      onActions(filter: (ins: T) => ((...args: any[]) => any)[]) {
+        const result = filter(connection.getCurrent(runtime));
+        if (!Array.isArray(result)) {
+          throw new Error(
+            'The `filter callback` for method `on` should return an action method array.'
+          );
+        }
+        onActionRef.current = result.filter(d => typeof d === 'function');
+        return effectOn;
+      },
+      onChanges(filter: (ins: T) => any[]) {
+        onChangeCallbackRef.current = filter;
+        return effectOn;
+      }
+    };
+
+    return effectOn;
   };
 }
 
@@ -390,10 +415,10 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const persistSignalCallback = usePersistFn(signalCallback);
 
   const signalUsage: (() => T) & {
-    useWatch?: (callback: () => void | (() => void)) => void;
+    useEffect?: (callback: (ins: T) => void | (() => void)) => void;
   } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
 
-  signalUsage.useWatch = watch(current);
+  signalUsage.useEffect = watch(current);
 
   if (signal) {
     return [

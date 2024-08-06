@@ -100,12 +100,18 @@ export declare function useModel<R extends AirReducer, D extends PickState<R>>(
   }
 ): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
 
+declare interface EffectOn<R extends AirReducer> {
+  onActions: (
+    filter: (ins: ValidReducerReturnType<R>) => ((...args: any[]) => any)[]
+  ) => EffectOn<R>;
+  onChanges: (filter: (ins: ValidReducerReturnType<R>) => any[]) => EffectOn<R>;
+}
+
 export declare type SignalHandler<R extends AirReducer> =
   (() => ValidReducerReturnType<R>) & {
-    useWatch: (
-      callback: () => void | (() => void),
-      on?: (instance: ValidReducerReturnType<R>) => any[]
-    ) => void;
+    useEffect: (
+      callback: (ins: ValidReducerReturnType<R>) => void | (() => void)
+    ) => EffectOn<R>;
   };
 
 export declare function useSignal<R extends AirReducer>(
