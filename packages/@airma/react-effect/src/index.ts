@@ -135,6 +135,7 @@ function useFetchingKey(controller: Controller) {
 
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
+  sessionType: SessionType,
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
@@ -145,6 +146,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const [stableInstance, signal, con, promiseCallback] = useSessionBuildModel(
     callback,
     keyRef.current,
+    sessionType,
     config
   );
   const {
@@ -285,7 +287,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const con = parseConfig(callback, config);
+  const con = parseConfig(callback, 'query', config);
   const {
     variables,
     deps,
@@ -309,7 +311,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     strategy: strategies.concat(latest() as StrategyType | null | undefined)
   };
 
-  return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
+  return usePromiseCallbackEffect<T, C>(callback, 'query', promiseConfig);
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
@@ -320,7 +322,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const con = parseConfig(callback, config);
+  const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
   const scopeEffectConfig = useGlobalConfig() || {};
@@ -336,7 +338,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     strategy: strategies.concat(block() as StrategyType | null | undefined)
   };
 
-  return usePromiseCallbackEffect<T, C>(callback, promiseConfig);
+  return usePromiseCallbackEffect<T, C>(callback, 'mutation', promiseConfig);
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(

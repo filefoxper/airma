@@ -120,16 +120,22 @@ function parseEffect<
 
 export function parseConfig<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
+  sessionType: SessionType,
   config?: QueryConfig<T, C> | Parameters<C>
 ): QueryConfig<T, C> {
   const cg = Array.isArray(config) ? { variables: config } : config;
-  const [, , con] = parseEffect<C, QueryConfig<T, C>>(callback, 'query', cg);
+  const [, , con] = parseEffect<C, QueryConfig<T, C>>(
+    callback,
+    sessionType,
+    cg
+  );
   return con || {};
 }
 
 export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   uniqueKey: unknown,
+  sessionType: SessionType,
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
@@ -141,7 +147,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   const [model, effectCallback, con, isSessionKey] = parseEffect<
     C,
     QueryConfig<T, C>
-  >(callback, 'query', cg);
+  >(callback, sessionType, cg);
   const configuration = con || {};
   const { defaultData, loaded } = configuration;
   const hasDefaultData = Object.prototype.hasOwnProperty.call(

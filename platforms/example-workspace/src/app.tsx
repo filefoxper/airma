@@ -79,9 +79,21 @@ const userQuery = (validQuery: Condition) =>
         }) as Promise<User[]>
     });
 
+const userSave = (u: Omit<User, 'id'>) =>
+    new Promise((resolve, reject) => {
+        resolve(
+            rest('/api/user')
+                .setBody(u)
+                .post<null>()
+                .then(() => true)
+        );
+    })
+
 export const fetchSession = session(userQuery, 'query')
   .createStore()
   .asGlobal();
+
+export const saveSession = session(userSave,'mutation').createStore().static();
 
 const test = model((state: number) => {
   return {
@@ -172,16 +184,7 @@ const Creating = memo(
 
     const [fs, query] = fetchSession.useSession();
 
-    const [sessionState, save] = useMutation(
-      (u: Omit<User, 'id'>) =>
-        new Promise((resolve, reject) => {
-            resolve(
-                rest('/api/user')
-                    .setBody(u)
-                    .post<null>()
-                    .then(() => true)
-            );
-        }),
+    const [sessionState, save] = saveSession.useMutation(
       {
         variables: [user],
         strategy: [Strategy.once()]
