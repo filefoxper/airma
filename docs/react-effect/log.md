@@ -109,6 +109,6 @@
 * roll `useResponse` and `useResponse.*` features back. [rollback reason](/react-effect/guides?id=useresponse)
 * add options for `useResponse` and `useResponse.*`.
 
-# v18.4.10
+# v18.4.11
 
 * fix the bug about `useMutation` in static store can not work.

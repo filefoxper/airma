@@ -108,3 +108,7 @@
 ## v18.4.7
 
 * 修复 useResponse 和 useResponse.* 响应加载时的旧响应问题。
+
+## v18.4.11
+
+* 修复 useMutation 共享模式下异常问题
