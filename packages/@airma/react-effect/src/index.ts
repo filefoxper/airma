@@ -285,7 +285,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const con = parseConfig(callback, config);
+  const con = parseConfig(callback, 'query', config);
   const {
     variables,
     deps,
@@ -320,7 +320,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState<T>>,
   (...variables: Parameters<C>) => Promise<SessionState<T>>
 ] {
-  const con = parseConfig(callback, config);
+  const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
   const scopeEffectConfig = useGlobalConfig() || {};
