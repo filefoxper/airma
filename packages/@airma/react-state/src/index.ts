@@ -18,13 +18,7 @@ import {
   getRuntimeContext
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy, noop } from './libs/tools';
-import {
-  AirReducerLike,
-  EffectOn,
-  GlobalConfig,
-  ModelAction,
-  Selector
-} from './type';
+import { EffectOn, GlobalConfig, ModelAction, Selector } from './type';
 import type {
   AirModelInstance,
   AirReducer,
@@ -185,7 +179,9 @@ function watch<S, T extends AirModelInstance>(
     return m.dispatchId || m;
   }
 
-  return function useEffectWrap(callback: (ins: T) => void | (() => void)) {
+  return function useEffectWrap(
+    callback: (ins: T, act: Action | null) => void | (() => void)
+  ) {
     const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
     const onChangeRef = useRef<null | any[]>(null);
     const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
@@ -207,6 +203,7 @@ function watch<S, T extends AirModelInstance>(
       const currentOnChanges = onChangeCallback
         ? onChangeCallback(instance)
         : null;
+      onChangeRef.current = currentOnChanges;
       if (
         onActions &&
         onActions.length &&
@@ -223,7 +220,7 @@ function watch<S, T extends AirModelInstance>(
       ) {
         return noop;
       }
-      return callback(instance);
+      return callback(instance, action);
     }, [action]);
 
     useEffect(() => {
@@ -266,7 +263,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const defaultOpt = {
     required: false
   };
-  const { required, useDefaultState, signal } = {
+  const { useDefaultState, signal } = {
     ...defaultOpt,
     ...option
   };
@@ -279,6 +276,9 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const { batchUpdate } = useOptimize();
   const unmountRef = useRef(false);
   const context = useContext(ReactStateContext);
+  const isFactoryValidate = (model as FactoryInstance<any>).isFactory;
+  const required =
+    typeof isFactoryValidate === 'function' && isFactoryValidate();
   const connection = required ? findConnection(context, model) : undefined;
   if (required && !connection) {
     throw new Error(
@@ -442,9 +442,6 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>
-): [S | undefined, T, () => T];
-function useTupleModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
   option?: {
@@ -462,15 +459,9 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
     useDefaultState?: boolean;
   }
 ): [S | undefined, T, () => T] {
-  const { getSourceFrom } = model as AirReducerLike;
-  const sourceFrom =
-    typeof getSourceFrom === 'function' ? getSourceFrom() : undefined;
-  const result = useSourceTupleModel(sourceFrom || model, state, option);
+  const result = useSourceTupleModel(model, state, option);
   const [s, agent, updateState, createSignal] = result;
-  const controlledAgent = useSourceControlledModel(model, s, updateState, {
-    disabled: !sourceFrom
-  });
-  return [s, sourceFrom ? controlledAgent : agent, createSignal];
+  return [s, agent, createSignal];
 }
 
 export function useModel<S, T extends AirModelInstance, D extends S>(
@@ -484,13 +475,8 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D
 ): T {
-  const { pipe } = model as FactoryInstance<any>;
-  const { getSourceFrom } = model as AirReducerLike;
-  const required =
-    typeof pipe === 'function' || typeof getSourceFrom === 'function';
   const useDefaultState = arguments.length > 1;
   const [, agent] = useTupleModel(model, state, {
-    required,
     useDefaultState
   });
   return agent;
@@ -500,13 +486,8 @@ export function useSignal<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S | undefined, T>,
   state?: D
 ): () => T {
-  const { pipe } = model as FactoryInstance<any>;
-  const { getSourceFrom } = model as AirReducerLike;
-  const required =
-    typeof pipe === 'function' || typeof getSourceFrom === 'function';
   const useDefaultState = arguments.length > 1;
   const [, , createSignal] = useTupleModel(model, state, {
-    required,
     useDefaultState,
     signal: true
   });
@@ -640,7 +621,11 @@ export const model = function model<S, T extends AirModelInstance>(
     return useControlledModel(m, state, setState);
   };
 
-  const apiStore = function apiStore(state?: S, k?: any, keys: any[] = []) {
+  const apiStore = function apiStore(
+    state?: S,
+    k?: FactoryInstance<any>,
+    keys: FactoryInstance<any>[] = []
+  ) {
     const hasParams = arguments.length > 0;
     const key = (function computeKey() {
       if (k != null) {
@@ -691,7 +676,7 @@ export const model = function model<S, T extends AirModelInstance>(
     };
 
     function global() {
-      const staticModelKey = key.global();
+      const staticModelKey = key.static();
 
       const useApiGlobalModel = function useApiGlobalModel(s?: S) {
         const params = (
@@ -726,7 +711,6 @@ export const model = function model<S, T extends AirModelInstance>(
       useModel: useApiStoreModel,
       useSignal: useApiStoreSignal,
       useSelector: useApiStoreSelector,
-      asGlobal: global,
       static: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
@@ -761,7 +745,6 @@ export const model = function model<S, T extends AirModelInstance>(
     useModel: useApiModel,
     useSignal: useApiSignal,
     useControlledModel: useApiControlledModel,
-    store: createStoreApi,
     createStore: createStoreApi
   });
 };

@@ -571,13 +571,12 @@ export function staticFactory<T extends AirReducer<any, any>>(
   const replaceModel: StaticFactoryInstance<T> = function replaceModel(s: any) {
     return reducer(s);
   } as StaticFactoryInstance<T>;
-  replaceModel.effect = reducer.effect;
   replaceModel.payload = reducer.payload;
   replaceModel.connection = reducer.creation();
-  replaceModel.pipe = reducer.pipe;
-  replaceModel.global = function self() {
+  replaceModel.static = function self() {
     return replaceModel;
   };
+  replaceModel.isFactory = reducer.isFactory;
   return replaceModel as StaticFactoryInstance<T>;
 }
 
@@ -603,19 +602,11 @@ export function factory<T extends AirReducer<any, any>>(
     }
     return createModel(replaceModel, state, updaterConfig);
   };
-  replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
-    target: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> } {
-    const pipeModel = function pipeModel(s: any) {
-      return target(s);
-    };
-    pipeModel.getSourceFrom = function getSourceFrom() {
-      return replaceModel;
-    };
-    return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
-  };
-  replaceModel.global = function staticFactoryForModel() {
+  replaceModel.static = function staticFactoryForModel() {
     return staticFactory<T>(replaceModel as FactoryInstance<T>);
+  };
+  replaceModel.isFactory = function isFactory() {
+    return true;
   };
   return replaceModel as FactoryInstance<T>;
 }

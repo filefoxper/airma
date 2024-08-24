@@ -11,7 +11,8 @@ import {
   Provider as ModelProvider,
   useSelector,
   provide as provideKeys,
-  AirReducer
+  AirReducer,
+  useModel
 } from '@airma/react-state';
 import {
   useMount,
@@ -604,13 +605,13 @@ const session = function session<T, C extends PromiseCallback<T>>(
   } as C;
 
   const useApiQuery = function useApiQuery(
-    c: QueryConfig<T, C> | Parameters<C>
+    c?: QueryConfig<T, C> | Parameters<C>
   ) {
     return useQuery(sessionCallback, c);
   };
 
   const useApiMutation = function useApiMutation(
-    c: MutationConfig<T, C> | Parameters<C>
+    c?: MutationConfig<T, C> | Parameters<C>
   ) {
     return useMutation(sessionCallback, c);
   };
@@ -618,12 +619,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
   const storeApi = function storeApi(k?: any, keys: any[] = []) {
     const key = k != null ? k : createSessionKey(sessionCallback, queryType);
     const useStoreApiQuery = function useStoreApiQuery(
-      c: QueryConfig<T, C> | Parameters<C>
+      c?: QueryConfig<T, C> | Parameters<C>
     ) {
       return useQuery(key, c);
     };
     const useStoreApiMutation = function useStoreApiMutation(
-      c: MutationConfig<T, C> | Parameters<C>
+      c?: MutationConfig<T, C> | Parameters<C>
     ) {
       return useMutation(key, c);
     };
@@ -662,7 +663,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
     const globalApi = function globalApi() {
-      const globalKey = key.global();
+      const globalKey = key.static();
       const globalApiHooks = {
         useSession() {
           return useSession(globalKey, queryType);
@@ -672,12 +673,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
         }
       };
       const useGlobalApiQuery = function useGlobalApiQuery(
-        c: QueryConfig<T, C> | Parameters<C>
+        c?: QueryConfig<T, C> | Parameters<C>
       ) {
         return useQuery(globalKey, c);
       };
       const useGlobalApiMutation = function useGlobalApiMutation(
-        c: MutationConfig<T, C> | Parameters<C>
+        c?: MutationConfig<T, C> | Parameters<C>
       ) {
         return useMutation(globalKey, c);
       };
@@ -688,7 +689,6 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const sessionStoreApi = {
       key,
       with: withKeys,
-      asGlobal: globalApi,
       static: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
@@ -702,7 +702,6 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const api = {
-    store: storeApi,
     createStore: storeApi
   };
 

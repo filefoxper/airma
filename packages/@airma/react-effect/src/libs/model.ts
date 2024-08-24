@@ -99,8 +99,8 @@ function parseEffect<
   sessionType: SessionType,
   config?: C
 ): [SessionKey<E>, E, C | undefined, boolean] {
-  const { pipe } = callback as SessionKey<E>;
-  const isSessionKey = typeof pipe === 'function';
+  const { isFactory } = callback as SessionKey<E>;
+  const isSessionKey = typeof isFactory === 'function' && isFactory();
   if (!isSessionKey) {
     return [effectModel as SessionKey<E>, callback as E, config, false];
   }

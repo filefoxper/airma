@@ -139,19 +139,13 @@ export type ModelFactoryStore<T> = {
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
   connection: Connection;
   payload?: unknown;
-  effect?: [(...params: any[]) => any, Record<string, any>?];
-  pipe<P extends AirReducer<any, any>>(
-    reducer: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> };
-  global: () => StaticFactoryInstance<T>;
+  static: () => StaticFactoryInstance<T>;
+  isFactory: () => true;
 };
 
 export type FactoryInstance<T extends AirReducer<any, any>> = T & {
   creation(updateConfig?: UpdaterConfig): Connection;
   payload?: unknown;
-  effect?: [(...params: any[]) => any, Record<string, any>?];
-  pipe<P extends AirReducer<any, any>>(
-    reducer: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> };
-  global: () => StaticFactoryInstance<T>;
+  static: () => StaticFactoryInstance<T>;
+  isFactory: () => true;
 };

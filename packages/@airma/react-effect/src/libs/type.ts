@@ -227,6 +227,7 @@ export type ControlData = {
   variables?: any[];
   fetchingKey?: any;
   finalFetchingKey?: any;
+  mainFetchingKey?: any;
 };
 
 export type FullControlData = {

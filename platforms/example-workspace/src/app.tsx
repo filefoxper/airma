@@ -91,7 +91,7 @@ const userSave = (u: Omit<User, 'id'>) =>
 
 export const fetchSession = session(userQuery, 'query')
   .createStore()
-  .asGlobal();
+  .static();
 
 export const saveSession = session(userSave,'mutation').createStore().static();
 
@@ -103,8 +103,8 @@ const test = model((state: number) => {
     }
   };
 })
-  .store(0)
-  .asGlobal();
+  .createStore(0)
+  .static();
 
 const counting = (state: number) => {
   return {
@@ -146,7 +146,7 @@ const store = model((query: Query) => {
   };
 })
   .createStore()
-  .asGlobal();
+  .static();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = fetchSession.useSession();
@@ -171,7 +171,7 @@ const creatingStore = model((userData: Omit<User, 'id'>) => {
   };
 })
   .createStore()
-  .asGlobal();
+  .static();
 
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
@@ -306,13 +306,13 @@ export default function App() {
 
     conditionSignal.useEffect((ins)=>{
         console.log('signal creating',ins.creating);
-    }).onActions((i)=>[i.create]).onChanges(i=>[i.creating]);
+    }).onChanges(i=>[i.creating]);
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],
     defaultData: [],
     strategy: [
-      Strategy.memo(),
+      Strategy.cache({capacity:10}),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
         console.log('success', v.name);

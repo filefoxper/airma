@@ -472,7 +472,7 @@ declare type UseQueryShort<D extends PromiseCallback<any> | SessionKey<any>> = <
     | Parameters<MCC<D>>
     | DefaultQueryConfig<PCR<D>, MCC<D>>
 >(
-  config: C
+  config?: C
 ) => C extends DefaultQueryConfig<PCR<D>, MCC<D>>
   ? LoadedSessionResult<D>
   : SessionResult<D>;
@@ -485,7 +485,7 @@ declare type UseMutationShort<
     | Parameters<MCC<D>>
     | DefaultMutationConfig<PCR<D>, MCC<D>>
 >(
-  config: C
+  config?: C
 ) => C extends DefaultMutationConfig<PCR<D>, MCC<D>>
   ? LoadedSessionResult<D>
   : SessionResult<D>;
@@ -521,14 +521,6 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>> {
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
-  /**
-   * @deprecated
-   */
-  asGlobal: () => {
-    useQuery: UseQueryShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
   static: () => {
     useQuery: UseQueryShort<D>;
     useSession: UseSessionShort<D>;
@@ -539,11 +531,6 @@ declare interface QueryStoreApi<D extends PromiseCallback<any>>
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useMutation: UseMutationShort<D>;
-  asGlobal: () => {
-    useMutation: UseMutationShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
   static: () => {
     useMutation: UseMutationShort<D>;
     useSession: UseSessionShort<D>;
@@ -557,10 +544,6 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useQuery: UseQueryShort<D>;
-  /**
-   * @deprecated
-   */
-  store: () => QueryStoreApi<D>;
   createStore: () => QueryStoreApi<D>;
 };
 export declare function session<D extends PromiseCallback<any>>(
@@ -569,9 +552,5 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useMutation: UseMutationShort<D>;
-  /**
-   * @deprecated
-   */
-  store: () => MutationStoreApi<D>;
   createStore: () => MutationStoreApi<D>;
 };
