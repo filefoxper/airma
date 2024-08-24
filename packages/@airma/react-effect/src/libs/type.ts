@@ -223,11 +223,22 @@ export type PromiseHolder = {
   loaded?: boolean;
 };
 
+export interface Execution {
+  trigger: () => void;
+  execute: (...args: any[]) => void;
+}
+
+export interface Tunnel {
+  key: unknown;
+  isFullFunctional: boolean;
+  execution: Execution;
+}
+
 export type ControlData = {
   variables?: any[];
   fetchingKey?: any;
   finalFetchingKey?: any;
-  mainFetchingKey?: any;
+  tunnels?: Tunnel[];
 };
 
 export type FullControlData = {

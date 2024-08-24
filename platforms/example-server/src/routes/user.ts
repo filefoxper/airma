@@ -36,15 +36,6 @@ export default class UserRoute {
       res.status(500).send(`There is valid query key: ${invalid}`);
       return;
     }
-    const n = query.name as string;
-    if ((n || '').indexOf('Mr') >= 0) {
-      global.ex = (global.ex ?? 0) + 1;
-    }
-    if ((global.ex ?? 0) >= 3) {
-      global.ex = 0;
-      res.status(500).send(`There is valid query key: ${'name'}`);
-      return;
-    }
     const result = users
       .filter(user => (name ? user.name.startsWith(name) : true))
       .filter(user => (username ? user.username.startsWith(username) : true));

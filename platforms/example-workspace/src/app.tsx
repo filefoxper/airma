@@ -182,7 +182,7 @@ const Creating = memo(
       age: 10
     });
 
-    const [fs, query] = fetchSession.useSession();
+    const [fs, query] = fetchSession.useQuery();
 
     const [sessionState, save] = saveSession.useMutation(
       {
@@ -234,10 +234,10 @@ const Creating = memo(
 
 function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, validQuery, create, changeDisplay } = store.useModel();
+  const { displayQuery, validQuery, create, changeDisplay,submit } = store.useModel();
 
   const isFetching = useIsFetching();
-  const [, trigger, query] = fetchSession.useSession();
+  const [, trigger] = fetchSession.useQuery();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -266,7 +266,7 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
       <button
         type="button"
         style={{ marginLeft: 12 }}
-        onClick={() => query(displayQuery)}
+        onClick={() => submit()}
       >
         query
       </button>
@@ -307,6 +307,8 @@ export default function App() {
     conditionSignal.useEffect((ins)=>{
         console.log('signal creating',ins.creating);
     }).onChanges(i=>[i.creating]);
+
+    console.log('queryData',queryData)
 
   const querySession = fetchSession.useQuery({
     variables: [queryData],
