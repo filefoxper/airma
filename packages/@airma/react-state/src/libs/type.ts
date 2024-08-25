@@ -94,6 +94,16 @@ export interface FirstActionWrap extends ActionWrap {
   tail: ActionWrap | undefined;
 }
 
+export interface CacheGenerator<R extends () => any = () => any> {
+  callback: R;
+  deps?: unknown[];
+  get: () => ReturnType<R>;
+  cacheGenerator: <S, T extends AirModelInstance>(
+    updater: Updater<S, T>,
+    type: string
+  ) => any;
+}
+
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
   version: number;
@@ -106,6 +116,7 @@ export type Updater<S, T extends AirModelInstance> = {
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
   temporaryDispatches: Dispatch[];
+  cacheGenerators: Record<string, { value: any; deps?: unknown[] } | null>;
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;

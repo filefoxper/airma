@@ -15,7 +15,8 @@ import {
   checkIfLazyIdentifyConnection,
   createStoreCollection,
   factory as createFactory,
-  getRuntimeContext
+  getRuntimeContext,
+  cache
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy, noop } from './libs/tools';
 import { EffectOn, GlobalConfig, ModelAction, Selector } from './type';
@@ -751,3 +752,4 @@ export const model = function model<S, T extends AirModelInstance>(
 
 model.context = getRuntimeContext;
 model.create = model;
+model.cache = cache;

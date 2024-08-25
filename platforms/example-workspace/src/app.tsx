@@ -122,7 +122,7 @@ const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
-  const queryData = model.context().memo(() => {
+  const queryData = model.cache(() => {
     return { ...query.valid };
   }, [query.valid]);
   return {
@@ -308,10 +308,8 @@ export default function App() {
         console.log('signal creating',ins.creating);
     }).onChanges(i=>[i.creating]);
 
-    console.log('queryData',queryData)
-
   const querySession = fetchSession.useQuery({
-    variables: [queryData],
+    variables: [queryData.get()],
     defaultData: [],
     strategy: [
       Strategy.cache({capacity:10}),
