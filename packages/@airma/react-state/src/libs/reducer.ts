@@ -318,24 +318,33 @@ function cacheGenerator<S, T extends AirModelInstance>(
   if (!data || data.cacheGenerator !== cacheGenerator) {
     return data;
   }
-  return {
+  const cacheStructure = updater.cacheGenerators[type];
+  if (cacheStructure && shallowEqual(cacheStructure.deps, data.deps)) {
+    return cacheStructure.out;
+  }
+  const out = {
     get: () => {
-      const cache = updater.cacheGenerators[type];
-      if (!cache) {
+      const cacheStructureInRuntime = updater.cacheGenerators[type];
+      if (!cacheStructureInRuntime) {
         const value = data.callback();
-        updater.cacheGenerators[type] = { value, deps: data.deps };
+        updater.cacheGenerators[type] = { value, deps: data.deps, out };
         return value;
       }
-      const { value: cacheValue, deps: cacheDeps } = cache;
+      const { value: cacheValue, deps: cacheDeps } = cacheStructureInRuntime;
       if (shallowEqual(cacheDeps, data.deps)) {
         return cacheValue;
       }
       updater.cacheGenerators[type] = null;
       const changeValue = data.callback();
-      updater.cacheGenerators[type] = { value: changeValue, deps: data.deps };
+      updater.cacheGenerators[type] = {
+        value: changeValue,
+        deps: data.deps,
+        out
+      };
       return changeValue;
     }
   };
+  return out;
 }
 
 export function cache<R extends () => any>(

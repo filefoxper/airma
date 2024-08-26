@@ -116,7 +116,10 @@ export type Updater<S, T extends AirModelInstance> = {
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
   temporaryDispatches: Dispatch[];
-  cacheGenerators: Record<string, { value: any; deps?: unknown[] } | null>;
+  cacheGenerators: Record<
+    string,
+    { value: any; deps?: unknown[]; out: { get: () => any } } | null
+  >;
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;

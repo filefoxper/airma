@@ -299,6 +299,10 @@ export default function App() {
     shallowEqual
   );
 
+    useEffect(() => {
+      console.log('queryData change', queryData.get());
+    }, [queryData]);
+
   const item = conditionSignal();
   // if(creating&&item.displayQuery.name!=='Mr'){
   //     item.changeDisplay({name:'Mr'})
