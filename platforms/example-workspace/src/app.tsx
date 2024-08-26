@@ -122,9 +122,10 @@ const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
-  const queryData = model.cache((q) => {
-    return q.valid;
-  }, query);
+  const queryData = model.cache((v) => {
+    const {name,username} = v;
+    return {name,username};
+  }, query.valid);
   return {
     queryData,
     displayQuery: query.display,

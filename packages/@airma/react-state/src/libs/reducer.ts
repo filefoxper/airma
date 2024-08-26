@@ -379,17 +379,18 @@ function cacheGenerator<S, T extends AirModelInstance>(
       const used = collectUsedDeps(data.deps);
       const changeValue = data.callback(used.target);
       const usedDeps = used.getDeps();
-      if (usedDeps != null && shallowEqual(cachedUsedDeps, usedDeps)) {
-        return cacheValue;
-      }
+      const currentValue =
+        usedDeps != null && shallowEqual(cachedUsedDeps, usedDeps)
+          ? cacheValue
+          : changeValue;
       updater.cacheGenerators[type] = null;
       updater.cacheGenerators[type] = {
-        value: changeValue,
+        value: currentValue,
         deps: data.deps,
         usedDeps,
         out
       };
-      return changeValue;
+      return currentValue;
     }
   };
   return out;
@@ -404,7 +405,7 @@ export function cache<R extends (dps?: any) => any>(
     deps,
     cacheGenerator,
     get(): ReturnType<R> {
-      return callback();
+      return callback(deps);
     }
   };
 }
