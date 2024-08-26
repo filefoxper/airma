@@ -122,9 +122,9 @@ const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
-  const queryData = model.cache(() => {
-    return { ...query.valid };
-  }, [query.valid]);
+  const queryData = model.cache((q) => {
+    return q.valid;
+  }, query);
   return {
     queryData,
     displayQuery: query.display,
@@ -302,6 +302,10 @@ export default function App() {
     useEffect(() => {
       console.log('queryData change', queryData.get());
     }, [queryData]);
+
+    useEffect(() => {
+        console.log('queryData.get() change', queryData.get());
+    }, [queryData.get()]);
 
   const item = conditionSignal();
   // if(creating&&item.displayQuery.name!=='Mr'){

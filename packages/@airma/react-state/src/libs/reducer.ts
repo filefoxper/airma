@@ -1,4 +1,10 @@
-import { createProxy, noop, shallowEqual, toMapObject } from './tools';
+import {
+  createProxy,
+  noop,
+  shallowEqual,
+  toMapObject,
+  useSimpleProxy
+} from './tools';
 import type {
   Action,
   AirModelInstance,
@@ -310,6 +316,32 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   return newMethod;
 }
 
+function collectUsedDeps(deps?: any) {
+  if (deps == null || typeof deps !== 'object') {
+    return {
+      getDeps() {
+        return null;
+      },
+      target: deps
+    };
+  }
+  let usedDeps: Record<string, any> | null = null;
+  const targetProxy = useSimpleProxy(deps, {
+    get(target: any, p: string, receiver: any): any {
+      const v = target[p];
+      usedDeps = usedDeps || {};
+      usedDeps[p] = v;
+      return v;
+    }
+  });
+  return {
+    getDeps(): any {
+      return usedDeps;
+    },
+    target: targetProxy
+  };
+}
+
 function cacheGenerator<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string
@@ -326,19 +358,35 @@ function cacheGenerator<S, T extends AirModelInstance>(
     get: () => {
       const cacheStructureInRuntime = updater.cacheGenerators[type];
       if (!cacheStructureInRuntime) {
-        const value = data.callback();
-        updater.cacheGenerators[type] = { value, deps: data.deps, out };
+        const usedInfo = collectUsedDeps(data.deps);
+        const value = data.callback(usedInfo.target);
+        updater.cacheGenerators[type] = {
+          value,
+          deps: data.deps,
+          usedDeps: usedInfo.getDeps(),
+          out
+        };
         return value;
       }
-      const { value: cacheValue, deps: cacheDeps } = cacheStructureInRuntime;
+      const {
+        value: cacheValue,
+        deps: cacheDeps,
+        usedDeps: cachedUsedDeps
+      } = cacheStructureInRuntime;
       if (shallowEqual(cacheDeps, data.deps)) {
         return cacheValue;
       }
+      const used = collectUsedDeps(data.deps);
+      const changeValue = data.callback(used.target);
+      const usedDeps = used.getDeps();
+      if (usedDeps != null && shallowEqual(cachedUsedDeps, usedDeps)) {
+        return cacheValue;
+      }
       updater.cacheGenerators[type] = null;
-      const changeValue = data.callback();
       updater.cacheGenerators[type] = {
         value: changeValue,
         deps: data.deps,
+        usedDeps,
         out
       };
       return changeValue;
@@ -347,9 +395,9 @@ function cacheGenerator<S, T extends AirModelInstance>(
   return out;
 }
 
-export function cache<R extends () => any>(
+export function cache<R extends (dps?: any) => any>(
   callback: R,
-  deps?: unknown[]
+  deps?: any
 ): CacheGenerator<R> {
   return {
     callback,

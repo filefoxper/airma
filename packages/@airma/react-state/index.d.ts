@@ -242,8 +242,8 @@ export declare const model: {
    */
   context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
-  cache: <R extends () => any>(
+  cache: <D, R extends (d: D) => any>(
     callback: R,
-    deps?: unknown[]
+    deps: D
   ) => { get: () => ReturnType<R> };
 };
