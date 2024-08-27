@@ -296,7 +296,7 @@ function success<T>(
   };
 }
 
-function validate(callback: () => boolean): StrategyType {
+function validate(callback: () => boolean | Promise<boolean>): StrategyType {
   return function validStrategy({ runner, getSessionState: current }) {
     const result = callback();
     if (!result) {
@@ -304,6 +304,25 @@ function validate(callback: () => boolean): StrategyType {
       return new Promise(resolve => {
         resolve({ ...state, abandon: true });
       });
+    }
+    if (typeof result === 'object' && typeof result.then === 'function') {
+      return result.then(
+        r => {
+          if (!r) {
+            const state = current();
+            return new Promise(resolve => {
+              resolve({ ...state, abandon: true });
+            });
+          }
+          return runner();
+        },
+        () => {
+          const state = current();
+          return new Promise(resolve => {
+            resolve({ ...state, abandon: true });
+          });
+        }
+      );
     }
     return runner();
   };
