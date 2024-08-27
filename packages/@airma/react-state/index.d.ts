@@ -235,15 +235,6 @@ declare interface Api<R extends AirReducer> {
   createStore: (state?: PickState<R>) => StoreApi<R>;
 }
 
-declare interface IsolateCache {
-  <T extends () => any>(callback: T): {
-    get: () => ReturnType<T>;
-  };
-  <D, R extends (d: D) => any>(callback: R, deps: D): {
-    get: () => ReturnType<R>;
-  };
-}
-
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
   /**
@@ -251,5 +242,10 @@ export declare const model: {
    */
   context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
-  cache: IsolateCache;
+  createCacheField: <T extends () => any>(
+    callback: T,
+    deps?: unknown[]
+  ) => {
+    get: () => ReturnType<T>;
+  };
 };

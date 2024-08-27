@@ -16,7 +16,7 @@ import {
   createStoreCollection,
   factory as createFactory,
   getRuntimeContext,
-  cache
+  createCacheField
 } from './libs/reducer';
 import { shallowEqual as shallowEq, createProxy, noop } from './libs/tools';
 import { EffectOn, GlobalConfig, ModelAction, Selector } from './type';
@@ -752,4 +752,4 @@ export const model = function model<S, T extends AirModelInstance>(
 
 model.context = getRuntimeContext;
 model.create = model;
-model.cache = cache;
+model.createCacheField = createCacheField;

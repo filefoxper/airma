@@ -94,11 +94,9 @@ export interface FirstActionWrap extends ActionWrap {
   tail: ActionWrap | undefined;
 }
 
-export interface CacheGenerator<
-  R extends (dps?: any) => any = (dps?: any) => any
-> {
+export interface CacheGenerator<R extends () => any = () => any> {
   callback: R;
-  deps?: any;
+  deps?: unknown[];
   get: () => ReturnType<R>;
   cacheGenerator: <S, T extends AirModelInstance>(
     updater: Updater<S, T>,
@@ -120,7 +118,7 @@ export type Updater<S, T extends AirModelInstance> = {
   temporaryDispatches: Dispatch[];
   cacheGenerators: Record<
     string,
-    { value: any; deps?: any; usedDeps?: any; out: { get: () => any } } | null
+    { value: any; deps?: unknown[]; out: { get: () => any } } | null
   >;
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
