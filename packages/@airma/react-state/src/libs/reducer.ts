@@ -310,15 +310,26 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   return newMethod;
 }
 
+function clearCacheGenerators<S, T extends AirModelInstance>(
+  updater: Updater<S, T>,
+  type: string
+) {
+  if (updater.cacheGenerators[type]) {
+    updater.cacheGenerators[type] = null;
+  }
+}
+
 function cacheGenerator<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string
 ) {
   const data = updater.current[type] as CacheGenerator;
   if (!data || data.cacheGenerator !== cacheGenerator) {
+    clearCacheGenerators(updater, type);
     return data;
   }
   if (data.deps == null) {
+    clearCacheGenerators(updater, type);
     return {
       get() {
         return data.callback();
