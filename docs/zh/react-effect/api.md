@@ -4,6 +4,8 @@
 
 用于创建查询操作[会话](/zh/react-effect/concepts?id=会话)的 React Hook API。只采纳最新执行返回的会话结果，默认情况下，通过加载、依赖更新、人工调用均可触发。
 
+自 18.5.0 版本开始，无 config 入参的 useQuery 将肩负 useSession 的功能，当该 useQuery 被人工触发时，它会先查找是否有 session key 相同，且具备 config 参数的其他 useQuery 存在，若存在，则驱动其工作，若不存在或无法驱动其他同键 useQuery 工作，则自己工作。
+
 ```ts
 function useQuery(
   promiseCallbackOrSessionKey, 
@@ -31,6 +33,8 @@ function useQuery(
 ## useMutation
 
 用于创建修改操作[会话](/zh/react-effect/concepts?id=会话)的 React Hook API。在手工触发情况下阻塞运行，默认情况下，只能通过人工调用触发。
+
+自 18.5.0 版本开始，无 config 入参的 useMutation 将肩负 useSession 的功能，当该 useMutation 被人工触发时，它会先查找是否有 session key 相同，且具备 config 参数的其他 useMutation 存在，若存在，则驱动其工作，若不存在或无法驱动其他同键 useMutation 工作，则自己工作。
 
 ```ts
 function useMutation(

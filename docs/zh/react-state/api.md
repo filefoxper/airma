@@ -394,6 +394,7 @@ interface Api {
 }
 
 function model(modelFn): (typeof modelFn) & Api;
+model.createCacheField = function(callback:()=>any, deps:any[]);
 ```
 
 参数
@@ -405,6 +406,30 @@ function model(modelFn): (typeof modelFn) & Api;
 带有常用API的模型函数
 
 用法[参考](/zh/react-state/guides?id=model)
+
+静态方法
+
+* createCacheField - 创建缓存字段，用法[参考](/zh/react-state/guides?id=实例缓存字段)
+
+### model.createCacheField
+
+```ts
+function createCacheField(callback:()=>any, deps:any[]): {
+  get:()=>ReturnType<typeof callback>,
+};
+```
+
+参数
+
+* callback - 缓存字段值的产生函数
+* deps - 缓存字段更新依赖的外部变量
+
+
+返回
+
+缓存字段对象，包含 get 方法，用于获取缓存字段值。
+
+用法[参考](/zh/react-state/guides?id=实例缓存字段)
 
 ## ConfigProvider
 

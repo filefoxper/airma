@@ -120,3 +120,8 @@
 
  * **Note**：Remove signal.watch and signal.effect APIs.
  * add `signal.useEffect` API.
+
+## v18.5.0 2024-08-29
+
+* add `model.createCacheField` API.
+* remove the deprecated APIs.

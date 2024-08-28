@@ -253,15 +253,19 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       sessionExecution('manual');
       return;
     }
-    const currentKey = keyRef.current;
-    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
-    fulls.forEach(f => {
-      if (f.key === currentKey) {
-        return;
-      }
-      f.execution.trigger();
+    Promise.resolve().then(() => {
+      const currentKey = keyRef.current;
+      const fulls = tunnelController
+        .getTunnels()
+        .filter(t => t.isFullFunctional);
+      fulls.forEach(f => {
+        if (f.key === currentKey) {
+          return;
+        }
+        f.execution.trigger();
+      });
+      sessionExecution('manual');
     });
-    sessionExecution('manual');
   });
 
   const execute = usePersistFn((...vars: Parameters<C>) => {
@@ -269,15 +273,19 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       sessionExecution('manual', vars);
       return;
     }
-    const currentKey = keyRef.current;
-    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
-    fulls.forEach(f => {
-      if (f.key === currentKey) {
-        return;
-      }
-      f.execution.execute(...vars);
+    Promise.resolve().then(() => {
+      const currentKey = keyRef.current;
+      const fulls = tunnelController
+        .getTunnels()
+        .filter(t => t.isFullFunctional);
+      fulls.forEach(f => {
+        if (f.key === currentKey) {
+          return;
+        }
+        f.execution.execute(...vars);
+      });
+      sessionExecution('manual', vars);
     });
-    sessionExecution('manual', vars);
   });
 
   const effectDeps = deps || variables || [];
