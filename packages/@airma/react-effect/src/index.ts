@@ -4,6 +4,7 @@ import {
   lazy,
   ReactNode,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef
 } from 'react';
@@ -170,6 +171,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   config: QueryConfig<T, C> | Parameters<C>,
   isFullFunctionalConfig: boolean
 ): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
+  const mountedRef = useRef(false);
+  const preloadRef = useRef<null | { variables: Array<any> | null }>(null);
   const keyRef = useRef({});
   const [stableInstance, signal, con, promiseCallback] = useSessionBuildModel(
     callback,
@@ -249,48 +252,48 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const trigger = usePersistFn(() => {
+    if (!mountedRef.current) {
+      preloadRef.current = { variables: null };
+      return;
+    }
     if (isFullFunctionalConfig) {
       sessionExecution('manual');
       return;
     }
-    Promise.resolve().then(() => {
-      const currentKey = keyRef.current;
-      const fulls = tunnelController
-        .getTunnels()
-        .filter(t => t.isFullFunctional);
-      fulls.forEach(f => {
-        if (f.key === currentKey) {
-          return;
-        }
-        f.execution.trigger();
-      });
-      sessionExecution('manual');
+    const currentKey = keyRef.current;
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      if (f.key === currentKey) {
+        return;
+      }
+      f.execution.trigger();
     });
+    sessionExecution('manual');
   });
 
   const execute = usePersistFn((...vars: Parameters<C>) => {
+    if (!mountedRef.current) {
+      preloadRef.current = { variables: vars };
+      return;
+    }
     if (isFullFunctionalConfig) {
       sessionExecution('manual', vars);
       return;
     }
-    Promise.resolve().then(() => {
-      const currentKey = keyRef.current;
-      const fulls = tunnelController
-        .getTunnels()
-        .filter(t => t.isFullFunctional);
-      fulls.forEach(f => {
-        if (f.key === currentKey) {
-          return;
-        }
-        f.execution.execute(...vars);
-      });
-      sessionExecution('manual', vars);
+    const currentKey = keyRef.current;
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      if (f.key === currentKey) {
+        return;
+      }
+      f.execution.execute(...vars);
     });
+    sessionExecution('manual', vars);
   });
 
   const effectDeps = deps || variables || [];
 
-  useMount(() => {
+  useLayoutEffect(() => {
     tunnelController.registry({
       key: keyRef.current,
       isFullFunctional: isFullFunctionalConfig,
@@ -299,6 +302,28 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
         execute: execute as (...a: any[]) => void
       }
     });
+    return () => {
+      tunnelController.removeTunnel(keyRef.current);
+    };
+  }, []);
+
+  useMount(() => {
+    mountedRef.current = true;
+    const preload = preloadRef.current;
+    preloadRef.current = null;
+    if (
+      preload &&
+      triggerTypes.indexOf('manual') >= 0 &&
+      triggerTypes.indexOf('mount') < 0
+    ) {
+      const { variables: parameters } = preload;
+      if (parameters) {
+        execute(...(parameters as Parameters<C>));
+      } else {
+        trigger();
+      }
+      return;
+    }
     sessionExecution('mount');
   });
 
@@ -338,7 +363,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     const { removeGlobalFetchingKey } = globalControlSignal();
     removeGlobalFetchingKey(keyRef.current);
     fetchingKeyController.removeFetchingKey(keyRef.current);
-    tunnelController.removeTunnel(keyRef.current);
+    preloadRef.current = null;
   });
 
   const prevStateRef = useRef(stableInstance.state);
