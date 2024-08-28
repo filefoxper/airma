@@ -253,7 +253,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const trigger = usePersistFn(() => {
     if (!mountedRef.current) {
-      preloadRef.current = { variables: null };
+      preloadRef.current = { variables: variables || null };
       return;
     }
     if (isFullFunctionalConfig) {
