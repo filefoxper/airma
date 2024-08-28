@@ -252,6 +252,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const trigger = usePersistFn(() => {
+    if (triggerTypes.indexOf('manual') < 0) {
+      return;
+    }
     if (!mountedRef.current) {
       preloadRef.current = { variables: variables || null };
       return;
@@ -272,6 +275,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   });
 
   const execute = usePersistFn((...vars: Parameters<C>) => {
+    if (triggerTypes.indexOf('manual') < 0) {
+      return;
+    }
     if (!mountedRef.current) {
       preloadRef.current = { variables: vars };
       return;
