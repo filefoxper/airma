@@ -4,6 +4,7 @@ import {
   lazy,
   ReactNode,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef
 } from 'react';
@@ -11,7 +12,8 @@ import {
   Provider as ModelProvider,
   useSelector,
   provide as provideKeys,
-  AirReducer
+  AirReducer,
+  useModel
 } from '@airma/react-state';
 import {
   useMount,
@@ -36,7 +38,9 @@ import type {
   LazyComponentSupportType,
   FullControlData,
   Controller,
-  ControlData
+  ControlData,
+  Tunnel,
+  Execution
 } from './libs/type';
 import {
   parseConfig,
@@ -133,15 +137,42 @@ function useFetchingKey(controller: Controller) {
   }, []);
 }
 
+function useTunnels(controller: Controller) {
+  return useMemo(() => {
+    const getTunnels = function getTunnels(): Tunnel[] {
+      return controller.getData('tunnels') || [];
+    };
+    return {
+      getTunnels,
+      registry(tunnel: Tunnel) {
+        const tunnels = getTunnels();
+        if (tunnels.some(t => t.key === tunnel.key)) {
+          return;
+        }
+        controller.setData('tunnels', [...tunnels, tunnel]);
+      },
+      removeTunnel(key: unknown) {
+        const tunnels = getTunnels();
+        if (!tunnels.some(t => t.key === key)) {
+          return;
+        }
+        controller.setData(
+          'tunnels',
+          tunnels.filter(t => t.key !== key)
+        );
+      }
+    };
+  }, []);
+}
+
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   sessionType: SessionType,
-  config?: QueryConfig<T, C> | Parameters<C>
-): [
-  SessionState<T>,
-  () => Promise<SessionState<T>>,
-  (...variables: Parameters<C>) => Promise<SessionState<T>>
-] {
+  config: QueryConfig<T, C> | Parameters<C>,
+  isFullFunctionalConfig: boolean
+): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
+  const mountedRef = useRef(false);
+  const preloadRef = useRef<null | { variables: Array<any> | null }>(null);
   const keyRef = useRef({});
   const [stableInstance, signal, con, promiseCallback] = useSessionBuildModel(
     callback,
@@ -157,6 +188,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const controller = useController(callback);
   const fetchingKeyController = useFetchingKey(controller);
+  const tunnelController = useTunnels(controller);
 
   const globalControlSignal = globalControllerStore.useSignal();
 
@@ -181,8 +213,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
   };
 
-  const [strategyExecution, strategyEffects, strategyResponses] =
-    useStrategyExecution(signal, sessionRunner, con);
+  const [strategyExecution, strategyEffects] = useStrategyExecution(
+    signal,
+    sessionRunner,
+    con
+  );
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
@@ -216,15 +251,85 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     return strategyExecution(triggerType, vars || variables);
   };
 
-  const trigger = usePersistFn(() => sessionExecution('manual'));
+  const trigger = usePersistFn(() => {
+    if (triggerTypes.indexOf('manual') < 0) {
+      return;
+    }
+    if (!mountedRef.current) {
+      preloadRef.current = { variables: variables || null };
+      return;
+    }
+    if (isFullFunctionalConfig) {
+      sessionExecution('manual');
+      return;
+    }
+    const currentKey = keyRef.current;
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      if (f.key === currentKey) {
+        return;
+      }
+      f.execution.trigger();
+    });
+    sessionExecution('manual');
+  });
 
-  const execute = usePersistFn((...vars: Parameters<C>) =>
-    sessionExecution('manual', vars)
-  );
+  const execute = usePersistFn((...vars: Parameters<C>) => {
+    if (triggerTypes.indexOf('manual') < 0) {
+      return;
+    }
+    if (!mountedRef.current) {
+      preloadRef.current = { variables: vars };
+      return;
+    }
+    if (isFullFunctionalConfig) {
+      sessionExecution('manual', vars);
+      return;
+    }
+    const currentKey = keyRef.current;
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      if (f.key === currentKey) {
+        return;
+      }
+      f.execution.execute(...vars);
+    });
+    sessionExecution('manual', vars);
+  });
 
   const effectDeps = deps || variables || [];
 
+  useLayoutEffect(() => {
+    tunnelController.registry({
+      key: keyRef.current,
+      isFullFunctional: isFullFunctionalConfig,
+      execution: {
+        trigger,
+        execute: execute as (...a: any[]) => void
+      }
+    });
+    return () => {
+      tunnelController.removeTunnel(keyRef.current);
+    };
+  }, []);
+
   useMount(() => {
+    mountedRef.current = true;
+    const preload = preloadRef.current;
+    preloadRef.current = null;
+    if (
+      preload &&
+      triggerTypes.indexOf('manual') >= 0 &&
+      triggerTypes.indexOf('mount') < 0
+    ) {
+      const { variables: parameters } = preload;
+      if (parameters) {
+        execute(...(parameters as Parameters<C>));
+      } else {
+        trigger();
+      }
+      return;
+    }
     sessionExecution('mount');
   });
 
@@ -264,6 +369,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     const { removeGlobalFetchingKey } = globalControlSignal();
     removeGlobalFetchingKey(keyRef.current);
     fetchingKeyController.removeFetchingKey(keyRef.current);
+    preloadRef.current = null;
   });
 
   const prevStateRef = useRef(stableInstance.state);
@@ -282,11 +388,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
-): [
-  SessionState<T>,
-  () => Promise<SessionState<T>>,
-  (...variables: Parameters<C>) => Promise<SessionState<T>>
-] {
+): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
   const con = parseConfig(callback, 'query', config);
   const {
     variables,
@@ -311,17 +413,18 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     strategy: strategies.concat(latest() as StrategyType | null | undefined)
   };
 
-  return usePromiseCallbackEffect<T, C>(callback, 'query', promiseConfig);
+  return usePromiseCallbackEffect<T, C>(
+    callback,
+    'query',
+    promiseConfig,
+    !!config
+  );
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: MutationConfig<T, C> | Parameters<C>
-): [
-  SessionState<T>,
-  () => Promise<SessionState<T>>,
-  (...variables: Parameters<C>) => Promise<SessionState<T>>
-] {
+): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
   const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
@@ -338,7 +441,12 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     strategy: strategies.concat(block() as StrategyType | null | undefined)
   };
 
-  return usePromiseCallbackEffect<T, C>(callback, 'mutation', promiseConfig);
+  return usePromiseCallbackEffect<T, C>(
+    callback,
+    'mutation',
+    promiseConfig,
+    !!config
+  );
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
@@ -581,11 +689,6 @@ useResponse.success = useResponse.useSuccess;
  */
 useResponse.error = useResponse.useFailure;
 
-/**
- * @deprecated
- */
-export const SessionProvider = ModelProvider;
-
 export const Provider = ModelProvider;
 
 export const provide = provideKeys;
@@ -606,13 +709,13 @@ const session = function session<T, C extends PromiseCallback<T>>(
   } as C;
 
   const useApiQuery = function useApiQuery(
-    c: QueryConfig<T, C> | Parameters<C>
+    c?: QueryConfig<T, C> | Parameters<C>
   ) {
     return useQuery(sessionCallback, c);
   };
 
   const useApiMutation = function useApiMutation(
-    c: MutationConfig<T, C> | Parameters<C>
+    c?: MutationConfig<T, C> | Parameters<C>
   ) {
     return useMutation(sessionCallback, c);
   };
@@ -620,12 +723,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
   const storeApi = function storeApi(k?: any, keys: any[] = []) {
     const key = k != null ? k : createSessionKey(sessionCallback, queryType);
     const useStoreApiQuery = function useStoreApiQuery(
-      c: QueryConfig<T, C> | Parameters<C>
+      c?: QueryConfig<T, C> | Parameters<C>
     ) {
       return useQuery(key, c);
     };
     const useStoreApiMutation = function useStoreApiMutation(
-      c: MutationConfig<T, C> | Parameters<C>
+      c?: MutationConfig<T, C> | Parameters<C>
     ) {
       return useMutation(key, c);
     };
@@ -664,7 +767,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
     const globalApi = function globalApi() {
-      const globalKey = key.global();
+      const globalKey = key.static();
       const globalApiHooks = {
         useSession() {
           return useSession(globalKey, queryType);
@@ -674,12 +777,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
         }
       };
       const useGlobalApiQuery = function useGlobalApiQuery(
-        c: QueryConfig<T, C> | Parameters<C>
+        c?: QueryConfig<T, C> | Parameters<C>
       ) {
         return useQuery(globalKey, c);
       };
       const useGlobalApiMutation = function useGlobalApiMutation(
-        c: MutationConfig<T, C> | Parameters<C>
+        c?: MutationConfig<T, C> | Parameters<C>
       ) {
         return useMutation(globalKey, c);
       };
@@ -690,7 +793,6 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const sessionStoreApi = {
       key,
       with: withKeys,
-      asGlobal: globalApi,
       static: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
@@ -704,7 +806,6 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const api = {
-    store: storeApi,
     createStore: storeApi
   };
 

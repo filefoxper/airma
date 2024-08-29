@@ -112,3 +112,8 @@
 # v18.4.11
 
 * fix the bug about `useMutation` in static store can not work.
+
+# v18.5.0
+
+* make `useQuery` and `useMutation` works like `useSession` when there is no config for them.
+* make `Strategy.validate` support async function for validation.

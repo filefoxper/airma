@@ -4,6 +4,8 @@
 
 用于创建查询操作[会话](/zh/react-effect/concepts?id=会话)的 React Hook API。只采纳最新执行返回的会话结果，默认情况下，通过加载、依赖更新、人工调用均可触发。
 
+自 18.5.0 版本开始，无 config 入参的 useQuery 将肩负 useSession 的功能，当该 useQuery 被人工触发时，它会先查找是否有 session key 相同，且具备 config 参数的其他 useQuery 存在，若存在，则驱动其工作，若不存在或无法驱动其他同键 useQuery 工作，则自己工作。
+
 ```ts
 function useQuery(
   promiseCallbackOrSessionKey, 
@@ -31,6 +33,8 @@ function useQuery(
 ## useMutation
 
 用于创建修改操作[会话](/zh/react-effect/concepts?id=会话)的 React Hook API。在手工触发情况下阻塞运行，默认情况下，只能通过人工调用触发。
+
+自 18.5.0 版本开始，无 config 入参的 useMutation 将肩负 useSession 的功能，当该 useMutation 被人工触发时，它会先查找是否有 session key 相同，且具备 config 参数的其他 useMutation 存在，若存在，则驱动其工作，若不存在或无法驱动其他同键 useMutation 工作，则自己工作。
 
 ```ts
 function useMutation(
@@ -192,7 +196,7 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: () => boolean) => StrategyType;
+  validate: (process: () => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
@@ -274,7 +278,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 返回 boolean 值的回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。
+* **process** - 返回 boolean 值的回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。 **自18.5.0开始**，支持返回 Promise<boolean> 校验结果，若异步返回 true，则校验通过，否则阻止会话执行。
 
 ### Strategy.reduce
 

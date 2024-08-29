@@ -408,6 +408,134 @@ toggleStore.with(countStore,...).provideTo(
 
 关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [如何通过 model 声明函数使用 useSignal](/zh/react-state/guides?id=通过-model-声明函数使用-usesignal) 中的内容。
 
+## 实例缓存字段
+
+自 `v18.5.0` 开始 `@airma/react-state` 新增了实例缓存字段，用于缓存模型实例，这对配合副作用工作非常有帮助。
+
+通过 model.createCacheField 方法可创建缓存字段。该字段只能通过外部实例获取并调用字段的 get 方法时，才能生效。该对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
+
+```ts
+import {model} from '@airma/react-state';
+
+type QueryCondition = {
+    name: string;
+    page:number;
+    pageSize:number;
+    fetchVersion:number;
+}
+
+const queryModel = model((condition:QueryCondition)=>{
+    return {
+        ...condition,
+        // 创建一个依赖 condition.fetchVersion 变化做缓存的字段，
+        // 注意，缓存字段在 model 模型方法中并无缓存作用。
+        // 只有通过实例获取并调用该字段值的 get 方法时，才能享受缓存效果。
+        query:model.createCacheField(()=>{
+            const {name, page, pageSize} = condition;
+            return {name, page, pageSize}
+        },[condition.fetchVersion]),
+        setName(name:string){
+            return {
+               ...condition,
+                name
+            }
+        },
+        setPageInfo(page:number, pageSize:number){
+            return {
+               ...condition,
+                page,
+                pageSize
+            }
+        },
+        startFetch(){
+            return {
+               ...condition,
+                fetchVersion:condition.fetchVersion+1
+            }
+        }
+    }
+});
+
+const App = ()=>{
+    const instance = queryModel.useModel(
+        {
+            name:'', 
+            page:1, 
+            pageSize:10, 
+            fetchVersion:0
+        }
+    );
+    const { query } = instance;
+    const {setName, setPageInfo, startFetch} = instance;
+
+    useEffect(()=>{
+        // 通过 get 方法获取实例缓存字段值 {name, page, pageSize}
+        fetch(query.get());
+    },[query.get()]) // 通过 get 方法获取实例缓存字段值
+
+    // 当 setName 修改 condition.name 时， query.get() 缓存值不会更新
+    const handleNameChange = (e)=>setName(e.target.value);
+
+    // 当 startFetch 修改了缓存字段依赖值 fetchVersion 时，缓存值 query.get() 发生更新
+    const handleFetch = ()=>startFetch();
+    ......
+}
+```
+
+缓存字段的互相依赖。
+
+```ts
+import {model} from '@airma/react-state';
+
+type QueryCondition = {
+    name: string;
+    page:number;
+    pageSize:number;
+    fetchVersion:number;
+}
+
+const queryModel = model((condition:QueryCondition)=>{
+
+    const pageInfo = model.createCacheField(()=>{
+        const {page, pageSize} = condition;
+        return {page, pageSize}
+    },[condition.page, condition.pageSize]);
+    
+    return {
+        ...condition,
+        // 当依赖其他缓存字段时，需要将其直接添加到依赖列表中，不能使用 get 方法产生值。
+        // 当前缓存依赖了 fetchVersion 和 pageInfo 两个缓存字段，
+        // 而 pageInfo 依赖了 page 和 pageSize 两个缓存字段。
+        // 因此，该缓存相当于依赖了 fetchVersion、page 以及 pageSize 三个变量。
+        // 当 fetchVersion、page、 pageSize 中的任一变量发生变化时，该缓存字段都会重新计算。
+        query:model.createCacheField(()=>{
+            const {page, pageSize} = pageInfo.get();
+            const {name} = condition;
+            return {name, page, pageSize}
+        },[condition.fetchVersion, pageInfo]),
+        setName(name:string){
+            return {
+               ...condition,
+                name
+            }
+        },
+        setPageInfo(page:number, pageSize:number){
+            return {
+               ...condition,
+                page,
+                pageSize
+            }
+        },
+        startFetch(){
+            return {
+               ...condition,
+                fetchVersion:condition.fetchVersion+1
+            }
+        }
+    }
+});
+```
+
 ## ConfigProvider
 
 由于 `@airma/react-state` 采用的是订阅更新模式，库存状态数据的变更会通知每个使用点，使用点在收到变更通知后独立进行 React 状态更新（setState）。在 react<18.0.0 版本中需要 unstable_batchedUpdates 进行更新效率优化，而 `@airma/react-state` 并没有依赖 `react-dom` 包，因此需要通过配置的方式引入 unstable_batchedUpdates。

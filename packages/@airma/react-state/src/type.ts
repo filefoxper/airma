@@ -1,9 +1,5 @@
 import type { Action, AirReducer, ModelFactoryStore } from './libs/type';
 
-export type AirReducerLike = AirReducer<any, any> & {
-  getSourceFrom?: () => AirReducer<any, any>;
-};
-
 export type Selector = {
   parent: Selector | null;
 } & ModelFactoryStore<any>;
@@ -17,5 +13,8 @@ export interface ModelAction extends Action {
 }
 
 export interface EffectOn<T> {
-  onActions: (callback: (ins: T) => ((...args: any[]) => any)[]) => EffectOn<T>;
+  onActions: (
+    actionGetter: (ins: T) => ((...args: any[]) => any)[]
+  ) => EffectOn<T>;
+  onChanges: (changeGetter: (ins: T) => any[]) => EffectOn<T>;
 }

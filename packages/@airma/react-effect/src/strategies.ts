@@ -1,4 +1,3 @@
-import { LoadedSessionState } from 'index';
 import { SessionState, StrategyType } from './libs/type';
 
 function debounce(
@@ -297,7 +296,7 @@ function success<T>(
   };
 }
 
-function validate(callback: () => boolean): StrategyType {
+function validate(callback: () => boolean | Promise<boolean>): StrategyType {
   return function validStrategy({ runner, getSessionState: current }) {
     const result = callback();
     if (!result) {
@@ -305,6 +304,25 @@ function validate(callback: () => boolean): StrategyType {
       return new Promise(resolve => {
         resolve({ ...state, abandon: true });
       });
+    }
+    if (typeof result === 'object' && typeof result.then === 'function') {
+      return result.then(
+        r => {
+          if (!r) {
+            const state = current();
+            return new Promise(resolve => {
+              resolve({ ...state, abandon: true });
+            });
+          }
+          return runner();
+        },
+        () => {
+          const state = current();
+          return new Promise(resolve => {
+            resolve({ ...state, abandon: true });
+          });
+        }
+      );
     }
     return runner();
   };
@@ -461,14 +479,15 @@ function cache(option?: {
       const cacheState: SessionState = {
         ...currentState,
         data: cacheData.data,
-        variables
+        variables,
+        visited: true
       };
       return Promise.resolve(cacheState);
     }
     return runner(c => {
       return cacheData && (!staleTime || staleTime < 0)
-        ? { ...c, data: cacheData.data }
-        : c;
+        ? { ...c, data: cacheData.data, visited: true }
+        : { ...c, visited: false };
     }).then(next => {
       if (next.isError) {
         return {

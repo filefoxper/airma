@@ -94,6 +94,16 @@ export interface FirstActionWrap extends ActionWrap {
   tail: ActionWrap | undefined;
 }
 
+export interface CacheGenerator<R extends () => any = () => any> {
+  callback: R;
+  deps?: unknown[];
+  get: () => ReturnType<R>;
+  cacheGenerator: <S, T extends AirModelInstance>(
+    updater: Updater<S, T>,
+    type: string
+  ) => any;
+}
+
 // inner interface
 export type Updater<S, T extends AirModelInstance> = {
   version: number;
@@ -106,6 +116,10 @@ export type Updater<S, T extends AirModelInstance> = {
   dispatch: Dispatch | null;
   dispatches: Dispatch[];
   temporaryDispatches: Dispatch[];
+  cacheGenerators: Record<
+    string,
+    { value: any; deps?: unknown[]; out: { get: () => any } } | null
+  >;
   cacheMethods: Record<string, (...args: unknown[]) => unknown>;
   cacheState: { state: S } | null;
   state: S;
@@ -139,19 +153,13 @@ export type ModelFactoryStore<T> = {
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
   connection: Connection;
   payload?: unknown;
-  effect?: [(...params: any[]) => any, Record<string, any>?];
-  pipe<P extends AirReducer<any, any>>(
-    reducer: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> };
-  global: () => StaticFactoryInstance<T>;
+  static: () => StaticFactoryInstance<T>;
+  isFactory: () => true;
 };
 
 export type FactoryInstance<T extends AirReducer<any, any>> = T & {
   creation(updateConfig?: UpdaterConfig): Connection;
   payload?: unknown;
-  effect?: [(...params: any[]) => any, Record<string, any>?];
-  pipe<P extends AirReducer<any, any>>(
-    reducer: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> };
-  global: () => StaticFactoryInstance<T>;
+  static: () => StaticFactoryInstance<T>;
+  isFactory: () => true;
 };

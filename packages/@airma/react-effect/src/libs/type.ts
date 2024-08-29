@@ -82,10 +82,7 @@ export interface AbstractSessionState {
   cache: SessionCache[];
   maxCacheCapacity: number;
   executeVariables: any[] | undefined;
-  /**
-   * @deprecated
-   */
-  fetchVersion?: number;
+  visited?: boolean;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {
@@ -171,7 +168,6 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
-  useGlobalFetching?: boolean;
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'
@@ -227,10 +223,22 @@ export type PromiseHolder = {
   loaded?: boolean;
 };
 
+export interface Execution {
+  trigger: () => void;
+  execute: (...args: any[]) => void;
+}
+
+export interface Tunnel {
+  key: unknown;
+  isFullFunctional: boolean;
+  execution: Execution;
+}
+
 export type ControlData = {
   variables?: any[];
   fetchingKey?: any;
   finalFetchingKey?: any;
+  tunnels?: Tunnel[];
 };
 
 export type FullControlData = {

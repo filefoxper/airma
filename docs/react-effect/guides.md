@@ -513,6 +513,62 @@ const Component = provide(sessions)((props:Props)=>{
 });
 ```
 
+## No config useQuery/useMutation
+
+From version 18.5.0, if a `useQuey/useMutation` works without a config parameter, it always finds and drives a configurated one with same session key to work. If the perfect substitute is not found, it works by itself.
+
+```ts
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {
+    provide,
+    useQuery,
+    useSession
+} from '@airma/react-effect';
+
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
+
+const Child1 = ()=>{
+    // No config parameter,
+    // it works like a useSession.
+    // It found useQuery in top Component has a same key and config parameter,
+    // then it drives useQuery in top Component works.
+    const [
+        querySessionState, 
+        triggerQuery
+    ] = useQuery(sessions.query);
+
+    const {
+        // User[] | undefined
+        data,
+    } = querySessionState;
+    return ......;
+}
+
+const Child2 = ()=>{
+    return ......;
+}
+
+// simplify wrap
+const Component = provide(sessions)((props:Props)=>{
+    // responses session state to store[sessions.query],
+    // and subscribes store[sessions.query]
+    useQuery(sessions.query, {
+        variables: [props.query],
+        defaultData: []
+    });
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
+```
+
 ## session
 
 API session wraps promise callback to be a often use API collection.

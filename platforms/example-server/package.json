@@ -9,7 +9,6 @@
     "index.d.ts"
   ],
   "scripts": {
-    "build": "echo edit build script",
     "start": "ts-node ./src/index.ts"
   },
   "typings": "index.d.ts",

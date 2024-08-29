@@ -4,7 +4,6 @@
   "version": "16.0.0",
   "description": "This is a package",
   "scripts": {
-    "build": "echo edit build script",
     "start": "webpack serve --config ./webpack.dev.js"
   },
   "typings": "index.d.ts",

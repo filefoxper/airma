@@ -1,9 +1,4 @@
-import {
-  createKey,
-  Provider,
-  ConfigProvider as CP,
-  model
-} from '@airma/react-state';
+import { ConfigProvider as CP, model } from '@airma/react-state';
 import { createContext, createElement, useContext, useMemo } from 'react';
 import { globalController } from './model';
 import type { ConfigProviderProps, GlobalConfig } from './type';
@@ -12,7 +7,7 @@ export const defaultIsFetchingState: any[] = [];
 
 export const globalControllerStore = model(globalController)
   .createStore(defaultIsFetchingState)
-  .asGlobal();
+  .static();
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 

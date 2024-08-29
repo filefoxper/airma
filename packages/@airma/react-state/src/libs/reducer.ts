@@ -17,7 +17,8 @@ import type {
   ModelContext,
   Contexts,
   ModelContextFactory,
-  InstanceActionRuntime
+  InstanceActionRuntime,
+  CacheGenerator
 } from './type';
 
 const lazyIdentify = {};
@@ -309,6 +310,97 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
   return newMethod;
 }
 
+function clearCacheGenerators<S, T extends AirModelInstance>(
+  updater: Updater<S, T>,
+  type: string
+) {
+  if (updater.cacheGenerators[type]) {
+    updater.cacheGenerators[type] = null;
+  }
+}
+
+function cacheGenerator<S, T extends AirModelInstance>(
+  updater: Updater<S, T>,
+  type: string
+) {
+  const data = updater.current[type] as CacheGenerator;
+  if (!data || data.cacheGenerator !== cacheGenerator) {
+    clearCacheGenerators(updater, type);
+    return data;
+  }
+  if (data.deps == null) {
+    clearCacheGenerators(updater, type);
+    return {
+      get() {
+        return data.callback();
+      }
+    };
+  }
+  const cacheStructure = updater.cacheGenerators[type];
+  if (cacheStructure && shallowEqual(cacheStructure.deps, data.deps)) {
+    return cacheStructure.out;
+  }
+  const out = {
+    get: () => {
+      const cacheStructureInRuntime = updater.cacheGenerators[type];
+      if (!cacheStructureInRuntime) {
+        const value = data.callback();
+        updater.cacheGenerators[type] = { value, deps: data.deps, out };
+        return value;
+      }
+      const { value: cacheValue, deps: cacheDeps } = cacheStructureInRuntime;
+      if (shallowEqual(cacheDeps, data.deps)) {
+        return cacheValue;
+      }
+      updater.cacheGenerators[type] = null;
+      const changeValue = data.callback();
+      updater.cacheGenerators[type] = {
+        value: changeValue,
+        deps: data.deps,
+        out
+      };
+      return changeValue;
+    }
+  };
+  return out;
+}
+
+export function createCacheField<R extends () => any>(
+  callback: R,
+  deps?: unknown[]
+): CacheGenerator<R> {
+  const currentDeps = (function computeDeps(): unknown[] | undefined {
+    if (deps == null) {
+      return deps;
+    }
+    if (deps.some(d => isCacheGenerator(d) && d.deps == null)) {
+      return undefined;
+    }
+    return deps.flatMap(d => {
+      if (isCacheGenerator(d)) {
+        return d.deps;
+      }
+      return d;
+    });
+  })();
+  return {
+    callback,
+    deps: currentDeps,
+    cacheGenerator,
+    get(): ReturnType<R> {
+      return callback();
+    }
+  };
+}
+
+function isCacheGenerator(value: unknown): value is CacheGenerator {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    (value as CacheGenerator).cacheGenerator === cacheGenerator
+  );
+}
+
 export function createModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
   defaultState: D,
@@ -327,6 +419,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
     dispatches: [],
     temporaryDispatches: [],
     cacheMethods: {},
+    cacheGenerators: {},
     state: defaultState,
     cacheState: null,
     controlled: !!controlled,
@@ -448,6 +541,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   const agent = createProxy(defaultModel, {
     get(target: T, p: string): unknown {
       const value = updater.current[p];
+      if (isCacheGenerator(value)) {
+        return value.cacheGenerator(updater, p);
+      }
       if (
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
@@ -477,6 +573,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       }
       if (Array.isArray(updater.current)) {
         return updater.current.map((d, i) => {
+          if (isCacheGenerator(d)) {
+            return d.cacheGenerator(updater, i.toString());
+          }
           if (typeof d === 'function') {
             return runtime
               ? rebuildDispatchMethod<S, T>(updater, i.toString(), {
@@ -493,6 +592,10 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       const result = { ...updater.current };
       keys.forEach((key: keyof T) => {
         const value = result[key];
+        if (isCacheGenerator(value)) {
+          result[key] = value.cacheGenerator(updater, key as string);
+          return;
+        }
         if (typeof value === 'function') {
           result[key] = runtime
             ? (rebuildDispatchMethod<S, T>(updater, key as string, {
@@ -538,6 +641,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.notify = noop;
       updater.isDestroyed = true;
       updater.cacheMethods = {};
+      updater.cacheGenerators = {};
       optimize.batchUpdate = undefined;
     },
     connect(dispatchCall) {
@@ -571,13 +675,12 @@ export function staticFactory<T extends AirReducer<any, any>>(
   const replaceModel: StaticFactoryInstance<T> = function replaceModel(s: any) {
     return reducer(s);
   } as StaticFactoryInstance<T>;
-  replaceModel.effect = reducer.effect;
   replaceModel.payload = reducer.payload;
   replaceModel.connection = reducer.creation();
-  replaceModel.pipe = reducer.pipe;
-  replaceModel.global = function self() {
+  replaceModel.static = function self() {
     return replaceModel;
   };
+  replaceModel.isFactory = reducer.isFactory;
   return replaceModel as StaticFactoryInstance<T>;
 }
 
@@ -603,19 +706,11 @@ export function factory<T extends AirReducer<any, any>>(
     }
     return createModel(replaceModel, state, updaterConfig);
   };
-  replaceModel.pipe = function pipe<P extends AirReducer<any, any>>(
-    target: P
-  ): P & { getSourceFrom: () => FactoryInstance<T> } {
-    const pipeModel = function pipeModel(s: any) {
-      return target(s);
-    };
-    pipeModel.getSourceFrom = function getSourceFrom() {
-      return replaceModel;
-    };
-    return pipeModel as P & { getSourceFrom: () => FactoryInstance<T> };
-  };
-  replaceModel.global = function staticFactoryForModel() {
+  replaceModel.static = function staticFactoryForModel() {
     return staticFactory<T>(replaceModel as FactoryInstance<T>);
+  };
+  replaceModel.isFactory = function isFactory() {
+    return true;
   };
   return replaceModel as FactoryInstance<T>;
 }

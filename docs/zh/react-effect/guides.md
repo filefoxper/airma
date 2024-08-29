@@ -530,6 +530,65 @@ const Component = provide(sessions)((props:Props)=>{
 });
 ```
 
+## 无配置useQuery/useMutation
+
+自 18.5.0 版本开始，无 config 入参的 useQuery/useMutation 将肩负 useSession 的功能，当该 useQuery/useMutation 被人工触发时，它会先查找是否有 session key 相同，且具备 config 参数的其他 useQuery/useMutation 存在，若存在，则驱动其工作，若不存在或无法驱动其他同键 useQuery/useMutation 工作，则自己工作。
+
+```ts
+// usage.tsx
+import {queryKey, saveKey} from './session';
+import {
+    provide,
+    useQuery,
+    useSession
+} from '@airma/react-effect';
+
+const sessions = {
+    query: queryKey,
+    save: saveKey
+}
+
+const Child1 = ()=>{
+    // 无 config 入参的 useQuery 会通过会话键查找其他有 config 入参的 useQuery,
+    // 若存在，则驱动其工作，若不存在或无法驱动其工作，则自己工作。
+    const [
+        // 会话状态
+        querySessionState, 
+        // 触发器,
+        // 通过调用触发器，人工触发同键 useQuery 查询
+        triggerQuery，
+    ] = useQuery(sessions.query);
+
+    const {
+        // User[] | undefined
+        // 虽然 Component 中的 useQuery 设置了默认会话数据，
+        // 但当前 useQuery 得到的会话数据类型依然被识别为可能 undefined
+        data,
+    } = querySessionState;
+    
+    return ......;
+}
+
+const Child2 = ()=>{
+    return ......;
+}
+
+// 简化 provide 包装过程
+const Component = provide(sessions)((props:Props)=>{
+    useQuery(sessions.query, {
+        variables: [props.query],
+        // 设置默认会话数据
+        defaultData: []
+    });
+    return (
+        <>
+            <Child1 />
+            <Child2 />
+        </>
+    );
+});
+```
+
 ## session
 
 API [session](/zh/react-effect/api?id=session) 可将异步函数包装成会话声明函数，会话声明函数与原异步函数几乎完全相同，但拥有大量可直接调用的常用 API。

@@ -1,6 +1,6 @@
 {
   "folders": [
-    { "name": "<workspaces>", "path": "." },
+    { "name": "root", "path": "." },
     { "name": "@airma/restful", "path": "packages/@airma/restful" },
     { "name": "@airma/react-state", "path": "packages/@airma/react-state" },
     {
@@ -12,9 +12,7 @@
     { "name": "@airma/core", "path": "packages/@airma/core" },
     { "name": "example-workspace", "path": "platforms/example-workspace" },
     { "name": "example-server", "path": "platforms/example-server" },
-    { "name": "example", "path": "platforms/example" },
-    { "name": "package.json", "path": "package.json" },
-    { "name": ".pmnpsrc.json", "path": ".pmnpsrc.json" }
+    { "name": "example", "path": "platforms/example" }
   ],
   "settings": {}
 }

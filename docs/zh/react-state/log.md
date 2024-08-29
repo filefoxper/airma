@@ -79,3 +79,8 @@
 
  * **注意**：因接口设计合理性问题，去除 signal.effect 和 signal.watch 功能。
  * 新增 signal.useEffect 功能，以方便监听模型实例变化。
+
+## v18.5.0
+
+* 添加 `model.createCacheField` API，用于缓存模型实例中的数据字段。
+* 删除部分废弃的 API。

@@ -4,10 +4,14 @@
 
 It is a query [session](/react-effect/concepts?id=session) API. By the default, it can be triggered when it is mounted; the dependency parameters change; or a manual trigger/execute is called. 
 
+From version v18.5.0, a no config useQuery works more like a useSession, it always looks for another useQuery with same session key and config to work for it. If the perfect substitute is not exist, it works manually. 
+
+So, a no config useQuery looks more like a useSession. The only different is that the no config useQuery still works if no substitute is found.
+
 ```ts
 function useQuery(
   promiseCallbackOrSessionKey, 
-  variablesOrConfig
+  variablesOrConfig?
 ):[
   sessionState, 
   trigger, 
@@ -30,10 +34,14 @@ function useQuery(
 
 It is a mutation [session](/react-effect/concepts?id=session) API. By the default, it can be triggered when  a manual trigger/execute is called. 
 
+From version v18.5.0, a no config useMutation works more like a useSession, it always looks for another useMutation with same session key and config to work for it. If the perfect substitute is not exist, it works manually. 
+
+So, a no config useMutation looks more like a useSession. The only different is that the no config useMutation still works if no substitute is found.
+
 ```ts
 function useMutation(
   promiseCallbackOrSessionKey, 
-  variablesOrConfig
+  variablesOrConfig?
 ):[
   sessionState, 
   trigger, 
@@ -183,7 +191,7 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: () => boolean) => StrategyType;
+  validate: (process: () => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
@@ -263,7 +271,7 @@ It can skip invalidate session execution happens.
 
 #### Parameters
 
-* **process** - It is a callback returns a boolean value, to validate if the current execution is validate.
+* **process** - It is a callback returns a boolean or a boolean resolving promise, to validate if the current execution is validate.
 
 ### Strategy.reduce
 
