@@ -196,7 +196,7 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: () => boolean) => StrategyType;
+  validate: (process: () => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
@@ -278,7 +278,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 返回 boolean 值的回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。
+* **process** - 返回 boolean 值的回调函数，如果返回 true，则校验通过，会话继续执行，否则阻止会话执行。 **自18.5.0开始**，支持返回 Promise<boolean> 校验结果，若异步返回 true，则校验通过，否则阻止会话执行。
 
 ### Strategy.reduce
 

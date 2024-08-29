@@ -191,7 +191,7 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: () => boolean) => StrategyType;
+  validate: (process: () => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
@@ -271,7 +271,7 @@ It can skip invalidate session execution happens.
 
 #### Parameters
 
-* **process** - It is a callback returns a boolean value, to validate if the current execution is validate.
+* **process** - It is a callback returns a boolean or a boolean resolving promise, to validate if the current execution is validate.
 
 ### Strategy.reduce
 
