@@ -18,7 +18,7 @@ import type {
   Contexts,
   ModelContextFactory,
   InstanceActionRuntime,
-  CacheGenerator
+  FieldGenerator
 } from './type';
 
 const lazyIdentify = {};
@@ -249,7 +249,7 @@ function generateModelContextFactory(): ModelContextFactory {
   };
 }
 
-function rebuildDispatchMethod<S, T extends AirModelInstance>(
+function transToActionMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string,
   runtime: {
@@ -259,6 +259,15 @@ function rebuildDispatchMethod<S, T extends AirModelInstance>(
     sourceTo?: (...args: any[]) => any;
   }
 ) {
+  const instanceMethod = updater.current[type] as ((...args: any[]) => any) & {
+    noActionMethod?: unknown;
+  };
+  if (
+    instanceMethod.noActionMethod &&
+    instanceMethod.noActionMethod === lazyIdentify
+  ) {
+    return instanceMethod;
+  }
   if (runtime.methodsCache[type]) {
     return runtime.methodsCache[type];
   }
@@ -323,25 +332,26 @@ function cacheGenerator<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string
 ) {
-  const data = updater.current[type] as CacheGenerator;
-  if (!data || data.cacheGenerator !== cacheGenerator) {
+  const field = updater.current[type] as FieldGenerator;
+  if (!field || field.cacheGenerator !== cacheGenerator) {
     clearCacheGenerators(updater, type);
-    return data;
+    return field;
   }
-  if (data.deps == null) {
+  if (field.deps == null) {
     clearCacheGenerators(updater, type);
     return {
       get() {
-        return data.callback();
+        return field.callback();
       }
     };
   }
   const cacheStructure = updater.cacheGenerators[type];
-  if (cacheStructure && shallowEqual(cacheStructure.deps, data.deps)) {
+  if (cacheStructure) {
     return cacheStructure.out;
   }
   const out = {
     get: () => {
+      const data = updater.current[type] as FieldGenerator;
       const cacheStructureInRuntime = updater.cacheGenerators[type];
       if (!cacheStructureInRuntime) {
         const value = data.callback();
@@ -365,10 +375,10 @@ function cacheGenerator<S, T extends AirModelInstance>(
   return out;
 }
 
-export function createCacheField<R extends () => any>(
+export function createField<R extends () => any>(
   callback: R,
   deps?: unknown[]
-): CacheGenerator<R> {
+): FieldGenerator<R> {
   const currentDeps = (function computeDeps(): unknown[] | undefined {
     if (deps == null) {
       return deps;
@@ -393,11 +403,22 @@ export function createCacheField<R extends () => any>(
   };
 }
 
-function isCacheGenerator(value: unknown): value is CacheGenerator {
+export function createMethod<
+  R extends ((...args: any[]) => any) & { noActionMethod?: unknown }
+>(callback: R): R & { noActionMethod: Record<string, any> } {
+  const replace = function replace(...args: any[]) {
+    return callback(...args);
+  };
+  Object.assign(replace, callback);
+  replace.noActionMethod = lazyIdentify;
+  return replace as R & { noActionMethod: Record<string, any> };
+}
+
+function isCacheGenerator(value: unknown): value is FieldGenerator {
   return (
     !!value &&
     typeof value === 'object' &&
-    (value as CacheGenerator).cacheGenerator === cacheGenerator
+    (value as FieldGenerator).cacheGenerator === cacheGenerator
   );
 }
 
@@ -548,7 +569,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         Object.prototype.hasOwnProperty.call(updater.current, p) &&
         typeof value === 'function'
       ) {
-        return rebuildDispatchMethod<S, T>(updater, p, {
+        return transToActionMethod<S, T>(updater, p, {
           context: modelContextFactory,
           methodsCache: updater.cacheMethods
         });
@@ -578,7 +599,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
           }
           if (typeof d === 'function') {
             return runtime
-              ? rebuildDispatchMethod<S, T>(updater, i.toString(), {
+              ? transToActionMethod<S, T>(updater, i.toString(), {
                   context: modelContextFactory,
                   ...runtime,
                   sourceTo: agent[i] as (...args: any[]) => any
@@ -598,7 +619,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         }
         if (typeof value === 'function') {
           result[key] = runtime
-            ? (rebuildDispatchMethod<S, T>(updater, key as string, {
+            ? (transToActionMethod<S, T>(updater, key as string, {
                 context: modelContextFactory,
                 ...runtime,
                 sourceTo: agent[key] as (...args: any[]) => any

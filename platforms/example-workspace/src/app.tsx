@@ -123,7 +123,7 @@ const store = model((query: Query) => {
   const handleQuery = () => {
     return { ...query, valid: { ...query.display } };
   };
-  const queryData = model.createCacheField(() => {
+  const queryData = model.createField(() => {
     const { name, username } = query.valid;
     return { name, username };
   }, [query.valid]);
@@ -132,6 +132,7 @@ const store = model((query: Query) => {
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
+      getValidQuery:model.createMethod(()=>query.valid),
     create() {
       return { ...query, creating: true };
     },
@@ -315,6 +316,7 @@ export default function App() {
   //     item.changeDisplay({name:'Mr'})
   // }
 
+    console.log('v-query',item.getValidQuery())
   conditionSignal
     .useEffect(ins => {
       console.log('signal creating', ins.creating);
