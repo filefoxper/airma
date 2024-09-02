@@ -346,7 +346,7 @@ function cacheGenerator<S, T extends AirModelInstance>(
     };
   }
   const cacheStructure = updater.cacheGenerators[type];
-  if (cacheStructure) {
+  if (cacheStructure && shallowEqual(cacheStructure.deps, field.deps)) {
     return cacheStructure.out;
   }
   const out = {
@@ -373,6 +373,34 @@ function cacheGenerator<S, T extends AirModelInstance>(
     }
   };
   return out;
+}
+
+export function createCacheField<R extends () => any>(
+  callback: R,
+  deps?: unknown[]
+): FieldGenerator<R> {
+  const currentDeps = (function computeDeps(): unknown[] | undefined {
+    if (deps == null) {
+      return deps;
+    }
+    if (deps.some(d => isCacheGenerator(d) && d.deps == null)) {
+      return undefined;
+    }
+    return deps.flatMap(d => {
+      if (isCacheGenerator(d)) {
+        return d.deps;
+      }
+      return d;
+    });
+  })();
+  return {
+    callback,
+    deps: currentDeps,
+    cacheGenerator,
+    get(): ReturnType<R> {
+      return callback();
+    }
+  };
 }
 
 export function createField<R extends () => any>(

@@ -244,6 +244,15 @@ export declare const model: {
    */
   context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
+  /**
+   * @deprecated
+   */
+  createCacheField: <T extends () => any>(
+    callback: T,
+    deps?: unknown[]
+  ) => {
+    get: () => ReturnType<T>;
+  };
   createField: <T extends () => any>(
     callback: T,
     deps?: unknown[]

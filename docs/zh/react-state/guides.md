@@ -408,11 +408,11 @@ toggleStore.with(countStore,...).provideTo(
 
 关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [如何通过 model 声明函数使用 useSignal](/zh/react-state/guides?id=通过-model-声明函数使用-usesignal) 中的内容。
 
-## 实例缓存字段
+## 实例字段
 
-自 `v18.5.0` 开始 `@airma/react-state` 新增了实例缓存字段，用于缓存模型实例，这对配合副作用工作非常有帮助。
+自 `v18.5.1` 开始 `@airma/react-state` 新增了实例字段 API `model.createField`。
 
-通过 model.createCacheField 方法可创建缓存字段。该字段只能通过外部实例获取并调用字段的 get 方法时，才能生效。该对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
+通过对 model.createField 方法添加依赖项，可创建一个缓存字段。该字段只能通过外部实例获取并调用字段的 get 方法时，才能生成缓存值。该对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
 
 ```ts
 import {model} from '@airma/react-state';
@@ -430,7 +430,7 @@ const queryModel = model((condition:QueryCondition)=>{
         // 创建一个依赖 condition.fetchVersion 变化做缓存的字段，
         // 注意，缓存字段在 model 模型方法中并无缓存作用。
         // 只有通过实例获取并调用该字段值的 get 方法时，才能享受缓存效果。
-        query:model.createCacheField(()=>{
+        query:model.createField(()=>{
             const {name, page, pageSize} = condition;
             return {name, page, pageSize}
         },[condition.fetchVersion]),
@@ -496,7 +496,7 @@ type QueryCondition = {
 
 const queryModel = model((condition:QueryCondition)=>{
 
-    const pageInfo = model.createCacheField(()=>{
+    const pageInfo = model.createField(()=>{
         const {page, pageSize} = condition;
         return {page, pageSize}
     },[condition.page, condition.pageSize]);
@@ -508,7 +508,7 @@ const queryModel = model((condition:QueryCondition)=>{
         // 而 pageInfo 依赖了 page 和 pageSize 两个缓存字段。
         // 因此，该缓存相当于依赖了 fetchVersion、page 以及 pageSize 三个变量。
         // 当 fetchVersion、page、 pageSize 中的任一变量发生变化时，该缓存字段都会重新计算。
-        query:model.createCacheField(()=>{
+        query:model.createField(()=>{
             const {page, pageSize} = pageInfo.get();
             const {name} = condition;
             return {name, page, pageSize}

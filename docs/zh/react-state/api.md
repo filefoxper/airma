@@ -394,7 +394,10 @@ interface Api {
 }
 
 function model(modelFn): (typeof modelFn) & Api;
-model.createCacheField = function(callback:()=>any, deps:any[]);
+
+model.createField = function(callback:()=>any, deps?:any[]);
+
+model.createMethod = function(callback:(...args:any[])=>any);
 ```
 
 参数
@@ -409,27 +412,37 @@ model.createCacheField = function(callback:()=>any, deps:any[]);
 
 静态方法
 
-* createCacheField - 创建缓存字段，用法[参考](/zh/react-state/guides?id=实例缓存字段)
+* createField - 创建实例字段，用法[参考](/zh/react-state/guides?id=实例字段)
+* createMethod - 创建实例方法，注意该API创建的实例方法不同于行为方法，仅供调用，不会修改模型状态。
 
-### model.createCacheField
+### model.createField
+
+用于创建实例字段。
 
 ```ts
-function createCacheField(callback:()=>any, deps:any[]): {
+function createField(callback:()=>any, deps?:any[]): {
   get:()=>ReturnType<typeof callback>,
 };
 ```
 
 参数
 
-* callback - 缓存字段值的产生函数
-* deps - 缓存字段更新依赖的外部变量
-
+* callback - 产生字段值的函数
+* deps - 缓存字段值依赖的外部变量
 
 返回
 
-缓存字段对象，包含 get 方法，用于获取缓存字段值。
+字段对象，包含 get 方法，用于获取字段值。
 
-用法[参考](/zh/react-state/guides?id=实例缓存字段)
+用法[参考](/zh/react-state/guides?id=实例字段)
+
+### model.createMethod
+
+用于创建实例方法，注意该API创建的实例方法不同于行为方法，仅供调用，不会修改模型状态。
+
+```ts
+function createMethod<R extends (...args:any[])=>any>(callback:R): R;
+```
 
 ## ConfigProvider
 

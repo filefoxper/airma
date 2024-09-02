@@ -292,7 +292,10 @@ interface Api {
 }
 
 function model(modelFn): (typeof modelFn) & Api;
-model.createCacheField = function(callback:()=>any, deps:any[]);
+
+model.createField = function(callback:()=>any, deps?:any[]);
+
+model.createMethod = function(callback:(...args:any[])=>any);
 ```
 
 Parameters
@@ -305,19 +308,37 @@ A wrapped model function with [APIs](/react-state/guides?id=model).
 
 static methods
 
-* createCacheField - create a cache field for model instance.
+* createField - create field for model instance.
+* createMethod - create normal method for model instance, and calling this method from instance can not change state.
 
-### model.createCacheField
+### model.createField
 
-It is a static method for creating a cache field for model instance.
+It is a static method for creating a field for model instance.
 
 ```ts
-function createCacheField(callback:()=>any, deps:any[]): {
+function createField(callback:()=>any, deps?:any[]): {
   get:()=>ReturnType<typeof callback>,
 };
 ```
 
-usage [reference](/react-state/guides?id=createcachefield).
+Parameters
+
+* callback - A callback to generate a field.
+* deps - Optional, a dependencies array for caching field value.
+
+Returns
+
+ A field object with a `get` method for getting value.
+
+usage [reference](/react-state/guides?id=createfield).
+
+### model.createMethod
+
+It is a static method for creating a normal method which is different with action method for model instance.
+
+```ts
+function createMethod<R extends (...args:any[])=>any>(callback:R): ()=>R;
+```
 
 ## ConfigProvider
 
