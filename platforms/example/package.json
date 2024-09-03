@@ -7,13 +7,10 @@
     "start": "webpack serve --config ./webpack.dev.js"
   },
   "typings": "index.d.ts",
-  "workspaces": [
-    "../../packages/*",
-    "../../packages/@airma/*"
-  ],
   "dependencies": {
-    "@airma/react-effect": "^18.4.10",
-    "@airma/react-state": "^18.4.4",
+    "@airma/react-effect": "^18.5.1",
+    "@airma/react-hooks": "^18.5.0",
+    "@airma/react-state": "^18.5.1",
     "@airma/restful": "^18.3.2",
     "classnames": "^2.3.2",
     "history": "^5.3.0",
