@@ -125,3 +125,8 @@
 
 * add `model.createCacheField` API.
 * remove the deprecated APIs.
+
+## v18.5.1 2024-09-03
+
+* rename `model.createCacheField` API to be `model.createField` API.
+* add `model.createMethod` API.

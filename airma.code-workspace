@@ -1,18 +1,53 @@
 {
   "folders": [
-    { "name": "root", "path": "." },
-    { "name": "@airma/restful", "path": "packages/@airma/restful" },
-    { "name": "@airma/react-state", "path": "packages/@airma/react-state" },
+    {
+      "name": "<workspaces>",
+      "path": "."
+    },
+    {
+      "name": "@airma/restful",
+      "path": "packages/@airma/restful"
+    },
+    {
+      "name": "@airma/react-state",
+      "path": "packages/@airma/react-state"
+    },
     {
       "name": "@airma/react-hooks-core",
       "path": "packages/@airma/react-hooks-core"
     },
-    { "name": "@airma/react-hooks", "path": "packages/@airma/react-hooks" },
-    { "name": "@airma/react-effect", "path": "packages/@airma/react-effect" },
-    { "name": "@airma/core", "path": "packages/@airma/core" },
-    { "name": "example-workspace", "path": "platforms/example-workspace" },
-    { "name": "example-server", "path": "platforms/example-server" },
-    { "name": "example", "path": "platforms/example" }
+    {
+      "name": "@airma/react-hooks",
+      "path": "packages/@airma/react-hooks"
+    },
+    {
+      "name": "@airma/react-effect",
+      "path": "packages/@airma/react-effect"
+    },
+    {
+      "name": "@airma/core",
+      "path": "packages/@airma/core"
+    },
+    {
+      "name": "example-workspace",
+      "path": "platforms/example-workspace"
+    },
+    {
+      "name": "example-server",
+      "path": "platforms/example-server"
+    },
+    {
+      "name": "example",
+      "path": "platforms/example"
+    },
+    {
+      "name": "package.json",
+      "path": "package.json"
+    },
+    {
+      "name": ".pmnpsrc.json",
+      "path": ".pmnpsrc.json"
+    }
   ],
   "settings": {}
 }

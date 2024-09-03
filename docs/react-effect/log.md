@@ -117,3 +117,7 @@
 
 * make `useQuery` and `useMutation` works like `useSession` when there is no config for them.
 * make `Strategy.validate` support async function for validation.
+
+# v18.5.1
+
+* upgrade `Strategy.validate` API, support accepts variables from execution stage as parameters.

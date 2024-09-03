@@ -84,3 +84,8 @@
 
 * 添加 `model.createCacheField` API，用于缓存模型实例中的数据字段。
 * 删除部分废弃的 API。
+
+## v18.5.0
+
+* 重命名 `model.createCacheField` API 为 `model.createField` API。
+* 添加 `model.createMethod` API。

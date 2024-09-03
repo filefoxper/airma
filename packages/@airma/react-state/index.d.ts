@@ -13,7 +13,9 @@ export declare type ModelContext = {
 export declare type AirReducer = (state: any) => any;
 
 declare type ValidInstanceRecord<S, T extends AirModelInstance> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => S
+  [K in keyof T]: T[K] extends
+    | ((...args: any[]) => S)
+    | (((...args: any[]) => any) & { noActionMethod: Record<string, any> })
     ? T[K]
     : T[K] extends (...args: any[]) => any
     ? never
@@ -242,10 +244,22 @@ export declare const model: {
    */
   context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
+  /**
+   * @deprecated
+   */
   createCacheField: <T extends () => any>(
     callback: T,
     deps?: unknown[]
   ) => {
     get: () => ReturnType<T>;
   };
+  createField: <T extends () => any>(
+    callback: T,
+    deps?: unknown[]
+  ) => {
+    get: () => ReturnType<T>;
+  };
+  createMethod<R extends (...args: any[]) => any>(
+    callback: R
+  ): R & { noActionMethod: Record<string, any> };
 };

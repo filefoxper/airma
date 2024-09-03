@@ -94,10 +94,11 @@ export interface FirstActionWrap extends ActionWrap {
   tail: ActionWrap | undefined;
 }
 
-export interface CacheGenerator<R extends () => any = () => any> {
+export interface FieldGenerator<R extends () => any = () => any> {
   callback: R;
   deps?: unknown[];
   get: () => ReturnType<R>;
+  stale?:boolean;
   cacheGenerator: <S, T extends AirModelInstance>(
     updater: Updater<S, T>,
     type: string

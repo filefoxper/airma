@@ -300,7 +300,7 @@ useQuery(
         // chain strategies.
         strategy: [
             // enter 1, return 3
-            Strategy.validate(()=>!!query.name),
+            Strategy.validate(([q])=>!!q.name),
             // enter 2, return 2
             Strategy.debounce(300),
             // enter 3, return 1 

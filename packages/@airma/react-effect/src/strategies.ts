@@ -296,9 +296,15 @@ function success<T>(
   };
 }
 
-function validate(callback: () => boolean | Promise<boolean>): StrategyType {
-  return function validStrategy({ runner, getSessionState: current }) {
-    const result = callback();
+function validate(
+  callback: (variables: any[]) => boolean | Promise<boolean>
+): StrategyType {
+  return function validStrategy({
+    runner,
+    getSessionState: current,
+    variables
+  }) {
+    const result = callback(variables);
     if (!result) {
       const state = current();
       return new Promise(resolve => {
