@@ -196,7 +196,7 @@ function watch<S, T extends AirModelInstance>(
       }
       setAction(currentAction);
     });
-    const tunnel = useMemo(() => connection.tunnel(persistDispatch), []);
+    const tunnel = connection.tunnel(persistDispatch);
 
     useEffect(() => {
       const instance = connection.getCurrent(runtime);
@@ -362,7 +362,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     prevOpenSignalRef.current = openSignalRef.current;
   });
 
-  const tunnel = useMemo(() => current.tunnel(persistDispatch), []);
+  const tunnel = current.tunnel(persistDispatch);
 
   useEffect(() => {
     tunnel.connect();
@@ -423,16 +423,17 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   signalUsage.useEffect = watch(current);
 
+  const stableInstance = agent;
+
   if (signal) {
     return [
       current.getState(),
-      current.agent,
+      stableInstance,
       current.updateState,
       signalUsage
     ];
   }
 
-  const stableInstance = agent;
   const stableSignalCallback = function stableSignalCallback() {
     return stableInstance;
   };

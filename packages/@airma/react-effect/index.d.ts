@@ -412,7 +412,7 @@ export declare const Strategy: {
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T, V>;
   validate: <T = any, V extends any[] = any[]>(
-    process: () => boolean | Promise<boolean>
+    process: (variables: V) => boolean | Promise<boolean>
   ) => StrategyType<T, V>;
   memo: <T = any, V extends any[] = any[]>(
     equalFn?: (source: T | undefined, target: T) => boolean

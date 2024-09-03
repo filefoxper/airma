@@ -117,3 +117,7 @@
 
 * 升级 useQuery/useMutation 在无参情况下可代替 useSession 工作。
 * 升级 Strategy.validate 策略，支持异步校验函数。
+
+## v18.5.1
+
+* 继续升级 Strategy.validate 策略，支持接受运行时参数。

@@ -188,8 +188,8 @@ const Creating = memo(
     const [sessionState, save] = saveSession.useMutation({
       variables: [user],
       strategy: [
-        Strategy.validate(async () => {
-          if (!user.name || !user.username) {
+        Strategy.validate(async ([u]) => {
+          if (!u.name || !u.username) {
             return false;
           }
           return true;

@@ -308,7 +308,7 @@ useQuery(
         // 策略链
         strategy: [
             // 进入 1, 返回 3
-            Strategy.validate(()=>!!query.name),
+            Strategy.validate(([q])=>!!q.name),
             // 进入 2, 返回 2
             Strategy.debounce(300),
             // 进入 3, 返回 1 
