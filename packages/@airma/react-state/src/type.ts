@@ -1,8 +1,6 @@
 import type { Action, AirReducer, ModelFactoryStore } from './libs/type';
 
-export type Selector = {
-  parent: Selector | null;
-} & ModelFactoryStore<any>;
+export type Selector = ModelFactoryStore<any>;
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;

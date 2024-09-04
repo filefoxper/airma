@@ -239,10 +239,6 @@ declare interface Api<R extends AirReducer> {
 
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
-  /**
-   * @deprecated
-   */
-  context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
   /**
    * @deprecated

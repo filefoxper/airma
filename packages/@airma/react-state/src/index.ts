@@ -15,7 +15,6 @@ import {
   checkIfLazyIdentifyConnection,
   createStoreCollection,
   factory as createFactory,
-  getRuntimeContext,
   createField,
   createMethod,
   createCacheField
@@ -33,6 +32,15 @@ import type {
 
 const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
+function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
+  const ref = useRef<null | { result: ReturnType<T> }>(null);
+  if (ref.current == null) {
+    ref.current = { result: callback() };
+    return ref.current.result;
+  }
+  return ref.current.result;
+}
+
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
@@ -40,21 +48,9 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   option?: { disabled: boolean }
 ): T {
   const { disabled } = option || {};
-  const modelRef = useRef(model);
-  const current = useMemo(
-    () =>
-      createModel<S, T, D>(model, state, {
-        controlled: true
-      }),
-    []
-  );
-  if (
-    !disabled &&
-    (state !== current.getState() || model !== modelRef.current)
-  ) {
-    current.update(model, { state, ignoreDispatch: true });
-    modelRef.current = model;
-  }
+  const current = createModel<S, T, D>(model, state, {
+    controlled: true
+  });
 
   const dispatch = ({ state: actionState }: Action) => {
     if (state === actionState) {
@@ -65,12 +61,17 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     }
   };
   const persistDispatch = usePersistFn(dispatch);
-  current.connect(persistDispatch);
+  const tunnel = current.tunnel(persistDispatch);
 
   useEffect(() => {
-    current.connect(persistDispatch);
+    tunnel.connect();
     return () => {
-      current.disconnect(persistDispatch);
+      tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    return () => {
       current.destroy();
     };
   }, []);
@@ -105,20 +106,19 @@ export const Provider: FC<{
   }
   const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(
-    () => createStoreCollection(storeKeys, { batchUpdate }),
-    []
-  );
-  const selector = useMemo(() => {
-    const store = storeMemo.update(storeKeys);
-    return { ...store, parent: context };
-  }, [context, storeKeys]);
+  const selector = useInitialize(() => {
+    return createStoreCollection(storeKeys, {
+      batchUpdate,
+      parent: context || undefined
+    });
+  });
 
   useEffect(() => {
+    selector.update(storeKeys, context || undefined);
     return () => {
       selector.destroy();
     };
-  }, []);
+  }, [selector, storeKeys, context]);
 
   return createElement(
     ReactStateContext.Provider,
@@ -372,6 +372,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   });
 
   useEffect(() => {
+    unmountRef.current = false;
     return () => {
       unmountRef.current = true;
       prevSelectionRef.current = null;
@@ -552,6 +553,7 @@ export function useSelector<
   });
 
   useEffect(() => {
+    unmountRef.current = false;
     return () => {
       unmountRef.current = true;
     };
@@ -753,7 +755,6 @@ export const model = function model<S, T extends AirModelInstance>(
   });
 };
 
-model.context = getRuntimeContext;
 model.create = model;
 model.createCacheField = createCacheField;
 model.createField = createField;
