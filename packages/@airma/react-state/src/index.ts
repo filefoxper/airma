@@ -71,6 +71,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   });
 
   useEffect(() => {
+    current.active();
     return () => {
       current.destroy();
     };
@@ -300,16 +301,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   }
   const runtime = useInstanceActionRuntime();
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
-  const instanceRef = useRef(
-    useMemo(
-      () =>
-        connection ||
-        createModel<S | undefined, T, D | undefined>(model, state),
-      []
-    )
+  const instance = useInitialize(
+    () =>
+      connection || createModel<S | undefined, T, D | undefined>(model, state)
   );
 
-  const instance = instanceRef.current;
   instance.optimize(batchUpdate);
 
   const current = connection || instance;
@@ -373,6 +369,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   useEffect(() => {
     unmountRef.current = false;
+    current.active();
     return () => {
       unmountRef.current = true;
       prevSelectionRef.current = null;

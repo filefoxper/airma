@@ -12,8 +12,7 @@ import {
   Provider as ModelProvider,
   useSelector,
   provide as provideKeys,
-  AirReducer,
-  useModel
+  AirReducer
 } from '@airma/react-state';
 import {
   useMount,
@@ -39,8 +38,7 @@ import type {
   FullControlData,
   Controller,
   ControlData,
-  Tunnel,
-  Execution
+  Tunnel
 } from './libs/type';
 import {
   parseConfig,
@@ -55,6 +53,15 @@ import {
   useStrategyExecution
 } from './libs/strategy';
 import { logger } from './libs/tools';
+
+function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
+  const ref = useRef<null | { result: ReturnType<T> }>(null);
+  if (ref.current == null) {
+    ref.current = { result: callback() };
+    return ref.current.result;
+  }
+  return ref.current.result;
+}
 
 function toNoRejectionPromiseCallback<
   T,
@@ -93,76 +100,70 @@ function useController<T, C extends PromiseCallback<T>>(
   const { payload } = callback as SessionKey<C>;
   const [, d] = payload || [];
   const controller = d as FullControlData | undefined;
-  return useMemo(() => {
-    return {
-      getData(key: keyof ControlData) {
-        if (controller == null || controller.data == null) {
-          return null;
-        }
-        return controller.data[key];
-      },
-      setData(key: keyof ControlData, data: ControlData[typeof key]) {
-        if (controller == null) {
-          return;
-        }
-        controller.data = { ...(controller.data || {}), [key]: data };
+  return {
+    getData(key: keyof ControlData) {
+      if (controller == null || controller.data == null) {
+        return null;
       }
-    };
-  }, []);
+      return controller.data[key];
+    },
+    setData(key: keyof ControlData, data: ControlData[typeof key]) {
+      if (controller == null) {
+        return;
+      }
+      controller.data = { ...(controller.data || {}), [key]: data };
+    }
+  };
 }
 
 function useFetchingKey(controller: Controller) {
-  return useMemo(() => {
-    return {
-      getFetchingKey() {
-        return controller.getData('fetchingKey');
-      },
-      getFinalFetchingKey() {
-        return controller.getData('finalFetchingKey');
-      },
-      setFetchingKey(key: unknown) {
-        controller.setData('fetchingKey', key);
-        if (key == null) {
-          return;
-        }
-        controller.setData('finalFetchingKey', key);
-      },
-      removeFetchingKey(key: unknown) {
-        if (key !== controller.getData('fetchingKey')) {
-          return;
-        }
-        controller.setData('fetchingKey', undefined);
+  return {
+    getFetchingKey() {
+      return controller.getData('fetchingKey');
+    },
+    getFinalFetchingKey() {
+      return controller.getData('finalFetchingKey');
+    },
+    setFetchingKey(key: unknown) {
+      controller.setData('fetchingKey', key);
+      if (key == null) {
+        return;
       }
-    };
-  }, []);
+      controller.setData('finalFetchingKey', key);
+    },
+    removeFetchingKey(key: unknown) {
+      if (key !== controller.getData('fetchingKey')) {
+        return;
+      }
+      controller.setData('fetchingKey', undefined);
+    }
+  };
 }
 
 function useTunnels(controller: Controller) {
-  return useMemo(() => {
-    const getTunnels = function getTunnels(): Tunnel[] {
-      return controller.getData('tunnels') || [];
-    };
-    return {
-      getTunnels,
-      registry(tunnel: Tunnel) {
-        const tunnels = getTunnels();
-        if (tunnels.some(t => t.key === tunnel.key)) {
-          return;
-        }
-        controller.setData('tunnels', [...tunnels, tunnel]);
-      },
-      removeTunnel(key: unknown) {
-        const tunnels = getTunnels();
-        if (!tunnels.some(t => t.key === key)) {
-          return;
-        }
-        controller.setData(
-          'tunnels',
-          tunnels.filter(t => t.key !== key)
-        );
+  const getTunnels = function getTunnels(): Tunnel[] {
+    return controller.getData('tunnels') || [];
+  };
+  return {
+    getTunnels,
+    registry(tunnel: Tunnel) {
+      const tunnels = getTunnels();
+      if (tunnels.some(t => t.key === tunnel.key)) {
+        return;
       }
-    };
-  }, []);
+      controller.setData('tunnels', [...tunnels, tunnel]);
+    },
+    removeTunnel(key: unknown) {
+      const tunnels = getTunnels();
+      if (!tunnels.some(t => t.key === key)) {
+        return;
+      }
+      controller.setData(
+        'tunnels',
+        tunnels.filter(t => t.key !== key)
+      );
+    }
+  };
 }
 
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
@@ -604,15 +605,13 @@ export function useResponse<T>(
   state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
+  const initialRound = useInitialize(() => sessionState.round);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
-  const mountedRef = useRef(false);
   useEffect(() => {
-    const mounted = mountedRef.current;
-    mountedRef.current = true;
     if (sessionState.round === 0) {
       return;
     }
-    if (watchOnly && !mounted) {
+    if (watchOnly && initialRound === sessionState.round) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -631,15 +630,13 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
+  const initialRound = useInitialize(() => sessionState.round);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
-  const mountedRef = useRef(false);
   useEffect(() => {
-    const mounted = mountedRef.current;
-    mountedRef.current = true;
     if (sessionState.round === 0) {
       return;
     }
-    if (watchOnly && !mounted) {
+    if (watchOnly && initialRound === sessionState.round) {
       return;
     }
     const isSuccessResponse =
@@ -657,15 +654,13 @@ useResponse.useFailure = function useResponseFailure(
   state: SessionState | [SessionState, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
+  const initialRound = useInitialize(() => sessionState.round);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
-  const mountedRef = useRef(false);
   useEffect(() => {
-    const mounted = mountedRef.current;
-    mountedRef.current = true;
     if (sessionState.round === 0) {
       return;
     }
-    if (watchOnly && !mounted) {
+    if (watchOnly && initialRound === sessionState.round) {
       return;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -674,20 +669,6 @@ useResponse.useFailure = function useResponseFailure(
     }
   }, [sessionState.round]);
 };
-
-/**
- * @deprecated
- * @param process
- * @param sessionState
- */
-useResponse.success = useResponse.useSuccess;
-
-/**
- * @deprecated
- * @param process
- * @param sessionState
- */
-useResponse.error = useResponse.useFailure;
 
 export const Provider = ModelProvider;
 

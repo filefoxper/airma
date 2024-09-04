@@ -84,12 +84,14 @@ const userQuery = (validQuery: Condition) =>
 
 const userSave = (u: Omit<User, 'id'>) =>
   new Promise((resolve, reject) => {
-    resolve(
-      rest('/api/user')
-        .setBody(u)
-        .post<null>()
-        .then(() => true)
-    );
+      setTimeout(()=>{
+          resolve(
+              rest('/api/user')
+                  .setBody(u)
+                  .post<null>()
+                  .then(() => true)
+          );
+      },1000)
   });
 
 export const fetchSession = session(userQuery, 'query').createStore().static();
@@ -132,7 +134,7 @@ const store = model((query: Query) => {
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
-      getValidQuery:model.createMethod(()=>query.valid),
+    getValidQuery:model.createMethod(()=>query.valid),
     create() {
       return { ...query, creating: true };
     },
@@ -148,7 +150,8 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createStore();
+  .createStore()
+  .static();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = fetchSession.useSession();
@@ -238,13 +241,13 @@ const Creating = memo(
   }
 );
 
-function Condition({ parentTrigger }: { parentTrigger: () => void }) {
+const Condition = memo(function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, validQuery, create, changeDisplay, submit } =
     store.useModel();
 
-  // const isFetching = useIsFetching();
-  // const [, trigger] = fetchSession.useQuery();
+  const isFetching = useIsFetching();
+  const [,,execute] = fetchSession.useQuery();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -273,11 +276,15 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
       <button type="button" style={{ marginLeft: 12 }} onClick={() => submit()}>
         query
       </button>
+      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute({name:'Mr',username:''})}>
+        trigger
+      </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
         manual
       </button>
       <button
         type="button"
+        disabled={isFetching}
         style={{ marginLeft: 8 }}
         onClick={create}
       >
@@ -285,9 +292,9 @@ function Condition({ parentTrigger }: { parentTrigger: () => void }) {
       </button>
     </div>
   );
-}
+})
 
-export default store.provideTo(function App() {
+export default function App() {
   const conditionSignal = store.useSignal({
     valid: defaultCondition,
     display: defaultCondition,
@@ -311,41 +318,40 @@ export default store.provideTo(function App() {
   //     item.changeDisplay({name:'Mr'})
   // }
 
-    console.log('v-query',item.getValidQuery())
+    console.log('render')
   conditionSignal
     .useEffect(ins => {
       console.log('signal creating', ins.creating);
     })
-    .onChanges(i => [i.creating]);
-  //
-  // const querySession = fetchSession.useQuery({
-  //   variables: [queryData.get()],
-  //   defaultData: [],
-  //   strategy: [
-  //     Strategy.cache({ capacity: 10 }),
-  //     Strategy.response.success((a, s) => {
-  //       const [v] = s.variables;
-  //       console.log('success', v.name);
-  //     }),
-  //     Strategy.response.failure(e => {
-  //       console.log('error', e);
-  //     })
-  //   ]
-  // });
-  //
-  // const [queryState] = querySession;
-  //
-  // useResponse.useSuccess(
-  //   state => {
-  //     console.log('response success', state);
-  //     console.log(item.displayQuery);
-  //   },
-  //   [queryState]
-  // );
+    .onActions(i => [i.create]);
 
-  // const [{ data, variables }, t] = querySession;
-  //
-  // const [q] = variables ?? [];
+  const querySession = fetchSession.useQuery({
+    variables: [queryData.get()],
+    defaultData: [],
+    strategy: [
+      Strategy.cache({ capacity: 10 }),
+      Strategy.response.success((a, s) => {
+        const [v] = s.variables;
+        console.log('success', v.name);
+      }),
+      Strategy.response.failure(e => {
+        console.log('error', e);
+      })
+    ]
+  });
+
+  const [queryState] = querySession;
+
+  useResponse.useSuccess(
+    state => {
+      console.log('response success', state);
+    },
+    [queryState]
+  );
+
+  const [{ data, variables }, t] = querySession;
+
+  const [q] = variables ?? [];
 
   const [count, setCount] = useState(0);
 
@@ -366,19 +372,19 @@ export default store.provideTo(function App() {
           -
         </button>
       </div>
-      <Condition parentTrigger={()=>undefined} />
+      <Condition parentTrigger={t} />
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
         {creating ? <Creating onClose={cancel} /> : <Info />}
       </div>
-      {/*<div>*/}
-      {/*  {data.map(user => (*/}
-      {/*    <div key={user.id} style={{ padding: '4px 0' }}>*/}
-      {/*      <span style={{ marginRight: 12 }}>name: {user.name}</span>*/}
-      {/*      <span style={{ marginRight: 12 }}>username: {user.username}</span>*/}
-      {/*      <span style={{ marginRight: 12 }}>age: {user.age}</span>*/}
-      {/*    </div>*/}
-      {/*  ))}*/}
-      {/*</div>*/}
+      <div>
+        {data.map(user => (
+          <div key={user.id} style={{ padding: '4px 0' }}>
+            <span style={{ marginRight: 12 }}>name: {user.name}</span>
+            <span style={{ marginRight: 12 }}>username: {user.username}</span>
+            <span style={{ marginRight: 12 }}>age: {user.age}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
-});
+}

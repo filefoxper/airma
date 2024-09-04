@@ -581,15 +581,13 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.dispatches = [];
       destroyDispatching(updater);
       updater.temporaryDispatches = [];
-      updater.state = defaultState;
-      updater.cacheState = null;
       updater.notify = noop;
       updater.isDestroyed = true;
       updater.cacheMethods = {};
       updater.cacheGenerators = {};
       optimize.batchUpdate = undefined;
     },
-    restart() {
+    active() {
       updater.isDestroyed = false;
       updater.notify = generateNotification(updater, optimize);
     },
@@ -729,53 +727,15 @@ export function createStoreCollection<
       instances
     };
   }
-  function updateCollections(
-    collections: Collection[],
-    updated: Collection[]
-  ): Collection[] {
-    const updatedMap = toMapObject(
-      updated.map(({ key, connection, factory: fac }) => [
-        key,
-        { connection, factory: fac }
-      ])
-    );
-    const map = toMapObject(
-      collections.map(({ key, connection, factory: fac }) => [
-        key,
-        { connection, factory: fac }
-      ])
-    );
-    const additions = updated.filter(({ key }) => !map.get(key));
-    const deletions = collections.filter(({ key }) => !updatedMap.get(key));
-    const updates = collections
-      .map(collection => {
-        const { key, connection } = collection;
-        connection.restart();
-        const c = updatedMap.get(key);
-        if (!c) {
-          return undefined;
-        }
-        const updatingConnection = c.connection;
-        const state = (function computeState() {
-          const isDefault = connection.getCacheState() == null;
-          if (isDefault) {
-            return updatingConnection.getState();
-          }
-          return connection.getState();
-        })();
-        connection.update(c.factory, { state });
-        return {
-          ...collection,
-          factory: c.factory,
-          sourceFactory: collection.factory
-        } as Collection;
-      })
-      .filter((d): d is Collection => !!d);
-    deletions.forEach(({ connection }) => connection.destroy());
-    return [...additions, ...updates];
-  }
   const currentCollections = collectConnections(fact, updaterConfig);
   const holder = extractFactory(currentCollections);
+
+  const updateHolderFactory = function updateHolderFactory() {
+    const { collections: holders } = holder;
+    holders.forEach(c => {
+      c.connection.active();
+    });
+  };
 
   const store = {
     parent: updaterConfig?.parent,
@@ -784,15 +744,7 @@ export function createStoreCollection<
       parent?: ModelFactoryStore<any>
     ): ModelFactoryStore<T> {
       store.parent = parent;
-      const collections = collectConnections(updateFactory, updaterConfig);
-      const {
-        instances,
-        connections,
-        collections: newCollections
-      } = extractFactory(collections);
-      holder.instances = instances;
-      holder.connections = connections;
-      holder.collections = newCollections;
+      updateHolderFactory();
       return store;
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {

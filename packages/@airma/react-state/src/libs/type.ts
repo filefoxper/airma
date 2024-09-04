@@ -60,7 +60,7 @@ export interface Connection<
     disconnect: () => void;
   };
   destroy: () => void;
-  restart: () => void;
+  active: () => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
   optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;
