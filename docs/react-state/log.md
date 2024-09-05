@@ -130,3 +130,9 @@
 
 * rename `model.createCacheField` API to be `model.createField` API.
 * add `model.createMethod` API.
+
+## v18.5.2 2024-09-05
+
+* redefine the feature of `signal.useEffect` API.
+* add `signal.useWatch` API.
+* fix problems in react@18.+ strict mode.

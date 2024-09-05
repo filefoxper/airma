@@ -397,10 +397,14 @@ interface EffectOn {
   onActions: (
     filter: (ins: Instance) => ActionMethod[]
   ) => EffectOn;
+  onChanges: (
+    filter: (ins: Instance) => any[]
+  ) => EffectOn;
 }
 
 interface Signal {
   useEffect:(call:()=>void|(()=>void))=>EffectOn
+  useWatch:(call:()=>void)=>EffectOn
 }
 
 function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
@@ -417,7 +421,97 @@ Explain
 
 It is different with `useModel` by returns a instance generator function. Call this function can get a newest instance object in any where. And only the fields from instance change can make component rerender.
 
-It also provides a hook method `useEffect` to handle side effect for action methods.
+It also provides hook methods `useEffect` and `useWatch` to handle side effect for action methods.
+
+* `useEffect` - It is used to handle side effect for renders caused by action methods.
+* `useWatch` - It is used to handle actions dispatched from model connection.
+
+Example
+
+```ts
+import React, { useState } from 'react';
+import { model } from '@airma/react-state';
+
+const counter = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase:()=> state + 1,
+    decrease:()=> state - 1,
+}));
+
+const Counter = ()=>{
+    const signal = counter.useSignal(0);
+
+    // handle side effect for renders caused by action methods.
+    signal.useEffect((instance)=>{
+        // This signal has'nt use `count` field in render stage, so it will not trigger rerender.
+        // And that means this effect will not be called, if only `count` field changes.
+        // When the `isNegative` field changes, this effect will be called.
+        console.log('count effect change', instance.count);
+    });
+
+    // handle actions dispatched from model connection.
+    signal.useWatch((instance)=>{
+        // useWatch is very different with useEffect, it acccepts actions from model connection directly.
+        // That makes it runs without before action renders, and no matter if the signal has used any field.
+        console.log('count watch change', instance.count);
+    });
+
+    const {increase, decrease, isNegative} = signal();
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            <span>{isNegative? 'negative' : 'positive'}</span>
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
+
+The filters from `onActions` and `onChanges` can help for reducing the frequency of side effect calling.
+
+```ts
+import React, { useState } from 'react';
+import { model } from '@airma/react-state';
+
+const counter = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase:()=> state + 1,
+    decrease:()=> state - 1,
+}));
+
+const Counter = ()=>{
+    const signal = counter.useSignal(0);
+
+    // handle side effect for renders caused by action methods.
+    signal.useEffect((instance)=>{
+        // The `count` field dependence added in `onChanges` filter,
+        // makes this effect listens to the `count` field changes.
+        // No matter if `count` is used in render stage.
+        console.log('count effect change', instance.count);
+    }).onChanges((ins) => [ins.count]);
+
+    // handle actions dispatched from model connection.
+    signal.useWatch((instance)=>{
+        // Give the `onActions` filter the action method `increase`,
+        // makes this effect listens to the `increase` action only.
+        // So, when the `descrease` action dispatched, this effect will not be called.
+        console.log('count watch change', instance.count);
+    }).onActions((ins) => [ins.increase]);
+
+    const {increase, decrease, isNegative} = signal();
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            <span>{isNegative? 'negative' : 'positive'}</span>
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
 
 Note:
 

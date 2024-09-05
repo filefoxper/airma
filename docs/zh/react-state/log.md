@@ -89,3 +89,9 @@
 
 * 重命名 `model.createCacheField` API 为 `model.createField` API。
 * 添加 `model.createMethod` API。
+
+## v18.5.2
+
+* 重新定义了 `signal.useEffect` 的行为特性。
+* 添加了 `signal.useWatch` API。
+* 修复了副作用引起的 React 18.+ 严格模式下的渲染问题。

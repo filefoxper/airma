@@ -121,3 +121,7 @@
 # v18.5.1
 
 * upgrade `Strategy.validate` API, support accepts variables from execution stage as parameters.
+
+# v18.5.2
+
+* fix problems in react@18.+ strict mode.

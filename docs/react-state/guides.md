@@ -558,7 +558,7 @@ A signal callback provides a hook API for adding effects to the action methods.
 
 ### signal.useEffect
 
-It is very different with `useEffect` in react. It watches the action methods calling, and executes the effect callbacks which listened with the calling action method.
+It is very different with `useEffect` in react. It watches the action methods calling, and executes the effect callbacks after render stages caused by action methods.
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -583,12 +583,12 @@ const {
 } = countingSignal();
 
 countingSignal.useEffect(()=>{
-    // No matter increase or decrease is called, the effect works.
+    // This signal only uses `isNegative` field in render stage, so, only when `isNegative` changes, the effect works.
     console.log('some action method is called');
 })
 ```
 
-The `signal.useEffect` returns an filter API for narrowing down the action methods to be watched.
+The `signal.useEffect` returns filter APIs for narrowing down the calling frequencies.
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -616,9 +616,89 @@ countingSignal.useEffect(()=>{
     // Only when increase is called, the effect works.
     console.log('some action method is called');
 }).onActions((instance)=>{
-    // get the action methods which you want to listen from instance 
+    // get the action methods which you want to listen for narrowing change listening frequency. 
     return [instance.increase];
 })
+```
+
+Use `onChanges` to narrow down the calling frequencies by fields changes.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    isNegative,
+    increase,
+    decrease
+} = countingSignal();
+
+countingSignal.useEffect(()=>{
+    // Only when count changes, the effect works.
+    // No matter if field `count` is used in render stage.
+    console.log('some action method is called, that makes render happens');
+}).onChanges((instance)=>{
+    // returns fields you want to listen for narrowing change listening frequency.
+    return [instance.count];
+})
+```
+
+### signal.useWatch
+
+The difference about `signal.useWatch` with `signal.useEffect` is that `signal.useWatch` listens to the action changes directly, it is not a response to render stage. And no matter if render happens or not, it always executes when the action method is called.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    isNegative,
+    increase,
+    decrease
+} = countingSignal();
+
+countingSignal.useWatch(()=>{
+    // No matter which field is chhanged, the effect works.
+    console.log('some action method is called');
+});
+
+countingSignal.useWatch(()=>{
+    // To narrow down the calling frequencies, by using `onActions` filter.
+    console.log('some action method is called');
+}).onActions((instance)=>{
+    return [instance.increase];
+});
+
+countingSignal.useWatch(()=>{
+    // To narrow down the calling frequencies, by using `onChanges` filter.
+    console.log('some action method is called');
+}).onChanges((instance)=>{
+    return [instance.isNegative];
+});
 ```
 
 ### useSignal from model
