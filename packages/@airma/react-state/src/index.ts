@@ -170,7 +170,8 @@ function equalByKeys<T extends Record<string | number, any>>(
 }
 
 function watch<S, T extends AirModelInstance>(
-  connection: Connection<S | undefined, T>
+  connection: Connection<S | undefined, T>,
+  actionInState: Action | null
 ) {
   function getDispatchId(
     m:
@@ -183,7 +184,7 @@ function watch<S, T extends AirModelInstance>(
     return m.dispatchId || m;
   }
 
-  return function useEffectWrap(
+  const useEffectWrap = function useEffectWrap(
     callback: (ins: T, act: Action | null) => void | (() => void)
   ) {
     const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
@@ -195,11 +196,9 @@ function watch<S, T extends AirModelInstance>(
       if (action === currentAction) {
         return;
       }
-      setAction(currentAction);
-    });
-    const tunnel = connection.tunnel(persistDispatch);
-
-    useEffect(() => {
+      if (!currentAction.type) {
+        return;
+      }
       const instance = connection.getCurrent(runtime);
       const onActions = onActionRef.current;
       const onChangeCallback = onChangeCallbackRef.current;
@@ -211,21 +210,40 @@ function watch<S, T extends AirModelInstance>(
       if (
         onActions &&
         onActions.length &&
-        (action == null ||
-          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
-            0)
+        (currentAction == null ||
+          onActions
+            .map(getDispatchId)
+            .indexOf(getDispatchId(currentAction.method)) < 0)
       ) {
-        return noop;
+        return;
       }
       if (
         currentOnChanges != null &&
         prevOnChanges != null &&
         shallowEq(currentOnChanges, prevOnChanges)
       ) {
+        return;
+      }
+      setAction(currentAction);
+    });
+
+    const tunnel = connection.tunnel(persistDispatch);
+
+    useEffect(() => {
+      if (onActionRef.current == null && onChangeCallbackRef.current == null) {
         return noop;
       }
+      const instance = connection.getCurrent(runtime);
       return callback(instance, action);
     }, [action]);
+
+    useEffect(() => {
+      if (onActionRef.current != null || onChangeCallbackRef.current != null) {
+        return noop;
+      }
+      const instance = connection.getCurrent(runtime);
+      return callback(instance, actionInState);
+    }, [actionInState]);
 
     useEffect(() => {
       tunnel.connect();
@@ -252,6 +270,73 @@ function watch<S, T extends AirModelInstance>(
     };
 
     return effectOn;
+  };
+
+  const useWatchtWrap = function useWatchtWrap(
+    callback: (ins: T, act: Action | null) => void | (() => void)
+  ) {
+    const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
+    const onChangeRef = useRef<null | any[]>(null);
+    const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
+    const runtime = useInstanceActionRuntime();
+    const persistDispatch = usePersistFn((action: Action) => {
+      const instance = connection.getCurrent(runtime);
+      const onActions = onActionRef.current;
+      const onChangeCallback = onChangeCallbackRef.current;
+      const prevOnChanges = onChangeRef.current;
+      const currentOnChanges = onChangeCallback
+        ? onChangeCallback(instance)
+        : null;
+      onChangeRef.current = currentOnChanges;
+      if (
+        onActions &&
+        onActions.length &&
+        (action == null ||
+          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
+            0)
+      ) {
+        return noop;
+      }
+      if (
+        currentOnChanges != null &&
+        prevOnChanges != null &&
+        shallowEq(currentOnChanges, prevOnChanges)
+      ) {
+        return noop;
+      }
+      return callback(instance, action);
+    });
+    const tunnel = connection.tunnel(persistDispatch);
+
+    useEffect(() => {
+      tunnel.connect();
+      return () => {
+        tunnel.disconnect();
+      };
+    }, []);
+
+    const effectOn: EffectOn<T> = {
+      onActions(filter: (ins: T) => ((...args: any[]) => any)[]) {
+        const result = filter(connection.getCurrent(runtime));
+        if (!Array.isArray(result)) {
+          throw new Error(
+            'The `filter callback` for method `on` should return an action method array.'
+          );
+        }
+        onActionRef.current = result.filter(d => typeof d === 'function');
+        return effectOn;
+      },
+      onChanges(filter: (ins: T) => any[]) {
+        onChangeCallbackRef.current = filter;
+        return effectOn;
+      }
+    };
+
+    return effectOn;
+  };
+  return {
+    useEffectWrap,
+    useWatchtWrap
   };
 }
 
@@ -314,9 +399,14 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     modelRef.current = model;
     current.update(model);
   }
-  const [agent, setAgent] = useState(current.getCurrent(runtime));
+  const [actionState, setActionState] = useState<{
+    agent: T;
+    action: null | Action;
+  }>({ agent: current.getCurrent(runtime), action: null });
   const updateVersionRef = useRef(current.getVersion());
   const prevSelectionRef = useRef<null | string[]>(null);
+
+  const { agent } = actionState;
 
   const signalStale: {
     selection: Array<string> | null;
@@ -349,7 +439,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ) {
       return;
     }
-    setAgent(currentAgent);
+    setActionState({ agent: currentAgent, action });
   };
   const persistDispatch = usePersistFn(dispatch);
 
@@ -417,9 +507,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   const signalUsage: (() => T) & {
     useEffect?: (callback: (ins: T) => void | (() => void)) => void;
+    useWatch?: (callback: (ins: T) => void) => void;
   } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
 
-  signalUsage.useEffect = watch(current);
+  const { useEffectWrap, useWatchtWrap } = watch(current, actionState.action);
+
+  signalUsage.useEffect = useEffectWrap;
+  signalUsage.useWatch = useWatchtWrap;
 
   const stableInstance = agent;
 

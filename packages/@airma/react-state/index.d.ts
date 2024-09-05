@@ -98,6 +98,12 @@ export declare type SignalHandler<R extends AirReducer> =
         action: Action<R> | null
       ) => void | (() => void)
     ) => EffectOn<R>;
+    useWatch: (
+      callback: (
+        ins: ValidReducerReturnType<R>,
+        action: Action<R> | null
+      ) => void
+    ) => EffectOn<R>;
   };
 
 export declare function useSignal<R extends AirReducer>(
