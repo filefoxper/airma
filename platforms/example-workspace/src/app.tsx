@@ -150,8 +150,7 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createStore()
-  .static();
+  .createStore();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error }] = fetchSession.useSession();
@@ -294,7 +293,7 @@ const Condition = memo(function Condition({ parentTrigger }: { parentTrigger: ()
   );
 })
 
-export default function App() {
+export default store.provideTo(function App() {
   const conditionSignal = store.useSignal({
     valid: defaultCondition,
     display: defaultCondition,
@@ -319,6 +318,7 @@ export default function App() {
   // }
 
     console.log('render',item.creating)
+    // console.log('render...')
   conditionSignal
     .useEffect(ins => {
       console.log('signal creating', ins.creating);
@@ -386,4 +386,4 @@ export default function App() {
       </div>
     </div>
   );
-}
+});

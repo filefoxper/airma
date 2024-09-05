@@ -24,9 +24,9 @@ type ValidInstance<S, T extends AirModelInstance> = {
     : T[K];
 };
 
-export type AirReducer<S, T extends AirModelInstance> = (
+export type AirReducer<S, T extends AirModelInstance> = ((
   state: S
-) => ValidInstance<S, T>;
+) => ValidInstance<S, T>);
 
 export interface InstanceActionRuntime {
   methodsCache: Record<string, (...args: any[]) => any>;
@@ -40,6 +40,7 @@ export interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
+  getReducer(): AirReducer<S, T>;
   getCurrent(runtime?: InstanceActionRuntime): T;
   getStoreInstance(): T;
   getVersion(): number;
@@ -60,7 +61,7 @@ export interface Connection<
     disconnect: () => void;
   };
   destroy: () => void;
-  active: () => void;
+  renew: (connection?: Connection<S, T>) => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
   optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;

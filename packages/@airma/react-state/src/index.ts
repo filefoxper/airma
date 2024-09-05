@@ -71,7 +71,7 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   });
 
   useEffect(() => {
-    current.active();
+    current.renew();
     return () => {
       current.destroy();
     };
@@ -202,6 +202,9 @@ function watch<S, T extends AirModelInstance>(
       const instance = connection.getCurrent(runtime);
       const onActions = onActionRef.current;
       const onChangeCallback = onChangeCallbackRef.current;
+      if (onActions == null && onChangeCallback == null) {
+        return;
+      }
       const prevOnChanges = onChangeRef.current;
       const currentOnChanges = onChangeCallback
         ? onChangeCallback(instance)
@@ -210,10 +213,9 @@ function watch<S, T extends AirModelInstance>(
       if (
         onActions &&
         onActions.length &&
-        (currentAction == null ||
-          onActions
-            .map(getDispatchId)
-            .indexOf(getDispatchId(currentAction.method)) < 0)
+        onActions
+          .map(getDispatchId)
+          .indexOf(getDispatchId(currentAction.method)) < 0
       ) {
         return;
       }
@@ -231,6 +233,9 @@ function watch<S, T extends AirModelInstance>(
 
     useEffect(() => {
       if (onActionRef.current == null && onChangeCallbackRef.current == null) {
+        return noop;
+      }
+      if (onActionRef.current != null && action == null) {
         return noop;
       }
       const instance = connection.getCurrent(runtime);
@@ -280,6 +285,9 @@ function watch<S, T extends AirModelInstance>(
     const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
     const runtime = useInstanceActionRuntime();
     const persistDispatch = usePersistFn((action: Action) => {
+      if (!action.type) {
+        return noop;
+      }
       const instance = connection.getCurrent(runtime);
       const onActions = onActionRef.current;
       const onChangeCallback = onChangeCallbackRef.current;
@@ -291,9 +299,7 @@ function watch<S, T extends AirModelInstance>(
       if (
         onActions &&
         onActions.length &&
-        (action == null ||
-          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
-            0)
+        onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) < 0
       ) {
         return noop;
       }
@@ -459,7 +465,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   useEffect(() => {
     unmountRef.current = false;
-    current.active();
+    current.renew();
     return () => {
       unmountRef.current = true;
       prevSelectionRef.current = null;
@@ -649,7 +655,6 @@ export function useSelector<
       unmountRef.current = true;
     };
   }, []);
-
   return s.data;
 }
 

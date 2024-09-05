@@ -505,6 +505,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   });
   return {
     agent,
+    getReducer(): AirReducer<S, T> {
+      return updater.reducer;
+    },
     getCacheState(): { state: S } | null {
       return updater.cacheState;
     },
@@ -587,9 +590,15 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.cacheGenerators = {};
       optimize.batchUpdate = undefined;
     },
-    active() {
+    renew(connection?: Connection<S, T>) {
       updater.isDestroyed = false;
       updater.notify = generateNotification(updater, optimize);
+      if (!connection) {
+        return;
+      }
+      const { getState, getReducer } = connection;
+      updater.cacheState = null;
+      update(getReducer(), { state: getState(), ignoreDispatch: true });
     },
     connect(dispatchCall) {
       subscribe(dispatchCall);
@@ -643,13 +652,10 @@ export function factory<T extends AirReducer<any, any>>(
     updaterConfig?: UpdaterConfig
   ): Connection {
     if (lazy) {
-      return createModel(
-        (s: undefined) => {
-          return { [lazyIdentifyKey]: lazyIdentify };
-        },
-        undefined,
-        updaterConfig
-      ) as any;
+      const lazyReducer = (s: any) => {
+        return { [lazyIdentifyKey]: lazyIdentify } as ReturnType<T>;
+      };
+      return createModel(lazyReducer, undefined, updaterConfig) as Connection;
     }
     return createModel(replaceModel, state, updaterConfig);
   };
@@ -730,21 +736,36 @@ export function createStoreCollection<
   const currentCollections = collectConnections(fact, updaterConfig);
   const holder = extractFactory(currentCollections);
 
-  const updateHolderFactory = function updateHolderFactory() {
+  const updateHolderFactory = function updateHolderFactory(
+    updateFactory: T,
+    conf?: UpdaterConfig
+  ) {
+    const collections = collectConnections(updateFactory, conf);
     const { collections: holders } = holder;
+    const instances = toInstances(collections);
     holders.forEach(c => {
-      c.connection.active();
+      const connection = instances.get(c.factory);
+      if (connection == null) {
+        return;
+      }
+      c.connection.renew();
     });
   };
 
   const store = {
+    destroyed: false,
     parent: updaterConfig?.parent,
-    update(
-      updateFactory: T,
-      parent?: ModelFactoryStore<any>
-    ): ModelFactoryStore<T> {
-      store.parent = parent;
-      updateHolderFactory();
+    update(updateFactory: T, conf?: UpdaterConfig): ModelFactoryStore<T> {
+      if (
+        updateFactory === fact &&
+        conf?.parent === updaterConfig?.parent &&
+        !store.destroyed
+      ) {
+        return store;
+      }
+      store.parent = conf ? conf.parent : undefined;
+      updateHolderFactory(updateFactory);
+      store.destroyed = false;
       return store;
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {
@@ -760,6 +781,7 @@ export function createStoreCollection<
     },
     destroy() {
       holder.connections.forEach(connection => connection.destroy());
+      store.destroyed = true;
     }
   };
   return store;
