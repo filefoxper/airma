@@ -98,6 +98,12 @@ export declare type SignalHandler<R extends AirReducer> =
         action: Action<R> | null
       ) => void | (() => void)
     ) => EffectOn<R>;
+    useWatch: (
+      callback: (
+        ins: ValidReducerReturnType<R>,
+        action: Action<R> | null
+      ) => void
+    ) => EffectOn<R>;
   };
 
 export declare function useSignal<R extends AirReducer>(
@@ -239,10 +245,6 @@ declare interface Api<R extends AirReducer> {
 
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
-  /**
-   * @deprecated
-   */
-  context: () => ModelContext;
   create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
   /**
    * @deprecated

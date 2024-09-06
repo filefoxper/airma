@@ -312,27 +312,6 @@ export declare const useResponse: {
     process: (state: ImportantVariable<T>) => any,
     sessionState: T | [T, ResponseOption?]
   ): void;
-  /**
-   * @deprecated
-   * @param process
-   * @param sessionState
-   */
-  success: <T extends SessionState>(
-    process: (
-      data: SuccessStateOf<T>['data'],
-      sessionState: SuccessStateOf<T>
-    ) => any,
-    sessionState: T | [T, ResponseOption?]
-  ) => void;
-  /**
-   * @deprecated
-   * @param process
-   * @param sessionState
-   */
-  error: <T extends SessionState>(
-    process: (error: unknown, sessionState: ImportantVariable<T>) => any,
-    sessionState: T | [T, ResponseOption?]
-  ) => void;
   useSuccess: <T extends SessionState>(
     process: (
       data: SuccessStateOf<T>['data'],

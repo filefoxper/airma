@@ -600,7 +600,7 @@ if(!isNegative){
 
 ### signal.useEffect
 
-通过 `signal.useEffect` API 可对模型添加行为副作用，当模型实例中的行为方法被调用时，会触发副作用回调。
+通过 `signal.useEffect` API 可对模型添加行为副作用，当模型实例中的行为方法被调用并造成组件渲染后，会触发副作用回调。
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -625,11 +625,12 @@ const {
 } = countingSignal();
 
 countingSignal.useEffect(()=>{
+    // 当前渲染过程中并未使用 count 字段，因此 count 的变化不会触发组件重新渲染，也不会触发该副作用。
     console.log('countingSignal 所有行为方法的副作用');
 });
 ```
 
-通过使用 `signal.useEffect` 返回的 onActions 方法可过滤监听部分行为方法。
+通过使用 `signal.useEffect` 返回的 onChanges 过滤方法可强制加入需要渲染字段，并使副作用只针对这些字段。
 
 ```ts
 import {useSignal} from '@airma/react-state';
@@ -653,12 +654,82 @@ const {
     decrease
 } = countingSignal();
 
-countingSignal.useEffect(()=>{
-    console.log('countingSignal increase 行为方法的副作用');
-    console.log(`count: ${countingSignal().count}`);
+countingSignal.useEffect((instance)=>{
+    console.log(`count: ${instance.count}`);
+}).onChanges((instance)=>{
+    // 强制加入 count 字段到渲染相关字段中，并使副作用只针对 count 字段。
+    return [instance.count];
+});
+```
+
+通过使用 `signal.useEffect` 返回的 onActions 过滤方法可强制 signal 响应被加入的行为方法，并加以渲染，同时只响应这些行为方法引发的渲染。
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    isNegative,
+    increase,
+    decrease
+} = countingSignal();
+
+countingSignal.useEffect((instance)=>{
+    console.log(`count: ${instance.count}`);
 }).onActions((instance)=>{
-    // instance 为当前模型实例，从模型实例中获取并返回需要监听的行为方法数组。
+    // 强制 increase 行为方法被调用时渲染组件，并使副作用只响应 increase 行为方法。
     return [instance.increase];
+});
+```
+
+### signal.useWatch
+
+通过 `signal.useWatch` API 可对模型实例变更进行监听，当模型实例发生任何行为变化时，都会被监听器响应，监听器回调与渲染无关。`signal.useWatch` 的用法与 `signal.useEffect` 相同，如果使用者不希望因渲染漏掉任何行为变化，建议使用该方法。
+
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+const {
+    isNegative,
+    increase,
+    decrease
+} = countingSignal();
+
+countingSignal.useWatch((instance)=>{
+    console.log(`count: ${instance.count}`);
+}).onActions((instance)=>{
+    // 只监听 increase 行为方法引起的变化。
+    return [instance.increase];
+}).onChanges((instance)=>{
+    // 在只监听 increase 行为方法的基础上，继续限定只监听 isNegative 字段的变化。
+    // 这是只有在 increase 过程中， isNegative 发生变化时才会触发当前的监听回调。
+    return [instance.isNegative];
 });
 ```
 

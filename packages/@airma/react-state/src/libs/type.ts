@@ -24,28 +24,9 @@ type ValidInstance<S, T extends AirModelInstance> = {
     : T[K];
 };
 
-export type Contexts = {
-  data: { current: unknown }[];
-  current: number;
-  initialized: boolean;
-  working: boolean;
-};
-
-export type ModelContext = {
-  ref: <C>(current: C) => { current: C };
-  memo: <M extends () => any>(call: M, deps: unknown[]) => ReturnType<M>;
-};
-
-export type ModelContextFactory = {
-  context: ModelContext;
-  start: () => void;
-  end: () => void;
-  reset: () => void;
-};
-
-export type AirReducer<S, T extends AirModelInstance> = (
+export type AirReducer<S, T extends AirModelInstance> = ((
   state: S
-) => ValidInstance<S, T>;
+) => ValidInstance<S, T>);
 
 export interface InstanceActionRuntime {
   methodsCache: Record<string, (...args: any[]) => any>;
@@ -59,6 +40,7 @@ export interface Connection<
   agent: T;
   getCacheState(): { state: S } | null;
   getState(): S;
+  getReducer(): AirReducer<S, T>;
   getCurrent(runtime?: InstanceActionRuntime): T;
   getStoreInstance(): T;
   getVersion(): number;
@@ -79,6 +61,7 @@ export interface Connection<
     disconnect: () => void;
   };
   destroy: () => void;
+  renew: (connection?: Connection<S, T>) => void;
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
   optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;
@@ -98,7 +81,7 @@ export interface FieldGenerator<R extends () => any = () => any> {
   callback: R;
   deps?: unknown[];
   get: () => ReturnType<R>;
-  stale?:boolean;
+  stale?: boolean;
   cacheGenerator: <S, T extends AirModelInstance>(
     updater: Updater<S, T>,
     type: string
@@ -127,15 +110,6 @@ export type Updater<S, T extends AirModelInstance> = {
   notify: (action: Action | null) => void;
 };
 
-export type UpdaterConfig = {
-  controlled?: boolean;
-  batchUpdate?: (callback: () => void) => void;
-};
-
-export type Creation = {
-  creation(updateConfig?: UpdaterConfig): Connection;
-};
-
 export type Collection = {
   key: string;
   keys: (string | number)[];
@@ -145,10 +119,24 @@ export type Collection = {
 };
 
 export type ModelFactoryStore<T> = {
-  update(updateFactory: T): ModelFactoryStore<T>;
+  parent?: ModelFactoryStore<any>;
+  update(
+    updateFactory: T,
+    parent?: ModelFactoryStore<any>
+  ): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
   equal(factory: T): boolean;
   destroy(): void;
+};
+
+export type UpdaterConfig = {
+  controlled?: boolean;
+  batchUpdate?: (callback: () => void) => void;
+  parent?: ModelFactoryStore<any>;
+};
+
+export type Creation = {
+  creation(updateConfig?: UpdaterConfig): Connection;
 };
 
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {

@@ -496,10 +496,14 @@ interface EffectOn {
   onActions: (
     filter: (ins: Instance) => ActionMethod[]
   ) => EffectOn;
+  onChanges:(
+    filter: (ins: Instance) => any[]
+  ) => EffectOn;
 }
 
 interface Signal {
-  useEffect:(call:()=>void|(()=>void))=>EffectOn
+  useEffect:(call:()=>void|(()=>void))=>EffectOn;
+  useWatch:(call:()=>void)=>EffectOn
 }
 
 function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
@@ -512,7 +516,87 @@ function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
 
 返回：
 
-模型实例对象生成函数 signal。可用于生成最新的模型实例对象，也可通过调用该函数的 useEffect 方法，添加模型更新副作用。
+模型实例对象生成函数 signal。可用于生成最新的模型实例对象，也可通过调用该函数的 useEffect、useWatch 方法，添加模型更新的副作用或监听。
+
+```ts
+import React, { useState } from 'react';
+import { model } from '@airma/react-state';
+
+const counter = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase:()=> state + 1,
+    decrease:()=> state - 1,
+}));
+
+const Counter = ()=>{
+    const signal = counter.useSignal(0);
+
+    // 添加副作用
+    signal.useEffect((instance)=>{
+        // 副作用只服务于 render 执行之后，而根据 signal 的渲染规则，
+        // 因为当前组件在 render 阶段只使用了 `isNegative` 字段，
+        // 故当前副作用中只会响应 `isNegative` 字段的渲染变化。
+        console.log('count effect change', instance.count);
+    });
+
+    // 添加监听
+    signal.useWatch((instance)=>{
+        // 与副作用 signal.useEffect 不同，监听器直接响应实例产生的行为变化。
+        // 故监听器不受当前组件是否 render 的影响。
+        console.log('count watch change', instance.count);
+    });
+
+    const {increase, decrease, isNegative} = signal();
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            <span>{isNegative? 'negative' : 'positive'}</span>
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
+
+通过添加 `onChanges` 和 `onActions` 过滤方法，可控制副作用和监听的响应范围。
+
+```ts
+import React, { useState } from 'react';
+import { model } from '@airma/react-state';
+
+const counter = model((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase:()=> state + 1,
+    decrease:()=> state - 1,
+}));
+
+const Counter = ()=>{
+    const signal = counter.useSignal(0);
+
+    signal.useEffect((instance)=>{
+        // 虽然 signal 在当前组件只使用了 `isNegative` 字段，但 `onChanges` 过滤器会将 `count` 字段也纳入渲染和监听范围，
+        // 故通过 `onChanges` 过滤器可以迫使 signal 响应 `count` 字段的渲染变化，并只触发 `count` 渲染变化产生的副作用。
+        console.log('count effect change', instance.count);
+    }).onChanges((ins) => [ins.count]);
+
+    signal.useWatch((instance)=>{
+        // 通过使用 `onActions` 过滤器，signal.useWatch 只会响应 `increase` 行为方法。
+        console.log('count watch change', instance.count);
+    }).onActions((ins) => [ins.increase]);
+
+    const {increase, decrease, isNegative} = signal();
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            <span>{isNegative? 'negative' : 'positive'}</span>
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
 
 注意：
 

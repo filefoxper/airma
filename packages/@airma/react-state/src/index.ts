@@ -15,7 +15,6 @@ import {
   checkIfLazyIdentifyConnection,
   createStoreCollection,
   factory as createFactory,
-  getRuntimeContext,
   createField,
   createMethod,
   createCacheField
@@ -33,6 +32,15 @@ import type {
 
 const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
+function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
+  const ref = useRef<null | { result: ReturnType<T> }>(null);
+  if (ref.current == null) {
+    ref.current = { result: callback() };
+    return ref.current.result;
+  }
+  return ref.current.result;
+}
+
 function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   model: AirReducer<S, T>,
   state: D,
@@ -40,21 +48,9 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
   option?: { disabled: boolean }
 ): T {
   const { disabled } = option || {};
-  const modelRef = useRef(model);
-  const current = useMemo(
-    () =>
-      createModel<S, T, D>(model, state, {
-        controlled: true
-      }),
-    []
-  );
-  if (
-    !disabled &&
-    (state !== current.getState() || model !== modelRef.current)
-  ) {
-    current.update(model, { state, ignoreDispatch: true });
-    modelRef.current = model;
-  }
+  const current = createModel<S, T, D>(model, state, {
+    controlled: true
+  });
 
   const dispatch = ({ state: actionState }: Action) => {
     if (state === actionState) {
@@ -65,12 +61,18 @@ function useSourceControlledModel<S, T extends AirModelInstance, D extends S>(
     }
   };
   const persistDispatch = usePersistFn(dispatch);
-  current.connect(persistDispatch);
+  const tunnel = current.tunnel(persistDispatch);
 
   useEffect(() => {
-    current.connect(persistDispatch);
+    tunnel.connect();
     return () => {
-      current.disconnect(persistDispatch);
+      tunnel.disconnect();
+    };
+  });
+
+  useEffect(() => {
+    current.renew();
+    return () => {
       current.destroy();
     };
   }, []);
@@ -105,20 +107,19 @@ export const Provider: FC<{
   }
   const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
-  const storeMemo = useMemo(
-    () => createStoreCollection(storeKeys, { batchUpdate }),
-    []
-  );
-  const selector = useMemo(() => {
-    const store = storeMemo.update(storeKeys);
-    return { ...store, parent: context };
-  }, [context, storeKeys]);
+  const selector = useInitialize(() => {
+    return createStoreCollection(storeKeys, {
+      batchUpdate,
+      parent: context || undefined
+    });
+  });
 
   useEffect(() => {
+    selector.update(storeKeys, context || undefined);
     return () => {
       selector.destroy();
     };
-  }, []);
+  }, [selector, storeKeys, context]);
 
   return createElement(
     ReactStateContext.Provider,
@@ -169,7 +170,8 @@ function equalByKeys<T extends Record<string | number, any>>(
 }
 
 function watch<S, T extends AirModelInstance>(
-  connection: Connection<S | undefined, T>
+  connection: Connection<S | undefined, T>,
+  actionInState: Action | null
 ) {
   function getDispatchId(
     m:
@@ -182,7 +184,7 @@ function watch<S, T extends AirModelInstance>(
     return m.dispatchId || m;
   }
 
-  return function useEffectWrap(
+  const useEffectWrap = function useEffectWrap(
     callback: (ins: T, act: Action | null) => void | (() => void)
   ) {
     const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
@@ -194,14 +196,15 @@ function watch<S, T extends AirModelInstance>(
       if (action === currentAction) {
         return;
       }
-      setAction(currentAction);
-    });
-    const tunnel = connection.tunnel(persistDispatch);
-
-    useEffect(() => {
+      if (!currentAction.type) {
+        return;
+      }
       const instance = connection.getCurrent(runtime);
       const onActions = onActionRef.current;
       const onChangeCallback = onChangeCallbackRef.current;
+      if (onActions == null && onChangeCallback == null) {
+        return;
+      }
       const prevOnChanges = onChangeRef.current;
       const currentOnChanges = onChangeCallback
         ? onChangeCallback(instance)
@@ -210,21 +213,42 @@ function watch<S, T extends AirModelInstance>(
       if (
         onActions &&
         onActions.length &&
-        (action == null ||
-          onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) <
-            0)
+        onActions
+          .map(getDispatchId)
+          .indexOf(getDispatchId(currentAction.method)) < 0
       ) {
-        return noop;
+        return;
       }
       if (
         currentOnChanges != null &&
         prevOnChanges != null &&
         shallowEq(currentOnChanges, prevOnChanges)
       ) {
+        return;
+      }
+      setAction(currentAction);
+    });
+
+    const tunnel = connection.tunnel(persistDispatch);
+
+    useEffect(() => {
+      if (onActionRef.current == null && onChangeCallbackRef.current == null) {
         return noop;
       }
+      if (onActionRef.current != null && action == null) {
+        return noop;
+      }
+      const instance = connection.getCurrent(runtime);
       return callback(instance, action);
     }, [action]);
+
+    useEffect(() => {
+      if (onActionRef.current != null || onChangeCallbackRef.current != null) {
+        return noop;
+      }
+      const instance = connection.getCurrent(runtime);
+      return callback(instance, actionInState);
+    }, [actionInState]);
 
     useEffect(() => {
       tunnel.connect();
@@ -251,6 +275,74 @@ function watch<S, T extends AirModelInstance>(
     };
 
     return effectOn;
+  };
+
+  const useWatchtWrap = function useWatchtWrap(
+    callback: (ins: T, act: Action | null) => void | (() => void)
+  ) {
+    const onActionRef = useRef<null | ((...args: any[]) => any)[]>(null);
+    const onChangeRef = useRef<null | any[]>(null);
+    const onChangeCallbackRef = useRef<null | ((ins: T) => any[])>(null);
+    const runtime = useInstanceActionRuntime();
+    const persistDispatch = usePersistFn((action: Action) => {
+      if (!action.type) {
+        return noop;
+      }
+      const instance = connection.getCurrent(runtime);
+      const onActions = onActionRef.current;
+      const onChangeCallback = onChangeCallbackRef.current;
+      const prevOnChanges = onChangeRef.current;
+      const currentOnChanges = onChangeCallback
+        ? onChangeCallback(instance)
+        : null;
+      onChangeRef.current = currentOnChanges;
+      if (
+        onActions &&
+        onActions.length &&
+        onActions.map(getDispatchId).indexOf(getDispatchId(action.method)) < 0
+      ) {
+        return noop;
+      }
+      if (
+        currentOnChanges != null &&
+        prevOnChanges != null &&
+        shallowEq(currentOnChanges, prevOnChanges)
+      ) {
+        return noop;
+      }
+      return callback(instance, action);
+    });
+    const tunnel = connection.tunnel(persistDispatch);
+
+    useEffect(() => {
+      tunnel.connect();
+      return () => {
+        tunnel.disconnect();
+      };
+    }, []);
+
+    const effectOn: EffectOn<T> = {
+      onActions(filter: (ins: T) => ((...args: any[]) => any)[]) {
+        const result = filter(connection.getCurrent(runtime));
+        if (!Array.isArray(result)) {
+          throw new Error(
+            'The `filter callback` for method `on` should return an action method array.'
+          );
+        }
+        onActionRef.current = result.filter(d => typeof d === 'function');
+        return effectOn;
+      },
+      onChanges(filter: (ins: T) => any[]) {
+        onChangeCallbackRef.current = filter;
+        return effectOn;
+      }
+    };
+
+    return effectOn;
+  };
+  return {
+    useEffectWrap,
+    useWatchtWrap
   };
 }
 
@@ -300,16 +392,11 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   }
   const runtime = useInstanceActionRuntime();
   const modelRef = useRef<AirReducer<S | undefined, T>>(model);
-  const instanceRef = useRef(
-    useMemo(
-      () =>
-        connection ||
-        createModel<S | undefined, T, D | undefined>(model, state),
-      []
-    )
+  const instance = useInitialize(
+    () =>
+      connection || createModel<S | undefined, T, D | undefined>(model, state)
   );
 
-  const instance = instanceRef.current;
   instance.optimize(batchUpdate);
 
   const current = connection || instance;
@@ -318,9 +405,14 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     modelRef.current = model;
     current.update(model);
   }
-  const [agent, setAgent] = useState(current.getCurrent(runtime));
+  const [actionState, setActionState] = useState<{
+    agent: T;
+    action: null | Action;
+  }>({ agent: current.getCurrent(runtime), action: null });
   const updateVersionRef = useRef(current.getVersion());
   const prevSelectionRef = useRef<null | string[]>(null);
+
+  const { agent } = actionState;
 
   const signalStale: {
     selection: Array<string> | null;
@@ -353,7 +445,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     ) {
       return;
     }
-    setAgent(currentAgent);
+    setActionState({ agent: currentAgent, action });
   };
   const persistDispatch = usePersistFn(dispatch);
 
@@ -372,6 +464,8 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   });
 
   useEffect(() => {
+    unmountRef.current = false;
+    current.renew();
     return () => {
       unmountRef.current = true;
       prevSelectionRef.current = null;
@@ -419,9 +513,13 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 
   const signalUsage: (() => T) & {
     useEffect?: (callback: (ins: T) => void | (() => void)) => void;
+    useWatch?: (callback: (ins: T) => void) => void;
   } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
 
-  signalUsage.useEffect = watch(current);
+  const { useEffectWrap, useWatchtWrap } = watch(current, actionState.action);
+
+  signalUsage.useEffect = useEffectWrap;
+  signalUsage.useWatch = useWatchtWrap;
 
   const stableInstance = agent;
 
@@ -552,11 +650,11 @@ export function useSelector<
   });
 
   useEffect(() => {
+    unmountRef.current = false;
     return () => {
       unmountRef.current = true;
     };
   }, []);
-
   return s.data;
 }
 
@@ -753,7 +851,6 @@ export const model = function model<S, T extends AirModelInstance>(
   });
 };
 
-model.context = getRuntimeContext;
 model.create = model;
 model.createCacheField = createCacheField;
 model.createField = createField;

@@ -14,9 +14,6 @@ import type {
   Collection,
   Creation,
   ModelFactoryStore,
-  ModelContext,
-  Contexts,
-  ModelContextFactory,
   InstanceActionRuntime,
   FieldGenerator
 } from './type';
@@ -31,32 +28,11 @@ function defaultNotifyImplement(dispatches: Dispatch[], action: Action) {
   });
 }
 
-const systemRuntime: { context: ModelContext | null } = {
-  context: null
-};
-
-export function getRuntimeContext() {
-  const { context } = systemRuntime;
-  if (context == null) {
-    throw new Error('Can not use context out of the model refresh time.');
-  }
-  return context;
-}
-
 function refreshModel<S, T extends AirModelInstance, D extends S>(
   reducer: AirReducer<S, T>,
-  state: D,
-  runtime: ModelContextFactory
+  state: D
 ) {
-  runtime.start();
-  systemRuntime.context = runtime.context;
-  const instance = reducer(state);
-  systemRuntime.context = null;
-  runtime.end();
-  if ((instance as any)[lazyIdentifyKey] === lazyIdentify) {
-    runtime.reset();
-  }
-  return instance;
+  return reducer(state);
 }
 
 function destroyDispatching<S, T extends AirModelInstance>(
@@ -178,82 +154,10 @@ function generateNotification<S, T extends AirModelInstance>(
   };
 }
 
-function generateModelContextFactory(): ModelContextFactory {
-  const contexts: Contexts = {
-    data: [],
-    current: 0,
-    initialized: false,
-    working: false
-  };
-  const ref = function ref<C>(current: C) {
-    const { data, initialized, working } = contexts;
-    if (!working) {
-      throw new Error(
-        'Context hook only can be used in model refreshing time.'
-      );
-    }
-    const currentIndex = contexts.current;
-    const memoData = data[currentIndex];
-    contexts.current += 1;
-    if (memoData) {
-      return memoData as { current: C };
-    }
-    if (initialized) {
-      throw new Error(
-        'Context hook should be used everytime, when model is refreshing.'
-      );
-    }
-    const refData = { current };
-    data[currentIndex] = refData;
-    return refData;
-  };
-  const memo = function memo<M extends () => any>(
-    call: M,
-    deps: unknown[] = []
-  ) {
-    const memoRef = ref<undefined | [ReturnType<M>, unknown[]]>(undefined);
-    const [memoData, memoDeps] = (function generate(): [
-      ReturnType<M>,
-      unknown[] | undefined
-    ] {
-      if (memoRef.current == null) {
-        return [call(), deps];
-      }
-      const [d, p] = memoRef.current;
-      if (shallowEqual(p, deps)) {
-        return [d, undefined];
-      }
-      return [call(), deps];
-    })();
-    if (memoDeps) {
-      memoRef.current = [memoData, memoDeps];
-    }
-    return memoData;
-  };
-  return {
-    context: { ref, memo },
-    reset() {
-      contexts.working = false;
-      contexts.current = 0;
-      contexts.initialized = false;
-      contexts.data = [];
-    },
-    start() {
-      contexts.working = true;
-      contexts.current = 0;
-    },
-    end() {
-      contexts.working = false;
-      contexts.initialized = true;
-    }
-  };
-}
-
 function transToActionMethod<S, T extends AirModelInstance>(
   updater: Updater<S, T>,
   type: string,
   runtime: {
-    context: ModelContextFactory;
     methodsCache: Record<string, (...args: any[]) => any>;
     middleWare?: (action: Action) => Action | null;
     sourceTo?: (...args: any[]) => any;
@@ -295,7 +199,7 @@ function transToActionMethod<S, T extends AirModelInstance>(
     }
     const prevState = updater.state;
     const prevInstance = updater.current;
-    updater.current = refreshModel(reducer, result, runtime.context);
+    updater.current = refreshModel(reducer, result);
     updater.state = result;
     updater.version += 1;
     updater.cacheState = { state: result };
@@ -455,8 +359,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   defaultState: D,
   updaterConfig?: UpdaterConfig
 ): Connection<S, T> {
-  const modelContextFactory = generateModelContextFactory();
-  const defaultModel = refreshModel(reducer, defaultState, modelContextFactory);
+  const defaultModel = refreshModel(reducer, defaultState);
   const { controlled, batchUpdate } = updaterConfig || {};
   const optimize = { batchUpdate };
   const updater: Updater<S, T> = {
@@ -508,11 +411,7 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       outState && outState.cache
         ? { state: outState.state }
         : updater.cacheState;
-    updater.current = refreshModel(
-      updateReducer,
-      updater.state,
-      modelContextFactory
-    );
+    updater.current = refreshModel(updateReducer, updater.state);
     if (state === updater.state || isDefaultUpdate || ignoreDispatch) {
       return;
     }
@@ -598,7 +497,6 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         typeof value === 'function'
       ) {
         return transToActionMethod<S, T>(updater, p, {
-          context: modelContextFactory,
           methodsCache: updater.cacheMethods
         });
       }
@@ -607,6 +505,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
   });
   return {
     agent,
+    getReducer(): AirReducer<S, T> {
+      return updater.reducer;
+    },
     getCacheState(): { state: S } | null {
       return updater.cacheState;
     },
@@ -628,7 +529,6 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
           if (typeof d === 'function') {
             return runtime
               ? transToActionMethod<S, T>(updater, i.toString(), {
-                  context: modelContextFactory,
                   ...runtime,
                   sourceTo: agent[i] as (...args: any[]) => any
                 })
@@ -648,7 +548,6 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
         if (typeof value === 'function') {
           result[key] = runtime
             ? (transToActionMethod<S, T>(updater, key as string, {
-                context: modelContextFactory,
                 ...runtime,
                 sourceTo: agent[key] as (...args: any[]) => any
               }) as T[typeof key])
@@ -685,13 +584,21 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       updater.dispatches = [];
       destroyDispatching(updater);
       updater.temporaryDispatches = [];
-      updater.state = defaultState;
-      updater.cacheState = null;
       updater.notify = noop;
       updater.isDestroyed = true;
       updater.cacheMethods = {};
       updater.cacheGenerators = {};
       optimize.batchUpdate = undefined;
+    },
+    renew(connection?: Connection<S, T>) {
+      updater.isDestroyed = false;
+      updater.notify = generateNotification(updater, optimize);
+      if (!connection) {
+        return;
+      }
+      const { getState, getReducer } = connection;
+      updater.cacheState = null;
+      update(getReducer(), { state: getState(), ignoreDispatch: true });
     },
     connect(dispatchCall) {
       subscribe(dispatchCall);
@@ -745,13 +652,10 @@ export function factory<T extends AirReducer<any, any>>(
     updaterConfig?: UpdaterConfig
   ): Connection {
     if (lazy) {
-      return createModel(
-        (s: undefined) => {
-          return { [lazyIdentifyKey]: lazyIdentify };
-        },
-        undefined,
-        updaterConfig
-      ) as any;
+      const lazyReducer = (s: any) => {
+        return { [lazyIdentifyKey]: lazyIdentify } as ReturnType<T>;
+      };
+      return createModel(lazyReducer, undefined, updaterConfig) as Connection;
     }
     return createModel(replaceModel, state, updaterConfig);
   };
@@ -829,68 +733,40 @@ export function createStoreCollection<
       instances
     };
   }
-  function updateCollections(
-    collections: Collection[],
-    updated: Collection[]
-  ): Collection[] {
-    const updatedMap = toMapObject(
-      updated.map(({ key, connection, factory: fac }) => [
-        key,
-        { connection, factory: fac }
-      ])
-    );
-    const map = toMapObject(
-      collections.map(({ key, connection, factory: fac }) => [
-        key,
-        { connection, factory: fac }
-      ])
-    );
-    const additions = updated.filter(({ key }) => !map.get(key));
-    const deletions = collections.filter(({ key }) => !updatedMap.get(key));
-    const updates = collections
-      .map(collection => {
-        const { key, connection } = collection;
-        const c = updatedMap.get(key);
-        if (!c) {
-          return undefined;
-        }
-        const updatingConnection = c.connection;
-        const state = (function computeState() {
-          const isDefault = connection.getCacheState() == null;
-          if (isDefault) {
-            return updatingConnection.getState();
-          }
-          return connection.getState();
-        })();
-        connection.update(c.factory, { state });
-        return {
-          ...collection,
-          factory: c.factory,
-          sourceFactory: collection.factory
-        } as Collection;
-      })
-      .filter((d): d is Collection => !!d);
-    deletions.forEach(({ connection }) => connection.destroy());
-    return [...additions, ...updates];
-  }
   const currentCollections = collectConnections(fact, updaterConfig);
   const holder = extractFactory(currentCollections);
 
-  const store = {
-    update(updateFactory: T): ModelFactoryStore<T> {
-      if (updateFactory === fact) {
-        return { ...store };
+  const updateHolderFactory = function updateHolderFactory(
+    updateFactory: T,
+    conf?: UpdaterConfig
+  ) {
+    const collections = collectConnections(updateFactory, conf);
+    const { collections: holders } = holder;
+    const instances = toInstances(collections);
+    holders.forEach(c => {
+      const connection = instances.get(c.factory);
+      if (connection == null) {
+        return;
       }
-      const collections = collectConnections(updateFactory, updaterConfig);
-      const {
-        instances,
-        connections,
-        collections: newCollections
-      } = extractFactory(updateCollections(currentCollections, collections));
-      holder.instances = instances;
-      holder.connections = connections;
-      holder.collections = newCollections;
-      return { ...store };
+      c.connection.renew();
+    });
+  };
+
+  const store = {
+    destroyed: false,
+    parent: updaterConfig?.parent,
+    update(updateFactory: T, conf?: UpdaterConfig): ModelFactoryStore<T> {
+      if (
+        updateFactory === fact &&
+        conf?.parent === updaterConfig?.parent &&
+        !store.destroyed
+      ) {
+        return store;
+      }
+      store.parent = conf ? conf.parent : undefined;
+      updateHolderFactory(updateFactory);
+      store.destroyed = false;
+      return store;
     },
     get(reducer: AirReducer<any, any>): Connection | undefined {
       return holder.instances.get(reducer);
@@ -905,7 +781,8 @@ export function createStoreCollection<
     },
     destroy() {
       holder.connections.forEach(connection => connection.destroy());
+      store.destroyed = true;
     }
   };
-  return { ...store };
+  return store;
 }
