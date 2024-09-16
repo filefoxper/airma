@@ -104,13 +104,21 @@ declare type HttpType = {
     requestParams: P
   ): HttpType;
 
-  get<T>(config?: RestConfig): PromiseValue<T>;
+  get<T>(
+    config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+  ): PromiseValue<T>;
 
-  post<T>(config?: RestConfig): PromiseValue<T>;
+  post<T>(
+    config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+  ): PromiseValue<T>;
 
-  put<T>(config?: RestConfig): PromiseValue<T>;
+  put<T>(
+    config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+  ): PromiseValue<T>;
 
-  delete<T>(config?: RestConfig): PromiseValue<T>;
+  delete<T>(
+    config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+  ): PromiseValue<T>;
 };
 
 export declare type RuntimeRestConfig = RestConfig & {

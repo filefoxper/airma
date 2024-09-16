@@ -245,7 +245,14 @@ function cacheGenerator<S, T extends AirModelInstance>(
     clearCacheGenerators(updater, type);
     return {
       get() {
-        return field.callback();
+        const currentField = updater.current[type] as FieldGenerator;
+        if (currentField == null) {
+          throw new Error('This field is not exist now.');
+        }
+        if (!isCacheGenerator(currentField)) {
+          throw new Error('This field is changed to be a normal object');
+        }
+        return currentField.callback();
       }
     };
   }
@@ -256,6 +263,12 @@ function cacheGenerator<S, T extends AirModelInstance>(
   const out = {
     get: () => {
       const data = updater.current[type] as FieldGenerator;
+      if (data == null) {
+        throw new Error('This field is not exist now.');
+      }
+      if (!isCacheGenerator(data)) {
+        throw new Error('This field is changed to be a normal object');
+      }
       const cacheStructureInRuntime = updater.cacheGenerators[type];
       if (!cacheStructureInRuntime) {
         const value = data.callback();

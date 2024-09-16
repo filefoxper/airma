@@ -203,6 +203,10 @@ const Creating = memo(
       console.log('fs success');
     }, [fs, { watchOnly: true }]);
 
+      useResponse.useSuccess(() => {
+          console.log('js success');
+      }, fs);
+
     useResponse.useSuccess(() => {
       console.log('save success');
       query();

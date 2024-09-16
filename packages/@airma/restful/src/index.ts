@@ -97,7 +97,7 @@ export function rest(url: string | HttpProperties): HttpType {
 
   const setRequestConfig = (
     method: Method,
-    config?: RestConfig
+    config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
   ): RuntimeRestConfig => {
     const { requestBody, requestParams } = properties;
     const base: RequestConfig = {
@@ -105,7 +105,9 @@ export function rest(url: string | HttpProperties): HttpType {
       params: requestParams,
       body: requestBody
     };
-    return getCurrentRequestConfigByRuntime({ ...config, ...base });
+    return getCurrentRequestConfigByRuntime(
+      typeof config === 'function' ? config(base) : { ...base, ...config }
+    );
   };
 
   return {
@@ -143,16 +145,24 @@ export function rest(url: string | HttpProperties): HttpType {
     setParams<P extends Record<string, unknown>>(requestParams: P): HttpType {
       return rest({ ...properties, requestParams });
     },
-    get<T>(config?: RestConfig): PromiseValue<T> {
+    get<T>(
+      config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+    ): PromiseValue<T> {
       return run(setRequestConfig('GET', config));
     },
-    post<T>(config?: RestConfig): PromiseValue<T> {
+    post<T>(
+      config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+    ): PromiseValue<T> {
       return run(setRequestConfig('POST', config));
     },
-    put<T>(config?: RestConfig): PromiseValue<T> {
+    put<T>(
+      config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+    ): PromiseValue<T> {
       return run(setRequestConfig('PUT', config));
     },
-    delete<T>(config?: RestConfig): PromiseValue<T> {
+    delete<T>(
+      config?: RestConfig | ((baseConfig: RestConfig) => RestConfig)
+    ): PromiseValue<T> {
       return run(setRequestConfig('DELETE', config));
     }
   };
