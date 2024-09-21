@@ -29,10 +29,12 @@ export function effectModel(
         ? state.lastSuccessfulRound
         : state.round + 1,
       lastFailedRound: s.isError ? state.round + 1 : state.lastFailedRound,
-      lastSuccessfulVariables: s.isError
-        ? state.lastSuccessfulVariables
+      lastSuccessfulRoundVariables: s.isError
+        ? state.lastSuccessfulRoundVariables
         : s.variables,
-      lastFailedVariables: s.isError ? s.variables : state.lastFailedVariables,
+      lastFailedRoundVariables: s.isError
+        ? s.variables
+        : state.lastFailedRoundVariables,
       stale: undefined
     };
   };
@@ -98,8 +100,8 @@ export const defaultPromiseResult = (config?: {
     visited: false,
     lastSuccessfulRound: 0,
     lastFailedRound: 0,
-    lastSuccessfulVariables: undefined,
-    lastFailedVariables: undefined,
+    lastSuccessfulRoundVariables: undefined,
+    lastFailedRoundVariables: undefined,
     ...config
   } as SessionState);
 

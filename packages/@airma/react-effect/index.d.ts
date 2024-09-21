@@ -29,25 +29,25 @@ declare interface AbstractSessionState {
   variables: any[] | undefined;
   round: number;
   visited: boolean;
-  lastSuccessfulVariables: any[] | undefined;
-  lastFailedVariables: any[] | undefined;
   lastSuccessfulRound: number;
+  lastSuccessfulRoundVariables: any[] | undefined;
   lastFailedRound: number;
+  lastFailedRoundVariables: any[] | undefined;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
   data: T;
   variables: V;
-  lastSuccessfulVariables: V;
-  lastFailedVariables: V | undefined;
+  lastSuccessfulRoundVariables: V;
+  lastFailedRoundVariables: V | undefined;
   loaded: true;
 }
 
 export declare interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
   variables: undefined;
-  lastSuccessfulVariables: undefined;
-  lastFailedVariables: undefined;
+  lastSuccessfulRoundVariables: undefined;
+  lastFailedRoundVariables: undefined;
   loaded: false;
 }
 

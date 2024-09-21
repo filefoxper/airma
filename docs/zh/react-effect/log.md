@@ -130,3 +130,8 @@
 ## v18.5.3
 
 * 向会话状态中添加了 `visited`, `lastSuccessfulRound`, `lastFailedRound`, `lastSuccessfulVariables` , `lastFailedVariables` 字段。
+
+## v18.5.4
+
+* 修改 `sessionState.lastSuccessfulVariables` 为 `sessionState.lastSuccessfulRoundVariables`。  
+* 修改 `sessionState.lastFailedVariables` 为 `sessionState.lastFailedRoundVariables`。  
