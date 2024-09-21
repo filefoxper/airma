@@ -25,6 +25,16 @@ export function effectModel(
       ...s,
       visited: state.visited ? state.visited : !s.isError,
       round: state.round + 1,
+      lastSuccessfulRound: s.isError
+        ? state.lastSuccessfulRound
+        : state.lastSuccessfulRound + 1,
+      lastFailedRound: s.isError
+        ? state.lastFailedRound + 1
+        : state.lastFailedRound,
+      lastSuccessfulVariables: s.isError
+        ? state.lastSuccessfulVariables
+        : s.variables,
+      lastFailedVariables: s.isError ? s.variables : state.lastFailedVariables,
       stale: undefined
     };
   };
@@ -88,6 +98,10 @@ export const defaultPromiseResult = (config?: {
     round: 0,
     executeVariables: undefined,
     visited: false,
+    lastSuccessfulRound: 0,
+    lastFailedRound: 0,
+    lastSuccessfulVariables: undefined,
+    lastFailedVariables: undefined,
     ...config
   } as SessionState);
 

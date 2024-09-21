@@ -126,8 +126,7 @@ const store = model((query: Query) => {
     return { ...query, valid: { ...query.display } };
   };
   const queryData = model.createField(() => {
-    const { name, username } = query.valid;
-    return { name, username };
+    return query.valid;
   }, [query.valid]);
   return {
     queryData,
@@ -153,8 +152,8 @@ const store = model((query: Query) => {
   .createStore();
 
 const Info = memo(() => {
-  const [{ isFetching, isError, error }] = fetchSession.useSession();
-  if (isFetching) {
+  const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
+  if (isFetching&&!visited) {
     return <span>fetching...</span>;
   }
   return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
@@ -351,6 +350,8 @@ export default store.provideTo(function App() {
     },
     [queryState]
   );
+
+    console.log('variables',queryState.variables,queryState.lastSuccessfulVariables)
 
   const [{ data, variables }, t] = querySession;
 

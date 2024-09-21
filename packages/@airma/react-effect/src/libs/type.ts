@@ -82,7 +82,11 @@ export interface AbstractSessionState {
   cache: SessionCache[];
   maxCacheCapacity: number;
   executeVariables: any[] | undefined;
-  visited?: boolean;
+  visited: boolean;
+  lastSuccessfulVariables: any[] | undefined;
+  lastFailedVariables: any[] | undefined;
+  lastSuccessfulRound: number;
+  lastFailedRound: number;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {
