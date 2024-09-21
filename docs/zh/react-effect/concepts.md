@@ -75,8 +75,8 @@ const {
 * **visited** - 会话是否被访问过，类型：`boolean`，初始值为 false。该字段与 `loaded` 字段同义，不同的是，该字段可以被[策略](/zh/react-effect/concepts?id=策略)修改，如：[Strategry.cache](/zh/react-effect/api?id=strategy-cache)。
 * **lastSuccessfulRound** - 最近一次成功执行的回合数，类型：`number`，初始值为 0。
 * **lastFailedRound** - 最近一次出错的回合数，类型：`number`，初始值为 0。
-* **lastSuccessfulVariables** - 最近一次成功执行的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
-* **lastFailedVariables** - 最近一次失败的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
+* **lastSuccessfulRoundVariables** - 最近一次成功执行的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
+* **lastFailedRoundVariables** - 最近一次失败的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
 
 关于 **triggerType**
 

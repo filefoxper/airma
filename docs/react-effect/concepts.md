@@ -72,8 +72,8 @@ The full fields of session state:
 * **vistied** - It is similar to `loaded`, but can be changed by strategies (ex. [Strategy.cache](/react-effect/api?id=strategy-cache)).
 * **lastSuccessfulRound** - It is the cached value of `round` when a latest execution is successful.
 * **lastFailedRound** - It is the cached value of `round` when a latest execution is failed.
-* **lastSuccessfulVariables** - It is the cached value of `variables` when a latest execution is successful.
-* **lastFailedVariables** - It is the cached value of `variables` when a latest execution is failed.
+* **lastSuccessfulRoundVariables** - It is the cached value of `variables` when a latest execution is successful.
+* **lastFailedRoundVariables** - It is the cached value of `variables` when a latest execution is failed.
 
 ### Session config
 

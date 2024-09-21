@@ -83,8 +83,8 @@ export interface AbstractSessionState {
   maxCacheCapacity: number;
   executeVariables: any[] | undefined;
   visited: boolean;
-  lastSuccessfulVariables: any[] | undefined;
-  lastFailedVariables: any[] | undefined;
+  lastSuccessfulRoundVariables: any[] | undefined;
+  lastFailedRoundVariables: any[] | undefined;
   lastSuccessfulRound: number;
   lastFailedRound: number;
 }

@@ -129,3 +129,8 @@
 # v18.5.3
 
 * add `visited`, `lastSuccessfulRound`, `lastFailedRound`, `lastSuccessfulVariables` and `lastFailedVariables` to `sessionState`.
+
+# v18.5.4
+
+* change `sessionState.lastSuccessfulVariables` to `sessionState.lastSuccessfulRoundVariables`.
+* change `sessionState.lastFailedVariables` to `sessionState.lastFailedRoundVariables`.
