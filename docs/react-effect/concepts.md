@@ -69,6 +69,11 @@ The full fields of session state:
 * **triggerType** - It describes how does the latest execution works, there are 3 trigger type: `mount | update | manual`.
 * **round** - The adopted execution times, it is a `number` data increased with adopted execution finished. Before session has been executed, it is `0`.
 * **abandon** - It should be `false` in session state. In [stratey](/react-effect/concepts?id=strategy) executing process, setting it `true` prevents invalid session state to be adopted.
+* **vistied** - It is similar to `loaded`, but can be changed by strategies (ex. [Strategy.cache](/react-effect/api?id=strategy-cache)).
+* **lastSuccessfulRound** - It is the cached value of `round` when a latest execution is successful.
+* **lastFailedRound** - It is the cached value of `round` when a latest execution is failed.
+* **lastSuccessfulVariables** - It is the cached value of `variables` when a latest execution is successful.
+* **lastFailedVariables** - It is the cached value of `variables` when a latest execution is failed.
 
 ### Session config
 

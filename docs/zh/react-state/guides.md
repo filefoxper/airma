@@ -412,7 +412,9 @@ toggleStore.with(countStore,...).provideTo(
 
 自 `v18.5.1` 开始 `@airma/react-state` 新增了实例字段 API `model.createField`。
 
-通过对 model.createField 方法添加依赖项，可创建一个缓存字段。该字段只能通过外部实例获取并调用字段的 get 方法时，才能生成缓存值。该对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
+通过对 model.createField 方法添加依赖项，可创建一个缓存字段。该字段只能通过外部实例获取并调用字段的 get 方法时，才能生成缓存。
+
+**注意**：字段对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
 
 ```ts
 import {model} from '@airma/react-state';
@@ -535,6 +537,41 @@ const queryModel = model((condition:QueryCondition)=>{
     }
 });
 ```
+
+当不为字段提供缓存依赖时，字段的 get 方法将会返回不受闭包影响的最新值。
+
+```ts
+import {model} from '@airma/react-state';
+
+const countModel = model((count:number)=>([
+    model.createField(()=>count),
+    ()=>count+1,
+    ()=>count-1
+] as const));
+
+const App = ()=>{
+    const [countField,increase,decrease] = countModel.useModel(0);
+    const count = countField.get();
+
+    useEffect(()=>{
+        setTimeout(()=>{
+            // 当 count 字段发生变化时，该字段受闭包作用影响，在当前作用域中被固定，
+            // 但 countField.get() 返回值不受闭包影响，始终返回最新值。
+            console.log('differ', count, countField.get());
+        },1000);
+    });
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            {count}
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
+
+**注意**：在当前版本中，通过 model.createField 创建的字段对象会根据依赖项做出值变化，但在未来版本，字段将成为与行为方法类似的不变存在，变化的只有字段 get 方法的返回值。
 
 ## ConfigProvider
 

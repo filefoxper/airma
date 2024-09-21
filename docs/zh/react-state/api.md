@@ -432,7 +432,7 @@ function createField(callback:()=>any, deps?:any[]): {
 
 返回
 
-字段对象，包含 get 方法，用于获取字段值。
+字段对象，包含 get 方法，用于获取字段值。当依赖 `deps` 存在，且未发生变化时，get 方法返回缓存的字段值，否则重新计算字段值并缓存；当依赖 `deps` 不存在时，get 方法直接返回最新的字段值。
 
 用法[参考](/zh/react-state/guides?id=实例字段)
 

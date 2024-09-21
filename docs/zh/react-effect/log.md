@@ -125,3 +125,8 @@
 ## v18.5.2
 
 * 修复 React@18.+ 严格模式下的问题。
+
+
+## v18.5.3
+
+* 向会话状态中添加了 `visited`, `lastSuccessfulRound`, `lastFailedRound`, `lastSuccessfulVariables` , `lastFailedVariables` 字段。

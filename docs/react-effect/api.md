@@ -211,7 +211,9 @@ const Strategy: {
 
 Used for opening SWR query mode. When the query key (default `JSON.stringify(variables)`) can be found in cache, the cache data can be picked out as [session state](/react-effect/concepts?id=session-state).data immediately. In that case, if the **staleTime** is set, the execution skips.
 
-If the query key is not in cache data, it store execution result with this key into cache. 
+If the query key is not in cache data, it store execution result with this key into cache.
+
+It can change the `visited` field in session state, if there is no cache data, it changes this field to be `false`; if there is cache data, it changes this field to be `true`.
 
 #### Parameters
 

@@ -16,7 +16,6 @@ declare type SessionType = 'query' | 'mutation';
 declare interface AbstractSessionState {
   data: unknown;
   stale?: { data: unknown };
-  variables: any[] | undefined;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -27,18 +26,28 @@ declare interface AbstractSessionState {
   loaded: boolean;
   sessionLoaded: boolean;
   uniqueKey: unknown;
+  variables: any[] | undefined;
   round: number;
+  visited: boolean;
+  lastSuccessfulVariables: any[] | undefined;
+  lastFailedVariables: any[] | undefined;
+  lastSuccessfulRound: number;
+  lastFailedRound: number;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
   data: T;
   variables: V;
+  lastSuccessfulVariables: V;
+  lastFailedVariables: V | undefined;
   loaded: true;
 }
 
 export declare interface UnloadedSessionState extends AbstractSessionState {
   data: undefined;
   variables: undefined;
+  lastSuccessfulVariables: undefined;
+  lastFailedVariables: undefined;
   loaded: false;
 }
 

@@ -95,3 +95,7 @@
 * 重新定义了 `signal.useEffect` 的行为特性。
 * 添加了 `signal.useWatch` API。
 * 修复了副作用引起的 React 18.+ 严格模式下的渲染问题。
+
+## v18.5.4
+
+* 强化了 `model.createField` API，支持无缓存依赖时，返回最新值。

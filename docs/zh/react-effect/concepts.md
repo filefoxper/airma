@@ -72,6 +72,11 @@ const {
 * **triggerType** - 用于描述会话最新执行使用的触发方式，类型：`'mount' | 'update' | 'manual'`。该值在会话被触发时被设定。
 * **round** - 会话回合数，类型：`number`，会话每执行完一次异步函数记为一个回合，该值自动加 1，初始值为 0。
 * **abandon** - 本次会话执行结果是否被放弃，类型：`boolean`，该值在会话状态中始终为 false。 [策略](/zh/react-effect/concepts?id=策略) 系统会根据策略需求对执行结果进行废弃与否的标记，如执行结果被标记 abandon: true，则该结果被废弃，再也不会被设置为新的会话状态。
+* **visited** - 会话是否被访问过，类型：`boolean`，初始值为 false。该字段与 `loaded` 字段同义，不同的是，该字段可以被[策略](/zh/react-effect/concepts?id=策略)修改，如：[Strategry.cache](/zh/react-effect/api?id=strategy-cache)。
+* **lastSuccessfulRound** - 最近一次成功执行的回合数，类型：`number`，初始值为 0。
+* **lastFailedRound** - 最近一次出错的回合数，类型：`number`，初始值为 0。
+* **lastSuccessfulVariables** - 最近一次成功执行的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
+* **lastFailedVariables** - 最近一次失败的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
 
 关于 **triggerType**
 
