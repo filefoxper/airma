@@ -27,10 +27,8 @@ export function effectModel(
       round: state.round + 1,
       lastSuccessfulRound: s.isError
         ? state.lastSuccessfulRound
-        : state.lastSuccessfulRound + 1,
-      lastFailedRound: s.isError
-        ? state.lastFailedRound + 1
-        : state.lastFailedRound,
+        : state.round + 1,
+      lastFailedRound: s.isError ? state.round + 1 : state.lastFailedRound,
       lastSuccessfulVariables: s.isError
         ? state.lastSuccessfulVariables
         : s.variables,

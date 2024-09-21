@@ -125,3 +125,7 @@
 # v18.5.2
 
 * fix problems in react@18.+ strict mode.
+
+# v18.5.3
+
+* add `visited`, `lastSuccessfulRound`, `lastFailedRound`, `lastSuccessfulVariables` and `lastFailedVariables` to `sessionState`.

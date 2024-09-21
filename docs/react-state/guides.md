@@ -488,6 +488,43 @@ const queryModel = model((condition:QueryCondition)=>{
 });
 ```
 
+If there are no dependencies, the get method from field always returns a newest value.
+
+```ts
+import {model} from '@airma/react-state';
+
+const countModel = model((count:number)=>([
+    model.createField(()=>count),
+    ()=>count+1,
+    ()=>count-1
+] as const));
+
+const App = ()=>{
+    const [countField,increase,decrease] = countModel.useModel(0);
+    const count = countField.get();
+
+    useEffect(()=>{
+        // When count changes, the effect works after 1s.
+        // If there is another action happening in this 1s, 
+        // the `count` value should be a stale one for the closures effect by ecmascript feature.
+        // But the `countField.get()` calling can return a trustable newest value.
+        setTimeout(()=>{
+            console.log('differ', count, countField.get());
+        },1000);
+    });
+
+    return (
+        <div>
+            <button onClick={increase}>+</button>
+            {count}
+            <button onClick={decrease}>-</button>
+        </div>
+    );
+}
+```
+
+**Note**, currently, the field object changes when its dependencies changes, or the model refreshes if there is no dependencies. In feature, the field object will be changeless like action methods, and only the get method returns in field can make changes. 
+
 ## ConfigProvider
 
 For `@airma/react-state` uses subscription mode to synchronous state changes, it needs a batch update way to update multiple state changes.

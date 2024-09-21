@@ -328,7 +328,7 @@ Parameters
 
 Returns
 
- A field object with a `get` method for getting value.
+ A field object with a `get` method for getting the newest or cached field value. If there is no `deps` parameter, the `get` method returns a newest value. If there are `deps` parameters, the `get` method diffs the `deps`, and returns a cached value.
 
 usage [reference](/react-state/guides?id=createfield).
 

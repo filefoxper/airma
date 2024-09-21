@@ -136,3 +136,7 @@
 * redefine the feature of `signal.useEffect` API.
 * add `signal.useWatch` API.
 * fix problems in react@18.+ strict mode.
+
+## v18.5.4 2024-09-22
+
+* make `model.createField` no `deps` usage returns a newest value `get` method.
