@@ -126,10 +126,16 @@ const store = model((query: Query) => {
     return { ...query, valid: { ...query.display } };
   };
   const queryData = model.createField(() => {
-    return query.valid;
+    return {...query.valid};
   }, [query.valid]);
+  const sourceQueryData = model.createField(()=>{
+      return query.valid;
+  });
+  const displayQueryData = model.createField(()=>query.display)
   return {
     queryData,
+    sourceQueryData,
+    displayQueryData,
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
@@ -245,8 +251,16 @@ const Creating = memo(
 
 const Condition = memo(function Condition({ parentTrigger }: { parentTrigger: () => void }) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, validQuery, create, changeDisplay, submit } =
+  const { displayQuery, queryData,sourceQueryData,displayQueryData, create, changeDisplay, submit } =
     store.useModel();
+
+    useEffect(() => {
+        console.log('source query data',sourceQueryData.get());
+    }, [sourceQueryData.get()]);
+
+    useEffect(() => {
+        console.log('display query data',displayQueryData.get());
+    }, [displayQueryData.get()]);
 
   const isFetching = useIsFetching();
   const [,,execute] = fetchSession.useQuery();
@@ -351,7 +365,7 @@ export default store.provideTo(function App() {
     [queryState]
   );
 
-    console.log('variables',queryState.variables,queryState.lastSuccessfulVariables)
+    console.log('variables',queryState.variables,queryState.lastSuccessfulRoundVariables)
 
   const [{ data, variables }, t] = querySession;
 

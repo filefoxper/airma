@@ -241,23 +241,12 @@ function cacheGenerator<S, T extends AirModelInstance>(
     clearCacheGenerators(updater, type);
     return field;
   }
-  if (field.deps == null) {
-    clearCacheGenerators(updater, type);
-    return {
-      get() {
-        const currentField = updater.current[type] as FieldGenerator;
-        if (currentField == null) {
-          throw new Error('This field is not exist now.');
-        }
-        if (!isCacheGenerator(currentField)) {
-          throw new Error('This field is changed to be a normal object');
-        }
-        return currentField.callback();
-      }
-    };
-  }
   const cacheStructure = updater.cacheGenerators[type];
-  if (cacheStructure && shallowEqual(cacheStructure.deps, field.deps)) {
+  if (
+    cacheStructure &&
+    ((field.deps && shallowEqual(cacheStructure.deps, field.deps)) ||
+      (!field.deps && cacheStructure.value === field.value))
+  ) {
     return cacheStructure.out;
   }
   const out = {
@@ -271,24 +260,20 @@ function cacheGenerator<S, T extends AirModelInstance>(
       }
       const cacheStructureInRuntime = updater.cacheGenerators[type];
       if (!cacheStructureInRuntime) {
-        const value = data.callback();
-        updater.cacheGenerators[type] = { value, deps: data.deps, out };
+        const { value } = data;
         return value;
       }
       const { value: cacheValue, deps: cacheDeps } = cacheStructureInRuntime;
-      if (shallowEqual(cacheDeps, data.deps)) {
+      if (
+        (data.deps && shallowEqual(cacheDeps, data.deps)) ||
+        (!data.deps && cacheValue === data.value)
+      ) {
         return cacheValue;
       }
-      updater.cacheGenerators[type] = null;
-      const changeValue = data.callback();
-      updater.cacheGenerators[type] = {
-        value: changeValue,
-        deps: data.deps,
-        out
-      };
-      return changeValue;
+      return data.value;
     }
   };
+  updater.cacheGenerators[type] = { value: field.value, deps: field.deps, out };
   return out;
 }
 
@@ -310,12 +295,14 @@ export function createCacheField<R extends () => any>(
       return d;
     });
   })();
+  const value = callback();
   return {
     callback,
     deps: currentDeps,
     cacheGenerator,
+    value,
     get(): ReturnType<R> {
-      return callback();
+      return value;
     }
   };
 }
@@ -338,12 +325,14 @@ export function createField<R extends () => any>(
       return d;
     });
   })();
+  const value = callback();
   return {
     callback,
     deps: currentDeps,
     cacheGenerator,
+    value,
     get(): ReturnType<R> {
-      return callback();
+      return value;
     }
   };
 }

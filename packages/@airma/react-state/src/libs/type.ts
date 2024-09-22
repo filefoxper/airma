@@ -24,9 +24,9 @@ type ValidInstance<S, T extends AirModelInstance> = {
     : T[K];
 };
 
-export type AirReducer<S, T extends AirModelInstance> = ((
+export type AirReducer<S, T extends AirModelInstance> = (
   state: S
-) => ValidInstance<S, T>);
+) => ValidInstance<S, T>;
 
 export interface InstanceActionRuntime {
   methodsCache: Record<string, (...args: any[]) => any>;
@@ -81,6 +81,7 @@ export interface FieldGenerator<R extends () => any = () => any> {
   callback: R;
   deps?: unknown[];
   get: () => ReturnType<R>;
+  value: ReturnType<R>;
   stale?: boolean;
   cacheGenerator: <S, T extends AirModelInstance>(
     updater: Updater<S, T>,
