@@ -140,3 +140,7 @@
 ## v18.5.4 2024-09-22
 
 * make `model.createField` no `deps` usage returns a newest value `get` method.
+
+## v18.5.5 2024-09-23
+
+* make `model.createField` changeless.

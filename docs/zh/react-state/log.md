@@ -99,3 +99,7 @@
 ## v18.5.4
 
 * 强化了 `model.createField` API，支持无缓存依赖时，返回最新值。
+
+## v18.5.5
+
+* 优化 `model.createField` API，使无依赖字段是否变化依赖于get方法返回值是否变化。
