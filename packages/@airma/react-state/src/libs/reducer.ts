@@ -773,14 +773,6 @@ export function createStoreCollection<
     get(reducer: AirReducer<any, any>): Connection | undefined {
       return holder.instances.get(reducer);
     },
-    equal(
-      factoryCollections:
-        | Record<string, any>
-        | Array<any>
-        | ((...args: any[]) => any)
-    ): boolean {
-      return factoryCollections === handler;
-    },
     destroy() {
       holder.connections.forEach(connection => connection.destroy());
       store.destroyed = true;

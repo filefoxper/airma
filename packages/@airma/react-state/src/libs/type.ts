@@ -119,21 +119,20 @@ export type Collection = {
   connection: Connection;
 };
 
-export type ModelFactoryStore<T> = {
-  parent?: ModelFactoryStore<any>;
-  update(
-    updateFactory: T,
-    parent?: ModelFactoryStore<any>
-  ): ModelFactoryStore<T>;
-  get(reducer: AirReducer<any, any>): Connection | undefined;
-  equal(factory: T): boolean;
-  destroy(): void;
-};
-
 export type UpdaterConfig = {
   controlled?: boolean;
   batchUpdate?: (callback: () => void) => void;
   parent?: ModelFactoryStore<any>;
+};
+
+export type ModelFactoryStore<T> = {
+  parent?: ModelFactoryStore<any>;
+  update(
+    updateFactory: T,
+    conf?: UpdaterConfig
+  ): ModelFactoryStore<T>;
+  get(reducer: AirReducer<any, any>): Connection | undefined;
+  destroy(): void;
 };
 
 export type Creation = {
