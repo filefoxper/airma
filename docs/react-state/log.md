@@ -144,3 +144,7 @@
 ## v18.5.5 2024-09-23
 
 * make `model.createField` changeless.
+
+## v18.5.6 2024-09-27
+
+* fix bug about can not link `parent provider store`.

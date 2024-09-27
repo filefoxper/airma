@@ -103,3 +103,7 @@
 ## v18.5.5
 
 * 优化 `model.createField` API，使无依赖字段是否变化依赖于get方法返回值是否变化。
+
+## v18.5.6
+
+* 修复无法连接父级 Provider store 的问题。

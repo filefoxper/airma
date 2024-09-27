@@ -115,7 +115,10 @@ export const Provider: FC<{
   });
 
   useEffect(() => {
-    selector.update(storeKeys, context || undefined);
+    selector.update(storeKeys, {
+      batchUpdate,
+      parent: context || undefined
+    });
     return () => {
       selector.destroy();
     };
