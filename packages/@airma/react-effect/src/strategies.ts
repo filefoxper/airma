@@ -1,4 +1,8 @@
-import { SessionState, StrategyType } from './libs/type';
+import { HostStage, SessionState, StrategyType } from './libs/type';
+
+function noop() {
+  /* noop */
+}
 
 function debounce(
   op: { duration: number; lead?: boolean } | number
@@ -297,14 +301,15 @@ function success<T>(
 }
 
 function validate(
-  callback: (variables: any[]) => boolean | Promise<boolean>
+  callback: (variables: any[], stage: HostStage) => boolean | Promise<boolean>
 ): StrategyType {
   return function validStrategy({
     runner,
+    getHostStage,
     getSessionState: current,
     variables
   }) {
-    const result = callback(variables);
+    const result = callback(variables, getHostStage());
     if (!result) {
       const state = current();
       return new Promise(resolve => {
@@ -334,22 +339,28 @@ function validate(
   };
 }
 
-function response<T>(callback: (state: SessionState<T>) => void): StrategyType {
+function response<T>(
+  callback: (state: SessionState<T>) => void | (() => void)
+): StrategyType {
   const sc: StrategyType = function sc(value) {
     const { runner } = value;
     return runner();
   };
   sc.effect = function responseEffect(s: SessionState<T>, p: SessionState<T>) {
     if (s.round === 0 || s.round === p.round) {
-      return;
+      return noop;
     }
-    callback(s);
+    const res = callback(s);
+    if (typeof res === 'function') {
+      return res;
+    }
+    return noop;
   };
   return sc;
 }
 
 response.success = function responseSuccess<T>(
-  process: (data: T, sessionData: SessionState<T>) => any
+  process: (data: T, sessionData: SessionState<T>) => void | (() => void)
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
     const { runner } = value;
@@ -360,18 +371,22 @@ response.success = function responseSuccess<T>(
     prevState: SessionState<T>
   ) {
     if (state.round === 0 || state.round === prevState.round || !state.loaded) {
-      return;
+      return noop;
     }
     if (state.isError || state.isFetching || !state.sessionLoaded) {
-      return;
+      return noop;
     }
-    process(state.data, state);
+    const res = process(state.data, state);
+    if (typeof res === 'function') {
+      return res;
+    }
+    return noop;
   };
   return sc;
 };
 
 response.error = function responseError<T>(
-  process: (e: unknown, sessionData: SessionState) => any
+  process: (e: unknown, sessionData: SessionState) => void | (() => void)
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
     const { runner, executeContext: runtimeCache } = value;
@@ -383,18 +398,22 @@ response.error = function responseError<T>(
     prevState: SessionState<T>
   ) {
     if (state.round === 0 || state.round === prevState.round || !state.loaded) {
-      return;
+      return noop;
     }
     if (!state.isError || state.isFetching) {
-      return;
+      return noop;
     }
-    process(state.error, state);
+    const res = process(state.error, state);
+    if (typeof res === 'function') {
+      return res;
+    }
+    return noop;
   };
   return sc;
 };
 
 response.failure = function responseFailure<T>(
-  process: (e: unknown, sessionData: SessionState) => any
+  process: (e: unknown, sessionData: SessionState) => void | (() => void)
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
     const { runner, executeContext: runtimeCache } = value;
@@ -403,9 +422,13 @@ response.failure = function responseFailure<T>(
   };
   sc.effect = function effectCallback(state) {
     if (!state.isError || state.isFetching) {
-      return;
+      return noop;
     }
-    process(state.error, state);
+    const res = process(state.error, state);
+    if (typeof res === 'function') {
+      return res;
+    }
+    return noop;
   };
   return sc;
 };
@@ -513,16 +536,37 @@ function cache(option?: {
   };
 }
 
+function filter(
+  callback: (
+    sessionState: SessionState,
+    stage: 'mounted' | 'unmounted'
+  ) => boolean
+): StrategyType {
+  return function filterStrategy({
+    runner,
+    getHostStage,
+    getSessionState: current
+  }) {
+    return runner().then(data => {
+      const state = current();
+      const stage = getHostStage();
+      const result = callback(data, stage);
+      return result ? data : { ...state, abandon: true };
+    });
+  };
+}
+
 export const Strategy = {
   cache,
   debounce,
-  throttle,
-  once,
   error,
   failure,
-  success,
-  validate,
+  filter,
   memo,
+  once,
+  success,
+  throttle,
+  validate,
   reduce,
   response
 };

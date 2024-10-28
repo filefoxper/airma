@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   QueryConfig,
   SessionState,
@@ -106,6 +106,14 @@ export function useStrategyExecution<T>(
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
   );
+  const unmountRef = useRef<'mounted' | 'unmounted'>('mounted');
+
+  useEffect(() => {
+    unmountRef.current = 'mounted';
+    return () => {
+      unmountRef.current = 'unmounted';
+    };
+  }, []);
 
   const effects = strategies
     .map(s => {
@@ -137,6 +145,7 @@ export function useStrategyExecution<T>(
       };
       const requires = {
         getSessionState: () => signal().state,
+        getHostStage: () => unmountRef.current,
         variables: runtimeVariables,
         runner,
         triggerType,
