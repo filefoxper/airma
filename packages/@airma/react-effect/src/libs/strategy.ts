@@ -137,7 +137,11 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        getSessionState: () => signal().state,
+        getSessionState: () => {
+          const s = signal().state;
+          const online = !signal.getConnection().isDestroyed();
+          return { ...s, online };
+        },
         variables: runtimeVariables,
         runner,
         triggerType,

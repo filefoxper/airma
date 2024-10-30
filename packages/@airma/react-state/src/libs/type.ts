@@ -66,6 +66,8 @@ export interface Connection<
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
   optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;
+  setPayload: <P>(setter: (payload: P) => P) => P;
+  getPayload: <P>() => P;
 }
 
 export interface ActionWrap {
@@ -110,6 +112,7 @@ export type Updater<S, T extends AirModelInstance> = {
   cacheState: { state: S } | null;
   state: S;
   notify: (action: Action | null) => void;
+  payload?: unknown;
 };
 
 export type Collection = {

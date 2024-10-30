@@ -194,7 +194,10 @@ const Creating = memo(
     const [sessionState, save] = saveSession.useMutation({
       variables: [user],
       strategy: [
-        Strategy.validate(async ([u]) => {
+        Strategy.validate(async ([u],isOnline) => {
+            if(!isOnline()){
+                return false;
+            }
           if (!u.name || !u.username) {
             return false;
           }
@@ -356,6 +359,9 @@ export default store.provideTo(function App() {
     defaultData: [],
     strategy: [
       Strategy.cache({ capacity: 10 }),
+        Strategy.success(()=>{
+            console.log('full')
+        }),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
         console.log('success', v.name);

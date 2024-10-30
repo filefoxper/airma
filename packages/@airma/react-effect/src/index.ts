@@ -12,7 +12,8 @@ import {
   Provider as ModelProvider,
   useSelector,
   provide as provideKeys,
-  AirReducer
+  AirReducer,
+  SignalHandler
 } from '@airma/react-state';
 import {
   useMount,
@@ -99,11 +100,10 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>
+  signal: SignalHandler<SessionKey<C>>
 ): Controller {
-  const { payload } = callback as SessionKey<C>;
-  const [, d] = payload || [];
-  const controller = d as FullControlData | undefined;
+  const payload = signal.getConnection().getPayload();
+  const controller = payload as FullControlData | undefined;
   return {
     getData(key: keyof ControlData) {
       if (controller == null || controller.data == null) {
@@ -191,7 +191,19 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
 
-  const controller = useController(callback);
+  useInitialize(() => {
+    const mayKey = callback as SessionKey<C>;
+    if (
+      typeof mayKey.isFactory === 'function' &&
+      mayKey.isFactory() &&
+      mayKey.payload
+    ) {
+      const [, d] = mayKey.payload;
+      return signal.getConnection().setPayload(p => (p != null ? p : { ...d }));
+    }
+    return null;
+  });
+  const controller = useController(signal);
   const fetchingKeyController = useFetchingKey(controller);
   const tunnelController = useTunnels(controller);
 
@@ -208,12 +220,14 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
+      const online = !signal.getConnection().isDestroyed();
       return {
         ...signal().state,
         ...data,
         abandon,
         isFetching: false,
-        triggerType
+        triggerType,
+        online
       } as SessionState<T>;
     });
   };
@@ -235,11 +249,6 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       });
     }
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
-      return new Promise<SessionState<T>>(resolve => {
-        resolve({ ...signal().state, abandon: true } as SessionState<T>);
-      });
-    }
-    if (signal.getConnection().isDestroyed()) {
       return new Promise<SessionState<T>>(resolve => {
         resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });

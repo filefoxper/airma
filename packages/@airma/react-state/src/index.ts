@@ -348,6 +348,12 @@ function watch<S, T extends AirModelInstance>(
     return {
       isDestroyed() {
         return connection.isDestroyed();
+      },
+      setPayload<P>(setter: (payload: P) => P) {
+        return connection.setPayload<P>(setter);
+      },
+      getPayload<P>() {
+        return connection.getPayload<P>();
       }
     };
   };
