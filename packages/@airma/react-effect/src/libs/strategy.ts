@@ -124,8 +124,7 @@ export function useStrategyExecution<T>(
         setSessionState?: (s: SessionState<T>) => SessionState<T>
       ) {
         const { state: current, setState } = signal();
-        const online = !signal.getConnection().isDestroyed();
-        const initialFetchingState = { ...current, online, isFetching: true };
+        const initialFetchingState = { ...current, isFetching: true };
         const fetchingState = setSessionState
           ? setSessionState(initialFetchingState)
           : initialFetchingState;
@@ -138,11 +137,7 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        getSessionState: () => {
-          const s = signal().state;
-          const online = !signal.getConnection().isDestroyed();
-          return { ...s, online };
-        },
+        getSessionState: () => signal().state,
         variables: runtimeVariables,
         runner,
         triggerType,

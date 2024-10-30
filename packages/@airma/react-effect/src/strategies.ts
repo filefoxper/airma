@@ -301,10 +301,7 @@ function success<T>(
 }
 
 function validate(
-  callback: (
-    variables: any[],
-    currentSessionState: SessionState
-  ) => boolean | Promise<boolean>
+  callback: (variables: any[]) => boolean | Promise<boolean>
 ): StrategyType {
   return function validStrategy({
     runner,
@@ -312,7 +309,7 @@ function validate(
     variables
   }) {
     const currentSessionState = current();
-    const result = callback(variables, currentSessionState);
+    const result = callback(variables);
     if (!result) {
       return new Promise(resolve => {
         resolve({ ...currentSessionState, abandon: true });

@@ -208,13 +208,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
-      const online = !signal.getConnection().isDestroyed();
       return {
         ...signal().state,
         ...data,
         abandon,
         isFetching: false,
-        online,
         triggerType
       } as SessionState<T>;
     });
@@ -237,6 +235,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       });
     }
     if (currentFetchingKey && currentFetchingKey !== keyRef.current) {
+      return new Promise<SessionState<T>>(resolve => {
+        resolve({ ...signal().state, abandon: true } as SessionState<T>);
+      });
+    }
+    if (signal.getConnection().isDestroyed()) {
       return new Promise<SessionState<T>>(resolve => {
         resolve({ ...signal().state, abandon: true } as SessionState<T>);
       });

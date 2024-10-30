@@ -102,7 +102,6 @@ export const defaultPromiseResult = (config?: {
     lastFailedRound: 0,
     lastSuccessfulRoundVariables: undefined,
     lastFailedRoundVariables: undefined,
-    online: true,
     ...config
   } as SessionState);
 
