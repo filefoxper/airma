@@ -87,6 +87,7 @@ export interface AbstractSessionState {
   lastFailedRoundVariables: any[] | undefined;
   lastSuccessfulRound: number;
   lastFailedRound: number;
+  online: boolean;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {
@@ -122,12 +123,9 @@ export type StrategyEffect<T> = (
   prevState: SessionState<T>
 ) => void;
 
-export type HostStage = 'mounted' | 'unmounted';
-
 export interface StrategyType<T = any> {
   (value: {
     getSessionState: () => SessionState<T>;
-    getHostStage: () => HostStage;
     variables: any[];
     config: QueryConfig<T, any>;
     runner: (

@@ -1,4 +1,4 @@
-import { HostStage, SessionState, StrategyType } from './libs/type';
+import { SessionState, StrategyType } from './libs/type';
 
 function noop() {
   /* noop */
@@ -301,19 +301,21 @@ function success<T>(
 }
 
 function validate(
-  callback: (variables: any[], stage: HostStage) => boolean | Promise<boolean>
+  callback: (
+    variables: any[],
+    currentSessionState: SessionState
+  ) => boolean | Promise<boolean>
 ): StrategyType {
   return function validStrategy({
     runner,
-    getHostStage,
     getSessionState: current,
     variables
   }) {
-    const result = callback(variables, getHostStage());
+    const currentSessionState = current();
+    const result = callback(variables, currentSessionState);
     if (!result) {
-      const state = current();
       return new Promise(resolve => {
-        resolve({ ...state, abandon: true });
+        resolve({ ...currentSessionState, abandon: true });
       });
     }
     if (typeof result === 'object' && typeof result.then === 'function') {
@@ -536,32 +538,11 @@ function cache(option?: {
   };
 }
 
-function filter(
-  callback: (
-    sessionState: SessionState,
-    stage: 'mounted' | 'unmounted'
-  ) => boolean
-): StrategyType {
-  return function filterStrategy({
-    runner,
-    getHostStage,
-    getSessionState: current
-  }) {
-    return runner().then(data => {
-      const state = current();
-      const stage = getHostStage();
-      const result = callback(data, stage);
-      return result ? data : { ...state, abandon: true };
-    });
-  };
-}
-
 export const Strategy = {
   cache,
   debounce,
   error,
   failure,
-  filter,
   memo,
   once,
   success,

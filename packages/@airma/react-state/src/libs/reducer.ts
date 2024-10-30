@@ -612,6 +612,9 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       }
       optimize.batchUpdate = undefined;
       optimize.batchUpdate = batchUpdateCallback;
+    },
+    isDestroyed() {
+      return updater.isDestroyed;
     }
   };
 }

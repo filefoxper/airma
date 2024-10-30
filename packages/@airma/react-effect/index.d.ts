@@ -33,6 +33,7 @@ declare interface AbstractSessionState {
   lastSuccessfulRoundVariables: any[] | undefined;
   lastFailedRound: number;
   lastFailedRoundVariables: any[] | undefined;
+  online: boolean;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
@@ -401,18 +402,15 @@ export declare const Strategy: {
     ) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T, V>;
-  filter: <T = any, V extends any[] = any[]>(
-    process: (
-      sessionState: ImportantVariable<SessionState<T, V>>,
-      stage: HostStage
-    ) => boolean | Promise<boolean>
-  ) => StrategyType<T, V>;
   success: <T = any, V extends any[] = any[]>(
     process: (data: T, sessionData: SuccessStateOf<SessionState<T, V>>) => any,
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T, V>;
   validate: <T = any, V extends any[] = any[]>(
-    process: (variables: V, stage: HostStage) => boolean | Promise<boolean>
+    process: (
+      variables: V,
+      currentSessionState: SessionState<T, V>
+    ) => boolean | Promise<boolean>
   ) => StrategyType<T, V>;
   memo: <T = any, V extends any[] = any[]>(
     equalFn?: (source: T | undefined, target: T) => boolean

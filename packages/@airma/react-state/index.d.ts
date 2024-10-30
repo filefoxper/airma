@@ -104,6 +104,7 @@ export declare type SignalHandler<R extends AirReducer> =
         action: Action<R> | null
       ) => void
     ) => EffectOn<R>;
+    getConnection: () => { isDestroyed: () => boolean };
   };
 
 export declare function useSignal<R extends AirReducer>(

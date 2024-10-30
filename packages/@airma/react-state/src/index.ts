@@ -343,9 +343,18 @@ function watch<S, T extends AirModelInstance>(
 
     return effectOn;
   };
+
+  const getConnection = function getConnection() {
+    return {
+      isDestroyed() {
+        return connection.isDestroyed();
+      }
+    };
+  };
   return {
     useEffectWrap,
-    useWatchtWrap
+    useWatchtWrap,
+    getConnection
   };
 }
 
@@ -517,12 +526,17 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
   const signalUsage: (() => T) & {
     useEffect?: (callback: (ins: T) => void | (() => void)) => void;
     useWatch?: (callback: (ins: T) => void) => void;
+    getConnection?: () => { isDestroyed: () => boolean };
   } = prevOpenSignalRef.current ? signalCallback : persistSignalCallback;
 
-  const { useEffectWrap, useWatchtWrap } = watch(current, actionState.action);
+  const { useEffectWrap, useWatchtWrap, getConnection } = watch(
+    current,
+    actionState.action
+  );
 
   signalUsage.useEffect = useEffectWrap;
   signalUsage.useWatch = useWatchtWrap;
+  signalUsage.getConnection = getConnection;
 
   const stableInstance = agent;
 

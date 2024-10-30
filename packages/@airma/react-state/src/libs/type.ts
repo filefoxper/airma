@@ -45,6 +45,7 @@ export interface Connection<
   getStoreInstance(): T;
   getVersion(): number;
   getListeners(): Dispatch[];
+  isDestroyed(): boolean;
   update: (
     reducer: AirReducer<S, T>,
     outState?: {
@@ -127,10 +128,7 @@ export type UpdaterConfig = {
 
 export type ModelFactoryStore<T> = {
   parent?: ModelFactoryStore<any>;
-  update(
-    updateFactory: T,
-    conf?: UpdaterConfig
-  ): ModelFactoryStore<T>;
+  update(updateFactory: T, conf?: UpdaterConfig): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
   destroy(): void;
 };

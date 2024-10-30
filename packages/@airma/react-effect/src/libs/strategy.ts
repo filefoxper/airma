@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { SignalHandler } from '@airma/react-state';
 import {
   QueryConfig,
   SessionState,
@@ -94,7 +95,7 @@ function createRuntimeCache() {
 }
 
 export function useStrategyExecution<T>(
-  signal: () => ReturnType<typeof effectModel>,
+  signal: SignalHandler<typeof effectModel>,
   sessionRunner: (
     triggerType: TriggerType,
     variables: any[]
@@ -106,14 +107,6 @@ export function useStrategyExecution<T>(
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
   );
-  const unmountRef = useRef<'mounted' | 'unmounted'>('mounted');
-
-  useEffect(() => {
-    unmountRef.current = 'mounted';
-    return () => {
-      unmountRef.current = 'unmounted';
-    };
-  }, []);
 
   const effects = strategies
     .map(s => {
@@ -131,7 +124,8 @@ export function useStrategyExecution<T>(
         setSessionState?: (s: SessionState<T>) => SessionState<T>
       ) {
         const { state: current, setState } = signal();
-        const initialFetchingState = { ...current, isFetching: true };
+        const online = !signal.getConnection().isDestroyed();
+        const initialFetchingState = { ...current, online, isFetching: true };
         const fetchingState = setSessionState
           ? setSessionState(initialFetchingState)
           : initialFetchingState;
@@ -144,8 +138,11 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        getSessionState: () => signal().state,
-        getHostStage: () => unmountRef.current,
+        getSessionState: () => {
+          const s = signal().state;
+          const online = !signal.getConnection().isDestroyed();
+          return { ...s, online };
+        },
         variables: runtimeVariables,
         runner,
         triggerType,

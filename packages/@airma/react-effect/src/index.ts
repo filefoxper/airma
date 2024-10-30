@@ -208,11 +208,13 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
+      const online = !signal.getConnection().isDestroyed();
       return {
         ...signal().state,
         ...data,
         abandon,
         isFetching: false,
+        online,
         triggerType
       } as SessionState<T>;
     });

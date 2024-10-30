@@ -273,7 +273,7 @@ It can skip invalidate session execution happens.
 
 #### Parameters
 
-* **process** - It is a callback accepts executing variables, and returns a boolean or a boolean resolving promise, to validate if the current execution is validate.
+* **process** - It is a callback accepts executing variables and a host information object(`{isDestroyed:boolean}`). It should return a boolean or a boolean resolving promise to validate if the current execution should be executed.
 
 ### Strategy.reduce
 
