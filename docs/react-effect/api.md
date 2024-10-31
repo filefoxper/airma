@@ -191,17 +191,17 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: (variables:any[]) => boolean|Promise<boolean>) => StrategyType;
+  validate: (process: (variables:any[], currentSessionState: SessionState<T>) => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
   response: {
-    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    <T>(process: (state: SessionState<T>) => void|(()=>void)): StrategyType<T>;
     success: <T>(
-      process: (data: T, sessionData: SessionState<T>) => any
+      process: (data: T, sessionData: SessionState<T>) => void|(()=>void)
     ) => StrategyType<T>;
     error: (
-      process: (e: unknown, sessionData: SessionState) => any
+      process: (e: unknown, sessionData: SessionState) => void|(()=>void)
     ) => StrategyType;
   };
 };
@@ -273,7 +273,56 @@ It can skip invalidate session execution happens.
 
 #### Parameters
 
-* **process** - It is a callback accepts executing variables and a host information object(`{isDestroyed:boolean}`). It should return a boolean or a boolean resolving promise to validate if the current execution should be executed.
+* **process** - It is a callback accepts executing variables and a current sessionState object. It should return a boolean or a boolean resolving promise to validate if the current execution should be executed.
+
+#### Example
+
+To skip session execution when this session is not online.
+
+```ts
+// use Strategy.validate to skip query execution when the session is not online.
+const [sessionState,,execute] = useQuery(sessionCallback, {
+  variables: [],
+  strategy: Strategy.validate((variables, sessionState) => {
+    // Use current session state property 'online' to validate if this session is still workable.
+    return sessionState.online;
+  })
+});
+```
+
+Use this skill in a global config to skip all the offline session executions.
+
+```ts
+const globalConfig = {
+  strategy: (workingStrategies: StrategyType[])=>{
+    return [
+       Strategy.validate((variables, sessionState) => {
+         return sessionState.online;
+       }),
+       ...workingStrategies
+    ];
+  }   
+} 
+
+<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+```
+
+Use this skill in a global config to skip all the query offline session executions.
+
+```ts
+const globalConfig = {
+  strategy: (workingStrategies: StrategyType[], type: SessionType)=>{
+    return type === 'query'? [
+       Strategy.validate((variables, sessionState) => {
+         return sessionState.online;
+       }),
+       ...workingStrategies
+    ]: workingStrategies;
+  }   
+} 
+
+<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+```
 
 ### Strategy.reduce
 
@@ -291,7 +340,7 @@ It allows to process callback when a session execution is finished.
 
 #### Parameters
 
-* **process** -It is a callback to process when a execution is finished. It accepts a session state as parameter.
+* **process** -It is a callback to process when a execution is finished. It accepts a session state as parameter, returns void or a cleanup function.
 
 ### Strategy.response.success
 
@@ -301,7 +350,7 @@ It allows to process callback when a session execution is successful.
 
 #### Parameters
 
-* **process** -It is a callback to process when a execution is successful. It accepts a session state data and the session state as parameters.
+* **process** -It is a callback to process when a execution is successful. It accepts a session state data and the session state as parameters, returns void or a cleanup function.
 
 ### Strategy.response.failure
 
@@ -313,7 +362,7 @@ It allows to process callback when a session execution is failed.
 
 #### Parameters
 
-* **process** -It is a callback to process when a execution is failed. It accepts a session state error and the session state as parameters.
+* **process** -It is a callback to process when a execution is failed. It accepts a session state error and the session state as parameters, returns void or a cleanup function.
 
 ## ConfigProvider
 
@@ -441,14 +490,14 @@ It allows to process callback after a session execution is finished (in React.us
 
 ```ts
 function useResponse(
-  process: (sessionState:SessionState)=>any,
+  process: (sessionState:SessionState)=>void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void
 ```
 
 ### Parameters
 
-* **process** - A process callback accepts a session state as parameter.
+* **process** - A process callback accepts a session state as parameter, returns void or a cleanup function.
 * **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 ### Example:
@@ -473,14 +522,14 @@ It allows to process callback after a session execution is finished successfully
 
 ```ts
 useResponse.useSuccess(
-  process: (data: SessionState['data'], sessionState: SessionState) => any,
+  process: (data: SessionState['data'], sessionState: SessionState) => void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### Parameters
 
-* **process** - A process callback accepts a successful execution data and a session state as parameters.
+* **process** - A process callback accepts a successful execution data and a session state as parameters, returns void or a cleanup function.
 * **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 #### Example
@@ -491,6 +540,14 @@ const [sessionState] = useQuery(sessionCallback, []);
 useResponse.useSuccess((data, state)=>{
   processSuccess(data, state.variables);
 }, sessionState);
+
+useResponse.useSuccess((data, state)=>{
+  const intervalId = setInterval(()=>{
+    processSuccess(data, state.variables);
+  },1000);
+  // use cleanup function to clear intervalId
+  return ()=>clearInterval(intervalId);
+}, sessionState);
 ```
 
 ### useResponse.useFailure
@@ -499,14 +556,14 @@ It allows to process callback after a session execution is finished failed (in R
 
 ```ts
 useResponse.useFailure(
-  process: (error: SessionState['error'], sessionState: SessionState) => any,
+  process: (error: SessionState['error'], sessionState: SessionState) => void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### Parameters
 
-* **process** - A process callback accepts a failed execution data and a session state as parameters.
+* **process** - A process callback accepts a failed execution error and a session state as parameters, returns void or a cleanup function.
 * **sessionState** - The dependent session state or a tuple array with the dependent session state and an option. Set option.watchOnly true, makes useResponse only work when session is responsed.
 
 #### Example

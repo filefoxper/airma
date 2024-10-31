@@ -415,6 +415,8 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
       connection || createModel<S | undefined, T, D | undefined>(model, state)
   );
 
+  const isConnection = useInitialize(() => !!connection);
+
   instance.optimize(batchUpdate);
 
   const current = connection || instance;
@@ -487,7 +489,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     return () => {
       unmountRef.current = true;
       prevSelectionRef.current = null;
-      if (connection == null) {
+      if (!isConnection) {
         current.destroy();
       }
     };

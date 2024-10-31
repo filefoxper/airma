@@ -74,6 +74,7 @@ The full fields of session state:
 * **lastFailedRound** - It is the cached value of `round` when a latest execution is failed.
 * **lastSuccessfulRoundVariables** - It is the cached value of `variables` when a latest execution is successful.
 * **lastFailedRoundVariables** - It is the cached value of `variables` when a latest execution is failed.
+* **online** - It should be `true` in a workable session. When the session holder point is unmounted, it will be set to `false`. Ex. The local usage about **useQuery/useMutation** and store usage about **provideTo component** are session holder point. Use [Strategy.validate](/react-effect/api?id=example) to access this field can prevent offline session executions.
 
 ### Session config
 

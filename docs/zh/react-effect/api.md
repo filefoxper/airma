@@ -196,17 +196,17 @@ const Strategy: {
   memo: <T>(
     equalFn?: (oldData: T | undefined, newData: T) => boolean
   ) => StrategyType<T>;
-  validate: (process: (variables:any[]) => boolean|Promise<boolean>) => StrategyType;
+  validate: (process: (variables:any[],currentSessionState:SessionState<T>) => boolean|Promise<boolean>) => StrategyType;
   reduce: <T>(
     call: (previousData: T | undefined, currentData: T, states: [SessionState<T|undefined>, SessionState<T>]) => T | undefined
   ) => StrategyType<T>;
   response: {
-    <T>(process: (state: SessionState<T>) => void): StrategyType<T>;
+    <T>(process: (state: SessionState<T>) => void|(()=>void)): StrategyType<T>;
     success: <T>(
-      process: (data: T, sessionData: SessionState<T>) => any
+      process: (data: T, sessionData: SessionState<T>) => void|(()=>void)
     ) => StrategyType<T>;
     error: (
-      process: (e: unknown, sessionData: SessionState) => any
+      process: (e: unknown, sessionData: SessionState) => void|(()=>void)
     ) => StrategyType;
   };
 };
@@ -280,7 +280,38 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 接受运行时参数，并返回 boolean 或 Promise<boolean> 类型值的回调函数，如果返回 true，或异步返回 true，则校验通过，会话继续执行，否则阻止会话执行。 **自18.5.0开始**，支持返回 Promise<boolean> 校验结果，若异步返回 true，则校验通过，否则阻止会话执行。
+* **process** - 可接收运行时参数和当前会话状态，并返回 boolean 或 Promise<boolean> 类型值的回调函数，如果返回 true，或异步返回 true，则校验通过，会话继续执行，否则阻止会话执行。 **自18.5.0开始**，支持返回 Promise<boolean> 校验结果，若异步返回 true，则校验通过，否则阻止会话执行。
+
+#### 例子
+
+可校验当前会话是否已处于销毁状态。
+
+```ts
+const [sessionState,,execute] = useQuery(sessionCallback, {
+  variables: [],
+  strategy: Strategy.validate((variables, sessionState) => {
+    // 通过校验当前会话状态的 online 属性是否为 true
+    return sessionState.online;
+  })
+});
+```
+
+在全局策略配置中使用该技巧，可以跳过所有被销毁会话触发的脏请求。
+
+```ts
+const globalConfig = {
+  strategy: (workingStrategies: StrategyType[])=>{
+    return [
+       Strategy.validate((variables, sessionState) => {
+         return sessionState.online;
+       }),
+       ...workingStrategies
+    ];
+  }   
+} 
+
+<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+```
 
 ### Strategy.reduce
 
@@ -298,7 +329,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 会话执行完毕后的回调函数。可接收执行完毕后的会话状态做参数。
+* **process** - 会话执行完毕后的回调函数。可接收执行完毕后的会话状态做参数，并可选性的返回一个副作用清理函数。
 
 ### Strategy.response.success
 
@@ -308,7 +339,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 会话执行成功后的回调函数。可接收执行成功后的会话状态数据和会话状态做参数。
+* **process** - 会话执行成功后的回调函数。可接收执行成功后的会话状态数据和会话状态做参数，并可选性的返回一个副作用清理函数。
 
 ### Strategy.response.failure
 
@@ -320,7 +351,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **process** - 会话执行失败后的回调函数。可接收执行失败后的会话状态错误和会话状态做参数。
+* **process** - 会话执行失败后的回调函数。可接收执行失败后的会话状态错误和会话状态做参数，并可选性的返回一个副作用清理函数。
 
 ## useIsFetching
 
@@ -449,14 +480,14 @@ React hook，用于监听会话执行，并在执行完毕后调用回调函数�
 
 ```ts
 function useResponse(
-  process: (sessionState:SessionState)=>any,
+  process: (sessionState:SessionState)=>void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void
 ```
 
 ### 参数
 
-* **process** - 会话执行完毕后的回调函数。可接收执行完毕后的会话状态做参数。
+* **process** - 会话执行完毕后的回调函数。可接收执行完毕后的会话状态做参数，并可选性的返回一个副作用清理函数。
 * **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 ### 例子:
@@ -481,14 +512,14 @@ React hook，用于监听会话执行，并在执行成功后调用回调函数�
 
 ```ts
 useResponse.useSuccess(
-  process: (sessionState:SessionState)=>any,
+  process: (sessionState:SessionState)=>void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### 参数
 
-* **process** - 会话执行成功后的回调函数。接收执行成功后的会话状态数据和会话状态做参数。
+* **process** - 会话执行成功后的回调函数。接收执行成功后的会话状态数据和会话状态做参数，并可选性的返回一个副作用清理函数。
 * **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 #### 例子
@@ -499,6 +530,14 @@ const [sessionState] = useQuery(sessionCallback, []);
 useResponse.useSuccess((data, state)=>{
   processSuccess(data, state.variables);
 }, sessionState);
+
+useResponse.useSuccess((data, state)=>{
+  const intervalId = setInterval(()=>{
+    processSuccess(data, state.variables);
+  }, 1000);
+  // 清理副作用
+  return ()=>clearInterval(intervalId);
+}, sessionState);
 ```
 
 ### useResponse.useFailure
@@ -507,14 +546,14 @@ React hook，用于监听会话执行，并在执行失败后调用回调函数�
 
 ```ts
 useResponse.useFailure(
-  process: (sessionState:SessionState)=>any,
+  process: (sessionState:SessionState)=>void|(()=>void),
   sessionState: SessionState | [SessionState, {watchOnly?: boolean}]
 ): void;
 ```
 
 #### 参数
 
-* **process** - 会话执行失败后的回调函数。接收执行失败后的会话状态错误和会话状态做参数。
+* **process** - 会话执行失败后的回调函数。接收执行失败后的会话状态错误和会话状态做参数，并可选性的返回一个副作用清理函数。
 * **sessionState** - 被监听的会话状态，或由被监听的会话状态和设置组成的元组。当 watchOnly 被开启时，只做会话响应的监听工作。
 
 #### 例子
