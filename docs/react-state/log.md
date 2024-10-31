@@ -148,3 +148,7 @@
 ## v18.5.6 2024-09-27
 
 * fix bug about can not link `parent provider store`.
+
+## v18.5.7 2024-10-31
+
+* start to support access to `connection`.
