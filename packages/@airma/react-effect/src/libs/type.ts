@@ -121,7 +121,7 @@ export type CheckLazyComponentSupportType<
 export type StrategyEffect<T> = (
   state: SessionState<T>,
   prevState: SessionState<T>
-) => void;
+) => void | (() => void);
 
 export interface StrategyType<T = any> {
   (value: {
