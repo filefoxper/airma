@@ -74,7 +74,10 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
       get: (key: any) => any;
     };
   }): Promise<SessionState<T, V>>;
-  effect?: (state: SessionState<T, V>, prevState: SessionState<T, V>) => void;
+  effect?: (
+    state: SessionState<T, V>,
+    prevState: SessionState<T, V>
+  ) => void | (() => void);
 }
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;

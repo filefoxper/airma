@@ -140,3 +140,7 @@
 * useResponse.* and Strategy.response.* callback supports effect cleanup function.
 * add `online` property to SessionState.
 * add the second parameter currentSessionState to Strategy.validate.  
+
+# v18.5.6
+
+* fix the problem about the cleanup function for Strategy.response.* not work. 

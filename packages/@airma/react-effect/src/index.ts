@@ -395,10 +395,17 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   useEffect(() => {
     const prevState = prevStateRef.current;
-    strategyEffects.forEach(effectCallback => {
-      effectCallback(stableInstance.state, prevState);
+    const results = strategyEffects.map(effectCallback => {
+      return effectCallback(stableInstance.state, prevState);
     });
     prevStateRef.current = stableInstance.state;
+    return () => {
+      results.forEach(r => {
+        if (typeof r === 'function') {
+          r();
+        }
+      });
+    };
   }, [stableInstance.state]);
 
   return [stableInstance.state, trigger, execute];

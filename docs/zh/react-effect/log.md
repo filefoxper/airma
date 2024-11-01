@@ -141,3 +141,7 @@
 * useResponse 和 Strategy.response 系列接口支持 cleanup 副作用清理函数。
 * 会话状态添加 online 属性，用于判断当前会话是否在线。
 * Strategy.validate 添加最新会话状态为第二参数。
+
+## v18.5.6
+
+* 修复 Strategy.response 系列 cleanup 副作用清理函数不起作用问题
