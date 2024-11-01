@@ -1,4 +1,4 @@
-import { createKey, useSignal } from '@airma/react-state';
+import { createKey, SignalHandler, useSignal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
@@ -102,6 +102,7 @@ export const defaultPromiseResult = (config?: {
     lastFailedRound: 0,
     lastSuccessfulRoundVariables: undefined,
     lastFailedRoundVariables: undefined,
+    online: true,
     ...config
   } as SessionState);
 
@@ -154,7 +155,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  () => ReturnType<typeof effectModel>,
+  SignalHandler<typeof effectModel>,
   QueryConfig<T, C>,
   C
 ] {

@@ -12,7 +12,8 @@ import {
   Provider as ModelProvider,
   useSelector,
   provide as provideKeys,
-  AirReducer
+  AirReducer,
+  SignalHandler
 } from '@airma/react-state';
 import {
   useMount,
@@ -53,6 +54,10 @@ import {
   useStrategyExecution
 } from './libs/strategy';
 import { logger } from './libs/tools';
+
+function noop() {
+  /* noop */
+}
 
 function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
   const ref = useRef<null | { result: ReturnType<T> }>(null);
@@ -95,11 +100,10 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>
+  signal: SignalHandler<SessionKey<C>>
 ): Controller {
-  const { payload } = callback as SessionKey<C>;
-  const [, d] = payload || [];
-  const controller = d as FullControlData | undefined;
+  const payload = signal.getConnection().getPayload();
+  const controller = payload as FullControlData | undefined;
   return {
     getData(key: keyof ControlData) {
       if (controller == null || controller.data == null) {
@@ -187,7 +191,19 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     triggerOn: triggerTypes = ['mount', 'update', 'manual']
   } = con;
 
-  const controller = useController(callback);
+  useInitialize(() => {
+    const mayKey = callback as SessionKey<C>;
+    if (
+      typeof mayKey.isFactory === 'function' &&
+      mayKey.isFactory() &&
+      mayKey.payload
+    ) {
+      const [, d] = mayKey.payload;
+      return signal.getConnection().setPayload(p => (p != null ? p : { ...d }));
+    }
+    return null;
+  });
+  const controller = useController(signal);
   const fetchingKeyController = useFetchingKey(controller);
   const tunnelController = useTunnels(controller);
 
@@ -204,12 +220,14 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
+      const online = !signal.getConnection().isDestroyed();
       return {
         ...signal().state,
         ...data,
         abandon,
         isFetching: false,
-        triggerType
+        triggerType,
+        online
       } as SessionState<T>;
     });
   };
@@ -601,7 +619,7 @@ export function useLoadedSession<T, C extends PromiseCallback<T>>(
 }
 
 export function useResponse<T>(
-  process: (state: SessionState<T>) => any,
+  process: (state: SessionState<T>) => void | (() => void),
   state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
@@ -609,10 +627,10 @@ export function useResponse<T>(
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
   useEffect(() => {
     if (sessionState.round === 0) {
-      return;
+      return noop;
     }
     if (watchOnly && initialRound === sessionState.round) {
-      return;
+      return noop;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     const isSuccessResponse =
@@ -620,13 +638,15 @@ export function useResponse<T>(
       sessionState.sessionLoaded &&
       !sessionState.isError;
     if (isErrorResponse || isSuccessResponse) {
-      process(sessionState);
+      const res = process(sessionState);
+      return typeof res === 'function' ? res : noop;
     }
+    return noop;
   }, [sessionState.round]);
 }
 
 useResponse.useSuccess = function useResponseSuccess<T>(
-  process: (data: T, sessionState: SessionState<T>) => any,
+  process: (data: T, sessionState: SessionState<T>) => void | (() => void),
   state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
@@ -634,23 +654,25 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
   useEffect(() => {
     if (sessionState.round === 0) {
-      return;
+      return noop;
     }
     if (watchOnly && initialRound === sessionState.round) {
-      return;
+      return noop;
     }
     const isSuccessResponse =
       !sessionState.isFetching &&
       sessionState.sessionLoaded &&
       !sessionState.isError;
     if (isSuccessResponse) {
-      process(sessionState.data as T, sessionState);
+      const res = process(sessionState.data as T, sessionState);
+      return typeof res === 'function' ? res : noop;
     }
+    return noop;
   }, [sessionState.round]);
 };
 
 useResponse.useFailure = function useResponseFailure(
-  process: (error: unknown, sessionState: SessionState) => any,
+  process: (error: unknown, sessionState: SessionState) => void | (() => void),
   state: SessionState | [SessionState, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
@@ -658,15 +680,17 @@ useResponse.useFailure = function useResponseFailure(
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
   useEffect(() => {
     if (sessionState.round === 0) {
-      return;
+      return noop;
     }
     if (watchOnly && initialRound === sessionState.round) {
-      return;
+      return noop;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     if (isErrorResponse) {
-      process(sessionState.error, sessionState);
+      const res = process(sessionState.error, sessionState);
+      return typeof res === 'function' ? res : noop;
     }
+    return noop;
   }, [sessionState.round]);
 };
 

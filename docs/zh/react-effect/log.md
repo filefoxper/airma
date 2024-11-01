@@ -134,4 +134,10 @@
 ## v18.5.4
 
 * 修改 `sessionState.lastSuccessfulVariables` 为 `sessionState.lastSuccessfulRoundVariables`。  
-* 修改 `sessionState.lastFailedVariables` 为 `sessionState.lastFailedRoundVariables`。  
+* 修改 `sessionState.lastFailedVariables` 为 `sessionState.lastFailedRoundVariables`。
+
+## v18.5.5
+
+* useResponse 和 Strategy.response 系列接口支持 cleanup 副作用清理函数。
+* 会话状态添加 online 属性，用于判断当前会话是否在线。
+* Strategy.validate 添加最新会话状态为第二参数。

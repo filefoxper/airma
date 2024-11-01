@@ -612,6 +612,17 @@ export function createModel<S, T extends AirModelInstance, D extends S>(
       }
       optimize.batchUpdate = undefined;
       optimize.batchUpdate = batchUpdateCallback;
+    },
+    isDestroyed() {
+      return updater.isDestroyed;
+    },
+    setPayload<P>(callback: (payload: P) => P) {
+      const newPayload = callback(updater.payload as P);
+      updater.payload = newPayload;
+      return newPayload;
+    },
+    getPayload<P>() {
+      return updater.payload as P;
     }
   };
 }

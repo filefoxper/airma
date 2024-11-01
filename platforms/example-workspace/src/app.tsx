@@ -194,7 +194,10 @@ const Creating = memo(
     const [sessionState, save] = saveSession.useMutation({
       variables: [user],
       strategy: [
-        Strategy.validate(async ([u]) => {
+        Strategy.validate(async ([u],isOnline) => {
+            if(!isOnline()){
+                return false;
+            }
           if (!u.name || !u.username) {
             return false;
           }
@@ -218,6 +221,13 @@ const Creating = memo(
       onClose();
     }, sessionState);
 
+    const lazySave = ()=>{
+        onClose();
+        setTimeout(()=>{
+            save();
+        },1000)
+    }
+
     return (
       <div>
         <div>
@@ -236,20 +246,23 @@ const Creating = memo(
             onChange={e => changeUsername(e.target.value)}
           />
         </div>
-        <div style={{ marginTop: 12 }}>
-          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
-            submit
-          </button>
-          <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
-            cancel
-          </button>
-        </div>
+          <div style={{marginTop: 12}}>
+              <button type="button" style={{marginLeft: 12}} onClick={save}>
+                  submit
+              </button>
+              <button type="button" style={{marginLeft: 12}} onClick={lazySave}>
+                  lazy submit
+              </button>
+              <button type="button" style={{marginLeft: 8}} onClick={onClose}>
+                  cancel
+              </button>
+          </div>
       </div>
     );
   }
 );
 
-const Condition = memo(function Condition({ parentTrigger }: { parentTrigger: () => void }) {
+const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () => void }) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, queryData,sourceQueryData,displayQueryData, create, changeDisplay, submit } =
     store.useModel();
@@ -346,6 +359,9 @@ export default store.provideTo(function App() {
     defaultData: [],
     strategy: [
       Strategy.cache({ capacity: 10 }),
+        Strategy.success(()=>{
+            console.log('full')
+        }),
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
         console.log('success', v.name);

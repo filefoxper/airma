@@ -62,6 +62,7 @@ export declare type SessionState<T = any, V extends any[] = any[]> =
 export declare interface StrategyType<T = any, V extends any[] = any[]> {
   (runtime: {
     getSessionState: () => SessionState<T, V>;
+    getStage: () => 'mounted' | 'unmounted';
     variables: V;
     triggerType: TriggerType;
     runner: (
@@ -318,18 +319,21 @@ declare type ResponseOption = { watchOnly?: boolean };
 
 export declare const useResponse: {
   <T extends SessionState>(
-    process: (state: ImportantVariable<T>) => any,
+    process: (state: ImportantVariable<T>) => void | (() => void),
     sessionState: T | [T, ResponseOption?]
   ): void;
   useSuccess: <T extends SessionState>(
     process: (
       data: SuccessStateOf<T>['data'],
       sessionState: SuccessStateOf<T>
-    ) => any,
+    ) => void | (() => void),
     sessionState: T | [T, ResponseOption?]
   ) => void;
   useFailure: <T extends SessionState>(
-    process: (error: unknown, sessionState: ImportantVariable<T>) => any,
+    process: (
+      error: unknown,
+      sessionState: ImportantVariable<T>
+    ) => void | (() => void),
     sessionState: T | [T, ResponseOption?]
   ) => void;
 };
@@ -357,6 +361,8 @@ export declare const ConfigProvider: FC<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
+
+export declare type HostStage = 'mounted' | 'unmounted';
 
 export declare const Strategy: {
   cache: <T = any, V extends any[] = any[]>(op?: {
@@ -400,7 +406,10 @@ export declare const Strategy: {
     option?: { withAbandoned?: boolean }
   ) => StrategyType<T, V>;
   validate: <T = any, V extends any[] = any[]>(
-    process: (variables: V) => boolean | Promise<boolean>
+    process: (
+      variables: V,
+      isOnline: () => boolean
+    ) => boolean | Promise<boolean>
   ) => StrategyType<T, V>;
   memo: <T = any, V extends any[] = any[]>(
     equalFn?: (source: T | undefined, target: T) => boolean
@@ -417,10 +426,15 @@ export declare const Strategy: {
   ) => StrategyType<T, V>;
   response: {
     <T = any, V extends any[] = any[]>(
-      process: (state: ImportantVariable<SessionState<T, V>>) => void
+      process: (
+        state: ImportantVariable<SessionState<T, V>>
+      ) => void | (() => void)
     ): StrategyType<T, V>;
     success: <T = any, V extends any[] = any[]>(
-      process: (data: T, sessionData: SuccessStateOf<SessionState<T, V>>) => any
+      process: (
+        data: T,
+        sessionData: SuccessStateOf<SessionState<T, V>>
+      ) => void | (() => void)
     ) => StrategyType<T, V>;
     /**
      * @deprecated
@@ -430,13 +444,13 @@ export declare const Strategy: {
       process: (
         e: unknown,
         sessionData: ImportantVariable<SessionState<T, V>>
-      ) => any
+      ) => void | (() => void)
     ) => StrategyType<T, V>;
     failure: <T = any, V extends any[] = any[]>(
       process: (
         e: unknown,
         sessionData: ImportantVariable<SessionState<T, V>>
-      ) => any
+      ) => void | (() => void)
     ) => StrategyType<T, V>;
   };
 };

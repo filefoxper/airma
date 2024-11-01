@@ -134,3 +134,9 @@
 
 * change `sessionState.lastSuccessfulVariables` to `sessionState.lastSuccessfulRoundVariables`.
 * change `sessionState.lastFailedVariables` to `sessionState.lastFailedRoundVariables`.
+
+# v18.5.5
+
+* useResponse.* and Strategy.response.* callback supports effect cleanup function.
+* add `online` property to SessionState.
+* add the second parameter currentSessionState to Strategy.validate.  

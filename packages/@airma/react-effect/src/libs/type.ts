@@ -87,6 +87,7 @@ export interface AbstractSessionState {
   lastFailedRoundVariables: any[] | undefined;
   lastSuccessfulRound: number;
   lastFailedRound: number;
+  online: boolean;
 }
 
 interface LoadedSessionState<T> extends AbstractSessionState {

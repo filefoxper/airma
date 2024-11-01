@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { SignalHandler } from '@airma/react-state';
 import {
   QueryConfig,
   SessionState,
@@ -94,7 +95,7 @@ function createRuntimeCache() {
 }
 
 export function useStrategyExecution<T>(
-  signal: () => ReturnType<typeof effectModel>,
+  signal: SignalHandler<typeof effectModel>,
   sessionRunner: (
     triggerType: TriggerType,
     variables: any[]
@@ -136,7 +137,11 @@ export function useStrategyExecution<T>(
         return sessionRunner(triggerType, runtimeVariables);
       };
       const requires = {
-        getSessionState: () => signal().state,
+        getSessionState: () => {
+          const s = signal().state;
+          const online = !signal.getConnection().isDestroyed();
+          return { ...s, online };
+        },
         variables: runtimeVariables,
         runner,
         triggerType,

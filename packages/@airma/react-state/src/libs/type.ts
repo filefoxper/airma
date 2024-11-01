@@ -45,6 +45,7 @@ export interface Connection<
   getStoreInstance(): T;
   getVersion(): number;
   getListeners(): Dispatch[];
+  isDestroyed(): boolean;
   update: (
     reducer: AirReducer<S, T>,
     outState?: {
@@ -65,6 +66,8 @@ export interface Connection<
   connect: (dispatch: Dispatch) => void;
   disconnect: (dispatch?: Dispatch) => void;
   optimize: (batchUpdateCallback?: (callback: () => void) => void) => void;
+  setPayload: <P>(setter: (payload: P) => P) => P;
+  getPayload: <P>() => P;
 }
 
 export interface ActionWrap {
@@ -109,6 +112,7 @@ export type Updater<S, T extends AirModelInstance> = {
   cacheState: { state: S } | null;
   state: S;
   notify: (action: Action | null) => void;
+  payload?: unknown;
 };
 
 export type Collection = {
@@ -127,10 +131,7 @@ export type UpdaterConfig = {
 
 export type ModelFactoryStore<T> = {
   parent?: ModelFactoryStore<any>;
-  update(
-    updateFactory: T,
-    conf?: UpdaterConfig
-  ): ModelFactoryStore<T>;
+  update(updateFactory: T, conf?: UpdaterConfig): ModelFactoryStore<T>;
   get(reducer: AirReducer<any, any>): Connection | undefined;
   destroy(): void;
 };

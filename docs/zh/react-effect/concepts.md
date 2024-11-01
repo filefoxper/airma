@@ -77,6 +77,7 @@ const {
 * **lastFailedRound** - 最近一次出错的回合数，类型：`number`，初始值为 0。
 * **lastSuccessfulRoundVariables** - 最近一次成功执行的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
 * **lastFailedRoundVariables** - 最近一次失败的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
+* **online** - 会话是否在线（可用）。类型：`boolean`，初始值为 true。该字段可用于描述当前会话是否可用。当会话 store 所在组件或本地会话所在组件被卸载时，该字段变为 false。通过 [Strategy.validate 策略](/zh/react-effect/api?id=例子)，可对当前会话的可用性进行校验。
 
 关于 **triggerType**
 
