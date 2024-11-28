@@ -556,7 +556,11 @@ export function useSession<T, C extends PromiseCallback<T>>(
 ] {
   const [, padding] = sessionKey.payload;
   const { sessionType: sessionKeyType } = padding;
-  const [sessionState, trigger, execute] = useQuery<T, C>(sessionKey);
+  const signal = useSignal(sessionKey);
+  const sessionState = signal().state;
+  const controller = useController(signal);
+  const tunnelController = useTunnels(controller);
+  const promiseHandler = usePromise(controller);
   const { loaded: shouldLoaded, sessionType } =
     typeof config === 'string'
       ? { sessionType: config, loaded: undefined }
@@ -572,6 +576,44 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
+  const trigger = usePersistFn(() => {
+    const promise = promiseHandler.requirePromise();
+    const tunnels = tunnelController.getTunnels();
+    const fulls = tunnels.filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      f.execution.trigger();
+    });
+    if (fulls.length) {
+      return promise;
+    }
+    const shorts = tunnels.filter(t => !t.isFullFunctional);
+    shorts.forEach(f => {
+      f.execution.trigger();
+    });
+    if (!shorts.length) {
+      return Promise.resolve({ ...sessionState, abandon: true });
+    }
+    return promise;
+  });
+  const execute = usePersistFn((...vars: Parameters<C>) => {
+    const promise = promiseHandler.requirePromise();
+    const tunnels = tunnelController.getTunnels();
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      f.execution.execute(...vars);
+    });
+    if (fulls.length) {
+      return promise;
+    }
+    const shorts = tunnels.filter(t => !t.isFullFunctional);
+    shorts.forEach(f => {
+      f.execution.execute(...vars);
+    });
+    if (!shorts.length) {
+      return Promise.resolve({ ...sessionState, abandon: true });
+    }
+    return promise;
+  });
   return [sessionState, trigger, execute];
 }
 

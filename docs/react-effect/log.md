@@ -143,4 +143,9 @@
 
 # v18.5.6
 
-* fix the problem about the cleanup function for Strategy.response.* not work. 
+* fix the problem about the cleanup function for Strategy.response.* not work.
+
+# v18.5.7
+
+* fix the problem about trigger `useSession` may call the request more than once when there are `useQuery(sessionKey)` usages with no config or variables.
+* fix the problem about manual method `trigger/execute` returns void. It should returns a Promise with a SessionState resolving.

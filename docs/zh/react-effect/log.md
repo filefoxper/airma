@@ -145,3 +145,8 @@
 ## v18.5.6
 
 * 修复 Strategy.response 系列 cleanup 副作用清理函数不起作用问题
+
+## v18.5.7
+
+* 修复关于 useSession 与无配置 useQuery/useMutation 同时存在时触发器可能会触发多次会话工作的问题
+* 修复 trigger/execute 人工调用函数返回 void 值的问题。
