@@ -1,30 +1,18 @@
-const config = require('../../../.eslintrc.js');
 const path = require('path');
 
-const tsConfigPath = path.resolve(__dirname, 'tsconfig.json');
+const tsConfig = path.resolve(__dirname, 'tsconfig.json');
 
+/** @type {import('eslint').Linter.Config} */
 module.exports = {
-    ...config,
-    env: {
-        es2021: true,
-        node: true
-    },
     parserOptions: {
-        ...config.parserOptions,
+        project: tsConfig,
         tsconfigRootDir: __dirname,
-        project: tsConfigPath
     },
     settings: {
-        'import/parsers': {
-            '@typescript-eslint/parser': ['.ts', '.tsx']
-        },
         'import/resolver': {
             typescript: {
-                project: path.resolve(__dirname, 'tsconfig.json')
+                project: tsConfig,
             },
-            node: {
-                project: ['tsconfig.json']
-            }
-        }
-    }
+        },
+    },
 };

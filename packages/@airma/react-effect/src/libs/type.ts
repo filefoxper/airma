@@ -229,8 +229,8 @@ export type PromiseHolder = {
 };
 
 export interface Execution {
-  trigger: () => void;
-  execute: (...args: any[]) => void;
+  trigger: () => boolean;
+  execute: (...args: any[]) => boolean;
 }
 
 export interface Tunnel {
@@ -239,11 +239,18 @@ export interface Tunnel {
   execution: Execution;
 }
 
+export type Resolver = {
+  name?: string;
+  resolve: (data: any) => void;
+  reject: (data: any) => void;
+};
+
 export type ControlData = {
   variables?: any[];
   fetchingKey?: any;
   finalFetchingKey?: any;
   tunnels?: Tunnel[];
+  resolvers?: Resolver[];
 };
 
 export type FullControlData = {

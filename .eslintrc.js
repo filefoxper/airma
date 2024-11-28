@@ -33,6 +33,7 @@ module.exports = {
     'max-classes-per-file': 'off',
     'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
     'react/require-default-props': 'off',
+    'react/prop-types':'off',
     camelcase: 'off',
     'no-use-before-define': 'off',
     '@typescript-eslint/no-use-before-define': [

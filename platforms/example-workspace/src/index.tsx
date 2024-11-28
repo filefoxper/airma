@@ -22,11 +22,18 @@ const config: GlobalConfig = {
 //         <App />
 //     </ConfigProvider>);
 
+// render(
+//   <React.StrictMode>
+//     <ConfigProvider value={config}>
+//       <App />
+//     </ConfigProvider>
+//   </React.StrictMode>,
+//   root
+// );
+
 render(
-  <React.StrictMode>
-    <ConfigProvider value={config}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>,
-  root
+        <ConfigProvider value={config}>
+            <App />
+        </ConfigProvider>,
+    root
 );
