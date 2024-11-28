@@ -13,7 +13,8 @@ import {
   useSelector,
   provide as provideKeys,
   AirReducer,
-  SignalHandler
+  SignalHandler,
+  useSignal
 } from '@airma/react-state';
 import {
   useMount,
@@ -39,7 +40,8 @@ import type {
   FullControlData,
   Controller,
   ControlData,
-  Tunnel
+  Tunnel,
+  Resolver
 } from './libs/type';
 import {
   parseConfig,
@@ -102,16 +104,20 @@ function toNoRejectionPromiseCallback<
 function useController<T, C extends PromiseCallback<T>>(
   signal: SignalHandler<SessionKey<C>>
 ): Controller {
-  const payload = signal.getConnection().getPayload();
-  const controller = payload as FullControlData | undefined;
+  function getController() {
+    const payload = signal.getConnection().getPayload();
+    return payload as FullControlData | undefined;
+  }
   return {
     getData(key: keyof ControlData) {
+      const controller = getController();
       if (controller == null || controller.data == null) {
         return null;
       }
       return controller.data[key];
     },
     setData(key: keyof ControlData, data: ControlData[typeof key]) {
+      const controller = getController();
       if (controller == null) {
         return;
       }
@@ -140,6 +146,37 @@ function useFetchingKey(controller: Controller) {
         return;
       }
       controller.setData('fetchingKey', undefined);
+    }
+  };
+}
+
+function usePromise(controller: Controller) {
+  return {
+    requirePromise(name?: string) {
+      const resolver = {
+        name,
+        resolve: (data: SessionState) => {
+          /* noop */
+        },
+        reject: (data: SessionState) => {
+          /* noop */
+        }
+      };
+      const promise = new Promise<SessionState>((resolve, reject) => {
+        resolver.resolve = resolve;
+        resolver.reject = reject;
+      });
+      const resolvers: Resolver[] =
+        controller.getData('resolvers') || ([] as Resolver[]);
+      controller.setData('resolvers', [...resolvers, resolver]);
+      return promise;
+    },
+    responsePromise(sessionState: SessionState) {
+      const resolvers: Resolver[] = controller.getData('resolvers') || [];
+      controller.setData('resolvers', undefined);
+      resolvers.forEach(({ resolve, name }) => {
+        resolve(sessionState);
+      });
     }
   };
 }
@@ -175,7 +212,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   sessionType: SessionType,
   config: QueryConfig<T, C> | Parameters<C>,
   isFullFunctionalConfig: boolean
-): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
+): [
+  SessionState<T>,
+  () => Promise<SessionState>,
+  (...variables: Parameters<C>) => Promise<SessionState>
+] {
   const mountedRef = useRef(false);
   const preloadRef = useRef<null | { variables: Array<any> | null }>(null);
   const keyRef = useRef({});
@@ -206,6 +247,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   const controller = useController(signal);
   const fetchingKeyController = useFetchingKey(controller);
   const tunnelController = useTunnels(controller);
+  const promiseHandler = usePromise(controller);
 
   const globalControlSignal = globalControllerStore.useSignal();
 
@@ -267,20 +309,23 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     Promise.resolve(undefined).then(() => {
       fetchingKeyController.removeFetchingKey(keyRef.current);
     });
-    return strategyExecution(triggerType, vars || variables);
+    return strategyExecution(triggerType, vars || variables).then(data => {
+      promiseHandler.responsePromise(data);
+      return data;
+    });
   };
 
   const trigger = usePersistFn(() => {
     if (triggerTypes.indexOf('manual') < 0) {
-      return;
+      return false;
     }
     if (!mountedRef.current) {
       preloadRef.current = { variables: variables || null };
-      return;
+      return true;
     }
     if (isFullFunctionalConfig) {
       sessionExecution('manual');
-      return;
+      return true;
     }
     const currentKey = keyRef.current;
     const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
@@ -291,19 +336,20 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       f.execution.trigger();
     });
     sessionExecution('manual');
+    return true;
   });
 
   const execute = usePersistFn((...vars: Parameters<C>) => {
     if (triggerTypes.indexOf('manual') < 0) {
-      return;
+      return false;
     }
     if (!mountedRef.current) {
       preloadRef.current = { variables: vars };
-      return;
+      return true;
     }
     if (isFullFunctionalConfig) {
       sessionExecution('manual', vars);
-      return;
+      return true;
     }
     const currentKey = keyRef.current;
     const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
@@ -314,6 +360,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       f.execution.execute(...vars);
     });
     sessionExecution('manual', vars);
+    return true;
   });
 
   const effectDeps = deps || variables || [];
@@ -324,7 +371,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       isFullFunctional: isFullFunctionalConfig,
       execution: {
         trigger,
-        execute: execute as (...a: any[]) => void
+        execute: execute as (...a: any[]) => boolean
       }
     });
     return () => {
@@ -408,13 +455,33 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     };
   }, [stableInstance.state]);
 
-  return [stableInstance.state, trigger, execute];
+  const handleTrigger = usePersistFn(() => {
+    const hasExecuted = trigger();
+    if (!hasExecuted) {
+      return Promise.resolve(signal().state);
+    }
+    return promiseHandler.requirePromise();
+  });
+
+  const handleExecute = usePersistFn((...vars: Parameters<C>) => {
+    const hasExecuted = execute(...vars);
+    if (!hasExecuted) {
+      return Promise.resolve(signal().state);
+    }
+    return promiseHandler.requirePromise();
+  });
+
+  return [stableInstance.state, handleTrigger, handleExecute];
 }
 
 export function useQuery<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: QueryConfig<T, C> | Parameters<C>
-): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
+): [
+  SessionState<T>,
+  () => Promise<SessionState>,
+  (...variables: Parameters<C>) => Promise<SessionState>
+] {
   const con = parseConfig(callback, 'query', config);
   const {
     variables,
@@ -450,7 +517,11 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 export function useMutation<T, C extends PromiseCallback<T>>(
   callback: C | SessionKey<C>,
   config?: MutationConfig<T, C> | Parameters<C>
-): [SessionState<T>, () => void, (...variables: Parameters<C>) => void] {
+): [
+  SessionState<T>,
+  () => Promise<SessionState>,
+  (...variables: Parameters<C>) => Promise<SessionState>
+] {
   const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
@@ -478,23 +549,23 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 export function useSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void, (variables: any[]) => void] {
+): [
+  SessionState<T>,
+  () => Promise<SessionState>,
+  (...variables: Parameters<C>) => Promise<SessionState>
+] {
   const [, padding] = sessionKey.payload;
   const { sessionType: sessionKeyType } = padding;
-  const session = useSelector(
-    sessionKey,
-    s =>
-      [s.state, s.trigger, s.execute] as [
-        SessionState<T>,
-        () => void,
-        (variables: any[]) => void
-      ]
-  );
+  const signal = useSignal(sessionKey);
+  const sessionState = signal().state;
+  const controller = useController(signal);
+  const tunnelController = useTunnels(controller);
+  const promiseHandler = usePromise(controller);
   const { loaded: shouldLoaded, sessionType } =
     typeof config === 'string'
       ? { sessionType: config, loaded: undefined }
       : config || {};
-  const [{ loaded }] = session;
+  const { loaded } = sessionState;
   if (sessionType && sessionKeyType && sessionType !== sessionKeyType) {
     throw new Error(
       `The sessionType is not matched, can not use '${sessionKeyType} type' sessionKey with '${sessionType} type' useSession.`
@@ -505,9 +576,43 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  const [sessionState, trigger, executeCallback] = session;
-  const execute = usePersistFn((...variables: any[]) => {
-    executeCallback(variables);
+  const trigger = usePersistFn(() => {
+    const promise = promiseHandler.requirePromise();
+    const tunnels = tunnelController.getTunnels();
+    const fulls = tunnels.filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      f.execution.trigger();
+    });
+    if (fulls.length) {
+      return promise;
+    }
+    const shorts = tunnels.filter(t => !t.isFullFunctional);
+    shorts.forEach(f => {
+      f.execution.trigger();
+    });
+    if (!shorts.length) {
+      return Promise.resolve({ ...sessionState, abandon: true });
+    }
+    return promise;
+  });
+  const execute = usePersistFn((...vars: Parameters<C>) => {
+    const promise = promiseHandler.requirePromise();
+    const tunnels = tunnelController.getTunnels();
+    const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
+    fulls.forEach(f => {
+      f.execution.execute(...vars);
+    });
+    if (fulls.length) {
+      return promise;
+    }
+    const shorts = tunnels.filter(t => !t.isFullFunctional);
+    shorts.forEach(f => {
+      f.execution.execute(...vars);
+    });
+    if (!shorts.length) {
+      return Promise.resolve({ ...sessionState, abandon: true });
+    }
+    return promise;
   });
   return [sessionState, trigger, execute];
 }
@@ -616,7 +721,11 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 export function useLoadedSession<T, C extends PromiseCallback<T>>(
   sessionKey: SessionKey<C>,
   config?: { sessionType?: SessionType } | SessionType
-): [SessionState<T>, () => void, (variables: any[]) => void] {
+): [
+  SessionState<T>,
+  () => Promise<SessionState>,
+  (...variables: Parameters<C>) => Promise<SessionState>
+] {
   return useSession(
     sessionKey,
     typeof config === 'string'

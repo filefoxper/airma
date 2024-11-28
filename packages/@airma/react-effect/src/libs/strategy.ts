@@ -151,7 +151,8 @@ export function useStrategyExecution<T>(
       };
       return composeStrategies(strategies)(requires).then(data => {
         if (data.abandon) {
-          return data;
+          const currentState = signal().state;
+          return { ...currentState, abandon: true };
         }
         signal().setState(data);
         return data;

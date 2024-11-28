@@ -189,7 +189,7 @@ const Creating = memo(
       age: 10
     });
 
-    const [fs, query] = fetchSession.useQuery();
+    const [fs, query] = fetchSession.useSession();
 
     const [sessionState, save] = saveSession.useMutation({
       variables: [user],
@@ -208,17 +208,16 @@ const Creating = memo(
     });
 
     useResponse.useSuccess(() => {
-      console.log('fs success');
-    }, [fs, { watchOnly: true }]);
-
-      useResponse.useSuccess(() => {
-          console.log('js success');
-      }, fs);
-
-    useResponse.useSuccess(() => {
       console.log('save success');
-      query();
-      onClose();
+      const promise = query();
+      promise.then((d)=>{
+          console.log('trigger query promise',d)
+          if(d.abandon){
+              return;
+          }
+          onClose();
+      })
+
     }, sessionState);
 
     const lazySave = ()=>{
@@ -266,14 +265,6 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
   const { displayQuery, queryData,sourceQueryData,displayQueryData, create, changeDisplay, submit } =
     store.useModel();
-
-    useEffect(() => {
-        console.log('source query data',sourceQueryData.get());
-    }, [sourceQueryData.get()]);
-
-    useEffect(() => {
-        console.log('display query data',displayQueryData.get());
-    }, [displayQueryData.get()]);
 
   const isFetching = useIsFetching();
   const [,,execute] = fetchSession.useQuery();
@@ -334,14 +325,6 @@ export default store.provideTo(function App() {
     shallowEqual
   );
 
-  useEffect(() => {
-    console.log('queryData change', queryData.get());
-  }, [queryData]);
-
-  useEffect(() => {
-    console.log('queryData.get() change', queryData.get());
-  }, [queryData.get()]);
-
   const item = conditionSignal();
   // if(creating&&item.displayQuery.name!=='Mr'){
   //     item.changeDisplay({name:'Mr'})
@@ -373,15 +356,6 @@ export default store.provideTo(function App() {
   });
 
   const [queryState] = querySession;
-
-  useResponse.useSuccess(
-    state => {
-      console.log('response success', state);
-    },
-    [queryState]
-  );
-
-    console.log('variables',queryState.variables,queryState.lastSuccessfulRoundVariables)
 
   const [{ data, variables }, t] = querySession;
 
