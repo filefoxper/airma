@@ -348,16 +348,16 @@ function response<T>(
     const { runner } = value;
     return runner();
   };
-  sc.effect = function responseEffect(s: SessionState<T>, p: SessionState<T>) {
-    if (s.round === 0 || s.round === p.round) {
+  sc.effect = [
+    function responseEffect(s: SessionState<T>, p: SessionState<T>) {
+      const res = callback(s);
+      if (typeof res === 'function') {
+        return res;
+      }
       return noop;
-    }
-    const res = callback(s);
-    if (typeof res === 'function') {
-      return res;
-    }
-    return noop;
-  };
+    },
+    (s, p) => s.round !== 0 && s.round !== p.round
+  ];
   return sc;
 }
 
@@ -368,22 +368,41 @@ response.success = function responseSuccess<T>(
     const { runner } = value;
     return runner();
   };
-  sc.effect = function effectCallback(
-    state: SessionState<T>,
-    prevState: SessionState<T>
-  ) {
-    if (state.round === 0 || state.round === prevState.round || !state.loaded) {
+  sc.effect = [
+    function effectCallback(
+      state: SessionState<T>,
+      prevState: SessionState<T>
+    ) {
+      if (
+        state.round === 0 ||
+        state.round === prevState.round ||
+        !state.loaded
+      ) {
+        return noop;
+      }
+      if (state.isError || state.isFetching || !state.sessionLoaded) {
+        return noop;
+      }
+      const res = process(state.data, state);
+      if (typeof res === 'function') {
+        return res;
+      }
       return noop;
+    },
+    (state, prevState) => {
+      if (
+        state.round === 0 ||
+        state.round === prevState.round ||
+        !state.loaded
+      ) {
+        return false;
+      }
+      if (state.isError || state.isFetching || !state.sessionLoaded) {
+        return false;
+      }
+      return true;
     }
-    if (state.isError || state.isFetching || !state.sessionLoaded) {
-      return noop;
-    }
-    const res = process(state.data, state);
-    if (typeof res === 'function') {
-      return res;
-    }
-    return noop;
-  };
+  ];
   return sc;
 };
 
@@ -395,22 +414,33 @@ response.error = function responseError<T>(
     runtimeCache.set(error, true);
     return runner();
   };
-  sc.effect = function effectCallback(
-    state: SessionState<T>,
-    prevState: SessionState<T>
-  ) {
-    if (state.round === 0 || state.round === prevState.round || !state.loaded) {
+  sc.effect = [
+    function effectCallback(
+      state: SessionState<T>,
+      prevState: SessionState<T>
+    ) {
+      if (state.round === 0 || state.round === prevState.round) {
+        return noop;
+      }
+      if (!state.isError || state.isFetching) {
+        return noop;
+      }
+      const res = process(state.error, state);
+      if (typeof res === 'function') {
+        return res;
+      }
       return noop;
+    },
+    (state, prevState) => {
+      if (state.round === 0 || state.round === prevState.round) {
+        return false;
+      }
+      if (!state.isError || state.isFetching) {
+        return false;
+      }
+      return true;
     }
-    if (!state.isError || state.isFetching) {
-      return noop;
-    }
-    const res = process(state.error, state);
-    if (typeof res === 'function') {
-      return res;
-    }
-    return noop;
-  };
+  ];
   return sc;
 };
 
@@ -422,16 +452,27 @@ response.failure = function responseFailure<T>(
     runtimeCache.set(error, true);
     return runner();
   };
-  sc.effect = function effectCallback(state) {
-    if (!state.isError || state.isFetching) {
+  sc.effect = [
+    function effectCallback(state) {
+      if (!state.isError || state.isFetching) {
+        return noop;
+      }
+      const res = process(state.error, state);
+      if (typeof res === 'function') {
+        return res;
+      }
       return noop;
+    },
+    (state, prevState) => {
+      if (state.round === 0 || state.round === prevState.round) {
+        return false;
+      }
+      if (!state.isError || state.isFetching) {
+        return false;
+      }
+      return true;
     }
-    const res = process(state.error, state);
-    if (typeof res === 'function') {
-      return res;
-    }
-    return noop;
-  };
+  ];
   return sc;
 };
 

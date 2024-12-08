@@ -149,3 +149,8 @@
 
 * fix the problem about trigger `useSession` may call the request more than once when there are `useQuery(sessionKey)` usages with no config or variables.
 * fix the problem about manual method `trigger/execute` returns void. It should returns a Promise with a SessionState resolving.
+
+# v18.5.8
+
+* fix the problem about SessionState type has no `online` property.
+* fix the problem about Strategy.response.* callback can not work cleanups in time.

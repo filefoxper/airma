@@ -33,6 +33,7 @@ declare interface AbstractSessionState {
   lastSuccessfulRoundVariables: any[] | undefined;
   lastFailedRound: number;
   lastFailedRoundVariables: any[] | undefined;
+  online: boolean;
 }
 
 export declare interface LoadedSessionState<T, V> extends AbstractSessionState {
@@ -74,10 +75,18 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
       get: (key: any) => any;
     };
   }): Promise<SessionState<T, V>>;
-  effect?: (
-    state: SessionState<T, V>,
-    prevState: SessionState<T, V>
-  ) => void | (() => void);
+  effect?:
+    | ((
+        state: SessionState<T, V>,
+        prevState: SessionState<T, V>
+      ) => void | (() => void))
+    | [
+        (
+          state: SessionState<T, V>,
+          prevState: SessionState<T, V>
+        ) => void | (() => void),
+        (state: SessionState<T, V>, prevState: SessionState<T, V>) => boolean
+      ];
 }
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
