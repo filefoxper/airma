@@ -217,7 +217,6 @@ const Creating = memo(
           }
           onClose();
       })
-
     }, sessionState);
 
     const lazySave = ()=>{
@@ -348,6 +347,9 @@ export default store.provideTo(function App() {
       Strategy.response.success((a, s) => {
         const [v] = s.variables;
         console.log('success', v.name);
+        return ()=>{
+            console.log('clean success!')
+        }
       }),
       Strategy.response.failure(e => {
         console.log('error', e);
@@ -356,6 +358,13 @@ export default store.provideTo(function App() {
   });
 
   const [queryState] = querySession;
+
+    useResponse.useSuccess(()=>{
+        console.log('response success');
+        return ()=>{
+            console.log('clean response success')
+        }
+    },queryState)
 
   const [{ data, variables }, t] = querySession;
 

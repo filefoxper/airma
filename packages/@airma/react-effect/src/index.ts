@@ -22,7 +22,7 @@ import {
   useUnmount,
   useUpdate
 } from '@airma/react-hooks-core';
-import type {
+import {
   SessionState,
   PromiseCallback,
   QueryConfig,
@@ -41,7 +41,8 @@ import type {
   Controller,
   ControlData,
   Tunnel,
-  Resolver
+  Resolver,
+  StrategyEffectDestroy
 } from './libs/type';
 import {
   parseConfig,
@@ -440,10 +441,34 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const prevStateRef = useRef(stableInstance.state);
 
+  const destroyCacheRef = useRef<StrategyEffectDestroy<T>[]>([]);
+
   useEffect(() => {
     const prevState = prevStateRef.current;
+    const nextDestroyCache = destroyCacheRef.current
+      .map(cache => {
+        const [destroy, effectFilter] = cache;
+        if (effectFilter(stableInstance.state, prevState)) {
+          destroy();
+          return undefined;
+        }
+        return cache;
+      })
+      .filter((cache): cache is StrategyEffectDestroy<T> => cache != null);
+    destroyCacheRef.current = nextDestroyCache;
     const results = strategyEffects.map(effectCallback => {
-      return effectCallback(stableInstance.state, prevState);
+      if (typeof effectCallback === 'function') {
+        return effectCallback(stableInstance.state, prevState);
+      }
+      const [callbackOfEffect, effectFilter] = effectCallback;
+      if (effectFilter(stableInstance.state, prevState)) {
+        const destroy = callbackOfEffect(stableInstance.state, prevState);
+        if (typeof destroy === 'function') {
+          const destroyCaches = destroyCacheRef.current;
+          destroyCacheRef.current = [...destroyCaches, [destroy, effectFilter]];
+        }
+      }
+      return undefined;
     });
     prevStateRef.current = stableInstance.state;
     return () => {
@@ -454,6 +479,15 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       });
     };
   }, [stableInstance.state]);
+
+  useEffect(() => {
+    return () => {
+      destroyCacheRef.current.forEach(([call]) => {
+        call();
+      });
+      destroyCacheRef.current = [];
+    };
+  }, []);
 
   const handleTrigger = usePersistFn(() => {
     const hasExecuted = trigger();
@@ -766,13 +800,13 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   state: SessionState<T> | [SessionState<T>, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
-  const initialRound = useInitialize(() => sessionState.round);
+  const initialRound = useInitialize(() => sessionState.lastSuccessfulRound);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
   useEffect(() => {
-    if (sessionState.round === 0) {
+    if (sessionState.lastSuccessfulRound === 0) {
       return noop;
     }
-    if (watchOnly && initialRound === sessionState.round) {
+    if (watchOnly && initialRound === sessionState.lastSuccessfulRound) {
       return noop;
     }
     const isSuccessResponse =
@@ -784,7 +818,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
       return typeof res === 'function' ? res : noop;
     }
     return noop;
-  }, [sessionState.round]);
+  }, [sessionState.lastSuccessfulRound]);
 };
 
 useResponse.useFailure = function useResponseFailure(
@@ -792,13 +826,13 @@ useResponse.useFailure = function useResponseFailure(
   state: SessionState | [SessionState, { watchOnly?: boolean }?]
 ) {
   const sessionState = Array.isArray(state) ? state[0] : state;
-  const initialRound = useInitialize(() => sessionState.round);
+  const initialRound = useInitialize(() => sessionState.lastFailedRound);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
   useEffect(() => {
-    if (sessionState.round === 0) {
+    if (sessionState.lastFailedRound === 0) {
       return noop;
     }
-    if (watchOnly && initialRound === sessionState.round) {
+    if (watchOnly && initialRound === sessionState.lastFailedRound) {
       return noop;
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
@@ -807,7 +841,7 @@ useResponse.useFailure = function useResponseFailure(
       return typeof res === 'function' ? res : noop;
     }
     return noop;
-  }, [sessionState.round]);
+  }, [sessionState.lastFailedRound]);
 };
 
 export const Provider = ModelProvider;

@@ -118,10 +118,18 @@ export type CheckLazyComponentSupportType<
     : never
   : never;
 
-export type StrategyEffect<T> = (
-  state: SessionState<T>,
-  prevState: SessionState<T>
-) => void | (() => void);
+export type StrategyEffect<T> =
+  | ((
+      state: SessionState<T>,
+      prevState: SessionState<T>
+    ) => void | (() => void))
+  | [
+      (
+        state: SessionState<T>,
+        prevState: SessionState<T>
+      ) => void | (() => void),
+      (state: SessionState<T>, prevState: SessionState<T>) => boolean
+    ];
 
 export interface StrategyType<T = any> {
   (value: {
@@ -139,8 +147,12 @@ export interface StrategyType<T = any> {
     };
   }): Promise<SessionState<T>>;
   effect?: StrategyEffect<T>;
-  response?: StrategyEffect<T>;
 }
+
+export type StrategyEffectDestroy<T = any> = [
+  () => void,
+  (s: SessionState<T>, p: SessionState<T>) => boolean
+];
 
 export type StrategyCollectionType<T = any> =
   | undefined
