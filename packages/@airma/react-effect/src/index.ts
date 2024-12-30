@@ -722,10 +722,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 
   function extractComponent(compLike: T | { default: T }): T {
     const defaultCompLike = compLike as { default: T };
-    if (
-      defaultCompLike.default &&
-      typeof defaultCompLike.default === 'function'
-    ) {
+    if (defaultCompLike.default) {
       return defaultCompLike.default;
     }
     return compLike as T;
