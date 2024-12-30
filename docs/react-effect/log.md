@@ -154,3 +154,7 @@
 
 * fix the problem about SessionState type has no `online` property.
 * fix the problem about Strategy.response.* callback can not work cleanups in time.
+
+# v18.5.9
+
+* fix the problem about `useLazyComponent` can not support `memo` Component.

@@ -155,3 +155,7 @@
 
 * 修复 SessionState online 字段未暴露的问题。
 * 修复 Strategy.response 系列接口 cleanup 副作用清理函数运行时机问题。
+
+## v18.5.9
+
+* 修复 useLazyComponent 解析 memo 组件时报错的问题。
