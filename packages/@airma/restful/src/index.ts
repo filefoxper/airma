@@ -10,7 +10,7 @@ import type {
   Meta,
   RuntimeRestConfig
 } from './type';
-import { defaultRestConfig } from './constant';
+import { defaultHeaders, defaultRestConfig } from './constant';
 import { request } from './request';
 
 export function rest(url: string | HttpProperties): HttpType {
@@ -58,10 +58,13 @@ export function rest(url: string | HttpProperties): HttpType {
           return null as T;
         }
         const { isError } = res;
-        if (isError) {
-          return Promise.reject(res.error);
+        if (!isError) {
+          return res.data as T;
         }
-        return res.data as T;
+        if (requestConfig.throwErrorResponse) {
+          return Promise.reject(res);
+        }
+        return Promise.reject(res.error);
       });
     promise.response = () => {
       ignoreDataPromise = true;
@@ -196,3 +199,5 @@ export function client(
     }
   };
 }
+
+export const defaults = { request, headers: defaultHeaders };

@@ -44,6 +44,30 @@ root.path('child-path').setBody({data:'data'}).post();
 // POST http://host/path/child-path?param1=param1&param2=param2 
 // payload: {data:'data'}
 root.path('child-path').setParams({ param1:'param1', param2:'param2' }).setBody({data:'data'}).post();
+
+// DELETE http://host/path
+root.delete();
+
+// DELETE http://host/path?param1=param1&param2=param2
+root.setParams({ param1:'param1', param2:'param2' }).delete();
+
+// DELETE http://host/path/child-path
+root.path('child-path').delete();
+
+// DELETE http://host/path/child-path?param1=param1&param2=param2
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).delete();
+
+// PUT http://host/path
+root.put();
+
+// PUT http://host/path?param1=param1&param2=param2
+root.setParams({ param1:'param1', param2:'param2' }).put();
+
+// PUT http://host/path/child-path
+root.path('child-path').put();
+
+// PUT http://host/path/child-path?param1=param1&param2=param2
+root.path('child-path').setParams({ param1:'param1', param2:'param2' }).put();
 ```
 
 With typescript
@@ -64,6 +88,14 @@ type User = {
 async function getUser(id: string): Promise<User>{
     try{
         return root.setParams({ id }).get<User>();
+    } catch(e: any) {
+        console.log(e)
+    }
+}
+
+async function saveUser(user:User): Promise<void>{
+    try{
+        return root.path('/user').setBody(user).post<void>();
     } catch(e: any) {
         console.log(e)
     }
@@ -107,6 +139,8 @@ const { rest } = client({
         console.log(data)；
         return data
     },
+    // throw a whole response object when error happens. You can catch a `ErrorResponse` type object.
+    throwErrorResponse: true, 
     // replace request implement with a customized asynchronous callback
     async request(url: string, requestConfig: RequestConfig){
         return Promise<ResponseData>;
@@ -260,6 +294,21 @@ export declare type ErrorResponse = {
 };
 
 export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
+```
+
+**If you want to use the default request for composing, you can fetch it from the `defaults` object.**
+
+```ts
+import {defaults} from '@airma/restful';
+
+const {rest, config} = client();
+
+config({
+    request:(url:string, config:RequestConfig):Promise<ResponseData>=>{
+        // do something with url and config
+        return defaults.request(url, config);
+    }
+})
 ```
 
 ### ResponseInterceptor
