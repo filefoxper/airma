@@ -85,7 +85,10 @@ export declare type Request = (
   requestConfig: RequestConfig
 ) => Promise<ResponseData>;
 
-export declare type RestConfig = BaseRestConfig & { request?: Request };
+export declare type RestConfig = BaseRestConfig & {
+  request?: Request;
+  throwErrorResponse?: boolean;
+};
 
 declare type PromiseValue<T = any> = Promise<T> & {
   response: () => Promise<ResponseData<T>>;
@@ -138,3 +141,8 @@ export declare function rest(url: string | HttpProperties): HttpType;
 export declare function client(
   config?: RestConfig | ((c: RestConfig) => RestConfig)
 ): Client;
+
+export declare const defaults: {
+  request: Request;
+  headers: Record<string, any>;
+};

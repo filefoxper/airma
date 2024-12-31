@@ -92,7 +92,10 @@ export type RequestConfig = BaseRestConfig & {
   method?: Method;
 };
 
-export type RestConfig = BaseRestConfig & { request?: Request };
+export type RestConfig = BaseRestConfig & {
+  request?: Request;
+  throwErrorResponse?: boolean;
+};
 
 export type RuntimeRestConfig = RestConfig & {
   params?: Record<string | number, any>;

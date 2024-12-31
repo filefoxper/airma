@@ -100,6 +100,9 @@ const { rest } = client({
     // 则所有请求都会带上 sessionId=12 的参数。 
     // -> http://host/path?sessionId=12&xx=...
     defaultParams: {...},
+    // 要求请求异常时抛出整个异常响应对象，而不是仅仅只是异常数据。
+    // 异常响应对象类型：ErrorResponse
+    throwErrorResponse: true,
     // 响应拦截器函数，可拦截并重新定义响应详情。
     responseInterceptor: ( 
         data: ResponseData 
@@ -269,6 +272,19 @@ export declare type ErrorResponse = {
 
 // 响应详细信息
 export declare type ResponseData<T = any> = SuccessResponse<T> | ErrorResponse;
+```
+
+**当需要在自定义请求中使用默认请求方法作组合时，可引用`defaults.request`方法。**
+
+```ts
+import {client, defaults} from '@airma/restful';
+
+const {rest} = client({
+    request: (url:string, config:RequestConfig):Promise<ResponseData>=>{
+        // 组合代码
+        return defaults.request(url, config);
+    }
+});
 ```
 
 ### ResponseInterceptor
