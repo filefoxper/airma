@@ -159,3 +159,7 @@
 ## v18.5.9
 
 * 修复 useLazyComponent 解析 memo 组件时报错的问题。
+
+## v18.5.10
+
+* 为 GlobalConfig 增加了 `experience` 字段，用于体验下一个中间版本变化的特性。

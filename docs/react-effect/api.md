@@ -243,6 +243,28 @@ It allows process callback running when a session is failed.
 
 **If there are some Strategy.failure or Strategy.response.failure working in the strategy chain, only the first one runs process callback.**
 
+```
+Note: In 18.6.0, the `Strategy.faiure` will not disable other failure strategies after it. It only disables the previous failure strategies when it has nothing throw out. Experience this feature by adding `experience` property to GlobalConfig.
+```
+
+For experience:
+
+```ts
+const globalConfig = {  
+  experience: 'next',
+  strategy: (workingStrategies: StrategyType[])=>{
+    return [
+      // put the final failure strategy at the top of the chain.
+      Strategy.failure((e) => {
+        console.log('failure', e);
+      }),
+      ...workingStrategies
+    ];
+  }
+}
+<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+```
+
 #### Parameters
 
 * **process** - It is a callback to process when session is failed. This process callback accepts a error data from session.
@@ -360,6 +382,10 @@ It allows to process callback when a session execution is failed.
 
 **If there are some Strategy.failure or Strategy.response.failure working in the strategy chain, only the first one runs process callback.**
 
+```
+Note: In 18.6.0, the `Strategy.response.faiure` will not be disabled by other failure strategies, like `Strategy.failure` or `Strategy.response.faiure`. Experience this feature by adding `experience` property to GlobalConfig.
+```
+
 #### Parameters
 
 * **process** -It is a callback to process when a execution is failed. It accepts a session state error and the session state as parameters, returns void or a cleanup function.
@@ -370,11 +396,15 @@ It is a global config provider. It can be used for preseting common strategies a
 
 ```ts
 type GlobalConfig = {
+  // For linking `unstable_batchedUpdates` from react-dom, and make running optmization.
   batchUpdate?: (callback: () => void) => void;
   /**
    * @deprecated
    **/
   useGlobalFetching?: boolean;
+  // To experience the new features in the next middle version change.
+  experience?:'next';
+  // A callback to build a runtime strategy chains, it accepts a strategies array from a runtime `useQuery/useMutation`, returns a new strategies array to replace the original one.
   strategy?:(
     strategies:(StrategyType | undefined | null)[], 
     type: 'query' | 'mutation'

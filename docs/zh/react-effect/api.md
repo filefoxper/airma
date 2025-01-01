@@ -250,6 +250,28 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 **如果在策略链中存在多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
 
+```
+注意：在 18.6.0 版本开始后，Strategy.failure 策略将不再无条件阻止后续其他错误处理策略执行。Strategy.failure 策略回调函数会在未抛出异常的情况下阻止前置 Strategy.failure 策略运行。可通过添加 GlobalConfig.experience 字段获取体验特性。
+```
+
+体验特性：
+
+```ts
+const globalConfig = {  
+  experience: 'next',
+  strategy: (workingStrategies: StrategyType[])=>{
+    return [
+      // 兜底异常处理策略，需要排在最前
+      Strategy.failure((e) => {
+        console.log('failure', e);
+      }),
+      ...workingStrategies
+    ];
+  }
+}
+<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+```
+
 #### 参数
 
 * **process** - 回调函数，可接收异步函数执行失败时的错误信息为参数。
@@ -348,6 +370,10 @@ const globalConfig = {
 **当前策略在会话状态更新完毕的副作用（useEffect）中运行回调函数。**
 
 **如果在策略链中存在多个 Strategy.failure 或 Strategy.response.failure 策略，只有第一个失败回调策略的回调函数会被执行。**
+
+```
+注意：在 18.6.0 版本开始后，Strategy.response.failure 策略将不会使其他错误处理策略实效，同时也不再受其他错误处理策略的影响。可在全局配置 GlobalConfig 中设置 `experience` 字段获取体验特性。
+```
 
 #### 参数
 
