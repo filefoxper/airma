@@ -124,6 +124,7 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
   manual?: boolean;
+  experience?: 'next';
 };
 
 declare type DefaultQueryConfig<T, C extends PromiseCallback<T>> = QueryConfig<
@@ -145,6 +146,7 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
+  experience?: 'next';
 };
 
 declare type DefaultMutationConfig<
@@ -343,6 +345,7 @@ export declare const Provider: FC<
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  experience?: 'next';
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: SessionType

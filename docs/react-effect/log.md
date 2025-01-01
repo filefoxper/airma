@@ -158,3 +158,7 @@
 # v18.5.9
 
 * fix the problem about `useLazyComponent` can not support `memo` Component.
+
+# v18.5.10
+
+* add `experience` property to `GlobalConfig`.

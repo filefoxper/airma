@@ -528,13 +528,14 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const manual = !deps && !variables ? true : man;
   const triggerTypes: TriggerType[] = manual ? ['manual'] : triggerOn;
   const scopeEffectConfig = useGlobalConfig() || {};
-  const { strategy: strategyCallback } = scopeEffectConfig;
+  const { strategy: strategyCallback, experience } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'query')
     : currentStrategies;
 
   const promiseConfig = {
+    experience,
     ...con,
     triggerOn: triggerTypes,
     strategy: strategies.concat(latest() as StrategyType | null | undefined)
@@ -560,13 +561,14 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
   const scopeEffectConfig = useGlobalConfig() || {};
-  const { strategy: strategyCallback } = scopeEffectConfig;
+  const { strategy: strategyCallback, experience } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
   const strategies = strategyCallback
     ? strategyCallback(currentStrategies, 'mutation')
     : currentStrategies;
 
   const promiseConfig = {
+    experience,
     ...con,
     triggerOn: triggerTypes,
     strategy: strategies.concat(block() as StrategyType | null | undefined)

@@ -172,6 +172,7 @@ export type QueryConfig<T, C extends PromiseCallback<T>> = {
   strategy?: StrategyCollectionType<T>;
   loaded?: boolean;
   manual?: boolean;
+  experience?: 'next';
 };
 
 export type MutationConfig<T, C extends PromiseCallback<T>> = {
@@ -181,10 +182,12 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   loaded?: boolean;
+  experience?: 'next';
 };
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  experience?: 'next';
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'

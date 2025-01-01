@@ -258,8 +258,32 @@ function failure(
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
-  return function er(value) {
+  const next: StrategyType = function next(value) {
     const { runner, executeContext: runtimeCache, localCache: store } = value;
+    return runner().then(d => {
+      const isAllProcessed = runtimeCache.get(failure) as boolean | undefined;
+      if (d.isError && !isAllProcessed && (!d.abandon || withAbandoned)) {
+        try {
+          process(d.error, d);
+          runtimeCache.set(failure, true);
+        } catch (e) {
+          runtimeCache.set(failure, false);
+        }
+      }
+      return d;
+    });
+  };
+  return function er(value) {
+    const {
+      runner,
+      executeContext: runtimeCache,
+      localCache: store,
+      config
+    } = value;
+    const { experience } = config;
+    if (experience === 'next') {
+      return next(value);
+    }
     const hasHigherErrorProcessor = runtimeCache.get(error);
     runtimeCache.set(error, true);
     store.current = process;
@@ -448,7 +472,10 @@ response.failure = function responseFailure<T>(
   process: (e: unknown, sessionData: SessionState) => void | (() => void)
 ): StrategyType {
   const sc: StrategyType = function sc(value) {
-    const { runner, executeContext: runtimeCache } = value;
+    const { runner, executeContext: runtimeCache, config } = value;
+    if (config.experience === 'next') {
+      return runner();
+    }
     runtimeCache.set(error, true);
     return runner();
   };
