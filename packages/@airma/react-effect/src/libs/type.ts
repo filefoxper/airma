@@ -121,12 +121,14 @@ export type CheckLazyComponentSupportType<
 export type StrategyEffect<T> =
   | ((
       state: SessionState<T>,
-      prevState: SessionState<T>
+      prevState: SessionState<T>,
+      config: QueryConfig<T, any>
     ) => void | (() => void))
   | [
       (
         state: SessionState<T>,
-        prevState: SessionState<T>
+        prevState: SessionState<T>,
+        config: QueryConfig<T, any>
       ) => void | (() => void),
       (state: SessionState<T>, prevState: SessionState<T>) => boolean
     ];

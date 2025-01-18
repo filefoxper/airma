@@ -253,27 +253,52 @@ function error(
   };
 }
 
+type FailureProcess = (e: unknown, sessionData: SessionState) => any;
+
+type FailureProcessUnit = {
+  process: FailureProcess;
+  type: 'response.process' | 'process';
+  option?: { withAbandoned?: boolean };
+};
+
 function failure(
   process: (e: unknown, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType {
   const { withAbandoned } = option || {};
+  const unit: FailureProcessUnit = { process, option, type: 'process' };
   const next: StrategyType = function next(value) {
     const { runner, executeContext: runtimeCache, localCache: store } = value;
+    const failureProcessUnits = (runtimeCache.get(failure) ||
+      []) as FailureProcessUnit[];
+    const processUnits = [unit, ...failureProcessUnits];
+    runtimeCache.set(failure, processUnits);
     return runner().then(d => {
-      const isAllProcessed = runtimeCache.get(failure) as boolean | undefined;
-      if (d.isError && !isAllProcessed && (!d.abandon || withAbandoned)) {
-        try {
-          process(d.error, d);
-          runtimeCache.set(failure, true);
-        } catch (e) {
-          runtimeCache.set(failure, false);
-        }
+      const [start] = (runtimeCache.get(failure) || []) as FailureProcessUnit[];
+      if (start !== unit || !d.isError) {
+        return d;
       }
+      processUnits.reduce((res, { process: p, option: o, type: t }) => {
+        if (!res.isError || t === 'response.process') {
+          return res;
+        }
+        if (res.abandon && !o?.withAbandoned) {
+          return res;
+        }
+        try {
+          p(res.error, d);
+          return { ...d, isError: false, error: undefined };
+        } catch (e) {
+          return { ...d, isError: true, error: e };
+        }
+      }, d);
       return d;
     });
   };
-  return function er(value) {
+  const er: StrategyType & {
+    process: FailureProcess;
+    from: (...args: any[]) => any;
+  } = function er(value) {
     const {
       runner,
       executeContext: runtimeCache,
@@ -300,6 +325,9 @@ function failure(
       return d;
     });
   };
+  er.process = process;
+  er.from = failure;
+  return er;
 }
 
 function success<T>(
@@ -471,20 +499,63 @@ response.error = function responseError<T>(
 response.failure = function responseFailure<T>(
   process: (e: unknown, sessionData: SessionState) => void | (() => void)
 ): StrategyType {
+  const unit: FailureProcessUnit = { process, type: 'response.process' };
   const sc: StrategyType = function sc(value) {
     const { runner, executeContext: runtimeCache, config } = value;
     if (config.experience === 'next') {
+      const failureProcessUnits = (runtimeCache.get(failure) ||
+        []) as FailureProcessUnit[];
+      const processUnits = [unit, ...failureProcessUnits];
+      runtimeCache.set(failure, processUnits);
       return runner();
     }
     runtimeCache.set(error, true);
     return runner();
   };
   sc.effect = [
-    function effectCallback(state) {
+    function effectCallback(state, prevState, config) {
       if (!state.isError || state.isFetching) {
         return noop;
       }
-      const res = process(state.error, state);
+      const { strategy, experience } = config;
+      if (experience !== 'next') {
+        const res = process(state.error, state);
+        return typeof res === 'function' ? res : noop;
+      }
+      const strategies = (function pickStrategies() {
+        if (!strategy) {
+          return [];
+        }
+        if (Array.isArray(strategy)) {
+          return strategy;
+        }
+        return [strategy];
+      })();
+      const currentIndex = strategies.indexOf(sc);
+      const failureStrategies = strategies.filter(
+        (s, ind): s is StrategyType =>
+          typeof s === 'function' &&
+          (s as StrategyType & { from: any }).from === failure &&
+          ind < currentIndex
+      );
+      const failureProcesses = failureStrategies.map(
+        s => (s as StrategyType & { process: FailureProcess }).process
+      );
+      const currentProcess = failureProcesses.reduce((prev, current) => {
+        return function composedProcess(
+          er: unknown,
+          sessionData: SessionState
+        ): void | (() => void) {
+          try {
+            const r = prev(er, sessionData);
+            return typeof r === 'function' ? r : noop;
+          } catch (e: unknown) {
+            current(e, sessionData);
+            return noop;
+          }
+        };
+      }, process);
+      const res = currentProcess(state.error, state);
       if (typeof res === 'function') {
         return res;
       }
