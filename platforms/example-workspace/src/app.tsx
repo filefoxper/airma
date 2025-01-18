@@ -324,13 +324,6 @@ export default store.provideTo(function App() {
     shallowEqual
   );
 
-  const item = conditionSignal();
-  // if(creating&&item.displayQuery.name!=='Mr'){
-  //     item.changeDisplay({name:'Mr'})
-  // }
-
-    console.log('render',item.creating)
-    // console.log('render...')
   conditionSignal
     .useEffect(ins => {
       console.log('signal creating', ins.creating);
@@ -341,30 +334,14 @@ export default store.provideTo(function App() {
     defaultData: [],
     strategy: [
       Strategy.cache({ capacity: 10 }),
-        Strategy.success(()=>{
-            console.log('full')
-        }),
-      Strategy.response.success((a, s) => {
-        const [v] = s.variables;
-        console.log('success', v.name);
-        return ()=>{
-            console.log('clean success!')
-        }
-      }),
       Strategy.response.failure(e => {
         console.log('error', e);
+        // throw e;
       })
     ]
   });
 
   const [queryState] = querySession;
-
-    useResponse.useSuccess(()=>{
-        console.log('response success');
-        return ()=>{
-            console.log('clean response success')
-        }
-    },queryState)
 
   const [{ data, variables }, t] = querySession;
 

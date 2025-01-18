@@ -458,11 +458,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     destroyCacheRef.current = nextDestroyCache;
     const results = strategyEffects.map(effectCallback => {
       if (typeof effectCallback === 'function') {
-        return effectCallback(stableInstance.state, prevState);
+        return effectCallback(stableInstance.state, prevState, con);
       }
       const [callbackOfEffect, effectFilter] = effectCallback;
       if (effectFilter(stableInstance.state, prevState)) {
-        const destroy = callbackOfEffect(stableInstance.state, prevState);
+        const destroy = callbackOfEffect(stableInstance.state, prevState, con);
         if (typeof destroy === 'function') {
           const destroyCaches = destroyCacheRef.current;
           destroyCacheRef.current = [...destroyCaches, [destroy, effectFilter]];
