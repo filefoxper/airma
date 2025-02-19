@@ -609,8 +609,9 @@ type StaticStoreApi = {
 };
 
 type StoreApi = {
-  asGlobal(): StaticStoreApi;
-  static(): StaticStoreApi; // 与 asGlobal 相同
+  /** @deprecated **/
+  static(): StaticStoreApi;
+  createStore():StaticStoreApi;
   provideTo<P extends object>(
     component: ComponentType<P>
   ):ComponentType<P>;
@@ -630,7 +631,9 @@ type StoreApi = {
 };
 
 type Api = {
+  /** @deprecated **/
   createStore():StoreApi;
+  createKey():StoreApi;
   useQuery(
     variablesOrConfig
   ):[sessionState, trigger, execute];

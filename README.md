@@ -26,16 +26,16 @@ Create `reducer-like` function:
 export function counting(state:number){
     return {
         // reproduced state for render
-        count: `mount: ${state}`,
+        count: state,
         // action method
-        increase:()=>count + 1,
+        increase:()=>state + 1,
         // action method
-        decrease:()=>count - 1,
+        decrease:()=>state - 1,
         // action method, define parameters freely.
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }
@@ -65,13 +65,13 @@ import {model} from '@airma/react-state';
 // it keeps a same type of parameters and return data with the wrapped function.
 const counting = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 });
@@ -91,13 +91,13 @@ import {model} from '@airma/react-state';
 
 const countingStore = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore(0);
@@ -130,7 +130,7 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-Using `model(xxx).createStore().asGlobal()` can build a global store.
+Using `model(xxx).createStore().static()` can build a global store.
 
 ### Global state management
 
@@ -139,16 +139,16 @@ import {model} from '@airma/react-state';
 
 const countingStore = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
-}).createStore(0).asGlobal();
+}).createStore(0).static();
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -319,7 +319,7 @@ const Component = fetchUsersSession.provideTo(function Comp(){
 });
 ```
 
-Use `session(xxx,'query'|'mutation').createStore().asGlobal()` can create a global store, which can be used directly without provider.
+Use `session(xxx,'query'|'mutation').createStore().static()` can create a global store, which can be used directly without provider.
 
 ### Global asynchronous state management
 
@@ -329,7 +329,7 @@ import {session} from '@airma/react-effect';
 // make store global
 const fetchUsersSession = session((groupId: number): Promise<User[]> => {
     return userRequest.fetchUsersByGroupId(groupId);
-}, 'query').createStore().asGlobal();
+}, 'query').createStore().static();
 ......
 const ChildQueryComponent = ()=>{
     ......
@@ -479,13 +479,13 @@ import {model, session} from '@airma/react-hooks';
 
 const countingStore = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore(0);

@@ -152,3 +152,13 @@
 ## v18.5.7 2024-10-31
 
 * start to support access to `connection`.
+
+## v18.5.8 2025-02-19
+
+* change `model().createStore` to `model().createKey`.
+* change `model().createStore().static()` to `model().createKey().createStore()`.
+* add `getInstance` and `initialize` methods to static store.
+
+## v18.5.9 2025-02-19
+
+* update readme for npm.

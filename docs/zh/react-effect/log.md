@@ -163,3 +163,8 @@
 ## v18.5.10
 
 * 为 GlobalConfig 增加了 `experience` 字段，用于体验下一个中间版本变化的特性。
+
+## v18.5.12
+
+* 变更 `session().createStore` 为 `session().createKey`
+* 变更 `session().createStore().static()` 为 `session().createKey().createStore()`

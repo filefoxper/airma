@@ -263,8 +263,9 @@ It is a simplified API for use `hooks` in `@airma/react-state`. It also can be u
 interface GlobalStoreApi {
   useModel,
   useSignal,
-  useStaticModel,
-  useSelector
+  useSelector,
+  getInstance:()=>Instance,
+  initialize:(defaultState?)=>void
 }
 
 interface StoreApi {
@@ -272,7 +273,9 @@ interface StoreApi {
   with:(
     ...stores: (StoreApi | ModelKey)[]
   ) => StoreApi,
-  asGlobal: () => GlobalStoreApi,
+  /** @deprecated **/
+  static: () => GlobalStoreApi,
+  createStore:()=>GlobalStoreApi
   provide,
   provideTo: (
     component: ComponentType
@@ -280,7 +283,6 @@ interface StoreApi {
   Provider: FC<{ children?: ReactNode }>,
   useModel,
   useSignal,
-  useStaticModel,
   useSelector
 }
 
@@ -288,7 +290,9 @@ interface Api {
   useModel,
   useSignal,
   useControlledModel,
+  /** @deprecated **/
   createStore: (defaultState?) => StoreApi;
+  createKey: (defaultState?) => StoreApi;
 }
 
 function model(modelFn): (typeof modelFn) & Api;

@@ -650,6 +650,17 @@ export function staticFactory<T extends AirReducer<any, any>>(
     return replaceModel;
   };
   replaceModel.isFactory = reducer.isFactory;
+  replaceModel.getInstance = function getInstance() {
+    return replaceModel.connection.getCurrent() as ReturnType<T>;
+  };
+  replaceModel.initialize = function initialize(state: Parameters<T>[0]) {
+    const { connection } = replaceModel;
+    const needInitializeScopeConnection =
+      connection != null && connection.getCacheState() == null;
+    if (needInitializeScopeConnection) {
+      connection.update(reducer, { state, cache: true, ignoreDispatch: true });
+    }
+  };
   return replaceModel as StaticFactoryInstance<T>;
 }
 

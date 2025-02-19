@@ -162,3 +162,8 @@
 # v18.5.10
 
 * add `experience` property to `GlobalConfig`.
+
+# v18.5.12
+
+* change `session().createStore` to `session.createKey`.
+* change `session().createStore().static()` to `session.createKey().createStore()`.

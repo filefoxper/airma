@@ -1,4 +1,4 @@
-import { ModelKeys, ModelKey, AirReducer } from '@airma/react-state';
+import { ModelKeys, ModelKey, AirReducer, KeyIndex } from '@airma/react-state';
 import {
   FunctionComponent,
   FC,
@@ -493,7 +493,8 @@ declare type UseSessionShort<D extends PromiseCallback<any>> =
 declare type UseLoadedSessionShort<D extends PromiseCallback<any>> =
   () => LoadedSessionResult<D>;
 
-declare interface SessionStoreApi<D extends PromiseCallback<any>> {
+declare interface SessionStoreApi<D extends PromiseCallback<any>>
+  extends KeyIndex {
   key: SessionKey<D>;
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
@@ -512,7 +513,15 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>> {
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
+  /**
+   * @deprecated
+   */
   static: () => {
+    useQuery: UseQueryShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
+  createStore: () => {
     useQuery: UseQueryShort<D>;
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
@@ -522,7 +531,15 @@ declare interface QueryStoreApi<D extends PromiseCallback<any>>
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useMutation: UseMutationShort<D>;
+  /**
+   * @deprecated
+   */
   static: () => {
+    useMutation: UseMutationShort<D>;
+    useSession: UseSessionShort<D>;
+    useLoadedSession: UseLoadedSessionShort<D>;
+  };
+  createStore: () => {
     useMutation: UseMutationShort<D>;
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
@@ -535,7 +552,11 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useQuery: UseQueryShort<D>;
+  /**
+   * @deprecated
+   */
   createStore: () => QueryStoreApi<D>;
+  createKey: () => QueryStoreApi<D>;
 };
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
@@ -543,5 +564,9 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useMutation: UseMutationShort<D>;
+  /**
+   * @deprecated
+   */
   createStore: () => MutationStoreApi<D>;
+  createKey: () => MutationStoreApi<D>;
 };
