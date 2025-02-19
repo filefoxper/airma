@@ -111,3 +111,13 @@
 ## v18.5.7
 
 * 开始支持对 connection 对象的访问。
+
+## v18.5.8
+
+* 重命名 `model().createStore` 为 `model().createKey`。
+* 重命名 `model().createStore().static()` 为 `model().createKey().createStore()`
+* 向静态库添加了 `getInstance` 和 `initialize` 方法
+
+## v18.5.9
+
+* 更新npm文档

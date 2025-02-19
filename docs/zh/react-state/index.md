@@ -50,12 +50,12 @@ import {model} from '@airma/react-state';
 const counting = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 });
@@ -76,12 +76,12 @@ import {model} from '@airma/react-state';
 const countingStore = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore(0);
@@ -129,12 +129,12 @@ import {model} from '@airma/react-state';
 const countingStore = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore(0).asGlobal();
@@ -176,12 +176,12 @@ import {model} from '@airma/react-state';
 const countingStore = model(function counting(state:number){
     return {
         count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore();
@@ -228,12 +228,12 @@ import {model} from '@airma/react-state';
 const counting = model(function countingModel(state:number){
     return {
         count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }).createStore().static();

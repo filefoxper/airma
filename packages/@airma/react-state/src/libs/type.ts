@@ -145,6 +145,8 @@ export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
   payload?: unknown;
   static: () => StaticFactoryInstance<T>;
   isFactory: () => true;
+  getInstance: () => ReturnType<T>;
+  initialize: (...s: Parameters<T>) => void;
 };
 
 export type FactoryInstance<T extends AirReducer<any, any>> = T & {

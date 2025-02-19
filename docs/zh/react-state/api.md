@@ -363,10 +363,11 @@ model 作为 `@airma/react-state` 的简化入口，提供了集成流式的 API
 
 ```ts
 interface GlobalStoreApi {
-  useModel,
-  useSignal,
-  useStaticModel,
-  useSelector
+  useModel:(state?)=>Instance,
+  useSignal:(state?)=>()=>Instance,
+  useSelector:(callback:(instance)=>Result,equality:(s,t)=>boolean)=>Result,
+  getInstance:()=>Instance,
+  initialize:(defaultState)=>void
 }
 
 interface StoreApi {
@@ -374,7 +375,9 @@ interface StoreApi {
   with:(
     ...stores: (StoreApi | ModelKey)[]
   ) => StoreApi,
-  asGlobal: () => GlobalStoreApi,
+  /** @deprecated **/
+  static: () => GlobalStoreApi,
+  createStore:()=>GlobalStoreApi,
   provide,
   provideTo: (
     component: ComponentType
@@ -382,15 +385,16 @@ interface StoreApi {
   Provider: FC<{ children?: ReactNode }>,
   useModel,
   useSignal,
-  useStaticModel,
   useSelector
 }
 
 interface Api {
-  useModel,
-  useSignal,
+  useModel:(state?)=>Instance,
+  useSignal:(state?)=>()=>Instance,
   useControlledModel,
+  /** @deprecated **/
   createStore: (defaultState?) => StoreApi;
+  createKey: (defaultState?) => StoreApi;
 }
 
 function model(modelFn): (typeof modelFn) & Api;

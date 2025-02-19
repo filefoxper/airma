@@ -828,7 +828,9 @@ export const model = function model<S, T extends AirModelInstance>(
       return {
         useModel: useApiGlobalModel,
         useSignal: useApiGlobalSignal,
-        useSelector: useApiGlobalSelector
+        useSelector: useApiGlobalSelector,
+        getInstance: staticModelKey.getInstance,
+        initialize: staticModelKey.initialize
       };
     }
 
@@ -841,7 +843,8 @@ export const model = function model<S, T extends AirModelInstance>(
       static: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
-      Provider: ApiStoreProvider
+      Provider: ApiStoreProvider,
+      createStore: global
     };
 
     const withKeys = function withKeys(
@@ -872,7 +875,8 @@ export const model = function model<S, T extends AirModelInstance>(
     useModel: useApiModel,
     useSignal: useApiSignal,
     useControlledModel: useApiControlledModel,
-    createStore: createStoreApi
+    createStore: createStoreApi,
+    createKey: createStoreApi
   });
 };
 

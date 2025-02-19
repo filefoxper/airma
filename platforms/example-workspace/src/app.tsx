@@ -55,7 +55,7 @@ type Query = {
 };
 
 const defaultCondition: Condition = {
-  name: '',
+  name: 'Mr',
   username: '',
   age: undefined
 };
@@ -94,7 +94,7 @@ const userSave = (u: Omit<User, 'id'>) =>
       },1000)
   });
 
-export const fetchSession = session(userQuery, 'query').createStore().static();
+export const fetchSession = session(userQuery, 'query').createKey();
 
 export const saveSession = session(userSave, 'mutation');
 
@@ -155,7 +155,7 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createStore();
+  .createKey().createStore();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
@@ -313,12 +313,17 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
   );
 })
 
-export default store.provideTo(function App() {
-  const conditionSignal = store.useSignal({
+store.initialize({
     valid: defaultCondition,
     display: defaultCondition,
     creating: false
-  });
+});
+
+store.getInstance().changeDisplay({...defaultCondition,name:''});
+store.getInstance().submit();
+
+export default provide([fetchSession])(function App() {
+  const conditionSignal = store.useSignal();
   const { queryData, creating, cancel } = store.useSelector(
     s => pick(s, 'queryData', 'creating', 'cancel'),
     shallowEqual

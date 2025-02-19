@@ -948,6 +948,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
       key,
       with: withKeys,
       static: globalApi,
+      createStore: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
       provide: storeApiProvide,
@@ -960,7 +961,8 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const api = {
-    createStore: storeApi
+    createStore: storeApi,
+    createKey: storeApi
   };
 
   const queryApi = {

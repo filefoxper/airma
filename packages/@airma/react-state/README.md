@@ -26,16 +26,16 @@ Create `reducer-like` function:
 export function counting(state:number){
     return {
         // reproduced state for render
-        count: `mount: ${state}`,
+        count: state,
         // action method
-        increase:()=>count + 1,
+        increase:()=>state + 1,
         // action method
-        decrease:()=>count - 1,
+        decrease:()=>state - 1,
         // action method, define parameters freely.
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 }
@@ -65,13 +65,13 @@ import {model} from '@airma/react-state';
 // it keeps a same type of parameters and return data with the wrapped function.
 const counting = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
 });
@@ -91,16 +91,16 @@ import {model} from '@airma/react-state';
 
 const countingStore = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
-}).createStore(0);
+}).createKey(0);
 ......
 const Increase = memo(()=>{
     // use store.useSelector can share state changes from store,
@@ -130,7 +130,7 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-Using `model(xxx).createStore().asGlobal()` can build a global store.
+Using `model(xxx).createKey().createStore()` can build a global store.
 
 ### Global state management
 
@@ -139,17 +139,16 @@ import {model} from '@airma/react-state';
 
 const countingStore = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
-}).createStore(0).asGlobal();
-// `createStore(0).static()` is same with `createStore(0).asGlobal()`.
+}).createKey(0).createStore();
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -186,16 +185,16 @@ import {model} from '@airma/react-state';
 
 const counting = model(function countingModel(state:number){
     return {
-        count: `mount: ${state}`,
-        increase:()=>count + 1,
-        decrease:()=>count - 1,
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
-            }, count);
+            }, state);
         }
     };
-}).createStore().static();
+}).createKey().createStore();
 // Give initialized state later in component render time.
 ......
 const Increase = memo(()=>{
