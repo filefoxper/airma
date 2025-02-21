@@ -1,4 +1,9 @@
-import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
+import {
+  FunctionComponent,
+  ReactNode,
+  ComponentType,
+  ExoticComponent
+} from 'react';
 
 declare interface AirModelInstance {
   [key: string]: any;
@@ -62,7 +67,7 @@ export declare type ModelKey<R extends AirReducer> = ValidReducer<R> & {
 };
 
 export interface KeyIndex {
-  key: any;
+  key: ModelKey<any>;
 }
 
 export declare function useModel<R extends AirReducer>(
@@ -148,15 +153,15 @@ export declare function useControlledModel<
 
 export declare type ModelKeys =
   | {
-      [key: string]: ModelKey<any> | ModelKeys | KeyIndex;
+      [key: string]: ModelKey<any> | KeyIndex;
     }
   | {
-      [key: number]: ModelKey<any> | ModelKeys | KeyIndex;
+      [key: number]: ModelKey<any> | KeyIndex;
     }
   | ModelKey<any>
   | KeyIndex;
 
-export declare const Provider: FC<
+export declare const Provider: FunctionComponent<
   | {
       value: ModelKeys;
       children?: ReactNode;
@@ -171,7 +176,7 @@ export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
 };
 
-export declare const ConfigProvider: FC<{
+export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
@@ -179,7 +184,7 @@ export declare const ConfigProvider: FC<{
 export declare function provide(
   keys: ModelKeys
 ): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
+  component: ComponentType<P> | ExoticComponent<P>
 ) => typeof component;
 
 export declare function useSelector<
@@ -228,8 +233,7 @@ declare interface StoreUsageApi<R extends AirReducer> {
     call: C,
     equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
   ) => ReturnType<C>;
-  getInstance: () => ValidReducerReturnType<R>;
-  initialize: (state: PickState<R>) => void;
+  instance: (state?: PickState<R>) => ValidReducerReturnType<R>;
 }
 
 declare interface StoreApi<R extends AirReducer> extends KeyIndex {
@@ -237,18 +241,28 @@ declare interface StoreApi<R extends AirReducer> extends KeyIndex {
   with: <M extends ModelKey<AirReducer>>(
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
+  instance: (state?: PickState<R>) => ValidReducerReturnType<R>;
   /**
    * @deprecated
    */
   static: () => StoreUsageApi<R>;
-  createStore: () => StoreUsageApi<R>;
   provide: <P>() => (
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
   provideTo: <P>(
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
-  Provider: FC<{ children?: ReactNode }>;
+  Provider: FunctionComponent<{ children?: ReactNode }>;
+  useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
+  useSignal: (state?: PickState<R>) => SignalHandler<R>;
+  useSelector: <C extends (instance: ReturnType<R>) => any>(
+    call: C,
+    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+  ) => ReturnType<C>;
+}
+
+declare interface KeyApi<R extends AirReducer> extends KeyIndex {
+  key: ModelKey<R>;
   useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
   useSignal: (state?: PickState<R>) => SignalHandler<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(
@@ -261,13 +275,15 @@ declare interface Api<R extends AirReducer> {
   useModel: ModelUsage<R>;
   useSignal: SignalUsage<R>;
   useControlledModel: ControlledModelUsage<R>;
-  /**
-   * @deprecated
-   * @param state
-   */
   createStore: (state?: PickState<R>) => StoreApi<R>;
-  createKey: (state?: PickState<R>) => StoreApi<R>;
+  createKey: (state?: PickState<R>) => KeyApi<R>;
 }
+
+export declare function storeCreation(...args: (ModelKey<any> | KeyIndex)[]): {
+  for: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
+};
 
 export declare const model: {
   <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;

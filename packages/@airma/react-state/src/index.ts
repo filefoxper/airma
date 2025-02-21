@@ -137,14 +137,11 @@ function findConnection<S, T extends AirModelInstance>(
     connection?: Connection<S | undefined, T>;
   }
 ): Connection<S | undefined, T> | undefined {
-  if (m.connection) {
+  if (c == null) {
     return m.connection;
   }
-  if (c == null) {
-    return undefined;
-  }
   const d = c.get(m);
-  if (!d && c.parent) {
+  if (!d) {
     return findConnection(c.parent, m);
   }
   return d as Connection<S | undefined, T> | undefined;
@@ -718,6 +715,23 @@ export const ConfigProvider: FC<{
   return createElement(ConfigContext.Provider, { value }, children);
 };
 
+export function storeCreation(...keys: Array<any>) {
+  return {
+    for: function connect<
+      P extends Record<string, any>,
+      C extends ComponentType<P>
+    >(Comp: C): ComponentType<P> {
+      return function WithModelProviderComponent(props: P) {
+        return createElement(
+          Provider,
+          { value: keys },
+          createElement<P>(Comp as FunctionComponent<P>, props)
+        );
+      };
+    }
+  };
+}
+
 export const model = function model<S, T extends AirModelInstance>(
   reducerLike: AirReducer<S | undefined, T>
 ) {
@@ -758,7 +772,7 @@ export const model = function model<S, T extends AirModelInstance>(
       if (k != null) {
         return k;
       }
-      return hasParams ? createKey(m, state) : createKey(m);
+      return hasParams ? createKey(m, state).static() : createKey(m).static();
     })();
 
     const useApiStoreModel = function useApiStoreModel(s?: S) {
@@ -802,8 +816,16 @@ export const model = function model<S, T extends AirModelInstance>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
 
+    const apiStoreInstance = function apiStoreInstance(s?: S) {
+      if (!arguments.length) {
+        return key.getInstance();
+      }
+      key.initialize(s);
+      return key.getInstance();
+    };
+
     function global() {
-      const staticModelKey = key.static();
+      const staticModelKey = key;
 
       const useApiGlobalModel = function useApiGlobalModel(s?: S) {
         const params = (
@@ -825,12 +847,19 @@ export const model = function model<S, T extends AirModelInstance>(
       ) {
         return useSelector(staticModelKey, c, eq);
       };
+
+      const apiGlobalInstance = function apiGlobalInstance(s?: S) {
+        if (!arguments.length) {
+          return staticModelKey.getInstance();
+        }
+        staticModelKey.initialize(s);
+        return staticModelKey.getInstance();
+      };
       return {
         useModel: useApiGlobalModel,
         useSignal: useApiGlobalSignal,
         useSelector: useApiGlobalSelector,
-        getInstance: staticModelKey.getInstance,
-        initialize: staticModelKey.initialize
+        instance: apiGlobalInstance
       };
     }
 
@@ -840,11 +869,12 @@ export const model = function model<S, T extends AirModelInstance>(
       useModel: useApiStoreModel,
       useSignal: useApiStoreSignal,
       useSelector: useApiStoreSelector,
+      /** @deprecated* */
       static: global,
       provide: apiStoreProvide,
       provideTo: apiStoreProvideTo,
       Provider: ApiStoreProvider,
-      createStore: global
+      instance: apiStoreInstance
     };
 
     const withKeys = function withKeys(
@@ -867,8 +897,52 @@ export const model = function model<S, T extends AirModelInstance>(
     };
   };
 
+  const apiKey = function apiKey(state?: S, k?: FactoryInstance<any>) {
+    const hasParams = arguments.length > 0;
+    const key = (function computeKey() {
+      if (k != null) {
+        return k;
+      }
+      return hasParams ? createKey(m, state) : createKey(m);
+    })();
+
+    const useApiStoreModel = function useApiStoreModel(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useModel(...params);
+    };
+
+    const useApiStoreSignal = function useApiStoreSignal(s?: S) {
+      const params = (arguments.length ? [key, s] : [key]) as [
+        typeof key,
+        (S | undefined)?
+      ];
+      return useSignal(...params);
+    };
+
+    const useApiStoreSelector = function useApiStoreSelector(
+      c: (i: T) => any,
+      eq?: (a: ReturnType<typeof c>, b: ReturnType<typeof c>) => boolean
+    ) {
+      return useSelector(key, c, eq);
+    };
+
+    return {
+      key,
+      useModel: useApiStoreModel,
+      useSignal: useApiStoreSignal,
+      useSelector: useApiStoreSelector
+    };
+  };
+
   function createStoreApi(s?: S) {
     return arguments.length ? apiStore(s) : apiStore();
+  }
+
+  function createKeyApi(s?: S) {
+    return arguments.length ? apiKey(s) : apiKey();
   }
 
   return Object.assign(m, {
@@ -876,7 +950,7 @@ export const model = function model<S, T extends AirModelInstance>(
     useSignal: useApiSignal,
     useControlledModel: useApiControlledModel,
     createStore: createStoreApi,
-    createKey: createStoreApi
+    createKey: createKeyApi
   });
 };
 

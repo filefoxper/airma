@@ -10,7 +10,7 @@ import {
 } from 'react';
 import {
   Provider as ModelProvider,
-  useSelector,
+  storeCreation as storeCreationKeys,
   provide as provideKeys,
   AirReducer,
   SignalHandler,
@@ -847,6 +847,8 @@ export const Provider = ModelProvider;
 
 export const provide = provideKeys;
 
+export const storeCreation = storeCreationKeys;
+
 export { createSessionKey };
 
 export { Strategy } from './strategies';
@@ -875,7 +877,8 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const storeApi = function storeApi(k?: any, keys: any[] = []) {
-    const key = k != null ? k : createSessionKey(sessionCallback, queryType);
+    const key =
+      k != null ? k : createSessionKey(sessionCallback, queryType).static();
     const useStoreApiQuery = function useStoreApiQuery(
       c?: QueryConfig<T, C> | Parameters<C>
     ) {
@@ -921,7 +924,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
     const globalApi = function globalApi() {
-      const globalKey = key.static();
+      const globalKey = key;
       const globalApiHooks = {
         useSession() {
           return useSession(globalKey, queryType);
@@ -947,8 +950,10 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const sessionStoreApi = {
       key,
       with: withKeys,
+      /**
+       * @deprecated
+       */
       static: globalApi,
-      createStore: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
       provide: storeApiProvide,
@@ -960,9 +965,37 @@ const session = function session<T, C extends PromiseCallback<T>>(
       : { ...sessionStoreApi, useMutation: useStoreApiMutation };
   };
 
+  const keyApi = function keyApi() {
+    const key = createSessionKey(sessionCallback, queryType);
+    const useStoreApiQuery = function useStoreApiQuery(
+      c?: QueryConfig<T, C> | Parameters<C>
+    ) {
+      return useQuery(key, c);
+    };
+    const useStoreApiMutation = function useStoreApiMutation(
+      c?: MutationConfig<T, C> | Parameters<C>
+    ) {
+      return useMutation(key, c);
+    };
+    const useStoreApiSession = function useStoreApiSession() {
+      return useSession(key, queryType);
+    };
+    const useStoreApiLoadedSession = function useStoreApiLoadedSession() {
+      return useLoadedSession(key, queryType);
+    };
+    const sessionKeyApi = {
+      key,
+      useSession: useStoreApiSession,
+      useLoadedSession: useStoreApiLoadedSession
+    };
+    return queryType === 'query'
+      ? { ...sessionKeyApi, useQuery: useStoreApiQuery }
+      : { ...sessionKeyApi, useMutation: useStoreApiMutation };
+  };
+
   const api = {
     createStore: storeApi,
-    createKey: storeApi
+    createKey: keyApi
   };
 
   const queryApi = {

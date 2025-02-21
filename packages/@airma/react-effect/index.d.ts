@@ -1,8 +1,6 @@
 import { ModelKeys, ModelKey, AirReducer, KeyIndex } from '@airma/react-state';
 import {
   FunctionComponent,
-  FC,
-  NamedExoticComponent,
   ReactNode,
   ComponentType,
   LazyExoticComponent,
@@ -332,7 +330,7 @@ export declare const useResponse: {
   ) => void;
 };
 
-export declare const Provider: FC<
+export declare const Provider: FunctionComponent<
   | {
       keys: ModelKeys;
       children?: ReactNode;
@@ -352,7 +350,7 @@ export declare type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export declare const ConfigProvider: FC<{
+export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
@@ -453,7 +451,7 @@ export declare const Strategy: {
 export declare function provide(
   keys: ModelKeys
 ): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
+  component: ComponentType<P> | ExoticComponent<P>
 ) => typeof component;
 
 /** new api * */
@@ -493,21 +491,33 @@ declare type UseSessionShort<D extends PromiseCallback<any>> =
 declare type UseLoadedSessionShort<D extends PromiseCallback<any>> =
   () => LoadedSessionResult<D>;
 
+declare interface SessionKeyApi<D extends PromiseCallback<any>>
+  extends KeyIndex {
+  key: ModelKey<any>;
+  useSession: UseSessionShort<D>;
+  useLoadedSession: UseLoadedSessionShort<D>;
+}
+
 declare interface SessionStoreApi<D extends PromiseCallback<any>>
   extends KeyIndex {
-  key: SessionKey<D>;
+  key: ModelKey<any>;
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
   with: <M extends ModelKey<AirReducer>>(
     ...key: ({ key: M } | M)[]
   ) => SessionStoreApi<D>;
   provide: <P>() => (
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
   provideTo: <P>(
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
-  Provider: FC<{ children?: ReactNode }>;
+  Provider: FunctionComponent<{ children?: ReactNode }>;
+}
+
+declare interface QueryKeyApi<D extends PromiseCallback<any>>
+  extends SessionKeyApi<D> {
+  useQuery: UseQueryShort<D>;
 }
 
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
@@ -521,11 +531,11 @@ declare interface QueryStoreApi<D extends PromiseCallback<any>>
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
   };
-  createStore: () => {
-    useQuery: UseQueryShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
+}
+
+declare interface MutationKeyApi<D extends PromiseCallback<any>>
+  extends SessionKeyApi<D> {
+  useMutation: UseMutationShort<D>;
 }
 
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
@@ -539,11 +549,6 @@ declare interface MutationStoreApi<D extends PromiseCallback<any>>
     useSession: UseSessionShort<D>;
     useLoadedSession: UseLoadedSessionShort<D>;
   };
-  createStore: () => {
-    useMutation: UseMutationShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
 }
 
 export declare function session<D extends PromiseCallback<any>>(
@@ -552,11 +557,8 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useQuery: UseQueryShort<D>;
-  /**
-   * @deprecated
-   */
   createStore: () => QueryStoreApi<D>;
-  createKey: () => QueryStoreApi<D>;
+  createKey: () => QueryKeyApi<D>;
 };
 export declare function session<D extends PromiseCallback<any>>(
   sessionCallback: D,
@@ -564,9 +566,12 @@ export declare function session<D extends PromiseCallback<any>>(
 ): {
   (...p: Parameters<D>): ReturnType<D>;
   useMutation: UseMutationShort<D>;
-  /**
-   * @deprecated
-   */
   createStore: () => MutationStoreApi<D>;
-  createKey: () => MutationStoreApi<D>;
+  createKey: () => MutationKeyApi<D>;
+};
+
+export declare function storeCreation(...args: (ModelKey<any> | KeyIndex)[]): {
+  for: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
 };

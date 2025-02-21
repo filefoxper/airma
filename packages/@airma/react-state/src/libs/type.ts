@@ -140,8 +140,16 @@ export type Creation = {
   creation(updateConfig?: UpdaterConfig): Connection;
 };
 
+export type FactoryKey<T extends AirReducer<any, any>> = T & {
+  creation(updateConfig?: UpdaterConfig): Connection;
+  payload?: unknown;
+  isFactory: () => true;
+};
+
 export type StaticFactoryInstance<T extends AirReducer<any, any>> = T & {
+  key: FactoryKey<T>;
   connection: Connection;
+  creation(updateConfig?: UpdaterConfig): Connection;
   payload?: unknown;
   static: () => StaticFactoryInstance<T>;
   isFactory: () => true;

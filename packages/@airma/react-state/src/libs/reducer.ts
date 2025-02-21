@@ -639,13 +639,27 @@ export function checkIfLazyIdentifyConnection(
 }
 
 export function staticFactory<T extends AirReducer<any, any>>(
-  reducer: FactoryInstance<T>
+  reducer: FactoryInstance<T>,
+  state?: T extends AirReducer<infer S, any> ? S : never,
+  lazy?: boolean
 ): StaticFactoryInstance<T> {
   const replaceModel: StaticFactoryInstance<T> = function replaceModel(s: any) {
     return reducer(s);
   } as StaticFactoryInstance<T>;
+  replaceModel.key = reducer;
   replaceModel.payload = reducer.payload;
   replaceModel.connection = reducer.creation();
+  replaceModel.creation = function creation(
+    updaterConfig?: UpdaterConfig
+  ): Connection {
+    if (lazy) {
+      const lazyReducer = (s: any) => {
+        return { [lazyIdentifyKey]: lazyIdentify } as ReturnType<T>;
+      };
+      return createModel(lazyReducer, undefined, updaterConfig) as Connection;
+    }
+    return createModel(replaceModel, state, updaterConfig);
+  };
   replaceModel.static = function self() {
     return replaceModel;
   };
@@ -653,12 +667,16 @@ export function staticFactory<T extends AirReducer<any, any>>(
   replaceModel.getInstance = function getInstance() {
     return replaceModel.connection.getCurrent() as ReturnType<T>;
   };
-  replaceModel.initialize = function initialize(state: Parameters<T>[0]) {
+  replaceModel.initialize = function initialize(s: Parameters<T>[0]) {
     const { connection } = replaceModel;
     const needInitializeScopeConnection =
       connection != null && connection.getCacheState() == null;
     if (needInitializeScopeConnection) {
-      connection.update(reducer, { state, cache: true, ignoreDispatch: true });
+      connection.update(reducer, {
+        state: s,
+        cache: true,
+        ignoreDispatch: true
+      });
     }
   };
   return replaceModel as StaticFactoryInstance<T>;
@@ -684,7 +702,7 @@ export function factory<T extends AirReducer<any, any>>(
     return createModel(replaceModel, state, updaterConfig);
   };
   replaceModel.static = function staticFactoryForModel() {
-    return staticFactory<T>(replaceModel as FactoryInstance<T>);
+    return staticFactory<T>(replaceModel as FactoryInstance<T>, state, lazy);
   };
   replaceModel.isFactory = function isFactory() {
     return true;

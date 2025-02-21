@@ -7,19 +7,19 @@ import React, {
   useState
 } from 'react';
 import {
-  createKey,
-  useModel,
-  useSelector,
-  createSessionKey,
-  provide,
-  Strategy,
-  useIsFetching,
-  useMutation,
-  useQuery,
-  useSession,
-  useUpdate,
-  useResponse,
-  useControlledModel
+    createKey,
+    useModel,
+    useSelector,
+    createSessionKey,
+    provide,
+    Strategy,
+    useIsFetching,
+    useMutation,
+    useQuery,
+    useSession,
+    useUpdate,
+    useResponse,
+    useControlledModel, storeCreation
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
@@ -155,7 +155,7 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createKey().createStore();
+  .createStore();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
@@ -313,16 +313,14 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
   );
 })
 
-store.initialize({
+store.instance({
     valid: defaultCondition,
     display: defaultCondition,
     creating: false
-});
+}).changeDisplay({...defaultCondition,name:''});
+store.instance().submit();
 
-store.getInstance().changeDisplay({...defaultCondition,name:''});
-store.getInstance().submit();
-
-export default provide([fetchSession])(function App() {
+export default storeCreation(fetchSession).for(function App() {
   const conditionSignal = store.useSignal();
   const { queryData, creating, cancel } = store.useSelector(
     s => pick(s, 'queryData', 'creating', 'cancel'),
