@@ -266,7 +266,7 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
     store.useModel();
 
   const isFetching = useIsFetching();
-  const [,,execute] = fetchSession.useQuery();
+  const [,,execute] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -295,7 +295,7 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
       <button type="button" style={{ marginLeft: 12 }} onClick={() => submit()}>
         query
       </button>
-      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute({name:'Mr',username:''})}>
+      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute.payload('trigger')({name:'Mr',username:''})}>
         trigger
       </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
@@ -335,13 +335,17 @@ export default storeCreation(fetchSession).for(function App() {
   const querySession = fetchSession.useQuery({
     variables: [queryData.get()],
     defaultData: [],
+    payload:'effect',
     strategy: [
       Strategy.cache({ capacity: 10 }),
+        Strategy.response.success((data, sessionData)=>{
+            console.log('query payload',sessionData.payload)
+        }),
       Strategy.response.failure(e => {
         console.log('error', e);
         // throw e;
       })
-    ]
+    ],
   });
 
   const [queryState] = querySession;

@@ -58,6 +58,7 @@ export type TriggerType = 'mount' | 'update' | 'manual';
 export type PromiseData<T = any> = {
   data?: T | undefined;
   variables: any[];
+  payload: unknown | undefined;
   error?: any;
   isError?: boolean;
 };
@@ -68,6 +69,7 @@ export interface AbstractSessionState {
   data: unknown;
   stale?: { data: unknown };
   variables: any[] | undefined;
+  payload?: unknown;
   error?: any;
   isError: boolean;
   isFetching: boolean;
@@ -174,6 +176,7 @@ export type QueryConfig<T, C extends PromiseCallback<T>> = {
   strategy?: StrategyCollectionType<T>;
   loaded?: boolean;
   manual?: boolean;
+  payload?: unknown;
   experience?: 'next';
 };
 
@@ -184,6 +187,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
   loaded?: boolean;
+  payload?: unknown;
   experience?: 'next';
 };
 
@@ -246,8 +250,8 @@ export type PromiseHolder = {
 };
 
 export interface Execution {
-  trigger: () => boolean;
-  execute: (...args: any[]) => boolean;
+  trigger: (payload: unknown | undefined) => boolean;
+  execute: (payload: unknown | undefined, ...args: any[]) => boolean;
 }
 
 export interface Tunnel {

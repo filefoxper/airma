@@ -98,6 +98,7 @@ export function useStrategyExecution<T>(
   signal: SignalHandler<typeof effectModel>,
   sessionRunner: (
     triggerType: TriggerType,
+    payload: unknown | undefined,
     variables: any[]
   ) => Promise<SessionState<T>>,
   config: QueryConfig<T, any>
@@ -118,7 +119,11 @@ export function useStrategyExecution<T>(
     .filter((e): e is StrategyEffect<any> => !!e);
 
   return [
-    function callWithStrategy(triggerType: TriggerType, variables?: any[]) {
+    function callWithStrategy(
+      triggerType: TriggerType,
+      payload: unknown | undefined,
+      variables?: any[]
+    ) {
       const runtimeVariables = variables || [];
       const runner = function runner(
         setSessionState?: (s: SessionState<T>) => SessionState<T>
@@ -134,7 +139,7 @@ export function useStrategyExecution<T>(
             triggerType
           });
         }
-        return sessionRunner(triggerType, runtimeVariables);
+        return sessionRunner(triggerType, payload, runtimeVariables);
       };
       const requires = {
         getSessionState: () => {

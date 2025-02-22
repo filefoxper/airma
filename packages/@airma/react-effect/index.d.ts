@@ -13,6 +13,7 @@ declare type SessionType = 'query' | 'mutation';
 
 declare interface AbstractSessionState {
   data: unknown;
+  payload?: unknown;
   stale?: { data: unknown };
   error?: any;
   isError: boolean;
@@ -122,6 +123,7 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
   manual?: boolean;
+  payload?: unknown;
   experience?: 'next';
 };
 
@@ -144,6 +146,7 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
+  payload?: unknown;
   experience?: 'next';
 };
 
@@ -179,18 +182,42 @@ declare type LoadedSessionResult<
   D extends PromiseCallback<any> | SessionKey<any>
 > = [
   LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
-  () => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>,
-  (
-    ...variables: Parameters<MCC<D>>
-  ) => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>
+  {
+    (): Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>;
+    payload: (
+      payloadData: unknown | undefined
+    ) => () => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>;
+  },
+  {
+    (...variables: Parameters<MCC<D>>): Promise<
+      LoadedSessionState<PCR<D>, Parameters<MCC<D>>>
+    >;
+    payload: (
+      payloadData: unknown | undefined
+    ) => (
+      ...variables: Parameters<MCC<D>>
+    ) => Promise<LoadedSessionState<PCR<D>, Parameters<MCC<D>>>>;
+  }
 ];
 
 declare type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
   SessionState<PCR<D>, Parameters<MCC<D>>>,
-  () => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>,
-  (
-    ...variables: Parameters<MCC<D>>
-  ) => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>
+  {
+    (): Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>;
+    payload: (
+      payloadData: unknown | undefined
+    ) => () => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>;
+  },
+  {
+    (...variables: Parameters<MCC<D>>): Promise<
+      SessionState<PCR<D>, Parameters<MCC<D>>>
+    >;
+    payload: (
+      payloadData: unknown | undefined
+    ) => (
+      ...variables: Parameters<MCC<D>>
+    ) => Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>;
+  }
 ];
 
 declare type AbstractSessionResult = [
