@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { SignalHandler } from '@airma/react-state';
+import { Signal } from '@airma/react-state';
 import {
   QueryConfig,
   SessionState,
@@ -95,7 +95,7 @@ function createRuntimeCache() {
 }
 
 export function useStrategyExecution<T>(
-  signal: SignalHandler<typeof effectModel>,
+  signal: Signal<typeof effectModel>,
   sessionRunner: (
     triggerType: TriggerType,
     payload: unknown | undefined,

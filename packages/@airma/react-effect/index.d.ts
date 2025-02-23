@@ -1,4 +1,9 @@
-import { ModelKeys, ModelKey, AirReducer, KeyIndex } from '@airma/react-state';
+import {
+  ModelKeys,
+  ModelKey,
+  ModelLike,
+  ModelCreation
+} from '@airma/react-state';
 import {
   FunctionComponent,
   ReactNode,
@@ -90,16 +95,18 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { version?: number }) => {
-    state: SessionState;
-    version: number;
-    setState: (s: SessionState) => SessionState & { version?: number };
-    trigger: () => SessionState & { version?: number };
-  }
-> & {
+export declare interface SessionKey<
+  E extends PromiseCallback<any>
+> extends ModelKey<
+    (st: SessionState & { version?: number }) => {
+      state: SessionState;
+      version: number;
+      setState: (s: SessionState) => SessionState & { version?: number };
+      trigger: () => SessionState & { version?: number };
+    }
+  > {
   payload: [E, { sessionType?: SessionType }];
-};
+}
 
 export declare interface QuerySessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
@@ -164,22 +171,33 @@ declare type DefaultMutationConfig<
       }
   );
 
-declare type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
-  T extends PromiseCallback<infer R>
-    ? R
-    : T extends SessionKey<infer C>
-    ? PCR<C>
-    : never;
+declare interface SessionCreation<E extends PromiseCallback<any>>
+  extends ModelCreation {
+  key: SessionKey<E>;
+}
 
-declare type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
-  T extends PromiseCallback<any>
-    ? T
-    : T extends SessionKey<infer C>
-    ? C
-    : never;
+declare type PCR<
+  T extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
+> = T extends PromiseCallback<infer R>
+  ? R
+  : T extends SessionKey<infer C>
+  ? PCR<C>
+  : T extends SessionCreation<infer L>
+  ? PCR<L>
+  : never;
+
+declare type MCC<
+  T extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
+> = T extends PromiseCallback<any>
+  ? T
+  : T extends SessionKey<infer C>
+  ? C
+  : T extends SessionCreation<infer L>
+  ? L
+  : never;
 
 declare type LoadedSessionResult<
-  D extends PromiseCallback<any> | SessionKey<any>
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
 > = [
   LoadedSessionState<PCR<D>, Parameters<MCC<D>>>,
   {
@@ -200,7 +218,9 @@ declare type LoadedSessionResult<
   }
 ];
 
-declare type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
+declare type SessionResult<
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
+> = [
   SessionState<PCR<D>, Parameters<MCC<D>>>,
   {
     (): Promise<SessionState<PCR<D>, Parameters<MCC<D>>>>;
@@ -227,26 +247,26 @@ declare type AbstractSessionResult = [
 ];
 
 export declare function useQuery<
-  D extends PromiseCallback<any> | SessionKey<any>
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
 >(
   callback: D,
   config: DefaultQueryConfig<PCR<D>, MCC<D>>
 ): D extends MutationSessionKey<any> ? never : LoadedSessionResult<D>;
 export declare function useQuery<
-  D extends PromiseCallback<any> | SessionKey<any>
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
 >(
   callback: D,
   config?: QueryConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
 ): D extends MutationSessionKey<any> ? never : SessionResult<D>;
 
 export declare function useMutation<
-  D extends PromiseCallback<any> | SessionKey<any>
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
 >(
   callback: D,
   config: DefaultMutationConfig<PCR<D>, MCC<D>>
 ): D extends QuerySessionKey<any> ? never : LoadedSessionResult<D>;
 export declare function useMutation<
-  D extends PromiseCallback<any> | SessionKey<any>
+  D extends PromiseCallback<any> | SessionKey<any> | SessionCreation<any>
 >(
   callback: D,
   config?: MutationConfig<PCR<D>, MCC<D>> | Parameters<MCC<D>>
@@ -264,24 +284,25 @@ declare interface UnloadedUseSessionConfig extends UseSessionConfig {
   loaded?: false;
 }
 
-export declare function useSession<D extends SessionKey<any>>(
-  sessionKey: D,
-  config: LoadedUseSessionConfig
-): LoadedSessionResult<D>;
-export declare function useSession<D extends SessionKey<any>>(
-  sessionKey: D,
-  config: SessionType
-): SessionResult<D>;
-export declare function useSession<D extends SessionKey<any>>(
-  sessionKey: D,
-  config?: UnloadedUseSessionConfig
-): SessionResult<D>;
-export declare function useSession<D extends SessionKey<any>>(
+export declare function useSession<
+  D extends SessionKey<any> | SessionCreation<any>
+>(sessionKey: D, config: LoadedUseSessionConfig): LoadedSessionResult<D>;
+export declare function useSession<
+  D extends SessionKey<any> | SessionCreation<any>
+>(sessionKey: D, config: SessionType): SessionResult<D>;
+export declare function useSession<
+  D extends SessionKey<any> | SessionCreation<any>
+>(sessionKey: D, config?: UnloadedUseSessionConfig): SessionResult<D>;
+export declare function useSession<
+  D extends SessionKey<any> | SessionCreation<any>
+>(
   sessionKey: D,
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): SessionResult<D>;
 
-export declare function useLoadedSession<D extends SessionKey<any>>(
+export declare function useLoadedSession<
+  D extends SessionKey<any> | SessionCreation<any>
+>(
   sessionKey: D,
   config?: UseSessionConfig | SessionType
 ): LoadedSessionResult<D>;
@@ -519,18 +540,16 @@ declare type UseLoadedSessionShort<D extends PromiseCallback<any>> =
   () => LoadedSessionResult<D>;
 
 declare interface SessionKeyApi<D extends PromiseCallback<any>>
-  extends KeyIndex {
-  key: ModelKey<any>;
+  extends SessionCreation<D> {
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
 }
 
 declare interface SessionStoreApi<D extends PromiseCallback<any>>
-  extends KeyIndex {
-  key: ModelKey<any>;
+  extends SessionCreation<D> {
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
-  with: <M extends ModelKey<AirReducer>>(
+  with: <M extends ModelKey<ModelLike>>(
     ...key: ({ key: M } | M)[]
   ) => SessionStoreApi<D>;
   provide: <P>() => (
@@ -597,7 +616,9 @@ export declare function session<D extends PromiseCallback<any>>(
   createKey: () => MutationKeyApi<D>;
 };
 
-export declare function storeCreation(...args: (ModelKey<any> | KeyIndex)[]): {
+export declare function storeCreation(
+  ...args: (ModelKey<any> | ModelCreation)[]
+): {
   for: <P extends Record<string, any>>(
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;

@@ -362,7 +362,9 @@ function watch<S, T extends AirModelInstance>(
 }
 
 function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>,
+  modelLike:
+    | AirReducer<S | undefined, T>
+    | { key: AirReducer<S | undefined, T> },
   state?: D,
   option?: {
     required?: boolean;
@@ -370,6 +372,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     useDefaultState?: boolean;
   }
 ): [S | undefined, T, (s: S | undefined) => void, () => T] {
+  const model = typeof modelLike === 'function' ? modelLike : modelLike.key;
   const defaultOpt = {
     required: false
   };
@@ -566,16 +569,7 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
 }
 
 function useTupleModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>,
-  state: D,
-  option?: {
-    required?: boolean;
-    signal?: boolean;
-    useDefaultState?: boolean;
-  }
-): [S, T, () => T];
-function useTupleModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>,
+  model: AirReducer<S | undefined, T> | { key: AirReducer<S | undefined, T> },
   state?: D,
   option?: {
     required?: boolean;
@@ -589,14 +583,7 @@ function useTupleModel<S, T extends AirModelInstance, D extends S>(
 }
 
 export function useModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>
-): T;
-export function useModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S, T>,
-  state: D
-): T;
-export function useModel<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>,
+  model: AirReducer<S | undefined, T> | { key: AirReducer<S | undefined, T> },
   state?: D
 ): T {
   const useDefaultState = arguments.length > 1;
@@ -607,7 +594,7 @@ export function useModel<S, T extends AirModelInstance, D extends S>(
 }
 
 export function useSignal<S, T extends AirModelInstance, D extends S>(
-  model: AirReducer<S | undefined, T>,
+  model: AirReducer<S | undefined, T> | { key: AirReducer<S | undefined, T> },
   state?: D
 ): () => T {
   const useDefaultState = arguments.length > 1;
@@ -625,14 +612,16 @@ export function useSelector<
   R extends AirReducer<any, any>,
   C extends (instance: ReturnType<R>) => any
 >(
-  factoryModel: R,
+  factoryModel: R | { key: R },
   callback: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {
+  const key =
+    typeof factoryModel === 'function' ? factoryModel : factoryModel.key;
   const { batchUpdate } = useOptimize();
   const context = useContext(ReactStateContext);
   const runtime = useInstanceActionRuntime();
-  const connection = findConnection(context, factoryModel);
+  const connection = findConnection(context, key);
   if (!connection) {
     throw new Error(requiredError('useSelector'));
   }

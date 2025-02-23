@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import {
     createKey,
-    useModel,
+    useSignal,
     useSelector,
     createSessionKey,
     provide,
@@ -98,16 +98,16 @@ export const fetchSession = session(userQuery, 'query').createKey();
 
 export const saveSession = session(userSave, 'mutation');
 
-const test = model((state: number) => {
+const test = (state: number) => {
   return {
     state,
     add() {
       return state + 1;
     }
   };
-})
-  .createStore(0)
-  .static();
+};
+
+const testKey = createKey(test)
 
 const counting = (state: number) => {
   return {
@@ -320,9 +320,9 @@ store.instance({
 }).changeDisplay({...defaultCondition,name:''});
 store.instance().submit();
 
-export default storeCreation(fetchSession).for(function App() {
-  const conditionSignal = store.useSignal();
-  const { queryData, creating, cancel } = store.useSelector(
+export default storeCreation(fetchSession,test).for(function App() {
+  const conditionSignal = useSignal(store);
+  const { queryData, creating, cancel } = useSelector(store,
     s => pick(s, 'queryData', 'creating', 'cancel'),
     shallowEqual
   );
@@ -332,7 +332,7 @@ export default storeCreation(fetchSession).for(function App() {
       console.log('signal creating', ins.creating);
     });
 
-  const querySession = fetchSession.useQuery({
+  const querySession = useQuery(fetchSession,{
     variables: [queryData.get()],
     defaultData: [],
     payload:'effect',

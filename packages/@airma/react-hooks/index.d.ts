@@ -6,7 +6,7 @@ import {
 } from 'react';
 import {
   GlobalConfig as StateGlobalConfig,
-  KeyIndex,
+  ModelCreation,
   ModelKey,
   ModelKeys
 } from '@airma/react-state';
@@ -49,7 +49,7 @@ export declare const Provider: FunctionComponent<{
   children?: ReactNode;
 }>;
 
-export declare function storeCreation(...args: (ModelKey<any> | KeyIndex)[]): {
+export declare function storeCreation(...args: (ModelKey<any> | ModelCreation)[]): {
   for: <P extends Record<string, any>>(
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;

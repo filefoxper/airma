@@ -12,8 +12,8 @@ import {
   Provider as ModelProvider,
   storeCreation as storeCreationKeys,
   provide as provideKeys,
-  AirReducer,
-  SignalHandler,
+  ModelLike,
+  Signal,
   useSignal
 } from '@airma/react-state';
 import {
@@ -108,7 +108,7 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  signal: SignalHandler<SessionKey<C>>
+  signal: Signal<SessionKey<C>>
 ): Controller {
   function getController() {
     const payload = signal.getConnection().getPayload();
@@ -558,13 +558,15 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 }
 
 export function useQuery<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  sessionLike: C | SessionKey<C> | { key: SessionKey<C> },
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const callback =
+    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
   const con = parseConfig(callback, 'query', config);
   const {
     variables,
@@ -599,13 +601,15 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  sessionLike: C | SessionKey<C> | { key: SessionKey<C> },
   config?: MutationConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const callback =
+    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
   const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
@@ -632,13 +636,15 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
-  sessionKey: SessionKey<C>,
+  sessionKeyLike: SessionKey<C> | { key: SessionKey<C> },
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const sessionKey =
+    typeof sessionKeyLike === 'function' ? sessionKeyLike : sessionKeyLike.key;
   const [, padding] = sessionKey.payload;
   const { sessionType: sessionKeyType } = padding;
   const signal = useSignal(sessionKey);
@@ -830,7 +836,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 }
 
 export function useLoadedSession<T, C extends PromiseCallback<T>>(
-  sessionKey: SessionKey<C>,
+  sessionKey: SessionKey<C> | { key: SessionKey<C> },
   config?: { sessionType?: SessionType } | SessionType
 ): [
   SessionState<T>,
@@ -976,9 +982,9 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const withKeys = function withKeys(
       ...stores: (
         | {
-            key: AirReducer;
+            key: ModelLike;
           }
-        | AirReducer
+        | ModelLike
       )[]
     ) {
       const nks = keys.concat(
