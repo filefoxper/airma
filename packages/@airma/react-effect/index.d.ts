@@ -566,22 +566,32 @@ declare interface QueryKeyApi<D extends PromiseCallback<any>>
   useQuery: UseQueryShort<D>;
 }
 
+declare interface StaticQuery<D extends PromiseCallback<any>>
+  extends SessionCreation<D> {
+  useQuery: UseQueryShort<D>;
+  useSession: UseSessionShort<D>;
+  useLoadedSession: UseLoadedSessionShort<D>;
+}
+
 declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
   /**
    * @deprecated
    */
-  static: () => {
-    useQuery: UseQueryShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
+  static: () => StaticQuery<D>;
 }
 
 declare interface MutationKeyApi<D extends PromiseCallback<any>>
   extends SessionKeyApi<D> {
   useMutation: UseMutationShort<D>;
+}
+
+declare interface StaticMutation<D extends PromiseCallback<any>>
+  extends SessionCreation<D> {
+  useMutation: UseMutationShort<D>;
+  useSession: UseSessionShort<D>;
+  useLoadedSession: UseLoadedSessionShort<D>;
 }
 
 declare interface MutationStoreApi<D extends PromiseCallback<any>>
@@ -590,11 +600,7 @@ declare interface MutationStoreApi<D extends PromiseCallback<any>>
   /**
    * @deprecated
    */
-  static: () => {
-    useMutation: UseMutationShort<D>;
-    useSession: UseSessionShort<D>;
-    useLoadedSession: UseLoadedSessionShort<D>;
-  };
+  static: () => StaticMutation<D>;
 }
 
 export declare function session<D extends PromiseCallback<any>>(

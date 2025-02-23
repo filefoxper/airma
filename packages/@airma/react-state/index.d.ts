@@ -209,7 +209,7 @@ declare type ControlledModelUsage<R extends ModelLike> = (
   onChange: (value: PickState<R>) => any
 ) => Instance<R>;
 
-declare interface StoreUsageApi<R extends ModelLike> {
+declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R>{
   useModel: (state?: PickState<R>) => Instance<R>;
   useSignal: (state?: PickState<R>) => Signal<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(

@@ -845,6 +845,7 @@ export const model = function model<S, T extends AirModelInstance>(
         return staticModelKey.getInstance();
       };
       return {
+        key,
         useModel: useApiGlobalModel,
         useSignal: useApiGlobalSignal,
         useSelector: useApiGlobalSelector,

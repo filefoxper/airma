@@ -155,7 +155,7 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createStore();
+  .createStore().static();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
@@ -320,7 +320,7 @@ store.instance({
 }).changeDisplay({...defaultCondition,name:''});
 store.instance().submit();
 
-export default storeCreation(fetchSession,test).for(function App() {
+export default provide([fetchSession,test])(function App() {
   const conditionSignal = useSignal(store);
   const { queryData, creating, cancel } = useSelector(store,
     s => pick(s, 'queryData', 'creating', 'cancel'),

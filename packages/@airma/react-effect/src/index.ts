@@ -1010,6 +1010,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const globalApi = function globalApi() {
       const globalKey = key;
       const globalApiHooks = {
+        key,
         useSession() {
           return useSession(globalKey, queryType);
         },
