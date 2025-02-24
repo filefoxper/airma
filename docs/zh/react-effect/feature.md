@@ -15,7 +15,7 @@ const fetchUserRelationShips = async (): Promise<RelationShip[]> =>{
     return ......
 };
 
-const queryStore = session(fetchUserRelationShips, 'query').createStore().asGlobal();
+const queryStore = session(fetchUserRelationShips, 'query').createStore();
 
 // 公共组件
 export const RelationShipSelector = (props: Props)=>{
@@ -79,38 +79,8 @@ const countKey = createKey((count: number)=>{
 const querySessionKey = createSessionKey(fetchUsers, 'query');
 
 // 模型键和会话键可整合在一起使用
-const keys = {count:countKey,query:querySessionKey};
-
 // provide API 互通，可从两个工具库中任选
-const Component = provide(keys)(()=>{
-    return ......;
-});
-```
-
-session API 和 model API 的互通：
-
-```ts
-import {model} from '@airma/react-state';
-import {session} from '@airma/react-effect';
-
-// 模型动态库
-const countStore = model((count: number)=>{
-    return {
-        count,
-        increase:()=>count+1,
-        decrease:()=>count-1
-    }
-}).createStore(0);
-
-// 会话动态库
-const queryStore = session(fetchUsers, 'query').createStore();
-
-const saveStore = session(saveUser, 'mutation').createStore();
-
-// 使用任意类型库的 .with 方法联合都可以
-const store = countStore.with(queryStore,saveStore);
-
-const Component = store.provideTo(()=>{
+const Component = provide(countKey, querySessionKey).to(()=>{
     return ......;
 });
 ```

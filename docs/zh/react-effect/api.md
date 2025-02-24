@@ -105,8 +105,8 @@ React Node
 Provider 的高阶组件模式
 
 ```ts
-function provide(keys){
-    return function connect(Component){
+function provide(...keys){
+    const connect = function connect(Component){
         return function HocComponent(componentProps){
             return (
                 <Provider keys={keys}>
@@ -114,22 +114,33 @@ function provide(keys){
                 </Provider>
             );
         }
-    }
+    };
+    connect.to =  function to(Component){
+        return function HocComponent(componentProps){
+            return (
+                <Provider keys={keys}>
+                  <Component {...componentProps}/>
+                </Provider>
+            );
+        }
+    };
+    return connect;
 }
 ```
+
+### 参数
+
+* keys - 会话键
+  
+### 返回
+
+生成 Provider 的高阶组件
 
 ## useSession
 
 用于订阅库会话状态变更的 React hook API，也可用于人工触发同键会话执行。
 
 ```ts
-function useSession(sessionKey):[sessionState, trigger]
-```
-
-自 **@airma/react-effect v18.3.2** 开始，useSession 支持使用 execute 传参执行方法。
-
-```ts
-// v18.3.2
 function useSession(sessionKey):[sessionState, trigger, execute]
 ```
 
@@ -139,7 +150,7 @@ function useSession(sessionKey):[sessionState, trigger, execute]
 
 ### 返回
 
-元组 `[sessionState, trigger, execute@18.3.2]`
+元组 `[sessionState, trigger, execute]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)
 * **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)，不能传参，只能触发。
@@ -150,13 +161,6 @@ function useSession(sessionKey):[sessionState, trigger, execute]
 确认会话已加载（至少成功运行过一次）时，可用该 API 代替 useSession。功能与 useSession 一致，但返回的会话状态数据与异步函数返回数据类型完全一致，且会话状态的 loaded 字段恒为 true。
 
 ```ts
-function useLoadedSession(sessionKey):[sessionState, trigger]
-```
-
-自 **@airma/react-effect v18.3.2** 开始，useLoadedSession 支持使用 execute 传参执行方法。
-
-```ts
-// v18.3.2
 function useLoadedSession(sessionKey):[sessionState, trigger, execute]
 ```
 
@@ -166,7 +170,7 @@ function useLoadedSession(sessionKey):[sessionState, trigger, execute]
 
 ### 返回
 
-元组 `[sessionState, trigger, execute@18.3.2]`
+元组 `[sessionState, trigger, execute]`
 
 * **sessionState** - [会话状态](/zh/react-effect/concepts?id=会话状态)，sessionState.data 类型与异步函数返回数据类型相同，且 sessionState.loaded 为 true。
 * **trigger** - [会话触发器](/zh/react-effect/concepts?id=触发和执行)
@@ -224,10 +228,10 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 #### 参数
 
-* **op.key** - 可选回调函数。用于生成当前异步操作的键，可接受当前运行的 variables 做参数。如不设置，默认以每次运行时的 variables 异步函数参数的 *JSON.Stringify* 值做键。
+* **op.key** - 可选回调函数。用于生成当前异步操作的键，可接受当前运行的 variables 做参数。如不设置，默认以每次运行时 variables 的 *JSON.Stringify* 值做键。
 * **op.staleTime** - 可选时间，单位毫秒。用于设置单条记录缓存有效期。每次异步操作，策略会删除过期缓存记录。
 * **op.capacity** - 可选数字，缓存记录容量。当缓存记录数大于等于设定容量时，策略会清除早期记录以满足容量限定，默认值为 1。
-* **op.static** - 可选，boolean 类型。用于设置是否为静态缓存。静态缓存不会被清除，且缓存记录值不会被更新。
+* **op.static** - 可选，boolean 类型。用于设置是否为静态缓存。静态缓存不会被清除，若缓存值存在，页不会执行异步函数，相当于设置了一个无限期的 staleTime。
 
 ### Strategy.debounce
 
@@ -258,6 +262,7 @@ SWR 缓存策略。该策略可以为每次异步操作生成缓存键，并通�
 
 ```ts
 const globalConfig = {  
+  // 开启体验 18.6.0 版本特性
   experience: 'next',
   strategy: (workingStrategies: StrategyType[])=>{
     return [
@@ -269,7 +274,21 @@ const globalConfig = {
     ];
   }
 }
-<ConfigProvider value={globalConfig}>{...}</ConfigProvider>
+
+const Child = ()=>{
+  useQuery(promiseCallback,{
+    variables: [],
+    strategy: Strategy.failure((e)=>{
+      if(e.code !== 'xxx'){
+        // 可向兜底策略抛出异常
+        throw e;
+      }
+      message.error(e);
+    })
+  })
+};
+
+<ConfigProvider value={globalConfig}>{...}<Child/></ConfigProvider>
 ```
 
 #### 参数
@@ -404,10 +423,7 @@ function useIsFetching(
 ```ts
 type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
-  /**
-   * @deprecated 已废弃 
-   **/
-  useGlobalFetching?: boolean;
+  experience?: 'next';
   strategy?:(
     strategies:(StrategyType | undefined | null)[], 
     type: 'query' | 'mutation'
@@ -528,6 +544,14 @@ useResponse((s)=>{
     processSuccess(s.data);
   }
 }, sessionState);
+
+useResponse((s)=>{
+  if(s.isError){
+    processError(s.error)
+  }else{
+    processSuccess(s.data);
+  }
+}, [sessionState, {watchOnly:true}]); // 只处理响应事件
 ```
 
 useResponse 的子 API:
@@ -597,6 +621,17 @@ useResponse.useFailure((err)=>{
 用于包装声明会话的函数 API。该API可封装一个异步函数，并返回一个针对会话的常用API集合。
 
 ```ts
+type KeyApi = {
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
 type StaticStoreApi = {
   useQuery(
     variablesOrConfig
@@ -611,7 +646,6 @@ type StaticStoreApi = {
 type StoreApi = {
   /** @deprecated **/
   static(): StaticStoreApi;
-  createStore():StaticStoreApi;
   provideTo<P extends object>(
     component: ComponentType<P>
   ):ComponentType<P>;
@@ -631,9 +665,8 @@ type StoreApi = {
 };
 
 type Api = {
-  /** @deprecated **/
   createStore():StoreApi;
-  createKey():StoreApi;
+  createKey():KeyApi;
   useQuery(
     variablesOrConfig
   ):[sessionState, trigger, execute];

@@ -82,7 +82,7 @@ const {xxx} = useSelector(modelKey, (instance)=>pick(instance,['xxx']), shallowE
 
 ## createKey 与 provide
 
-API [provide](/zh/react-state/api?id=provide) 用于提供使用动态库所需的 [Provider](/zh/react-state/api?id=provider) 外包装组件环境。
+API [provide](/zh/react-state/api?id=provide) 用于提供创建和使用动态库所需的 [Provider](/zh/react-state/api?id=provider) 外包装组件环境。
 
 ```ts
 /**
@@ -92,6 +92,7 @@ API [provide](/zh/react-state/api?id=provide) 用于提供使用动态库所需�
  * @returns WrappedComponent 被 Provider 组件包囊后的组件
  **/
 const WrappedComponent = provide(modelKeys)(Component)
+const WrappedComponent = provide(modelKeys).to(Component)
 ```
 
 API [createKey](/zh/react-state/api?id=createkey) 可以为**模型**生成[键](/zh/react-state/concepts?id=键)，键可用于生成本地库，同时作为连接本地库的通道。
@@ -120,7 +121,7 @@ const Component = provide(modelKey)(function Component(){
 })
 ```
 
-想要同时使用多个不同的库？
+想要同时创建和使用多个不同的库？
 
 ```ts
 import {myModel, myModel2} from './model';
@@ -214,7 +215,7 @@ const key2 = createKey(myModel);
 
 // key 和 key2 拥有有相同的模型，但却是两个不同的键，
 // 因此它们会生成两个不同的库
-const keys = {key, key2};
+const keys = [key, key2];
 
 const Component = provide(keys)(function Component(){
     return ......;
@@ -385,7 +386,7 @@ function Comp(){
 }
 ```
 
-在 18.5.10 版本之前，model().createStore 方法生成的是键的包装，但至当前版本开始，model().createStore 方法生成的是静态库。因为静态库本身含有键，故可以被 provide 作为键来产生动态库。但并不推荐这种动态库创建方式。
+在 18.5.10 版本之前，model().createStore 方法生成的是键的包装，但至此版本开始，model().createStore 方法生成的是静态库。因为静态库本身含有键，故可以被 provide 作为键来产生动态库。但并不推荐这种动态库创建方式。
 
 想要整合多个库？
 
@@ -405,7 +406,7 @@ const countKey = model((count:number)=>([
 
 ......
 // 使用库的 with 方法可整合多个库
-provide(toggleKey,countKey,...).provideTo(
+provide(toggleKey,countKey,...).to(
     function Component(){
         const [, toggle] = toggleKey.useModel();
         const selected = toggleKey.useSelector(([s])=>s);

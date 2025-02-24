@@ -10,7 +10,7 @@
 
 # @airma/react-hooks
 
-Now, it is a composite package about `@airma/react-*` tools.
+It is a composite package about `@airma/react-*` tools.
 
 ## Document
 

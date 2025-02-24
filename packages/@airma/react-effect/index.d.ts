@@ -131,7 +131,6 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   strategy?: StrategyCollectionType<T, Parameters<C>>;
   manual?: boolean;
   payload?: unknown;
-  experience?: 'next';
 };
 
 declare type DefaultQueryConfig<T, C extends PromiseCallback<T>> = QueryConfig<
@@ -154,7 +153,6 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
   payload?: unknown;
-  experience?: 'next';
 };
 
 declare type DefaultMutationConfig<
