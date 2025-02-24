@@ -368,10 +368,12 @@ const toggleKey = toggleModel.createKey(false);
 // 创建静态库
 const toggleGlobalStore = toggleModel.createStore();
 ......
+// 本地状态管理
 toggleModel.useModel(false);
+// 受控状态管理
 toggleModel.useControlledModel(props.checked, props.onChange);
 ......
-// 不推荐 provide 静态库来生成动态库
+// 不推荐使用 provide 静态库来生成动态库
 // toggleGlobalStore.provideTo(function Component(){
 provide(toggleKey).to(function Component(){
     const [, toggle] = toggleStore.useModel();
@@ -388,7 +390,7 @@ function Comp(){
 
 在 18.5.10 版本之前，model().createStore 方法生成的是键的包装，但至此版本开始，model().createStore 方法生成的是静态库。因为静态库本身含有键，故可以被 provide 作为键来产生动态库。但并不推荐这种动态库创建方式。
 
-想要整合多个库？
+想要整合多个动态库？
 
 ```ts
 import {model, provide} from '@airma/react-state';
@@ -405,7 +407,7 @@ const countKey = model((count:number)=>([
 ] as const)).createKey(0);
 
 ......
-// 使用库的 with 方法可整合多个库
+// provide 多个键的方式整合
 provide(toggleKey,countKey,...).to(
     function Component(){
         const [, toggle] = toggleKey.useModel();
@@ -417,7 +419,57 @@ provide(toggleKey,countKey,...).to(
 ......
 ```
 
-关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [如何通过 model 声明函数使用 useSignal](/zh/react-state/guides?id=通过-model-声明函数使用-usesignal) 中的内容。
+关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [高性能渲染](/zh/react-state/guides?id=高性能渲染) 中的内容。
+
+### 静态库的外部调用模式
+
+静态库只能通过 model().createStore 方法创建，作为一个组件外部常量，静态库也提供了组件外部的使用方案。
+
+通过静态库的 instance 方法在组件外部初始化库的默认状态。
+
+```ts
+import {model} from '@airma/react-state';
+
+const countStore = model((count:number)=>([
+    count,
+    ()=>count+1,
+    ()=>count-1
+] as const)).createStore(0);
+
+countStore.instance(1);
+
+function Comp(){
+    const [count, increase, decrease] = countStore.useModel();
+    // 首次加载的 count 受外部初始化影响，值为 1
+    return ......;
+}
+```
+
+通过调用静态库的 instance 方法生成的实例对象提供的行为方法，可修改状态，并触发使用该库的组件重新渲染。
+
+```ts
+import {model} from '@airma/react-state';
+
+const countStore = model((count:number)=>([
+    count,
+    ()=>count+1,
+    ()=>count-1
+] as const)).createStore(0);
+
+function Comp(){
+    const [count, increase, decrease] = countStore.useModel();
+    return ......;
+}
+
+function Comp2(){
+    const handleClick=()=>{
+        // 通过instance方法获取静态库实例对象
+        // 并通过调用 increase 行为方法触发渲染
+        countStore.instance().increase();
+    }
+    return ......;
+}
+```
 
 ## 实例字段
 

@@ -250,8 +250,11 @@ export type PromiseHolder = {
 };
 
 export interface Execution {
-  trigger: (payload: unknown | undefined) => boolean;
-  execute: (payload: unknown | undefined, ...args: any[]) => boolean;
+  trigger: (payloadWrapper: { payload: unknown } | undefined) => boolean;
+  execute: (
+    payloadWrapper: { payload: unknown } | undefined,
+    ...args: any[]
+  ) => boolean;
 }
 
 export interface Tunnel {

@@ -325,7 +325,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const triggerWithPayload = function triggerWithPayload(
-    payload: unknown | undefined
+    payloadWrapper: { payload: unknown } | undefined
   ) {
     if (triggerTypes.indexOf('manual') < 0) {
       return false;
@@ -334,6 +334,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       preloadRef.current = { variables: variables || null };
       return true;
     }
+    const payload = payloadWrapper ? payloadWrapper.payload : con.payload;
     if (isFullFunctionalConfig) {
       sessionExecution('manual', payload);
       return true;
@@ -344,7 +345,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       if (f.key === currentKey) {
         return;
       }
-      f.execution.trigger(payload);
+      f.execution.trigger(payloadWrapper);
     });
     sessionExecution('manual', payload);
     return true;
@@ -355,7 +356,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   };
 
   const executeWithPayload = function executeWithPayload(
-    payload: unknown | undefined,
+    payloadWrapper: { payload: unknown } | undefined,
     ...vars: Parameters<C>
   ) {
     if (triggerTypes.indexOf('manual') < 0) {
@@ -365,6 +366,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       preloadRef.current = { variables: vars };
       return true;
     }
+    const payload = payloadWrapper ? payloadWrapper.payload : con.payload;
     if (isFullFunctionalConfig) {
       sessionExecution('manual', payload, vars);
       return true;
@@ -375,7 +377,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       if (f.key === currentKey) {
         return;
       }
-      f.execution.execute(payload, ...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
     sessionExecution('manual', payload, vars);
     return true;
@@ -523,7 +525,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   handleTrigger.payload = (payload: unknown | undefined) => {
     return function payloadTrigger() {
-      const hasExecuted = triggerWithPayload(payload);
+      const hasExecuted = triggerWithPayload({ payload });
       if (!hasExecuted) {
         return Promise.resolve(signal().state);
       }
@@ -541,7 +543,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   handleExecute.payload = (payload: unknown | undefined) => {
     return function payloadExecute(...vars: Parameters<C>) {
-      const hasExecuted = executeWithPayload(payload, ...vars);
+      const hasExecuted = executeWithPayload({ payload }, ...vars);
       if (!hasExecuted) {
         return Promise.resolve(signal().state);
       }
@@ -666,19 +668,21 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  function triggerWithPayload(payload: unknown | undefined) {
+  function triggerWithPayload(
+    payloadWrapper: { payload: unknown } | undefined
+  ) {
     const promise = promiseHandler.requirePromise();
     const tunnels = tunnelController.getTunnels();
     const fulls = tunnels.filter(t => t.isFullFunctional);
     fulls.forEach(f => {
-      f.execution.trigger(payload);
+      f.execution.trigger(payloadWrapper);
     });
     if (fulls.length) {
       return promise;
     }
     const shorts = tunnels.filter(t => !t.isFullFunctional);
     shorts.forEach(f => {
-      f.execution.trigger(payload);
+      f.execution.trigger(payloadWrapper);
     });
     if (!shorts.length) {
       return Promise.resolve({ ...sessionState, abandon: true });
@@ -693,26 +697,26 @@ export function useSession<T, C extends PromiseCallback<T>>(
     payload: unknown | undefined
   ) {
     return function triggerPayload() {
-      return triggerWithPayload(payload);
+      return triggerWithPayload({ payload });
     };
   };
 
   function executeWithPayload(
-    payload: unknown | undefined,
+    payloadWrapper: { payload: unknown } | undefined,
     ...vars: Parameters<C>
   ) {
     const promise = promiseHandler.requirePromise();
     const tunnels = tunnelController.getTunnels();
     const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
     fulls.forEach(f => {
-      f.execution.execute(payload, ...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
     if (fulls.length) {
       return promise;
     }
     const shorts = tunnels.filter(t => !t.isFullFunctional);
     shorts.forEach(f => {
-      f.execution.execute(payload, ...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
     if (!shorts.length) {
       return Promise.resolve({ ...sessionState, abandon: true });
@@ -726,7 +730,7 @@ export function useSession<T, C extends PromiseCallback<T>>(
     payload: unknown | undefined
   ) {
     return function executePayload(...vars: Parameters<C>) {
-      return executeWithPayload(payload, ...vars);
+      return executeWithPayload({ payload }, ...vars);
     };
   };
   return [

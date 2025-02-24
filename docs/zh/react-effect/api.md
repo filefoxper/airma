@@ -628,8 +628,8 @@ type KeyApi = {
   useMutation(
     variablesOrConfig
   ):[sessionState, trigger, execute];
-  useSession():[sessionState, trigger];
-  useLoadedSession():[sessionState, trigger];
+  useSession():[sessionState, trigger, execute];
+  useLoadedSession():[sessionState, trigger, execute];
 };
 
 type StaticStoreApi = {
@@ -639,8 +639,8 @@ type StaticStoreApi = {
   useMutation(
     variablesOrConfig
   ):[sessionState, trigger, execute];
-  useSession():[sessionState, trigger];
-  useLoadedSession():[sessionState, trigger];
+  useSession():[sessionState, trigger, execute];
+  useLoadedSession():[sessionState, trigger, execute];
 };
 
 type StoreApi = {
@@ -660,8 +660,8 @@ type StoreApi = {
   useMutation(
     variablesOrConfig
   ):[sessionState, trigger, execute];
-  useSession():[sessionState, trigger];
-  useLoadedSession():[sessionState, trigger];
+  useSession():[sessionState, trigger, execute];
+  useLoadedSession():[sessionState, trigger, execute];
 };
 
 type Api = {

@@ -320,12 +320,19 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
 // }).changeDisplay({...defaultCondition,name:''});
 // store.instance().submit();
 
-export default provide(store,fetchSession).to(function App() {
+export default provide(fetchSession).to(function App() {
   const conditionSignal = useSignal(store,{valid:defaultCondition,display:defaultCondition,creating:false});
   const { queryData, creating, cancel } = useSelector(store,
     s => pick(s, 'queryData', 'creating', 'cancel'),
     shallowEqual
   );
+
+    useEffect(() => {
+        setTimeout(()=>{
+            store.instance().changeDisplay({...defaultCondition,name:''})
+            store.instance().submit()
+        },1000)
+    }, []);
 
   conditionSignal
     .useEffect(ins => {
