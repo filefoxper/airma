@@ -38,22 +38,25 @@ export {
   session
 } from '@airma/react-effect';
 
-export declare function provide(
-  keys: ModelKeys
-): <P extends Record<string, any>>(
-  component: ComponentType<P> | ExoticComponent<P>
-) => typeof component;
-
-export declare const Provider: FunctionComponent<{
-  value: ModelKeys;
-  children?: ReactNode;
-}>;
-
-export declare function storeCreation(...args: (ModelKey<any> | ModelCreation)[]): {
-  for: <P extends Record<string, any>>(
+export declare function provide(...storeCreators: ModelKeys[]): {
+  <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ): typeof component;
+  to: <P extends Record<string, any>>(
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
 };
+
+export declare const Provider: FunctionComponent<
+  | {
+      value: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
+      storeCreators: ModelKeys;
+      children?: ReactNode;
+    }
+>;
 
 export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;

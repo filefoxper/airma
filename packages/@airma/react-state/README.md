@@ -81,15 +81,17 @@ const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also can be used to manage a scope state from dynamic store or static store. 
 
-### React.Context state management
+### Dynamic store state management
+
+API `createKey` can create a model template for creating a dynamic store. The template is also a key to synchronize state changes from store.
 
 ```tsx
 import {memo} from 'react';
-import {model} from '@airma/react-state';
+import {model, provide} from '@airma/react-state';
 
-const countingStore = model(function counting(state:number){
+const countingKey = model(function counting(state:number){
     return {
         count: state,
         increase:()=>state + 1,
@@ -101,24 +103,28 @@ const countingStore = model(function counting(state:number){
         }
     };
 }).createKey(0);
+// Create a key. 
+// The key can be used to create a store.
+// The key can be used to synchronize state changes from store.
 ......
 const Increase = memo(()=>{
-    // use store.useSelector can share state changes from store,
+    // use countingKey.useSelector can synchronize state changes from store,
     // when the selected result is changed it rerender component. 
-    const increase = countingStore.useSelector(i => i.increase);
+    const increase = countingKey.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    // use store.useModel can share state changes from store.
-    const {count} = countingStore.useModel();
+    // use countingKey.useModel can synchronize state changes from store.
+    const {count} = countingKey.useModel();
     return <span>{count}</span>;
 });
 const Decrease = memo(()=>{
-    const decrease = countingStore.useSelector(i => i.decrease);
+    const decrease = countingKey.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// provide store to component for a React.Context usage.
-const Component = countingStore.provideTo(function Comp() {
+// A Hoc usage to create and provide a dynamic store to its children components.
+// It is same with using `Provider` Component to wrap the customized component.
+const Component = provide(countingKey).to(function Comp() {
     return (
         <div>
             <Increase/>
@@ -129,10 +135,13 @@ const Component = countingStore.provideTo(function Comp() {
 });
 ......
 ```
+A dynamic store should be created in a component, and synchronized in the children components by using `React.Context`.
 
-Using `model(xxx).createKey().createStore()` can build a global store.
+A static store should be created in a global scope, and used in any component without provider.
 
-### Global state management
+Using `model(xxx).createStore()` can build a static store.
+
+### Static store state management
 
 ```ts
 import {model} from '@airma/react-state';
@@ -148,7 +157,8 @@ const countingStore = model(function counting(state:number){
             }, state);
         }
     };
-}).createKey(0).createStore();
+}).createStore(0);
+// create a global store
 ......
 const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
@@ -194,7 +204,7 @@ const counting = model(function countingModel(state:number){
             }, state);
         }
     };
-}).createKey().createStore();
+}).createStore();
 // Give initialized state later in component render time.
 ......
 const Increase = memo(()=>{
@@ -235,12 +245,10 @@ The `useSignal` API is even better than API `useSelector`, it computes out when 
 
 ## Why support context store?
 
-In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
-
- That means: 
+The context store is a dynamic store, it has some better features than a static store.
  
- 1. The store data can be destroyed with its `provider` component unmount.
- 2. Components with same store provider can be used together in one parent component without state change effect to each other.
+ 1. The store data can be destroyed with its `owner` component unmount.
+ 2. Components with same store factory creates different stores.
  
  ### How to subscribe a grand parent provider store?
 
@@ -250,9 +258,9 @@ In `@airma/react-state`, store is dynamic, every `provider` copies a working ins
 
  No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
 
- ## Why not async action methods
+ ## Why not support async action methods
 
- Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
+ Async action often makes stale data problem and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) problem. So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
 
 There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
 

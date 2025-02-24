@@ -99,9 +99,15 @@ function useOptimize() {
 export const Provider: FC<{
   keys?: Array<any> | ((...args: any) => any) | Record<string, any>;
   value?: Array<any> | ((...args: any) => any) | Record<string, any>;
+  storeCreators?: Array<any> | ((...args: any) => any) | Record<string, any>;
   children?: ReactNode;
-}> = function RequiredModelProvider({ keys, value, children }) {
-  const storeKeys = keys != null ? keys : value;
+}> = function RequiredModelProvider({ keys, value, storeCreators, children }) {
+  const storeKeys = (function extractCreators() {
+    if (storeCreators != null) {
+      return storeCreators;
+    }
+    return keys != null ? keys : value;
+  })();
   if (storeKeys == null) {
     throw new Error('You need to provide keys to `Provider`');
   }
@@ -670,9 +676,9 @@ export function useSelector<
 }
 
 export function provide(
-  keys: Array<any> | ((...args: any) => any) | Record<string, any>
+  ...keys: (Array<any> | ((...args: any) => any) | Record<string, any>)[]
 ) {
-  return function connect<
+  const connect = function connect<
     P extends Record<string, any>,
     C extends ComponentType<P>
   >(Comp: C): ComponentType<P> {
@@ -684,6 +690,19 @@ export function provide(
       );
     };
   };
+  connect.to = function to<
+    P extends Record<string, any>,
+    C extends ComponentType<P>
+  >(Comp: C): ComponentType<P> {
+    return function WithModelProviderComponent(props: P) {
+      return createElement(
+        Provider,
+        { value: keys },
+        createElement<P>(Comp as FunctionComponent<P>, props)
+      );
+    };
+  };
+  return connect;
 }
 
 export const shallowEqual = shallowEq;
@@ -703,23 +722,6 @@ export const ConfigProvider: FC<{
   const { value, children } = props;
   return createElement(ConfigContext.Provider, { value }, children);
 };
-
-export function storeCreation(...keys: Array<any>) {
-  return {
-    for: function connect<
-      P extends Record<string, any>,
-      C extends ComponentType<P>
-    >(Comp: C): ComponentType<P> {
-      return function WithModelProviderComponent(props: P) {
-        return createElement(
-          Provider,
-          { value: keys },
-          createElement<P>(Comp as FunctionComponent<P>, props)
-        );
-      };
-    }
-  };
-}
 
 export const model = function model<S, T extends AirModelInstance>(
   reducerLike: AirReducer<S | undefined, T>

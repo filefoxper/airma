@@ -380,11 +380,15 @@ export declare const useResponse: {
 
 export declare const Provider: FunctionComponent<
   | {
+      value: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
       keys: ModelKeys;
       children?: ReactNode;
     }
   | {
-      value: ModelKeys;
+      storeCreators: ModelKeys;
       children?: ReactNode;
     }
 >;
@@ -496,11 +500,14 @@ export declare const Strategy: {
   };
 };
 
-export declare function provide(
-  keys: ModelKeys
-): <P extends Record<string, any>>(
-  component: ComponentType<P> | ExoticComponent<P>
-) => typeof component;
+export declare function provide(...storeCreators: ModelKeys[]): {
+  <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ): typeof component;
+  to: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
+};
 
 /** new api * */
 
@@ -620,12 +627,4 @@ export declare function session<D extends PromiseCallback<any>>(
   useMutation: UseMutationShort<D>;
   createStore: () => MutationStoreApi<D>;
   createKey: () => MutationKeyApi<D>;
-};
-
-export declare function storeCreation(
-  ...args: (ModelKey<any> | ModelCreation)[]
-): {
-  for: <P extends Record<string, any>>(
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
 };

@@ -10,7 +10,6 @@ import {
 } from 'react';
 import {
   Provider as ModelProvider,
-  storeCreation as storeCreationKeys,
   provide as provideKeys,
   ModelLike,
   Signal,
@@ -931,8 +930,6 @@ export const Provider = ModelProvider;
 
 export const provide = provideKeys;
 
-export const storeCreation = storeCreationKeys;
-
 export { createSessionKey };
 
 export { Strategy } from './strategies';
@@ -993,12 +990,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return storeApi(key, nks);
     };
     const storeApiProvide = function storeApiProvide() {
-      return provide([key, ...keys]);
+      return provide([key, ...keys] as any);
     };
     const storeApiProvideTo = function storeApiProvideTo(
       component: FunctionComponent
     ) {
-      return provide([key, ...keys])(component);
+      return provide([key, ...keys] as any)(component);
     };
     const StoreApiProvider = function StoreApiProvider({
       children

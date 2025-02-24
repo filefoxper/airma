@@ -42,13 +42,13 @@ declare type Action<R extends ModelLike> = {
   prevInstance: Instance<R>;
 };
 
-export declare type ModelKey<R extends ModelLike> = R & {
+export declare type ModelKey<R extends ModelLike = ModelLike> = R & {
   payload?: unknown;
   isFactory: () => true;
   static: () => ModelKey<R>;
 };
 
-export declare interface ModelCreation<R extends ModelLike = any> {
+export declare interface ModelCreation<R extends ModelLike = ModelLike> {
   key: ModelKey<R>;
 }
 
@@ -136,12 +136,10 @@ export declare function useControlledModel<
 
 export declare type ModelKeys =
   | {
-      [key: string]: ModelKey<any> | ModelCreation;
+      [key: string]: ModelKey | ModelCreation;
     }
-  | {
-      [key: number]: ModelKey<any> | ModelCreation;
-    }
-  | ModelKey<any>
+  | Array<ModelKey | ModelCreation>
+  | ModelKey
   | ModelCreation;
 
 export declare const Provider: FunctionComponent<
@@ -151,6 +149,10 @@ export declare const Provider: FunctionComponent<
     }
   | {
       keys: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
+      storeCreators: ModelKeys;
       children?: ReactNode;
     }
 >;
@@ -164,11 +166,14 @@ export declare const ConfigProvider: FunctionComponent<{
   children?: ReactNode;
 }>;
 
-export declare function provide(
-  keys: ModelKeys
-): <P extends Record<string, any>>(
-  component: ComponentType<P> | ExoticComponent<P>
-) => typeof component;
+export declare function provide(...storeCreators: ModelKeys): {
+  <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ): typeof component;
+  to: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
+};
 
 export declare function useSelector<
   R extends ModelLike,
@@ -209,7 +214,7 @@ declare type ControlledModelUsage<R extends ModelLike> = (
   onChange: (value: PickState<R>) => any
 ) => Instance<R>;
 
-declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R>{
+declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R> {
   useModel: (state?: PickState<R>) => Instance<R>;
   useSignal: (state?: PickState<R>) => Signal<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(
@@ -261,14 +266,6 @@ declare interface Api<R extends ModelLike> {
   createStore: (state?: PickState<R>) => StoreApi<R>;
   createKey: (state?: PickState<R>) => KeyApi<R>;
 }
-
-export declare function storeCreation(
-  ...modelCreations: (ModelKey<any> | ModelCreation)[]
-): {
-  for: <P extends Record<string, any>>(
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
-};
 
 export declare const model: {
   <R extends ModelLike>(m: ValidModel<R>): R & Api<R>;

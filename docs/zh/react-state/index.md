@@ -70,7 +70,7 @@ const {count, increase, decrease} = counting.useModel(0);
 
 ```ts
 import {memo} from 'react';
-import {model, storeCreation} from '@airma/react-state';
+import {model, provide} from '@airma/react-state';
 
 const countingKey = model(function counting(state:number){
     return {
@@ -96,8 +96,8 @@ const Decrease = memo(()=>{
     const decrease = countingKey.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// storeCreation(...keys).for(Component) 高阶组件，可将自定义组件提升为一个持有动态库及相关 Provider 的组件
-const Component = storeCreation(countingKey).for(function Comp() {
+// provide(...keys).to(Component) 高阶组件，可将自定义组件提升为一个持有动态库及相关 Provider 的组件
+const Component = provide(countingKey).to(function Comp() {
     return (
         <div>
             <Increase/>
@@ -109,9 +109,9 @@ const Component = storeCreation(countingKey).for(function Comp() {
 ......
 ```
 
-注意，通过 **model(modelFn)createKey** 创建的**键**并非传统意义上的[模型键](/zh/react-state/concepts?id=键)，而是模型键的包装，含有与键相关的常用 API。
+注意，通过 **model(modelFn).createKey** 创建的**键**并非传统意义上的[模型键](/zh/react-state/concepts?id=键)，而是模型键的包装，含有与键相关的常用 API。
 
-storeCreation 的实际作用是创建了一个可通过模型键盘建立动态库的 Provider 组件。因此，以上代码等同于：
+provide 的实际作用是创建了一个可通过模型键建立动态库的 Provider 组件。因此，以上代码等同于：
 
 ```ts
 import {memo} from 'react';
@@ -137,10 +137,10 @@ const Decrease = memo(()=>{
     const decrease = countingKey.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// 直接使用 Provider 组件也可以达到预期效果
+// 直接使用 Provider 组件也可以达到在组件内创建动态库的效果
 const Component = function Comp() {
     return (
-        <Provider keys={countingKey}>
+        <Provider storeCreators={countingKey}>
             <div>
                 <Increase/>
                 <Count/>
@@ -153,7 +153,7 @@ const Component = function Comp() {
 
 ### 静态库
 
-与动态库不同，静态库是一个外部常量，库状态维护在组件外部，所有连接该库的任意组件的实例获取到的状态是完全同步的，且不需要 Context 技术干预。静态库不会销毁。
+与动态库不同，静态库是一个外部常量，库状态维护在组件外部。不需要 Context 技术干预即可链接使用。静态库只能手动销毁。
 
 @airma/react-state 提供了**模型库**的方案解决了上述需求。
 
@@ -314,7 +314,7 @@ const Component = function Comp({defaultCount}:{defaultCount:number}) {
 动态库依靠 Provider 组件生成可维护的本地库，这个过程是在 Provider 元素化（React.createElement(Provider, keys)）的过程中进行的，故每个元素必然对应不同的本地库，且这些库中的状态数据互不干扰；当 Provider 元素销毁（unmount）时，可以自动销毁这些本地库的状态。
 
 ```ts
-import {model, storeCreation} from '@airma/react-state';
+import {model, provide} from '@airma/react-state';
 
 type UserState  = {
     id: number;
@@ -350,8 +350,8 @@ const NameInput = ()=>{
     )
 }
 
-// 通过 storeCreation 提升动态库组件
-const User = storeCreation(userKey).for(({value}:{value: UserState})=>{
+// 通过 provide 提升动态库组件
+const User = provide(userKey).to(({value}:{value: UserState})=>{
     // 在render过程中初始化动态库的默认状态
     userKey.useSignal(value);
     return (

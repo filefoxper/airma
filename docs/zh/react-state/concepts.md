@@ -1,23 +1,23 @@
 # 概念
 
-`@airma/react-state` 的两个功能核心即**模型**与**键**。模型用于驱动状态更新管理，键用于创造本地库，共享状态变更。
+`@airma/react-state` 的功能核心为**模型**，通过模型可生成实例，而实例上的行为方法可用于生成新状态，进而再次通过模型刷新实例。模型也可用于生成**键**，键可用于创建库，并作为连接库钥匙同步库中的状态。通过模型直接创建静态库的过程，实际上只是隐藏了创建键的步骤，但在库中依然存在一个隐形键。
 
 1. [模型](/zh/react-state/concepts?id=模型)
 2. [键](/zh/react-state/concepts?id=键)
 
 ## 模型
 
-模型函数的主要功能是为状态更新提供可持续的行为准则。函数的入参 state 为可持续累积的状态数据，即**变量状态**；返回值 instance **模型实例**对象为外部访问提供了渲染数据（**渲染状态**）和用于更新状态触发渲染的**行为方法**。
+模型函数的主要功能是为状态提供一个可持续迭代更新的行为准则。函数入参**状态**用于生成**模型实例**， 而**模型实例**负责对外提供行为方法和渲染数据，当外部调用行为方法时，会产生一个新状态，新状态作为新入参被模型函数再次调用，进而刷新实例，并触发渲染。
 
 ```ts
 // 模型函数
-// 变量状态 count
+// 状态 count 为入参
 const counting = (count: number)=>{
     return {
         count,
-        // 由状态变量加工得到的渲染状态
+        // 由状态变量加工得到的渲染数据
         isNegative: count < 0,
-        // 行为方法，返回行为发生后的状态
+        // 行为方法，返回行为发生后的新状态
         increase:()=>count+1,
         decrease:()=>count-1,
         // 行为方法，可传入任意参数
@@ -58,8 +58,8 @@ const {
 
 ```
 [渲染] count: 0         // 初始化渲染值 0
-[调用] -> increase()    // 产生下一个值 1，重新调用
-[自动] -> counting(1)   // 刷新实例，并触发渲染
+[调用] -> increase()    // 产生新状态 1，并触发刷新事件
+[刷新] -> counting(1)   // 刷新实例，并触发渲染
 [渲染] count: 1         // 更新后渲染值 1
 ```
 
@@ -67,7 +67,7 @@ const {
 
 ## 键
 
-键作为系统的另一个核心主要用于生成本地库，并为访问本地库提供链接通道。所谓的[动态库](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)只是键的库形态。
+键是生成库的模板，也是访问库的钥匙。所谓的[动态库](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)就是在组件中建立的库，因为这些库难以通过模块获取，所以需要通过键来访问。
 
 通过使用 API createKey 可为模型函数创建一个**键**：
 
@@ -106,7 +106,7 @@ function Component(){
 }
 
 // provide 高阶组件使用键 countingKey 创建本地库
-const WrappedComponent = provide(countingKey)(Component);
+const WrappedComponent = provide(countingKey).to(Component);
 ......
 // 或者
 function WrappedComponent(){
@@ -172,10 +172,10 @@ function Component(){
 }
 
 // provide 高阶组件使用键 countingKey 创建本地库
-const WrappedComponent = provide(countingKey)(Component);
+const WrappedComponent = provide(countingKey).to(Component);
 ```
 
-在难以提供静态默认状态的情况下，可暂不预设键的默认状态，等渲染时使用 useModel 或 [useStaticModel](/zh/react-state/api?id=usestaticmodel) 进行初始化。
+在难以提供静态默认状态的情况下，可在渲染阶段使用 useModel 或 [useSignal](/zh/react-state/api?id=usesignal) 进行初始化。
 
 ```ts
 // model.ts
@@ -201,7 +201,7 @@ export const countingKey = createKey(counting);
 import {
     provide, 
     useModel, 
-    useStaticModel,
+    useSignal,
     useSelector
 } from '@airma/react-state';
 import {countingKey} from './model';
@@ -224,11 +224,11 @@ function Decrease(){
 ......
 
 function Component(props:{defaultCount: number}){
-    // 通过 useModel 或 useStaticModel 均可在渲染开始时初始化默认状态。
-    // 若并不关注初始化得到的实例对象，推荐使用 useStaticModel。
-    // useStaticModel 不会订阅库状态的变更，是纯粹 render 初始化的利器
+    // 通过 useModel 或 useSignal 均可在渲染开始时初始化默认状态。
+    // 若并不关注初始化得到的实例对象，推荐使用 useSignal。
+    // useSignal 只订阅库被获取属性的状态变更，若无属性值被获取则不会发生订阅，是 render 阶段初始化库的利器
     // useModel(countingKey, props.defaultCount);
-    useStaticModel(countingKey, props.defaultCount);
+    useSignal(countingKey, props.defaultCount);
     return (
         <>
             <Increase />
@@ -238,6 +238,7 @@ function Component(props:{defaultCount: number}){
     );
 }
 
+// provide 高阶组件支持不使用 to 方法，直接二次调用的方式传入自定义组件
 const WrappedComponent = provide(countingKey)(Component);
 ```
 
