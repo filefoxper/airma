@@ -4,7 +4,7 @@ The core APIs are [useModel](/react-state/guides?id=usemodel), [useSignal](/reac
 
 ## useModel
 
-API `useModel` is the most basic hook in `@airma/react-state`. It can be used for both the `Local`and `React.Context` model state-management.
+API `useModel` is the most basic hook in `@airma/react-state`. It can be used in every kind of state-management that supported by `@airma/react-state`.
 
 ### Local state-management
 
@@ -42,9 +42,9 @@ const {
 );
 ```
 
-Just consider it as  simplified `useReducer`, that's enough.
+Just consider it as simplified `useReducer`, that's enough.
 
-### React.Context state-management
+### Dynamic store state-management
 
 There are some differences with `Local state-management`. 
 
