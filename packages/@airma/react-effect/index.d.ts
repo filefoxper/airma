@@ -554,15 +554,28 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>>
   extends SessionCreation<D> {
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
+  /**
+   * @deprecated not recommend
+   * @param key
+   */
   with: <M extends ModelKey<ModelLike>>(
     ...key: ({ key: M } | M)[]
   ) => SessionStoreApi<D>;
+  /**
+   * @deprecated not recommend
+   */
   provide: <P>() => (
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
+  /**
+   * @deprecated not recommend
+   */
   provideTo: <P>(
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
+  /**
+   * @deprecated not recommend
+   */
   Provider: FunctionComponent<{ children?: ReactNode }>;
 }
 
@@ -582,7 +595,7 @@ declare interface QueryStoreApi<D extends PromiseCallback<any>>
   extends SessionStoreApi<D> {
   useQuery: UseQueryShort<D>;
   /**
-   * @deprecated
+   * @deprecated should remove
    */
   static: () => StaticQuery<D>;
 }

@@ -226,20 +226,32 @@ declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R> {
 
 declare interface StoreApi<R extends ModelLike> extends ModelCreation<R> {
   key: ModelKey<R>;
+  /**
+   * @deprecated not recommend
+   */
   with: <M extends ModelKey<ModelLike>>(
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
   instance: (state?: PickState<R>) => Instance<R>;
   /**
-   * @deprecated
+   * @deprecated should remove
    */
   static: () => StoreUsageApi<R>;
+  /**
+   * @deprecated not recommend
+   */
   provide: <P>() => (
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
+  /**
+   * @deprecated not recommend
+   */
   provideTo: <P>(
     component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
+  /**
+   * @deprecated not recommend
+   */
   Provider: FunctionComponent<{ children?: ReactNode }>;
   useModel: (state?: PickState<R>) => Instance<R>;
   useSignal: (state?: PickState<R>) => Signal<R>;

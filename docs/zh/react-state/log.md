@@ -121,3 +121,9 @@
 ## v18.5.9
 
 * 更新npm文档
+
+## v18.5.10
+
+* 强化 provide API，支持 modelKey/modelStore，支持参数数组传参，并打通了对于 `@airma/react-effect` 中 sessionKey/sessionStore 类型的支持，同时不再支持深层 key 。
+* model().createStore() 创建的库为静态库，provide 静态库后也可通过静态库的 key 创建动态库。所以是乡下兼容的。
+* 新增 model().createKey() 接口创建带有API的模型键

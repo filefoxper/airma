@@ -368,22 +368,32 @@ const toggleKey = toggleModel.createKey(false);
 // 创建静态库
 const toggleGlobalStore = toggleModel.createStore();
 ......
-// 本地状态管理
-toggleModel.useModel(false);
-// 受控状态管理
-toggleModel.useControlledModel(props.checked, props.onChange);
+function ChildComponent(props){
+    // 本地状态管理
+    const [selected, toggle] = toggleModel.useModel(false);
+    // 受控状态管理
+    const [selected, toggle] = toggleModel.useControlledModel(props.checked, props.onChange);
+    // 本地状态管理 signal 模式
+    const signal = toggleModel.useSignal(false);
+    const [selected, toggle] = signal();
+
+    return ......;
+}
+
 ......
 // 不推荐使用 provide 静态库来生成动态库
 // toggleGlobalStore.provideTo(function Component(){
 provide(toggleKey).to(function Component(){
-    const [, toggle] = toggleStore.useModel();
-    const selected = toggleStore.useSelector(([s])=>s);
+    const [, toggle] = toggleKey.useModel();
+    const selected = toggleKey.useSelector(([s])=>s);
+    const [, toggleFromSignal] = toggleKey.useSignal()();
     const selectedInGlobal = toggleGlobalStore.useSelector(([s])=>s);
     return ......;
 });
 ......
 function Comp(){
-    toggleGlobalStore.useModel();
+    const instance = toggleGlobalStore.useModel();
+    const signal = toggleGlobalStore.useSignal();
     return ......;
 }
 ```

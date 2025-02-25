@@ -155,9 +155,9 @@ const App = ()=>{
 }
 ```
 
-The state of useQuery/useMutation is a local state. There are two different store state-managements: use dynamic React.Context store or use static global store.
+The code above shows how to use useQuery/useMutation manage a local async state. There are two different store state-managements: dynamic store or static store.
 
-### React.Context dynamic store state-management
+### Dynamic store state-management
 
 ```ts
 import React from 'react';
@@ -169,12 +169,12 @@ type UserQuery = {
     username: string;
 }
 
-// declare a query session dynamic store
-const userQueryStore = session(
+// declare a query session key
+const userQueryKey = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore();
+).createKey();
 
 const SearchButton = ()=>{
     // useSession subscribes state change from session store
@@ -183,7 +183,7 @@ const SearchButton = ()=>{
         {isFetching},
         // call trigger function can trigger useQuery work manually 
         triggerQuery
-    ] = userQueryStore.useSession();
+    ] = userQueryKey.useSession();
     return (
         <button 
             disabled={isFetching} 
@@ -194,13 +194,13 @@ const SearchButton = ()=>{
     );
 }
 
-// provide dynamic store is very important
-const App = userQueryStore.provideTo(()=>{
+// provide keys to create store inside Provider component.
+const App = provide(userQueryKey).to(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
         state, 
         // Write every query state change to store
-    ] = userQueryStore.useQuery(
+    ] = userQueryKey.useQuery(
         [query]
     );
 
@@ -215,13 +215,11 @@ const App = userQueryStore.provideTo(()=>{
 })
 ```
 
-Why support React.Context store? Refer to [@airma/react-state explain](/react-state/index?id=why-support-context-store).
+Dynamic store is created by session key in Provider component, and the session key can be used for syncing state changes from store. When there are several different elements created by one component, they takes different stores. This feature is useful for stopping state syncing between different elements. 
 
-The dynamic store is a special session [key](/react-effect/concepts?id=key) collection not a real store. It persist an actual store in [Provider](/react-effect/api?id=provider) component. 
+If a static store for a global usage is needed, session(...).createStore() is helpful.
 
-When a Provider is mounting in, it creates store, and when the provider has been unmounted, it destroys this store.
-
-### Global static store state-management
+### Static store state-management
 
 ```ts
 import React from 'react';
@@ -233,12 +231,12 @@ type UserQuery = {
     username: string;
 }
 
-// declare a query session global static store
+// create a query session static store
 const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     const [
@@ -259,7 +257,7 @@ const SearchButton = ()=>{
     );
 }
 
-// global static store needs no Provider.
+// The static store needs no Provider.
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
@@ -295,7 +293,7 @@ const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     // store.useLoadedSession can give out the promise resolve type without `empty`.
