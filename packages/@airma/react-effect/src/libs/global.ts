@@ -5,9 +5,9 @@ import type { ConfigProviderProps, GlobalConfig } from './type';
 
 export const defaultIsFetchingState: any[] = [];
 
-export const globalControllerStore = model(globalController)
-  .createStore(defaultIsFetchingState)
-  .static();
+export const globalControllerStore = model(globalController).createStore(
+  defaultIsFetchingState
+);
 
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 

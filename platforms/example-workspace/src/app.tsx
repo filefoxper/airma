@@ -367,6 +367,10 @@ export default provide(fetchSession).to(function App() {
 
   const { value, increase, decrease } = instance;
 
+  const isFetching = useIsFetching();
+
+  console.log('isFetching', isFetching)
+
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
       <div style={{ margin: '8px 0' }}>
