@@ -10,10 +10,9 @@ import {
 } from 'react';
 import {
   Provider as ModelProvider,
-  useSelector,
   provide as provideKeys,
-  AirReducer,
-  SignalHandler,
+  ModelLike,
+  Signal,
   useSignal
 } from '@airma/react-state';
 import {
@@ -74,8 +73,11 @@ function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
 function toNoRejectionPromiseCallback<
   T,
   C extends (variables: any[]) => Promise<T>
->(callback: C): (variables: any[]) => Promise<PromiseData<T>> {
+>(
+  callback: C
+): (payload: unknown | undefined, variables: any[]) => Promise<PromiseData<T>> {
   return function noRejectionPromiseCallback(
+    payload: unknown | undefined,
     variables: any[]
   ): Promise<PromiseData<T>> {
     const result = callback(variables);
@@ -87,6 +89,7 @@ function toNoRejectionPromiseCallback<
         return {
           data: d,
           variables,
+          payload,
           error: undefined,
           isError: false
         };
@@ -94,6 +97,7 @@ function toNoRejectionPromiseCallback<
       e => {
         return {
           variables,
+          payload,
           error: e,
           isError: true
         };
@@ -103,7 +107,7 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  signal: SignalHandler<SessionKey<C>>
+  signal: Signal<SessionKey<C>>
 ): Controller {
   function getController() {
     const payload = signal.getConnection().getPayload();
@@ -254,12 +258,13 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const sessionRunner = function sessionRunner(
     triggerType: TriggerType,
+    payload: unknown | undefined,
     vars: any[]
   ): Promise<SessionState<T>> {
     const noRejectionPromiseCallback = toNoRejectionPromiseCallback(
       (params: any[]) => promiseCallback(...params)
     );
-    return noRejectionPromiseCallback(vars).then(data => {
+    return noRejectionPromiseCallback(payload, vars).then(data => {
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
@@ -283,6 +288,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const sessionExecution = function sessionExecution(
     triggerType: 'manual' | 'mount' | 'update',
+    payload: unknown | undefined,
     vars?: any[]
   ): Promise<SessionState<T>> {
     const currentFetchingKey = fetchingKeyController.getFetchingKey();
@@ -310,13 +316,17 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     Promise.resolve(undefined).then(() => {
       fetchingKeyController.removeFetchingKey(keyRef.current);
     });
-    return strategyExecution(triggerType, vars || variables).then(data => {
-      promiseHandler.responsePromise(data);
-      return data;
-    });
+    return strategyExecution(triggerType, payload, vars || variables).then(
+      data => {
+        promiseHandler.responsePromise(data);
+        return data;
+      }
+    );
   };
 
-  const trigger = usePersistFn(() => {
+  const triggerWithPayload = function triggerWithPayload(
+    payloadWrapper: { payload: unknown } | undefined
+  ) {
     if (triggerTypes.indexOf('manual') < 0) {
       return false;
     }
@@ -324,8 +334,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       preloadRef.current = { variables: variables || null };
       return true;
     }
+    const payload = payloadWrapper ? payloadWrapper.payload : con.payload;
     if (isFullFunctionalConfig) {
-      sessionExecution('manual');
+      sessionExecution('manual', payload);
       return true;
     }
     const currentKey = keyRef.current;
@@ -334,13 +345,20 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       if (f.key === currentKey) {
         return;
       }
-      f.execution.trigger();
+      f.execution.trigger(payloadWrapper);
     });
-    sessionExecution('manual');
+    sessionExecution('manual', payload);
     return true;
-  });
+  };
 
-  const execute = usePersistFn((...vars: Parameters<C>) => {
+  const trigger = () => {
+    return triggerWithPayload(undefined);
+  };
+
+  const executeWithPayload = function executeWithPayload(
+    payloadWrapper: { payload: unknown } | undefined,
+    ...vars: Parameters<C>
+  ) {
     if (triggerTypes.indexOf('manual') < 0) {
       return false;
     }
@@ -348,8 +366,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       preloadRef.current = { variables: vars };
       return true;
     }
+    const payload = payloadWrapper ? payloadWrapper.payload : con.payload;
     if (isFullFunctionalConfig) {
-      sessionExecution('manual', vars);
+      sessionExecution('manual', payload, vars);
       return true;
     }
     const currentKey = keyRef.current;
@@ -358,11 +377,15 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       if (f.key === currentKey) {
         return;
       }
-      f.execution.execute(...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
-    sessionExecution('manual', vars);
+    sessionExecution('manual', payload, vars);
     return true;
-  });
+  };
+
+  const execute = (...vars: Parameters<C>) => {
+    return executeWithPayload(undefined, ...vars);
+  };
 
   const effectDeps = deps || variables || [];
 
@@ -371,8 +394,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       key: keyRef.current,
       isFullFunctional: isFullFunctionalConfig,
       execution: {
-        trigger,
-        execute: execute as (...a: any[]) => boolean
+        trigger: triggerWithPayload,
+        execute: executeWithPayload as (
+          payload: unknown | undefined,
+          ...args: any[]
+        ) => boolean
       }
     });
     return () => {
@@ -397,11 +423,11 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       }
       return;
     }
-    sessionExecution('mount');
+    sessionExecution('mount', con.payload);
   });
 
   useUpdate(() => {
-    sessionExecution('update');
+    sessionExecution('update', con.payload);
   }, effectDeps);
 
   const triggerRequestRef = useRef(stableInstance.request);
@@ -489,33 +515,59 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     };
   }, []);
 
-  const handleTrigger = usePersistFn(() => {
+  const handleTrigger = function handleTrigger() {
     const hasExecuted = trigger();
     if (!hasExecuted) {
       return Promise.resolve(signal().state);
     }
     return promiseHandler.requirePromise();
-  });
+  };
 
-  const handleExecute = usePersistFn((...vars: Parameters<C>) => {
+  handleTrigger.payload = (payload: unknown | undefined) => {
+    return function payloadTrigger() {
+      const hasExecuted = triggerWithPayload({ payload });
+      if (!hasExecuted) {
+        return Promise.resolve(signal().state);
+      }
+      return promiseHandler.requirePromise();
+    };
+  };
+
+  const handleExecute = function handleExecute(...vars: Parameters<C>) {
     const hasExecuted = execute(...vars);
     if (!hasExecuted) {
       return Promise.resolve(signal().state);
     }
     return promiseHandler.requirePromise();
-  });
+  };
 
-  return [stableInstance.state, handleTrigger, handleExecute];
+  handleExecute.payload = (payload: unknown | undefined) => {
+    return function payloadExecute(...vars: Parameters<C>) {
+      const hasExecuted = executeWithPayload({ payload }, ...vars);
+      if (!hasExecuted) {
+        return Promise.resolve(signal().state);
+      }
+      return promiseHandler.requirePromise();
+    };
+  };
+
+  return [
+    stableInstance.state,
+    usePersistFn(handleTrigger),
+    usePersistFn(handleExecute)
+  ];
 }
 
 export function useQuery<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  sessionLike: C | SessionKey<C> | { key: SessionKey<C> },
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const callback =
+    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
   const con = parseConfig(callback, 'query', config);
   const {
     variables,
@@ -550,13 +602,15 @@ export function useQuery<T, C extends PromiseCallback<T>>(
 }
 
 export function useMutation<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  sessionLike: C | SessionKey<C> | { key: SessionKey<C> },
   config?: MutationConfig<T, C> | Parameters<C>
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const callback =
+    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
   const con = parseConfig(callback, 'mutation', config);
   const { triggerOn: triggerTypes = ['manual'], strategy } = con;
 
@@ -583,13 +637,15 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 }
 
 export function useSession<T, C extends PromiseCallback<T>>(
-  sessionKey: SessionKey<C>,
+  sessionKeyLike: SessionKey<C> | { key: SessionKey<C> },
   config?: { loaded?: boolean; sessionType?: SessionType } | SessionType
 ): [
   SessionState<T>,
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
+  const sessionKey =
+    typeof sessionKeyLike === 'function' ? sessionKeyLike : sessionKeyLike.key;
   const [, padding] = sessionKey.payload;
   const { sessionType: sessionKeyType } = padding;
   const signal = useSignal(sessionKey);
@@ -612,45 +668,76 @@ export function useSession<T, C extends PromiseCallback<T>>(
       'The session is not loaded yet, check config, and set {loaded: undefined}.'
     );
   }
-  const trigger = usePersistFn(() => {
+  function triggerWithPayload(
+    payloadWrapper: { payload: unknown } | undefined
+  ) {
     const promise = promiseHandler.requirePromise();
     const tunnels = tunnelController.getTunnels();
     const fulls = tunnels.filter(t => t.isFullFunctional);
     fulls.forEach(f => {
-      f.execution.trigger();
+      f.execution.trigger(payloadWrapper);
     });
     if (fulls.length) {
       return promise;
     }
     const shorts = tunnels.filter(t => !t.isFullFunctional);
     shorts.forEach(f => {
-      f.execution.trigger();
+      f.execution.trigger(payloadWrapper);
     });
     if (!shorts.length) {
       return Promise.resolve({ ...sessionState, abandon: true });
     }
     return promise;
-  });
-  const execute = usePersistFn((...vars: Parameters<C>) => {
+  }
+  const handleTrigger = function handleTrigger() {
+    return triggerWithPayload(undefined);
+  };
+
+  handleTrigger.payload = function payloadTrigger(
+    payload: unknown | undefined
+  ) {
+    return function triggerPayload() {
+      return triggerWithPayload({ payload });
+    };
+  };
+
+  function executeWithPayload(
+    payloadWrapper: { payload: unknown } | undefined,
+    ...vars: Parameters<C>
+  ) {
     const promise = promiseHandler.requirePromise();
     const tunnels = tunnelController.getTunnels();
     const fulls = tunnelController.getTunnels().filter(t => t.isFullFunctional);
     fulls.forEach(f => {
-      f.execution.execute(...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
     if (fulls.length) {
       return promise;
     }
     const shorts = tunnels.filter(t => !t.isFullFunctional);
     shorts.forEach(f => {
-      f.execution.execute(...vars);
+      f.execution.execute(payloadWrapper, ...vars);
     });
     if (!shorts.length) {
       return Promise.resolve({ ...sessionState, abandon: true });
     }
     return promise;
-  });
-  return [sessionState, trigger, execute];
+  }
+  const handleExecute = function handleExecute(...vars: Parameters<C>) {
+    return executeWithPayload(undefined, ...vars);
+  };
+  handleExecute.payload = function payloadExecute(
+    payload: unknown | undefined
+  ) {
+    return function executePayload(...vars: Parameters<C>) {
+      return executeWithPayload({ payload }, ...vars);
+    };
+  };
+  return [
+    sessionState,
+    usePersistFn(handleTrigger),
+    usePersistFn(handleExecute)
+  ];
 }
 
 export function useIsFetching(
@@ -752,7 +839,7 @@ export function useLazyComponent<T extends LazyComponentSupportType<any>>(
 }
 
 export function useLoadedSession<T, C extends PromiseCallback<T>>(
-  sessionKey: SessionKey<C>,
+  sessionKey: SessionKey<C> | { key: SessionKey<C> },
   config?: { sessionType?: SessionType } | SessionType
 ): [
   SessionState<T>,
@@ -875,7 +962,8 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const storeApi = function storeApi(k?: any, keys: any[] = []) {
-    const key = k != null ? k : createSessionKey(sessionCallback, queryType);
+    const key =
+      k != null ? k : createSessionKey(sessionCallback, queryType).static();
     const useStoreApiQuery = function useStoreApiQuery(
       c?: QueryConfig<T, C> | Parameters<C>
     ) {
@@ -895,9 +983,9 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const withKeys = function withKeys(
       ...stores: (
         | {
-            key: AirReducer;
+            key: ModelLike;
           }
-        | AirReducer
+        | ModelLike
       )[]
     ) {
       const nks = keys.concat(
@@ -906,12 +994,12 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return storeApi(key, nks);
     };
     const storeApiProvide = function storeApiProvide() {
-      return provide([key, ...keys]);
+      return provide([key, ...keys] as any);
     };
     const storeApiProvideTo = function storeApiProvideTo(
       component: FunctionComponent
     ) {
-      return provide([key, ...keys])(component);
+      return provide([key, ...keys] as any)(component);
     };
     const StoreApiProvider = function StoreApiProvider({
       children
@@ -921,8 +1009,9 @@ const session = function session<T, C extends PromiseCallback<T>>(
       return createElement(Provider, { value: [key, ...keys] }, children);
     };
     const globalApi = function globalApi() {
-      const globalKey = key.static();
+      const globalKey = key;
       const globalApiHooks = {
+        key,
         useSession() {
           return useSession(globalKey, queryType);
         },
@@ -947,8 +1036,10 @@ const session = function session<T, C extends PromiseCallback<T>>(
     const sessionStoreApi = {
       key,
       with: withKeys,
+      /**
+       * @deprecated
+       */
       static: globalApi,
-      createStore: globalApi,
       useSession: useStoreApiSession,
       useLoadedSession: useStoreApiLoadedSession,
       provide: storeApiProvide,
@@ -960,9 +1051,37 @@ const session = function session<T, C extends PromiseCallback<T>>(
       : { ...sessionStoreApi, useMutation: useStoreApiMutation };
   };
 
+  const keyApi = function keyApi() {
+    const key = createSessionKey(sessionCallback, queryType);
+    const useStoreApiQuery = function useStoreApiQuery(
+      c?: QueryConfig<T, C> | Parameters<C>
+    ) {
+      return useQuery(key, c);
+    };
+    const useStoreApiMutation = function useStoreApiMutation(
+      c?: MutationConfig<T, C> | Parameters<C>
+    ) {
+      return useMutation(key, c);
+    };
+    const useStoreApiSession = function useStoreApiSession() {
+      return useSession(key, queryType);
+    };
+    const useStoreApiLoadedSession = function useStoreApiLoadedSession() {
+      return useLoadedSession(key, queryType);
+    };
+    const sessionKeyApi = {
+      key,
+      useSession: useStoreApiSession,
+      useLoadedSession: useStoreApiLoadedSession
+    };
+    return queryType === 'query'
+      ? { ...sessionKeyApi, useQuery: useStoreApiQuery }
+      : { ...sessionKeyApi, useMutation: useStoreApiMutation };
+  };
+
   const api = {
     createStore: storeApi,
-    createKey: storeApi
+    createKey: keyApi
   };
 
   const queryApi = {

@@ -60,7 +60,7 @@ const App = ()=>{
 
 ### useMutation
 
-API useMutation 用于管理修改异步状态。
+API useMutation 用于管理修改异步状态（新增、修改、删除）。
 
 ```ts
 import React from 'react';
@@ -163,13 +163,13 @@ const App = ()=>{
 
  session 预设了异步操作函数。session.useQuery/session.useMutation 的运行规则与 useQuery/useMutation 相同。
 
-useQuery/useMutation 直接使用异步函数创建的是一个本地会话。通过 session.createStore() 的方式可以创建一个动态会话库，并使用库的方式管理异步状态。
+useQuery/useMutation 直接使用异步函数创建的是一个本地会话。通过 session.createKey() 的方式可以创建一个动态会话键，动态会话键可用于创建动态会话库，并作为连接该库的钥匙同步会话状态。
 
-### React.Context 动态会话库
+### 动态会话库
 
 ```ts
 import React from 'react';
-import {session} from '@airma/react-effect';
+import {session, provide} from '@airma/react-effect';
 import {User} from './type';
 
 type UserQuery = {
@@ -177,21 +177,21 @@ type UserQuery = {
     username: string;
 }
 
-// 创建一个动态会话库
-const userQueryStore = session(
+// 创建一个动态会话键
+const userQueryKey = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore();
+).createKey();
 
 const SearchButton = ()=>{
-    // 通过 useSession 可监听本地库状态的变化
+    // 通过 useSession 可监听动态会话库状态的变化
     const [
         // 本地库状态
         {isFetching},
         // 调用 triggerQuery 可以触发当前库下的 useQuery 执行会话。
         triggerQuery
-    ] = userQueryStore.useSession();
+    ] = userQueryKey.useSession();
     return (
         <button 
             disabled={isFetching} 
@@ -202,16 +202,14 @@ const SearchButton = ()=>{
     );
 }
 
-// 动态库采用的是 React.Context 技术，
-// 因此需要通过 provideTo 创建一个 Provider 高阶包装组件。
-// 动态库并不维护会话状态，其实质是键的库状形态。
-// 真正用于维护会话状态的库创建于 Provider 组件中
-const App = userQueryStore.provideTo(()=>{
+// 动态会话键会在 provide 高阶组件初始化过程中建立内部库，
+// 子组件可以通过会话键连接该库
+const App = provide(userQueryKey).to(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
         state, 
-        // useQuery 可以将每次执行产生的会话状态存储到本地库中
-    ] = userQueryStore.useQuery(
+        // useQuery 可以将每次执行产生的会话状态存储到动态会话库中
+    ] = userQueryKey.useQuery(
         [query]
     );
 
@@ -226,15 +224,11 @@ const App = userQueryStore.provideTo(()=>{
 })
 ```
 
-关于支持 React.Context 动态库的原因可参考 [@airma/react-state 中的解释](/zh/react-state/index?id=为什么要支持-reactcontext-库管理模式？)。
-
-**动态库**是包装成库形态的[键](/zh/react-effect/concepts?id=键)；键是创建 Provider 内部**本地库**的模板，也是连接本地库的通道。
-
-动态库可以在不同的 Provider 组件元素中产生不同的本地库。这些依附于 Provider 元素的本地库互不干扰，并随依附组件元素的卸载而销毁。
+动态会话键作为生成库的模版提供给 provide 高阶组件，高阶组件在组件初始化过程中利用键创造库。因此每个库持有组件可以生成持有不同会话库的元素，这些模版相同的不同库之间互不干扰，即为动态库。
 
 ### 全局静态库
 
-与 `@airma/react-state` 不同的是，异步状态似乎更适合全局静库的状态管理模式。全局静态库的会话状态是直接维护在当前静态库对象中的，是真正意义上的库。
+通过使用 `session(...).createStore` 方法可以创建一个静态库。
 
 ```ts
 import React from 'react';
@@ -246,12 +240,12 @@ type UserQuery = {
     username: string;
 }
 
-// 使用动态库的 asGlobal 方法，可创建全局静态库
+// 使用 createStore 创建静态库
 const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     const [
@@ -272,9 +266,8 @@ const SearchButton = ()=>{
     );
 }
 
-// 全局静态库不需要使用 Provider，
-// 可直接连接使用，
-// 会话状态是维护在该库中的，是真正意义上的库
+// 静态库不需要使用 Provider，
+// 可直接连接使用
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
@@ -310,7 +303,7 @@ const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     // 确认当前会话已加载，
@@ -556,7 +549,7 @@ const App = ()=>{
 
 ## 介绍
 
-`@airma/react-effect` 主要负责异步状态管理工作，它依赖了 [@airma/react-state](/zh/react-state/index) 工具包，并借助了如键、动态库等诸多概念，因此在 API 上多有重叠。如果需要同时使用这两个工具包，推荐选用 [@airma/react-hooks](/zh/react-hooks/index)，它整合了两个包的通用 API，同时包囊了各自不同的常用 API。
+`@airma/react-effect` 主要负责异步状态管理工作，它依赖了 [@airma/react-state](/zh/react-state/index) 工具包，并借助了如键、动态库等诸多概念，因此在 API 上多有重叠。如果需要同时使用这两个工具包，推荐选用 [@airma/react-hooks](/zh/react-hooks/index)，它整合了两个包的常用 API，更便于使用。
 
 ### 为什么不推荐使用在异步函数中调用同步的 setState 来管理异步状态？
 

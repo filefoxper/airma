@@ -20,14 +20,13 @@ Create `reducer-like` function:
 ```js
 export function counting(state:number){
     return {
-        // reproduced state for render
+        // render data
         count: state,
         // action method
         increase:()=>state + 1,
         // action method
         decrease:()=>state - 1,
-        // action method, define parameters freely,
-        // return next state.
+        // action method
         add(...additions: number[]){
             return additions.reduce((result, current)=>{
                 return result + current;
@@ -44,21 +43,19 @@ import {counting} from './model';
 import {useModel} from '@airma/react-state';
 
 ......
-// give it an initialState can make it fly.
-const {count, increase, decrease, add} = useModel(counting, 0); // initialState `0`
-// call method `increase\decrease\add` can change `count` and make component rerender
+const {count, increase, decrease, add} = useModel(counting, 0); // set defaultState `0`
+// call method `increase/decrease/add` can change `count` and make component rerender
 ......
 ```
 
-The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
+The `reducer-like` function has a simple name `model`. Use API `model` to wrap the model function can get a model usage API.
 
 ### Local state management
 
 ```ts
 import {model} from '@airma/react-state';
 
-// api model returns a wrap function for your model function.
-// it keeps a same type of parameters and return data with the wrapped function.
+// Wrap model function with `model` API.
 const counting = model(function counting(state:number){
     return {
         count: state,
@@ -71,21 +68,23 @@ const counting = model(function counting(state:number){
         }
     };
 });
+
 ......
-// you can get useModel from the model wrapped function.
+
+// Select `useModel` API from model usage.
 const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-The basic usage about `model` is just enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+The basic usage about `model` is just enhancing `React.useReducer` to manage a local state, it also supports store usages. 
 
-### React.Context state management
+### Dynamic store state management
 
 ```ts
 import {memo} from 'react';
 import {model} from '@airma/react-state';
 
-const countingStore = model(function counting(state:number){
+const countingKey = model(function counting(state:number){
     return {
         count: state,
         increase:()=>state + 1,
@@ -96,25 +95,25 @@ const countingStore = model(function counting(state:number){
             }, state);
         }
     };
-}).createStore(0);
+}).createKey(0);
 ......
 const Increase = memo(()=>{
-    // use store.useSelector can share state changes from store,
-    // when the selected result is changed it rerender component. 
-    const increase = countingStore.useSelector(i => i.increase);
+    // use key.useSelector can sync state changes from store,
+    // when the selected result is changed, it rerender component. 
+    const increase = countingKey.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    // use store.useModel can share state changes from store.
-    const {count} = countingStore.useModel();
+    // use key.useModel can sync state changes from store.
+    const {count} = countingKey.useModel();
     return <span>{count}</span>;
 });
 const Decrease = memo(()=>{
-    const decrease = countingStore.useSelector(i => i.decrease);
+    const decrease = countingKey.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// provide store to component for a React.Context usage.
-const Component = countingStore.provideTo(function Comp() {
+// The HOC API `provide` can create store from keys in a `Provider` component.
+const Component = provide(countingKey).to(function Comp() {
     return (
         <div>
             <Increase/>
@@ -126,9 +125,11 @@ const Component = countingStore.provideTo(function Comp() {
 ......
 ```
 
-Using `model(xxx).createStore(defaultState?).asGlobal()` can build a global store.
+Dynamic store state management creates store in component, that makes every element of this component has a different store with each other, and these stores should always be destroyed when the creator component unmounts.
 
-### Global state management
+Using `model(xxx).createStore(defaultState?)` can create a static store.
+
+### Static store state management
 
 ```ts
 import {model} from '@airma/react-state';
@@ -144,9 +145,8 @@ const counting = model(function countingModel(state:number){
             }, state);
         }
     };
-}).createStore(0).asGlobal(); 
-// mark store to be global;
-// Use `...createStore(0).static()` can create a global store too.
+}).createStore(0); 
+// Use `model(xxx).createStore()` can create a static store.
 ......
 const Increase = memo(()=>{
     const increase = counting.useSelector(i => i.increase);
@@ -160,7 +160,8 @@ const Decrease = memo(()=>{
     const decrease = counting.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// use global store without provider.
+// The static store should be used directly.
+// It needs no `Provider` help.
 const Component = function Comp() {
     return (
         <div>
@@ -174,9 +175,9 @@ const Component = function Comp() {
 
 The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
 
-### Initialize a dynamic state for store in render
+### Initialize store in render time
 
-Sometimes, provides a static state for initializing store is not a easy work. Use `useModel` API to initialize a dynamic state for store in render is a better solution in that case.
+Sometimes, we need to initialize store state in render time.
 
 ```ts
 import {model} from '@airma/react-state';
@@ -192,9 +193,9 @@ const counting = model(function countingModel(state:number){
             }, state);
         }
     };
-}).createStore().static();
-// The store declare method `static` is same with `asGlobal`.
-// Give default state later in component render.
+}).createStore();
+// Without default state.
+// Initialize default state later in render time.
 ......
 const Increase = memo(()=>{
     const increase = counting.useSelector(i => i.increase);
@@ -212,9 +213,7 @@ const Decrease = memo(()=>{
 });
 
 const Component = function Comp({defaultCount}:{defaultCount:number}) {
-    // Initialize default state in render.
-    // API `useModel` always rerender component when state changes, even there is no state dependency.
-    // From `@airma/react-state@18.4.0`, a higher performance optional API `useSignal` is provided for resolving this problem.
+    // Initialize default state in render time.
     counting.useModel(defaultCount);
     return (
         <div>
@@ -225,6 +224,8 @@ const Component = function Comp({defaultCount}:{defaultCount:number}) {
     );
 };
 ```
+
+The useModel API always rerenders component when state change happens. So, it is not a good idea to use this API just for initializing store state.
 
 ### Higher performance usage
 
@@ -242,14 +243,13 @@ const counting = model(function countingModel(state:number){
             }, state);
         }
     };
-}).createStore().static();
-// Give default state later in component render.
+}).createStore();
 ......
 const Increase = memo(()=>{
     // API `useSignal` returns a signal function,
     // which can be called to get the newest instance from store.
     // Only the render usage fields of this instance change makes component rerender.
-    // Here, only the action method `increase` from instance is required, and as the action method is stable with no change, that makes component never rerender.
+    // The action method `increase` from instance is changeless, so it won't cause this component rerender.
     const signal = counting.useSignal();
     return <button onClick={signal().increase}>+</button>;
 });
@@ -265,8 +265,9 @@ const Decrease = memo(()=>{
 });
 
 const Component = function Comp({defaultCount}:{defaultCount:number}) {
-    // API `useSignal` can initialize store state in render too.
+    // API `useSignal` can initialize store state in render time too.
     // The difference with `useModel` is that `useSignal` only rerenders component when the render usage fields of instance changes.
+    // So, makes the signal with zero field usage can stop it rerender this component.
     counting.useSignal(defaultCount);
     return (
         <div>
@@ -282,20 +283,18 @@ The `useSignal` API is even better than API `useSelector`, it computes out when 
 
 ## Introduce
 
-Consider `@airma/react-state` as a enhanced redux. It uses `model function` to replace `reducer function` and makes `dispatching action` been `calling method`; it provides 3 kinds of state-management: `Local state`, `React.Context state`, `Global state`, then the usage can be more reasonable; it allows providing parts of state from model instance, that makes state more flexible. 
+Consider `@airma/react-state` as a enhanced redux. It uses `model function` to replace `reducer function` and makes `dispatching action` to be `calling method`; it provides 3 kinds of state-management: `Local state`, `Dynamic store state`, `Static store  state`, then the usage can be more reasonable; it allows providing parts of state from model instance, that makes state more flexible. 
 
 ### How dose a model work?
 
 A model function should always return an object with action methods and render data. The `useModel` calls model function with a default state parameter, and generates an instance for model returning object. Calls method from the instance can generate a new state, then `useModel` uses this new state to recall model function, and generate a new instance for render.
 
-### Why support context store?
+### Why support dynamic store?
 
-In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
+Dynamic store binds with component element. This feature is very helpful in react usage.
 
- That means: 
- 
- 1. The store data can be destroyed with its `provider` component unmount.
- 2. Components with same store provider can be used together in one parent component without state change effect to each other.
+ 1. The store needs to be destroyed when the component unmounts.
+ 2. When the store owner component generates some different elements, no body want they sync state changes with each other.
  
  #### How to subscribe a grand parent provider store?
 

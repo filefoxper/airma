@@ -1,6 +1,13 @@
-import { FC, FunctionComponent, NamedExoticComponent, ReactNode } from 'react';
+import {
+  ComponentType,
+  ExoticComponent,
+  FunctionComponent,
+  ReactNode
+} from 'react';
 import {
   GlobalConfig as StateGlobalConfig,
+  ModelCreation,
+  ModelKey,
   ModelKeys
 } from '@airma/react-state';
 import { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
@@ -31,18 +38,27 @@ export {
   session
 } from '@airma/react-effect';
 
-export declare function provide(
-  keys: ModelKeys
-): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
-) => typeof component;
+export declare function provide(...storeCreators: ModelKeys[]): {
+  <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ): typeof component;
+  to: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
+};
 
-export declare const Provider: FC<{
-  value: ModelKeys;
-  children?: ReactNode;
-}>;
+export declare const Provider: FunctionComponent<
+  | {
+      value: ModelKeys;
+      children?: ReactNode;
+    }
+  | {
+      storeCreators: ModelKeys;
+      children?: ReactNode;
+    }
+>;
 
-export declare const ConfigProvider: FC<{
+export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;

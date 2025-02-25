@@ -15,7 +15,7 @@ const fetchUserRelationShips = async (): Promise<RelationShip[]> =>{
     return ......
 };
 
-const queryStore = session(fetchUserRelationShips, 'query').createStore().asGlobal();
+const queryStore = session(fetchUserRelationShips, 'query').createStore();
 
 // Common component
 export const RelationShipSelector = (props: Props)=>{
@@ -83,32 +83,6 @@ const keys = {count:countKey,query:querySessionKey};
 
 // @airma/react-state provide can create session store too
 const Component = provide(keys)(()=>{
-    return ......;
-});
-```
-
-session API usage:
-
-```ts
-import {model} from '@airma/react-state';
-import {session} from '@airma/react-effect';
-
-const countStore = model((count: number)=>{
-    return {
-        count,
-        increase:()=>count+1,
-        decrease:()=>count-1
-    }
-}).createStore(0);
-
-const queryStore = session(fetchUsers, 'query').createStore();
-
-const saveStore = session(saveUser, 'mutation').createStore();
-
-// model store can join with session store too
-const store = countStore.with(queryStore,saveStore);
-
-const Component = store.provideTo(()=>{
     return ......;
 });
 ```

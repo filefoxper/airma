@@ -3,17 +3,17 @@
 ## useModel
 
 ```ts
-function useModel(modelFnOrKey, defaultState?): instance
+function useModel(modelLike, defaultState?): instance
 ```
 
 Parameters:
 
-* modelFnOrKey - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
+* modelLike - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API or model(modelFn).createKey(). Event a store created by model(modelFn).createStore().
 * defaultState - Optional, a default state for model initializing.
 
 Returns
 
-* A instance object (Proxy object). Call the action method from instance, can generate a next state, and refreshes instance.
+* A instance object (Proxy object). Call the method from instance, can generate a next state, and refreshes instance.
 
 ## useControlledModel
 
@@ -73,7 +73,7 @@ const App = ()=>{
 
 ```ts
 function useSelector(
-  modelKey,
+  modelKeyOrStore,
   selector,
   equalFn?
 ): ReturnType<C>;
@@ -81,7 +81,7 @@ function useSelector(
 
 Parameters
 
-* modelKey - A model key, it should be a result of calling [createKey](/react-state/api?id=createkey).
+* modelKeyOrStore - A model key, it should be a result of calling [createKey](/react-state/api?id=createkey). Or a model store created by model(modelFn).createStore().
 * selector - A callback to select properties from instance which is refreshed by the matched store state.
 * equalFn - Optional callback, for telling API how to make judgment about if the selected result has been changed
 
@@ -145,7 +145,7 @@ export default ()=>{
 
 ## Provider
 
-It is a `Context.Provider` component for [React.Context state-management](/react-state/index?id=reactcontext-state-management).
+It is a `Context.Provider` component for [Dynamic store state management](/react-state/index?id=dynamic-store-state-management).
 
 ```ts
 const Provider: FC<{
@@ -156,7 +156,7 @@ const Provider: FC<{
 
 Props
 
-* value - model keys.
+* value - model keys or objects contains key: {key: ModelKey}.
 * children - react nodes
 
 Returns
@@ -170,12 +170,14 @@ The HOC mode for Provider.
 ```ts
 function provide(
   keys
-): (component: ComponentType) => typeof component;
+): ((component: ComponentType) => typeof component)&{
+  to: (component: ComponentType) => typeof component
+};
 ```
 
 Parameters
 
-* keys - model keys.
+* keys - model keys or objects contains key: {key: ModelKey}.
 
 Returns
 
@@ -201,6 +203,26 @@ import model from './model';
 const key = createKey(model);
 
 const App = provide(key)(()=>{
+    const {...} = useModel(key);
+    const data = useSelector(key, s=>s.data);
+});
+```
+
+or 
+
+```ts
+import React from 'react';
+import { 
+    provide, 
+    createKey, 
+    useModel, 
+    useSelector 
+} from '@airma/react-state';
+import model from './model';
+
+const key = createKey(model);
+
+const App = provide(key).to(()=>{
     const {...} = useModel(key);
     const data = useSelector(key, s=>s.data);
 });
@@ -264,35 +286,43 @@ interface GlobalStoreApi {
   useModel,
   useSignal,
   useSelector,
-  getInstance:()=>Instance,
-  initialize:(defaultState?)=>void
+  instance:(defaultState?)=>Instance,
+}
+
+interface KeyApi {
+  useModel,
+  useSignal,
+  useSelector
 }
 
 interface StoreApi {
   key,
+  /** @deprecated **/
   with:(
     ...stores: (StoreApi | ModelKey)[]
   ) => StoreApi,
   /** @deprecated **/
   static: () => GlobalStoreApi,
-  createStore:()=>GlobalStoreApi
+  /** @deprecated **/
   provide,
+  /** @deprecated **/
   provideTo: (
     component: ComponentType
   ) => typeof component,
+  /** @deprecated **/
   Provider: FC<{ children?: ReactNode }>,
   useModel,
   useSignal,
-  useSelector
+  useSelector,
+  instance:(defaultState?)=>Instance,
 }
 
 interface Api {
   useModel,
   useSignal,
   useControlledModel,
-  /** @deprecated **/
   createStore: (defaultState?) => StoreApi;
-  createKey: (defaultState?) => StoreApi;
+  createKey: (defaultState?) => KeyApi;
 }
 
 function model(modelFn): (typeof modelFn) & Api;

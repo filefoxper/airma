@@ -4,7 +4,7 @@ This section tells how to use these APIs: [useQuery](/react-effect/guides?id=use
 
 ## useQuery
 
-API useQuery is used for managing a query session state. It can run with a promise callback or a store session [key](/react-effect/concepts?id=key). It always takes a latest  execution result as [session state](/react-effect/concepts?id=session-state). Consider it as **useEffect** is helpful for understanding when it works automatically.
+API useQuery is used for managing a query session state. It can run with a promise callback or a session [key](/react-effect/concepts?id=key), event a session store. It always takes a latest  execution result as [session state](/react-effect/concepts?id=session-state). Consider it as **useEffect** is helpful for understanding when it works automatically.
 
 The most basic usage of this API is compose it with a promise callback and parameter array directly:
 
@@ -114,7 +114,18 @@ const [sessionState] = useQuery(fetchUsers, {
     variables: [query],
     defaultData: [],
     deps: [query.name],
-    triggerOn: ['update']
+    triggerOn: ['update'],
+    strategy:[
+        Strategy.response((state)=>{
+            doSomething(state);
+        }),
+        Strategy.response.success((data, state)=>{
+            doSomething(state);
+        }),
+        Strategy.response.failure((error, state)=>{
+            doSomething(state);
+        }),
+    ]
 }); 
 // when execution finishes
 useResponse((state)=>{
@@ -280,7 +291,7 @@ The other usages about useMutation is similar with useQuery.
 
 ## provide
 
-Using session state from store makes a better coding experience than using a local one.
+Using session state from dynamic store makes a better coding experience than using a local one.
 
 #### Create session key
 
@@ -316,6 +327,8 @@ const sessions = {
 
 // provide session keys to create a wrapper
 const wrap = provide(sessions);
+// or
+// const wrap = provide(queryKey, saveKey);
 
 // wrap customized component,
 // and create store in wrap Provider HOC
@@ -381,10 +394,10 @@ const sessions = {
 const Child1 = ()=>{
     // useSession subscribes store[sessions.query].
     // It can drive useQuery with same key works.
-    // There is no execute method in useSession returns.
     const [
         querySessionState, 
-        triggerQuery
+        triggerQuery,
+        executeQuery
     ] = useSession(sessions.query);
 
     const {
@@ -399,7 +412,7 @@ const Child2 = ()=>{
 }
 
 // simplify wrap
-const Component = provide(sessions)((props:Props)=>{
+const Component = provide(queryKey, saveKey)((props:Props)=>{
     // responses session state to store[sessions.query],
     // and subscribes store[sessions.query]
     useQuery(sessions.query, {
@@ -435,7 +448,8 @@ const Child1 = ()=>{
     const [
         querySessionState, 
         // trigger all useQuery(sessions.query, xxx)
-        triggerQuery
+        triggerQuery,
+        executeQuery
     ] = useSession(sessions.query);
     return ......;
 }
@@ -448,7 +462,7 @@ const Child2 = ()=>{
     return ......;
 }
 
-const Component = provide(sessions)((props:Props)=>{
+const Component = provide(queryKey, saveKey).to((props:Props)=>{
     // When more than one same key sessions work together,
     // only one is allowed to execute and response.
     useQuery(sessions.query, [props.query]);
@@ -499,7 +513,7 @@ const Child2 = ()=>{
     return ......;
 }
 
-const Component = provide(sessions)((props:Props)=>{
+const Component = provide(queryKey, saveKey).to((props:Props)=>{
     useQuery(sessions.query, {
         variables: [props.query],
         defaultData: []
@@ -553,7 +567,7 @@ const Child2 = ()=>{
 }
 
 // simplify wrap
-const Component = provide(sessions)((props:Props)=>{
+const Component = provide(queryKey, saveKey)((props:Props)=>{
     // responses session state to store[sessions.query],
     // and subscribes store[sessions.query]
     useQuery(sessions.query, {
@@ -582,19 +596,19 @@ export const querySession = session(fetchUsers, 'query');
 export const saveSession = session(saveUser, 'mutation');
 ```
 
-Use session API with flow style.
+Use session API style.
 
 ```ts
 // usage.tsx
+import {provide} from '@airma/react-effect';
 import {querySession, saveSession} from './session';
 
-// a dynamic store is not a real store,
-// it is a key wrapper.
-const queryStore = querySession.createStore();
-const saveStore = saveSession.createStore();
+// create session key
+const queryKey = querySession.createKey();
+const saveKey = saveSession.createKey();
 
 const Child1 = ({query}: {query:UserQuery})=>{
-    // store.useQuery need no key or promise callback
+    // key.useQuery need no key or promise callback
     const [
         {
             data,
@@ -602,7 +616,7 @@ const Child1 = ({query}: {query:UserQuery})=>{
         },
         triggerQuery,
         executeQuery
-    ] = queryStore.useQuery([query]);
+    ] = queryKey.useQuery([query]);
     return ......;
 }
 
@@ -611,13 +625,13 @@ const Child2 = ()=>{
         name:'',
         username:''
     });
-    // store.useSession need no key
-    const [, triggerQuery] = queryStore.useSession();
+    
+    const [, triggerQuery, executeQuery] = queryKey.useSession();
     const [
         saveSessionState,
         triggerSave,
         executeSave
-    ] = saveStore.useMutation([user]);
+    ] = saveKey.useMutation([user]);
 
     useResponse.useSuccess(()=>{
         triggerQuery();
@@ -625,10 +639,8 @@ const Child2 = ()=>{
     return ......;
 }
 
-// provide dynamic stores, before use them,
-// use store.with(...stores).provideTo(Component)
-// with API support keys too.
-const Component = saveStore.with(queryStore).provideTo(
+// provide keys
+const Component = provide(queryKey, saveKey).to(
     (props: Props)=>{
         return (
             <>
@@ -639,10 +651,10 @@ const Component = saveStore.with(queryStore).provideTo(
     }
 )
 
-// global store is static, it is a real store.
-const globalQueryStore = queryStore.asGlobal();
+// create a static store
+const globalQueryStore = querySession.createStore();
 
-// global store don't need to be provided to Component.
+// static store needs no Provider system.
 const Component2 = (props:Props)=>{
     // use it directly
     const [
@@ -675,7 +687,7 @@ const Component2 = (props:Props)=>{
 }
 ```
 
-More [examples](/react-effect/index?id=global-static-store-state-management).
+More [examples](/react-effect/index?id=static-store-state-management).
 
 ## Strategy
 
@@ -712,6 +724,59 @@ const globalConfig: GlobalConfig = {
             message.error(e);
         })
     ]
+}
+
+<ConfigProvider value={globalConfig}>
+......
+</ConfigProvider>
+```
+
+**Note**: When the @airma/react-effect 18.6.0 coming, Strategy.failure should be put on top for a default processing to errors.
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    batchUpdate: unstable_batchedUpdates,
+    // add experience next to use the new features in next big version.
+    experience: 'next',
+    // set common strategies
+    strategy: (
+        // a running session strategy chain
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        // In 18.6.0, failure strategy should be top,
+        // and the error can go through customized Strategy.failure before into this one.
+        Strategy.failure(e => {
+            message.error(e);
+        }),
+        ...s, 
+        // chain a memo strategy for every useQuery
+        sessionType === 'query'? Strategy.memo():null,
+    ]
+}
+
+const Child = ()=>{
+    useQuery(promiseCallback, {
+        variables:[],
+        strategy:[
+            Strategy.response.failure((err)=>{
+                // in 18.6.0, it is allowed to process some conditions about error, and throw others to the default Strategy.failure process.
+                if(err.code === 'xxx'){
+                    processError(err);
+                    return;
+                }
+                throw err;
+            });
+        ]
+    });
+    return ......;
 }
 
 <ConfigProvider value={globalConfig}>
@@ -899,7 +964,7 @@ const App = ()=>{
 ```
 
 * batchUpdate - It can use `unstable_batchedUpdates` from react-dom to optimize update performance.
-* ~~useGlobalFetching~~ - It can support a global isFetching state detection. **It is deprecated from v18.3.2**.
+* experience - It only accepts a 'next' value. Open it, means to use features in next big version.
 * strategy - It can be used for composing a common strategy chain for every session.
 
 Next section [feature](/react-effect/feature).

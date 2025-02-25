@@ -100,6 +100,7 @@ const App = ()=>{
     } = result;
 
     const handleClick = ()=>{
+        // trigger mutation execute with variables [User]
         trigger();
     }
 
@@ -113,7 +114,7 @@ The state of useMutation has same fields with useQuery state.
 
 Both of useQuery and useMutation need a promise callback for working, the mission of promise callback is called [session](/react-effect/concepts?id=session).
 
-Use a simplified API [session](/react-effect/api?id=session) to make coding fly.
+Use a simplified API [session](/react-effect/api?id=session) to make coding clear.
 
 ```ts
 import React from 'react';
@@ -160,13 +161,13 @@ const App = ()=>{
 }
 ```
 
-The state of useQuery/useMutation is a local state. There are two different store state-managements: use dynamic React.Context store or use static global store.
+The state of useQuery/useMutation is a local state. There are two different store state-managements: dynamic store or static store.
 
-### React.Context dynamic store state-management
+### Dynamic store state-management
 
 ```ts
 import React from 'react';
-import {session} from '@airma/react-effect';
+import {session, provide} from '@airma/react-effect';
 import {User} from './type';
 
 type UserQuery = {
@@ -175,20 +176,20 @@ type UserQuery = {
 }
 
 // declare a query session dynamic store
-const userQueryStore = session(
+const userQueryKey = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore();
+).createKey();
 
 const SearchButton = ()=>{
     // useSession subscribes state change from session store
     const [
         // state from session store
         {isFetching},
-        // call trigger function can trigger useQuery work manually 
+        // call trigger function to make useQuery work manually 
         triggerQuery
-    ] = userQueryStore.useSession();
+    ] = userQueryKey.useSession();
     return (
         <button 
             disabled={isFetching} 
@@ -199,13 +200,13 @@ const SearchButton = ()=>{
     );
 }
 
-// provide dynamic store is very important
-const App = userQueryStore.provideTo(()=>{
+// provide keys to create a dynamic store in component
+const App = provide(userQueryKey).to(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
         state, 
         // Write every query state change to store
-    ] = userQueryStore.useQuery(
+    ] = userQueryKey.useQuery(
         [query]
     );
 
@@ -220,13 +221,11 @@ const App = userQueryStore.provideTo(()=>{
 })
 ```
 
-Why support React.Context store? Refer to [@airma/react-state explain](/react-state/index?id=why-support-context-store).
+A dynamic store should be created in a component, and synchronized in the children components by using `React.Context`.
 
-The dynamic store is a special session [key](/react-effect/concepts?id=key) collection not a real store. It persist an actual store in [Provider](/react-effect/api?id=provider) component. 
+A static store should be created in a global scope, and used in any component without provider.
 
-When a Provider is mounting in, it creates store, and when the provider has been unmounted, it destroys this store.
-
-### Global static store state-management
+### Static store state-management
 
 ```ts
 import React from 'react';
@@ -238,12 +237,12 @@ type UserQuery = {
     username: string;
 }
 
-// declare a query session global static store
+// create a static store for session
 const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     const [
@@ -264,7 +263,7 @@ const SearchButton = ()=>{
     );
 }
 
-// global static store needs no Provider.
+// a static store needs no Provider.
 const App = ()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
@@ -300,7 +299,7 @@ const userQueryStore = session(
     (query: UserQuery):Promise<User[]> =>
         Promise.resolve([]),
     'query'
-).createStore().asGlobal();
+).createStore();
 
 const SearchButton = ()=>{
     // store.useLoadedSession can give out the promise resolve type without `empty`.
@@ -456,7 +455,7 @@ const App = ()=>{
 }
 ```
 
-The [Strategy](/react-effect/api?id=strategy) API contains some useful strategies for useQuery and useMutation. Compose some strategies together can make the session of useQuery/useMutation performance wonderfully.
+The [Strategy](https://filefoxper.github.io/airma/#/react-effect/api?id=strategy) API contains some useful strategies for useQuery and useMutation. Compose some strategies together can make the session of useQuery/useMutation performance wonderfully.
 
 ```ts
 import React from 'react';
@@ -544,7 +543,7 @@ const App = ()=>{
 
 ## Introduce
 
-`@airma/react-effect` is an asynchronous state-management tool for react. It dependents [@airma/react-state](/react-state/index), and there are some similar apis between both packages, so, use a common package [@airma/react-hooks](/react-hooks/index) is a better choice.
+`@airma/react-effect` is an asynchronous state-management tool for react. It dependents [@airma/react-state](https://filefoxper.github.io/airma/#/react-state/index), and there are some similar apis between both packages, so, use a common package [@airma/react-hooks](https://filefoxper.github.io/airma/#/react-hooks/index) is a better choice.
 
 ### Why not use setState in asynchronous callback?
 

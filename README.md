@@ -81,12 +81,59 @@ const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usage with or without `React.Context` to manage a global state. 
+Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also supports store usages. 
 
-### React.Context state management
+### Dynamic store usage
 
 ```tsx
 import {memo} from 'react';
+import {model, provide} from '@airma/react-state';
+
+const countingKey = model(function counting(state:number){
+    return {
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
+    };
+}).createKey(0);
+......
+const Increase = memo(()=>{
+    // use key.useSelector to sync state changes from store,
+    // when the selected result is changed it rerender component. 
+    const increase = countingKey.useSelector(i => i.increase);
+    return <button onClick={increase}>+</button>;
+});
+const Count = memo(()=>{
+    // use key.useModel to sync state changes from store.
+    const {count} = countingKey.useModel();
+    return <span>{count}</span>;
+});
+const Decrease = memo(()=>{
+    const decrease = countingKey.useSelector(i => i.decrease);
+    return <button onClick={decrease}>-</button>;
+});
+// provide key to component for creating a dynamic store in Component
+const Component = provide(countingKey).to(function Comp() {
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+});
+......
+```
+
+The keys are templates for creating store in component. When the component generates an element, it creates a store in this element, and provide the store to its children. This store is a dynamic store. 
+
+The dynamic store is created when component creates elements, that makes the elements from one component takes different stores with same temlates.
+
+The static store is simple, it needs no Context tech support. Using `model(xxx).createStore()` can build a static store.
+
+### Static store
+
+```ts
 import {model} from '@airma/react-state';
 
 const countingStore = model(function counting(state:number){
@@ -103,54 +150,6 @@ const countingStore = model(function counting(state:number){
 }).createStore(0);
 ......
 const Increase = memo(()=>{
-    // use store.useSelector can share state changes from store,
-    // when the selected result is changed it rerender component. 
-    const increase = countingStore.useSelector(i => i.increase);
-    return <button onClick={increase}>+</button>;
-});
-const Count = memo(()=>{
-    // use store.useModel can share state changes from store.
-    const {count} = countingStore.useModel();
-    return <span>{count}</span>;
-});
-const Decrease = memo(()=>{
-    const decrease = countingStore.useSelector(i => i.decrease);
-    return <button onClick={decrease}>-</button>;
-});
-// provide store to component for a React.Context usage.
-const Component = countingStore.provideTo(function Comp() {
-    return (
-        <div>
-            <Increase/>
-            <Count/>
-            <Decrease/>
-        </div>
-    );
-});
-......
-```
-
-Using `model(xxx).createStore().static()` can build a global store.
-
-### Global state management
-
-```ts
-import {model} from '@airma/react-state';
-
-const countingStore = model(function counting(state:number){
-    return {
-        count: state,
-        increase:()=>state + 1,
-        decrease:()=>state - 1,
-        add(...additions: number[]){
-            return additions.reduce((result, current)=>{
-                return result + current;
-            }, state);
-        }
-    };
-}).createStore(0).static();
-......
-const Increase = memo(()=>{
     const increase = countingStore.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
@@ -162,7 +161,7 @@ const Decrease = memo(()=>{
     const decrease = countingStore.useSelector(i => i.decrease);
     return <button onClick={decrease}>-</button>;
 });
-// use global store without provider.
+// A static store needs no provider.
 const Component = function Comp() {
     return (
         <div>
@@ -176,32 +175,11 @@ const Component = function Comp() {
 
 The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
 
-### Why support context store?
-
-In `@airma/react-state`, store is dynamic, every `provider` copies a working instance for a context usage.
-
- That means: 
- 
- 1. The store data can be destroyed with its `provider` component unmount.
- 2. Components with same store provider can be used together in one parent component without state change effect to each other.
- 
- #### How to subscribe a grand parent provider store?
-
- The store provider system in `@airma/react-state` is designed with a tree structure. The nearest `provider` finds store one-by-one from itself to its root parent `provider`, and links the nearest matched `provider` store to the subscriber `useModel/useSelector`.
-
- #### Does the state change of store leads a whole provider component rerender?
-
- No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
-
- ### Why not async action methods
-
- Async action often makes the problem about stale data and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children). So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
-
 There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
 
 ## @airma/react-effect
 
-Simple asynchronous state-management for react. It is considered as a combined hook with `React.useEffect` and `React.useState`.
+Simple asynchronous state-management for react. It is considered as a composite hook by `React.useEffect` and `React.useState`.
 
 Create a callback which always returns a promise.
 
@@ -276,40 +254,41 @@ const [
 
 API `useQuery` or `useMutation` can be used as a context or global asynchronous state-management hook too.
 
-### React.Context asynchronous state management
+### Dynamic asynchronous state management
 
 ```tsx
-import {session} from '@airma/react-effect';
+import {session, provide} from '@airma/react-effect';
 
-// create a store for sharing state change.
-const fetchUsersSession = session((groupId: number): Promise<User[]> => {
+// create a key for syncing state changes.
+const fetchUsersSessionKey = session((groupId: number): Promise<User[]> => {
     return userRequest.fetchUsersByGroupId(groupId);
-}, 'query').createStore();
+}, 'query').createKey();
 ......
 const ChildQueryComponent = ()=>{
     ......
-    // when `fetchUsersSession.useQuery` works,
-    // the `sessionState change` is shared with a same store subscriber like `useSession`. 
+    // when `fetchUsersSessionKey.useQuery` works,
+    // the `sessionState change` happens in a store,
+    // the other session usages like `useSession` with same key receives same change.
     const [
         sessionState,
         recall,
         recallWithVariables 
-    ] = fetchUsersSession.useQuery([props.groupId]);
+    ] = fetchUsersSessionKey.useQuery([props.groupId]);
     ......
 };
 
 const ChildReceptionComponent = ()=>{
     ......
-    // the store.useSession can accept the sessionState change caused by the same store `useQuery` or `useMutation`.
+    // the key.useSession can accept the sessionState changes caused by the same store `useQuery` or `useMutation`.
     const [
         sessionState,
         recall
-    ] = fetchUsersSession.useSession();
+    ] = fetchUsersSessionKey.useSession();
     ......
 };
 
-// provide store to component. 
-const Component = fetchUsersSession.provideTo(function Comp(){
+// provide keys to component for creating a dynamic store.
+const Component = provide(fetchUsersSessionKey).to(function Comp(){
     return (
         <>
             <ChildQueryComponent/>
@@ -319,17 +298,17 @@ const Component = fetchUsersSession.provideTo(function Comp(){
 });
 ```
 
-Use `session(xxx,'query'|'mutation').createStore().static()` can create a global store, which can be used directly without provider.
+Use `session(xxx,'query'|'mutation').createStore()` can create a static store, which can be used without provider.
 
-### Global asynchronous state management
+### Static asynchronous state management
 
 ```tsx
 import {session} from '@airma/react-effect';
 
-// make store global
+// create static store
 const fetchUsersSession = session((groupId: number): Promise<User[]> => {
     return userRequest.fetchUsersByGroupId(groupId);
-}, 'query').createStore().static();
+}, 'query').createStore();
 ......
 const ChildQueryComponent = ()=>{
     ......
@@ -350,7 +329,7 @@ const ChildReceptionComponent = ()=>{
     ......
 };
  
- // a global store API can be used directly without provider.
+ // The static store API can be used directly without provider.
 const Component = function Comp(){
     return (
         <>

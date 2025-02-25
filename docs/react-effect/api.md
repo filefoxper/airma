@@ -6,7 +6,7 @@ It is a query [session](/react-effect/concepts?id=session) API. By the default, 
 
 From version v18.5.0, a no config useQuery works more like a useSession, it always looks for another useQuery with same session key and config to work for it. If the perfect substitute is not exist, it works manually. 
 
-So, a no config useQuery looks more like a useSession. The only different is that the no config useQuery still works if no substitute is found.
+So, a no config useQuery looks more like a useSession. The only different is that the no config useQuery still works if no substitute session usage is found.
 
 ```ts
 function useQuery(
@@ -21,7 +21,7 @@ function useQuery(
 
 ### Parameters
 
-* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key).
+* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key), event a session store.
 * variablesOrConfig - It is optional, if there is no variables, useQuery works in manual mode. It can be an parameter array for callback, or a [session config](/react-effect/concepts?id=session-config).
 
 ### Returns
@@ -36,7 +36,7 @@ It is a mutation [session](/react-effect/concepts?id=session) API. By the defaul
 
 From version v18.5.0, a no config useMutation works more like a useSession, it always looks for another useMutation with same session key and config to work for it. If the perfect substitute is not exist, it works manually. 
 
-So, a no config useMutation looks more like a useSession. The only different is that the no config useMutation still works if no substitute is found.
+So, a no config useQuery looks more like a useSession. The only different is that the no config useQuery still works if no substitute session usage is found.
 
 ```ts
 function useMutation(
@@ -51,7 +51,7 @@ function useMutation(
 
 ### Parameters
 
-* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key).
+* promiseCallbackOrSessionKey - It can be a promise callback or a session [key](/react-effect/concepts?id=key), event a session store.
 * variablesOrConfig - It is optional, if there is no variables, useMutation works in manual mode. It can be an parameter array for callback, or a [session config](/react-effect/concepts?id=session-config).
 
 ### Returns
@@ -82,18 +82,20 @@ function createSessionKey(
 
 ## Provider
 
-It is a React Context Provider component. It creates store from [keys](/react-effect/concepts?id=key). It can be replace by [Provider](/react-state/api?id=provider) in @airma/react-state package.
+It is a React Context Provider component. It creates store from [keys](/react-effect/concepts?id=key). It can be replaced by [Provider](/react-state/api?id=provider) in @airma/react-state package.
 
 ```ts
 Provider props:{
-    value: <session keys> or <model keys>,
+    value?: <session keys> or <model keys> or <stores>,
+    storeCreators?: <session keys> or <model keys> or <stores>,
     children?: ReactNode
 }
 ```
 
 ### Parameters
 
-* value - [Session keys](/react-effect/concepts?id=key) or [model keys](/react-state/concepts?id=key).
+* value - [Session keys](/react-effect/concepts?id=key), [model keys](/react-state/concepts?id=key) or store.
+* storeCreators - [Session keys](/react-effect/concepts?id=key), [model keys](/react-state/concepts?id=key) or store.
 * children - React Nodes
 
 ### Returns
@@ -109,7 +111,7 @@ function provide(keys){
     return function connect(Component){
         return function HocComponent(componentProps){
             return (
-                <Provider keys={keys}>
+                <Provider storeCreators={keys}>
                   <Component {...componentProps}/>
                 </Provider>
             );
@@ -121,12 +123,6 @@ function provide(keys){
 ## useSession
 
 It is used for subscribing store state change. It can trigger useQuery/useMutation to execute.
-
-```ts
-function useSession(sessionKey):[sessionState, trigger]
-```
-
-**From version v18.3.2**, useSession support execute method.
 
 ```ts
 function useSession(sessionKey):[sessionState, trigger, execute]
@@ -145,12 +141,6 @@ function useSession(sessionKey):[sessionState, trigger, execute]
 ## useLoadedSession
 
 It is a special useSession when the usage is ensure that the [session](/react-effect/concepts?id=session) has been loaded.
-
-```ts
-function useLoadedSession(sessionKey):[sessionState, trigger]
-```
-
-**From version v18.3.2**, useLoadedSession support execute method.
 
 ```ts
 function useLoadedSession(sessionKey):[sessionState, trigger, execute]
@@ -622,10 +612,21 @@ type StaticStoreApi = {
   useLoadedSession():[sessionState, trigger];
 };
 
+type KeyApi = {
+  useQuery(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useMutation(
+    variablesOrConfig
+  ):[sessionState, trigger, execute];
+  useSession():[sessionState, trigger];
+  useLoadedSession():[sessionState, trigger];
+};
+
 type StoreApi = {
   /** @deprecated **/
   static(): StaticStoreApi;
-  createStore(): StaticStoreApi;
+  /** @deprecated **/
   provideTo<P extends object>(
     component: ComponentType<P>
   ):ComponentType<P>;
@@ -633,6 +634,7 @@ type StoreApi = {
     value: ModelKeys, 
     children?: ReactNode
   }>;
+  /** @deprecated **/
   with(...stores:(StoreApi|ModelKey)[]);
   useQuery(
     variablesOrConfig
@@ -645,9 +647,8 @@ type StoreApi = {
 };
 
 type Api = {
-  /** @deprecated **/
   createStore():StoreApi;
-  createKey():StoreApi;
+  createKey():KeyApi;
   useQuery(
     variablesOrConfig
   ):[sessionState, trigger, execute];

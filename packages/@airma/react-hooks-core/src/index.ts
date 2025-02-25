@@ -40,9 +40,10 @@ function noop() {
 function usePersistFn<T extends (...args: any[]) => any>(callback: T): T {
   const dispatchRef = useRef<T>(callback);
   dispatchRef.current = callback;
-  const persistRef = useRef((...args: any[]): any =>
-    dispatchRef.current(...args)
-  );
+  const persistRef = useRef(function proxy(...args: any[]): any {
+    return dispatchRef.current(...args);
+  });
+  Object.assign(persistRef.current, callback);
   return persistRef.current as T;
 }
 

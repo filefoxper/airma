@@ -62,6 +62,7 @@ The full fields of session state:
 * **data** - The latest successful execution result of promise callback, if there is no default data setting, it should be undefined before session has been executed.
 * **error** - The latest execution failed result, it should be undefined if the execution is successful. 
 * **variables** - The latest execution parameters, it should be undefined before session has been executed.
+* **payload** - The latest execution payload data, it should be undefined before session has been executed.
 * **isFetching** - If the session is running it should be `true`, otherwise it should be `false`.
 * **isError** - If the latest execution is failed it should be `true`, otherwise it should be `false`.
 * **sessionLoaded** - If the session has been executed successfully it should be `true`, otherwise it should be `false`.
@@ -134,6 +135,7 @@ The full config fields are:
 * **triggerOn** - The session executing ways. It should be an array, and there are 3 ways: `mount | update | manual`. This setting can change the session executing ways.
 * **deps** - The update trigger dependency data, it should be an array. When the `triggerOn` setting contains `update`, and elements of deps change, the session execute promise callback with newest `variables`.
 * **variables** - The parameters for execution, it should be an array. If there is no `deps` option in config, it is used as a default `deps` by session.
+* **payload** - A default payload data when the session is executing, it will append to session state after the execution finishes.
 * **defaultData** - The default data for session. If it is setted, the `sessionState.data` has a default data at begining, and `sessionState.loaded` is always `true`.
 * **strategy** - The executing features for session. It can be a single [strategy](/react-effect/concepts?id=strategy) or an strategy array.
 
@@ -187,6 +189,45 @@ const callExecuteMutation = ()=>{
 };
 ```
 
+The manual execute methods allows to set a payload data for current execution, and this payload data will appear in session state fields, when the execution is finished.
+
+```ts
+const [
+    querySessionState,
+    // trigger
+    triggerQuery,
+    // execute
+    executeQuery
+] = useQuery(promiseCallback, {
+    variables: [param1, param2],
+    payload: 'effect'
+});
+// after mount or update, result of session state {payload: 'effect'}
+};
+
+const callTriggerQueryPayload = ()=>{
+    // set payload data
+    triggerQuery.payload('trigger')();
+    // result of session state {payload: 'trigger'}
+};
+
+const callExecuteQueryPayload = ()=>{
+    // set payload data
+    executeQuery.payload('execute')(param1, param2);
+    // result of session state {payload: 'execute'}
+};
+
+const callTriggerQuery = ()=>{
+    // no payload
+    triggerQuery();
+    // result of session state {payload: 'effect'}
+}
+
+const payload = querySessionState.payload;
+```
+
+The no payload manual execution uses the default payload from config.
+
 ## Key
 
 Key is a special function for creating and subscribing store in [Provider](/react-effect/api?id=provider).  API [createSessionKey](/react-effect/api?id=createsessionkey) wraps a promise callback to be key. It is a special [model key](/react-state/concepts?id=key) from `@airma/react-state` concepts.
@@ -232,8 +273,8 @@ const SearchButton = ()=>{
     );
 }
 
-// provide key to Provider for creating store.
 // API provide is a HOC Provider for wrapping customized component. 
+// provide key to Provider can create a inside store to this component.
 const App = provide(userQueryKey)(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [

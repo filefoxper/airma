@@ -168,3 +168,9 @@
 
 * 变更 `session().createStore` 为 `session().createKey`
 * 变更 `session().createStore().static()` 为 `session().createKey().createStore()`
+
+## v18.5.13
+
+* 新增 payload 方法至 trigger 和 execute 方法: trigger.payload(x)(); 当一个会话完成时，sessionState 中会带有该 payload 信息。
+* 新增 session().createKey() 接口用于创建带有常用API的会话键
+* 至当前版本开始，原 session().createStore() 创建的库为静态库，但因为库中含有键，所以 provide 后，依然可以产生相应的动态库，因此是向下兼容的

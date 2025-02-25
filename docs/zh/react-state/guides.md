@@ -44,7 +44,7 @@ const {
 
 可以把它当作简化版的 React.useReducer。
 
-### React.Context 动态库管理
+### 动态库状态管理
 
 用于管理动态库状态的 useModel 与管理本地状态的 useModel 所需参数略有不同。
 
@@ -82,7 +82,7 @@ const {xxx} = useSelector(modelKey, (instance)=>pick(instance,['xxx']), shallowE
 
 ## createKey 与 provide
 
-API [provide](/zh/react-state/api?id=provide) 用于提供使用动态库所需的 [Provider](/zh/react-state/api?id=provider) 外包装组件环境。
+API [provide](/zh/react-state/api?id=provide) 用于提供创建和使用动态库所需的 [Provider](/zh/react-state/api?id=provider) 外包装组件环境。
 
 ```ts
 /**
@@ -92,6 +92,7 @@ API [provide](/zh/react-state/api?id=provide) 用于提供使用动态库所需�
  * @returns WrappedComponent 被 Provider 组件包囊后的组件
  **/
 const WrappedComponent = provide(modelKeys)(Component)
+const WrappedComponent = provide(modelKeys).to(Component)
 ```
 
 API [createKey](/zh/react-state/api?id=createkey) 可以为**模型**生成[键](/zh/react-state/concepts?id=键)，键可用于生成本地库，同时作为连接本地库的通道。
@@ -120,7 +121,7 @@ const Component = provide(modelKey)(function Component(){
 })
 ```
 
-想要同时使用多个不同的库？
+想要同时创建和使用多个不同的库？
 
 ```ts
 import {myModel, myModel2} from './model';
@@ -150,6 +151,13 @@ const Component1 = provide([key, key2])(function Component1(){
     // 链接 key2 创建的本地库
     useModel(key2, defaultState);
     return <Child/>;
+});
+
+// 参数风格的键集合 >= 18.5.10
+const Component1 = provide(key, key2)(function Component1(){
+    // 链接 key2 创建的本地库
+    useModel(key2, defaultState);
+    return <Child/>;
 })
 ```
 
@@ -163,7 +171,7 @@ const modelKey = createKey(myModel)
 
 const Component = function Component(){
     return (
-        <Provider keys={modelKey}>
+        <Provider storeCreators={modelKey}>
             ......
         </Provider>
     );
@@ -207,7 +215,7 @@ const key2 = createKey(myModel);
 
 // key 和 key2 拥有有相同的模型，但却是两个不同的键，
 // 因此它们会生成两个不同的库
-const keys = {key, key2};
+const keys = [key, key2];
 
 const Component = provide(keys)(function Component(){
     return ......;
@@ -347,45 +355,90 @@ const toggleModel = model((selected:boolean)=>([
 使用方式
 
 ```ts
-import {model} from '@airma/react-state';
+import {model, provide} from '@airma/react-state';
 
 const toggleModel = model((selected:boolean)=>([
     selected,
     ()=>!selected
 ] as const));
 
-// 创建 React.Context 动态库
-const toggleStore = toggleModel.createStore(false);
+// 创建动态库的生成访问键
+const toggleKey = toggleModel.createKey(false);
 
-// 将动态库转换成全局静态库，
-// 全局静态库不需要 Provider
-const toggleGlobalStore = toggleStore.asGlobal();
+// 创建静态库
+const toggleGlobalStore = toggleModel.createStore();
 ......
-toggleModel.useModel(false);
-toggleModel.useControlledModel(props.checked, props.onChange);
+function ChildComponent(props){
+    // 本地状态管理
+    const [selected, toggle] = toggleModel.useModel(false);
+    // 受控状态管理
+    const [selected, toggle] = toggleModel.useControlledModel(props.checked, props.onChange);
+    // 本地状态管理 signal 模式
+    const signal = toggleModel.useSignal(false);
+    const [selected, toggle] = signal();
+
+    return ......;
+}
+
 ......
-toggleStore.provideTo(function Component(){
-    const [, toggle] = toggleStore.useModel();
-    const selected = toggleStore.useSelector(([s])=>s);
+// 不推荐使用 provide 静态库来生成动态库
+// toggleGlobalStore.provideTo(function Component(){
+provide(toggleKey).to(function Component(){
+    const [, toggle] = toggleKey.useModel();
+    const selected = toggleKey.useSelector(([s])=>s);
+    const [, toggleFromSignal] = toggleKey.useSignal()();
     const selectedInGlobal = toggleGlobalStore.useSelector(([s])=>s);
     return ......;
 });
 ......
 function Comp(){
-    toggleGlobalStore.useModel();
+    const instance = toggleGlobalStore.useModel();
+    const signal = toggleGlobalStore.useSignal();
     return ......;
 }
 ```
 
-想要整合多个库？
+在 18.5.10 版本之前，model().createStore 方法生成的是键的包装，但至此版本开始，model().createStore 方法生成的是静态库。因为静态库本身含有键，故可以被 provide 作为键来产生动态库。但并不推荐这种动态库创建方式。
+
+想要整合多个动态库？
+
+```ts
+import {model, provide} from '@airma/react-state';
+
+const toggleKey = model((selected:boolean)=>([
+    selected,
+    ()=>!selected
+] as const)).createKey(false);
+
+const countKey = model((count:number)=>([
+    count,
+    ()=>count+1,
+    ()=>count-1
+] as const)).createKey(0);
+
+......
+// provide 多个键的方式整合
+provide(toggleKey,countKey,...).to(
+    function Component(){
+        const [, toggle] = toggleKey.useModel();
+        const selected = toggleKey.useSelector(([s])=>s);
+        const [count, increase, decrease] = countKey.useModel();
+        return ......;
+    }
+);
+......
+```
+
+关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [高性能渲染](/zh/react-state/guides?id=高性能渲染) 中的内容。
+
+### 静态库的外部调用模式
+
+静态库只能通过 model().createStore 方法创建，作为一个组件外部常量，静态库也提供了组件外部的使用方案。
+
+通过静态库的 instance 方法在组件外部初始化库的默认状态。
 
 ```ts
 import {model} from '@airma/react-state';
-
-const toggleStore = model((selected:boolean)=>([
-    selected,
-    ()=>!selected
-] as const)).createStore(false);
 
 const countStore = model((count:number)=>([
     count,
@@ -393,26 +446,46 @@ const countStore = model((count:number)=>([
     ()=>count-1
 ] as const)).createStore(0);
 
-......
-// 使用库的 with 方法可整合多个库
-toggleStore.with(countStore,...).provideTo(
-    function Component(){
-        const [, toggle] = toggleStore.useModel();
-        const selected = toggleStore.useSelector(([s])=>s);
-        const [count, increase, decrease] = countStore.useModel();
-        return ......;
-    }
-);
-......
+countStore.instance(1);
+
+function Comp(){
+    const [count, increase, decrease] = countStore.useModel();
+    // 首次加载的 count 受外部初始化影响，值为 1
+    return ......;
+}
 ```
 
-关于如何通过 model 使用 useSignal 来优化渲染性能，请参考 [如何通过 model 声明函数使用 useSignal](/zh/react-state/guides?id=通过-model-声明函数使用-usesignal) 中的内容。
+通过调用静态库的 instance 方法生成的实例对象提供的行为方法，可修改状态，并触发使用该库的组件重新渲染。
+
+```ts
+import {model} from '@airma/react-state';
+
+const countStore = model((count:number)=>([
+    count,
+    ()=>count+1,
+    ()=>count-1
+] as const)).createStore(0);
+
+function Comp(){
+    const [count, increase, decrease] = countStore.useModel();
+    return ......;
+}
+
+function Comp2(){
+    const handleClick=()=>{
+        // 通过instance方法获取静态库实例对象
+        // 并通过调用 increase 行为方法触发渲染
+        countStore.instance().increase();
+    }
+    return ......;
+}
+```
 
 ## 实例字段
 
 自 `v18.5.1` 开始 `@airma/react-state` 新增了实例字段 API `model.createField`。
 
-通过对 model.createField 方法添加依赖项，可创建一个缓存字段。该字段只能通过外部实例获取才能生成缓存，病通过 get 方法获取字段值。
+通过对 model.createField 方法添加依赖项，可创建一个缓存字段。该字段只能通过外部实例获取才能生成缓存，并通过 get 方法获取字段值。
 
 **注意**：字段对象在模型函数中不具备缓存效果，但依然可以通过调用其 get 方法获取值。
 
@@ -592,7 +665,7 @@ const config = {batchUpdate: unstable_batchedUpdates};
 
 自 `v18.4.0` 开始 `@airma/react-state` 新增了 [useSignal](/zh/react-state/api?id=usesignal) API，用于提升渲染性能，并监听模型实例变更。
 
-useSignal API 返回一个实例生成函数，调用该函数可获取当前最新的实例对象。在函数组件渲染区使用的实例对象字段会被记入渲染相关字段，当这些字段发生变更时，useSignal 会触发组件重新渲染。
+useSignal API 返回一个实例生成函数，调用该函数可获取当前最新的实例对象。在组件渲染阶段使用的实例对象字段会被记入渲染相关字段，当且仅当这些字段发生变更时，useSignal 才会触发组件重新渲染。
 
 ```ts
 const signal = useSignal(modelFn, defaultState?);
@@ -786,7 +859,7 @@ const counting = model((state:number)=>({
     decrease(){
         return state-1;       
     }
-})).createStore().static();
+})).createStore();
 // 创建一个未初始化的静态全局模型实例库
 
 const Increase = ()=>{

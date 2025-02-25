@@ -1,18 +1,18 @@
-import { FunctionComponent, FC, NamedExoticComponent, ReactNode } from 'react';
+import {
+  FunctionComponent,
+  ReactNode,
+  ComponentType,
+  ExoticComponent
+} from 'react';
 
-declare interface AirModelInstance {
+declare interface InstanceLike {
   [key: string]: any;
   [key: number]: any;
 }
 
-export declare type ModelContext = {
-  memo: <M extends () => any>(call: M, deps: unknown[]) => ReturnType<M>;
-  ref: <C>(current: C) => { current: C };
-};
+export declare type ModelLike = (state: any) => any;
 
-export declare type AirReducer = (state: any) => any;
-
-declare type ValidInstanceRecord<S, T extends AirModelInstance> = {
+declare type ExpectInstance<S, T extends InstanceLike> = {
   [K in keyof T]: T[K] extends
     | ((...args: any[]) => S)
     | (((...args: any[]) => any) & { noActionMethod: Record<string, any> })
@@ -22,141 +22,127 @@ declare type ValidInstanceRecord<S, T extends AirModelInstance> = {
     : T[K];
 };
 
-declare type ValidInstance<S, T extends AirModelInstance> = ValidInstanceRecord<
-  S,
-  T
->;
-
-declare type PickState<R extends AirReducer> = R extends (state: infer S) => any
+declare type PickState<R extends ModelLike> = R extends (state: infer S) => any
   ? S
   : never;
 
-declare type ValidReducerReturnType<R extends AirReducer> = R extends (
+declare type Instance<R extends ModelLike> = R extends (
   state: infer S
 ) => infer T
-  ? ValidInstance<S, T>
+  ? ExpectInstance<S, T>
   : never;
 
-declare type ValidReducer<R extends AirReducer> = R extends (
-  state: infer S
-) => infer T
-  ? T extends ValidInstanceRecord<S, T>
-    ? R
-    : never
-  : never;
-
-declare type Action<R extends AirReducer> = {
+declare type Action<R extends ModelLike> = {
   type: string;
   method: null | ((...args: any[]) => any);
   params?: any[];
   state?: PickState<R>;
   prevState?: PickState<R>;
-  instance: ValidReducerReturnType<R>;
-  prevInstance: ValidReducerReturnType<R>;
+  instance: Instance<R>;
+  prevInstance: Instance<R>;
 };
 
-export declare type ModelKey<R extends AirReducer> = ValidReducer<R> & {
+export declare type ModelKey<R extends ModelLike = ModelLike> = R & {
   payload?: unknown;
   isFactory: () => true;
   static: () => ModelKey<R>;
 };
 
-export interface KeyIndex {
-  key: any;
+export declare interface ModelCreation<R extends ModelLike = ModelLike> {
+  key: ModelKey<R>;
 }
 
-export declare function useModel<R extends AirReducer>(
+export declare function useModel<R extends ModelLike>(
   model: ModelKey<R>
-): ValidReducerReturnType<R>;
-export declare function useModel<R extends AirReducer>(
+): Instance<R>;
+export declare function useModel<R extends ModelLike>(
+  model: ModelCreation<R>
+): Instance<R>;
+export declare function useModel<R extends ModelLike>(
   model: R
-): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
-export declare function useModel<R extends AirReducer>(
-  model: R & { getSourceFrom: () => any }
-): ValidReducerReturnType<R>;
-export declare function useModel<R extends AirReducer, D extends PickState<R>>(
+): undefined extends PickState<R> ? Instance<R> : never;
+export declare function useModel<R extends ModelLike, D extends PickState<R>>(
   model: ModelKey<R>,
   state: D
-): ValidReducerReturnType<R>;
-export declare function useModel<R extends AirReducer, D extends PickState<R>>(
+): Instance<R>;
+export declare function useModel<R extends ModelLike, D extends PickState<R>>(
+  model: ModelCreation<R>,
+  state: D
+): Instance<R>;
+export declare function useModel<R extends ModelLike, D extends PickState<R>>(
   model: R,
   state: D
-): ValidReducerReturnType<R>;
-export declare function useModel<R extends AirReducer, D extends PickState<R>>(
+): Instance<R>;
+export declare function useModel<R extends ModelLike, D extends PickState<R>>(
   model: R,
   state?: D
-): undefined extends PickState<R> ? ValidReducerReturnType<R> : never;
+): undefined extends PickState<R> ? Instance<R> : never;
 
-declare interface EffectOn<R extends AirReducer> {
+declare interface EffectDeps<R extends ModelLike> {
   onActions: (
-    filter: (ins: ValidReducerReturnType<R>) => ((...args: any[]) => any)[]
-  ) => EffectOn<R>;
-  onChanges: (filter: (ins: ValidReducerReturnType<R>) => any[]) => EffectOn<R>;
+    depsPicker: (instance: Instance<R>) => ((...args: any[]) => any)[]
+  ) => EffectDeps<R>;
+  onChanges: (depsPicker: (instance: Instance<R>) => any[]) => EffectDeps<R>;
 }
 
-export declare type SignalHandler<R extends AirReducer> =
-  (() => ValidReducerReturnType<R>) & {
-    useEffect: (
-      callback: (
-        ins: ValidReducerReturnType<R>,
-        action: Action<R> | null
-      ) => void | (() => void)
-    ) => EffectOn<R>;
-    useWatch: (
-      callback: (
-        ins: ValidReducerReturnType<R>,
-        action: Action<R> | null
-      ) => void
-    ) => EffectOn<R>;
-    getConnection: () => {
-      isDestroyed: () => boolean;
-      setPayload: <P>(setter: (payload: P) => P) => P;
-      getPayload: <P>() => P;
-    };
+declare interface Signal<R extends ModelLike> {
+  (): Instance<R>;
+  useEffect: (
+    callback: (
+      instance: Instance<R>,
+      action: Action<R> | null
+    ) => void | (() => void)
+  ) => EffectDeps<R>;
+  useWatch: (
+    callback: (instance: Instance<R>, action: Action<R> | null) => void
+  ) => EffectDeps<R>;
+  getConnection: () => {
+    isDestroyed: () => boolean;
+    setPayload: <P>(setter: (payload: P) => P) => P;
+    getPayload: <P>() => P;
   };
+}
 
-export declare function useSignal<R extends AirReducer>(
+export declare function useSignal<R extends ModelLike>(
   model: ModelKey<R>
-): SignalHandler<R>;
-export declare function useSignal<R extends AirReducer>(
+): Signal<R>;
+export declare function useSignal<R extends ModelLike>(
+  model: ModelCreation<R>
+): Signal<R>;
+export declare function useSignal<R extends ModelLike>(
   model: R
-): undefined extends PickState<R> ? SignalHandler<R> : never;
-export declare function useSignal<R extends AirReducer>(
-  model: R & { getSourceFrom: () => any }
-): SignalHandler<R>;
-export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+): undefined extends PickState<R> ? Signal<R> : never;
+export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
   model: ModelKey<R>,
   state: D
-): SignalHandler<R>;
-export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+): Signal<R>;
+export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
+  model: ModelCreation<R>,
+  state: D
+): Signal<R>;
+export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
   model: R,
   state: D
-): SignalHandler<R>;
-export declare function useSignal<R extends AirReducer, D extends PickState<R>>(
+): Signal<R>;
+export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
   model: R,
   state?: D
-): undefined extends PickState<R> ? SignalHandler<R> : never;
+): undefined extends PickState<R> ? Signal<R> : never;
 
 export declare function useControlledModel<
-  R extends AirReducer,
+  R extends ModelLike,
   D extends PickState<R>
->(
-  model: R,
-  state: D,
-  onChange: (s: PickState<R>) => any
-): ValidReducerReturnType<R>;
+>(model: R, state: D, onChange: (s: PickState<R>) => any): Instance<R>;
 
 export declare type ModelKeys =
   | {
-      [key: string]: ModelKey<any> | ModelKeys | KeyIndex;
+      [key: string]: ModelKey | ModelCreation;
     }
-  | {
-      [key: number]: ModelKey<any> | ModelKeys | KeyIndex;
-    }
-  | ModelKey<any>
-  | KeyIndex;
+  | Array<ModelKey | ModelCreation>
+  | ModelKey
+  | ModelCreation;
 
-export declare const Provider: FC<
+export declare const Provider: FunctionComponent<
   | {
       value: ModelKeys;
       children?: ReactNode;
@@ -165,33 +151,40 @@ export declare const Provider: FC<
       keys: ModelKeys;
       children?: ReactNode;
     }
+  | {
+      storeCreators: ModelKeys;
+      children?: ReactNode;
+    }
 >;
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
 };
 
-export declare const ConfigProvider: FC<{
+export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
 
-export declare function provide(
-  keys: ModelKeys
-): <P extends Record<string, any>>(
-  component: FunctionComponent<P> | NamedExoticComponent<P>
-) => typeof component;
+export declare function provide(...storeCreators: ModelKeys): {
+  <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ): typeof component;
+  to: <P extends Record<string, any>>(
+    component: ComponentType<P> | ExoticComponent<P>
+  ) => typeof component;
+};
 
 export declare function useSelector<
-  R extends AirReducer,
-  C extends (instance: ValidReducerReturnType<R>) => any
+  R extends ModelLike,
+  C extends (instance: Instance<R>) => any
 >(
-  factoryModel: R,
+  modelCreation: ModelKey<R> | ModelCreation<R>,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
-export declare function createKey<R extends AirReducer, D extends PickState<R>>(
+export declare function createKey<R extends ModelLike, D extends PickState<R>>(
   model: R,
   defaultState?: D
 ): ModelKey<R>;
@@ -200,78 +193,95 @@ export declare function shallowEqual<R>(prev: R, current: R): boolean;
 
 /** new API * */
 
-declare type ValidModel<R extends AirReducer> = R extends (
+declare type ValidModel<R extends ModelLike> = R extends (
   state: infer S
 ) => infer T
-  ? T extends ValidInstance<S, T>
+  ? T extends ExpectInstance<S, T>
     ? R
-    : (state: S) => ValidInstance<S, T> & T
+    : (state: S) => ExpectInstance<S, T> & T
   : never;
 
-declare type ModelUsage<R extends AirReducer> = undefined extends PickState<R>
-  ? (state?: PickState<R>) => ValidReducerReturnType<R>
-  : (state: PickState<R>) => ValidReducerReturnType<R>;
+declare type ModelUsage<R extends ModelLike> = undefined extends PickState<R>
+  ? (state?: PickState<R>) => Instance<R>
+  : (state: PickState<R>) => Instance<R>;
 
-declare type SignalUsage<R extends AirReducer> = undefined extends PickState<R>
-  ? (state?: PickState<R>) => SignalHandler<R>
-  : (state: PickState<R>) => SignalHandler<R>;
+declare type SignalUsage<R extends ModelLike> = undefined extends PickState<R>
+  ? (state?: PickState<R>) => Signal<R>
+  : (state: PickState<R>) => Signal<R>;
 
-declare type ControlledModelUsage<R extends AirReducer> = (
+declare type ControlledModelUsage<R extends ModelLike> = (
   value: PickState<R>,
   onChange: (value: PickState<R>) => any
-) => ValidReducerReturnType<R>;
+) => Instance<R>;
 
-declare interface StoreUsageApi<R extends AirReducer> {
-  useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
-  useSignal: (state?: PickState<R>) => SignalHandler<R>;
+declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R> {
+  useModel: (state?: PickState<R>) => Instance<R>;
+  useSignal: (state?: PickState<R>) => Signal<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(
     call: C,
     equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
   ) => ReturnType<C>;
-  getInstance: () => ValidReducerReturnType<R>;
-  initialize: (state: PickState<R>) => void;
+  instance: (state?: PickState<R>) => Instance<R>;
 }
 
-declare interface StoreApi<R extends AirReducer> extends KeyIndex {
+declare interface StoreApi<R extends ModelLike> extends ModelCreation<R> {
   key: ModelKey<R>;
-  with: <M extends ModelKey<AirReducer>>(
+  /**
+   * @deprecated not recommend
+   */
+  with: <M extends ModelKey<ModelLike>>(
     ...key: ({ key: M } | M)[]
   ) => StoreApi<R>;
+  instance: (state?: PickState<R>) => Instance<R>;
   /**
-   * @deprecated
+   * @deprecated should remove
    */
   static: () => StoreUsageApi<R>;
-  createStore: () => StoreUsageApi<R>;
+  /**
+   * @deprecated not recommend
+   */
   provide: <P>() => (
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
+  /**
+   * @deprecated not recommend
+   */
   provideTo: <P>(
-    component: FunctionComponent<P> | NamedExoticComponent<P>
+    component: ComponentType<P> | ExoticComponent<P>
   ) => typeof component;
-  Provider: FC<{ children?: ReactNode }>;
-  useModel: (state?: PickState<R>) => ValidReducerReturnType<R>;
-  useSignal: (state?: PickState<R>) => SignalHandler<R>;
+  /**
+   * @deprecated not recommend
+   */
+  Provider: FunctionComponent<{ children?: ReactNode }>;
+  useModel: (state?: PickState<R>) => Instance<R>;
+  useSignal: (state?: PickState<R>) => Signal<R>;
   useSelector: <C extends (instance: ReturnType<R>) => any>(
     call: C,
     equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
   ) => ReturnType<C>;
 }
 
-declare interface Api<R extends AirReducer> {
+declare interface KeyApi<R extends ModelLike> extends ModelCreation<R> {
+  key: ModelKey<R>;
+  useModel: (state?: PickState<R>) => Instance<R>;
+  useSignal: (state?: PickState<R>) => Signal<R>;
+  useSelector: <C extends (instance: ReturnType<R>) => any>(
+    call: C,
+    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+  ) => ReturnType<C>;
+}
+
+declare interface Api<R extends ModelLike> {
   useModel: ModelUsage<R>;
   useSignal: SignalUsage<R>;
   useControlledModel: ControlledModelUsage<R>;
-  /**
-   * @deprecated
-   * @param state
-   */
   createStore: (state?: PickState<R>) => StoreApi<R>;
-  createKey: (state?: PickState<R>) => StoreApi<R>;
+  createKey: (state?: PickState<R>) => KeyApi<R>;
 }
 
 export declare const model: {
-  <R extends AirReducer>(m: ValidModel<R>): R & Api<R>;
-  create: <M extends AirReducer>(m: ValidModel<M>) => M & Api<M>;
+  <R extends ModelLike>(m: ValidModel<R>): R & Api<R>;
+  create: <M extends ModelLike>(m: ValidModel<M>) => M & Api<M>;
   /**
    * @deprecated
    */

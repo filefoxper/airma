@@ -118,30 +118,26 @@ Read [documents](/react-effect/index) of `@airma/react-effect` for more informat
 
 ### @airma/react-hooks
 
-A lot of APIs about `@airma/react-state` and `@airma/react-effect` are too similar. So, `@airma/react-hooks` is a better choosen for using both of them. It combines the two packages APIs together.
+A lot of APIs about `@airma/react-state` and `@airma/react-effect` are too similar. So, there is another package `@airma/react-hooks` which combines the two packages APIs together.
 
 ```ts
 import {model, session} from '@airma/react-hooks';
 
-const countingStore = model(function counting(state:number){
+const countingKey = model(function counting(state:number){
     return {
-        count: `mount: ${state}`,
+        count: state,
         increase:()=>state + 1,
         decrease:()=>state - 1,
-        add(...additions: number[]){
-            return additions.reduce((result, current)=>{
-                return result + current;
-            }, state);
-        }
     };
-}).createStore(0);
+}).createKey(0);
 
-const fetchUsersSession = session((groupId: number): Promise<User[]> => {
+const fetchUsersSessionKey = session((groupId: number): Promise<User[]> => {
     return userRequest.fetchUsersByGroupId(groupId);
-}, 'query').createStore();
+}, 'query').createKey();
 ......
-// combine different stores together, and provide to a root component
-const Component = countingStore.with(fetchUsersSession).provideTo(function Comp(){
+// Combine different keys together, and provide to a root component.
+// The hoc provide will create dynamic stores when the component is creating element.
+const Component = provide(countingKey,fetchUsersSessionKey).to(function Comp(){
     ......
 });
 ```

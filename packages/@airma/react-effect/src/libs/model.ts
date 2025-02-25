@@ -1,4 +1,4 @@
-import { createKey, SignalHandler, useSignal } from '@airma/react-state';
+import { createKey, Signal, useSignal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
@@ -155,7 +155,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  SignalHandler<typeof effectModel>,
+  Signal<typeof effectModel>,
   QueryConfig<T, C>,
   C
 ] {

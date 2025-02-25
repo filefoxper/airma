@@ -6,7 +6,7 @@
 * [@airma/react-effect](/zh/react-effect/index)
 * [@airma/react-hooks](/zh/react-hooks/index)
 
-与 React 关系不大的请求工具库：
+与 React 关系不大的 http rest style 请求工具库：
 
 * [@airma/restful](/zh/restful/index)
 
@@ -17,7 +17,7 @@
 ```ts
 import {useModel} from '@airma/react-state';
 
-const instance = useModel((count:number)=>({
+const instance = useModel((count)=>({
     // 渲染数据
     count,
     isNegative: count<0,
@@ -115,46 +115,6 @@ root.path('child-path').setBody({data:'data'}).post();
 // POST http://host/path/child-path?param1=param1&param2=param2 
 // payload: {data:'data'}
 root.path('child-path').setParams({ param1:'param1', param2:'param2' }).setBody({data:'data'}).post();
-```
-
-Typescript 风格：
-
-```ts
-import { client, ResponseData } from '@airma/restful';
-
-const { rest } = client();
-
-const root = rest('/path');
-
-type User = {
-    id: string;
-    name: string;
-    username: string;
-}
-
-async function getUser(id: string): Promise<User>{
-    try{
-        return root.setParams({ id }).get<User>();
-    } catch(e: any) {
-        console.log(e)
-    }
-}
-
-// 获取请求详细信息
-async function getUserResponse(
-    id: string
-): Promise<ResponseData<User>>{
-    try{
-        const responseData = await root.
-            setParams({ id }).
-            get<User>().
-            // 通过 response 方法获取请求详细信息
-            response();
-        return responseData
-    } catch(e: any) {
-        console.log(e)
-    }
-}
 ```
 
 [相关文档](/zh/restful/index)

@@ -7,19 +7,19 @@ import React, {
   useState
 } from 'react';
 import {
-  createKey,
-  useModel,
-  useSelector,
-  createSessionKey,
-  provide,
-  Strategy,
-  useIsFetching,
-  useMutation,
-  useQuery,
-  useSession,
-  useUpdate,
-  useResponse,
-  useControlledModel
+    createKey,
+    useSignal,
+    useSelector,
+    createSessionKey,
+    provide,
+    Strategy,
+    useIsFetching,
+    useMutation,
+    useQuery,
+    useSession,
+    useUpdate,
+    useResponse,
+    useControlledModel, useModel
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
 import { pick } from 'lodash';
@@ -98,16 +98,16 @@ export const fetchSession = session(userQuery, 'query').createKey();
 
 export const saveSession = session(userSave, 'mutation');
 
-const test = model((state: number) => {
+const test = (state: number) => {
   return {
     state,
     add() {
       return state + 1;
     }
   };
-})
-  .createStore(0)
-  .static();
+};
+
+const testKey = createKey(test)
 
 const counting = (state: number) => {
   return {
@@ -155,7 +155,7 @@ const store = model((query: Query) => {
     query: handleQuery
   };
 })
-  .createKey().createStore();
+  .createStore();
 
 const Info = memo(() => {
   const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
@@ -266,7 +266,7 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
     store.useModel();
 
   const isFetching = useIsFetching();
-  const [,,execute] = fetchSession.useQuery();
+  const [,,execute] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -295,7 +295,7 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
       <button type="button" style={{ marginLeft: 12 }} onClick={() => submit()}>
         query
       </button>
-      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute({name:'Mr',username:''})}>
+      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute.payload('trigger')({name:'Mr',username:''})}>
         trigger
       </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
@@ -313,37 +313,46 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
   );
 })
 
-store.initialize({
-    valid: defaultCondition,
-    display: defaultCondition,
-    creating: false
-});
+// store.instance({
+//     valid: defaultCondition,
+//     display: defaultCondition,
+//     creating: false
+// }).changeDisplay({...defaultCondition,name:''});
+// store.instance().submit();
 
-store.getInstance().changeDisplay({...defaultCondition,name:''});
-store.getInstance().submit();
-
-export default provide([fetchSession])(function App() {
-  const conditionSignal = store.useSignal();
-  const { queryData, creating, cancel } = store.useSelector(
+export default provide(fetchSession).to(function App() {
+  const conditionSignal = useSignal(store,{valid:defaultCondition,display:defaultCondition,creating:false});
+  const { queryData, creating, cancel } = useSelector(store,
     s => pick(s, 'queryData', 'creating', 'cancel'),
     shallowEqual
   );
+
+    useEffect(() => {
+        setTimeout(()=>{
+            store.instance().changeDisplay({...defaultCondition,name:''})
+            store.instance().submit()
+        },1000)
+    }, []);
 
   conditionSignal
     .useEffect(ins => {
       console.log('signal creating', ins.creating);
     });
 
-  const querySession = fetchSession.useQuery({
+  const querySession = useQuery(fetchSession,{
     variables: [queryData.get()],
     defaultData: [],
+    payload:'effect',
     strategy: [
       Strategy.cache({ capacity: 10 }),
+        Strategy.response.success((data, sessionData)=>{
+            console.log('query payload',sessionData.payload)
+        }),
       Strategy.response.failure(e => {
         console.log('error', e);
         // throw e;
       })
-    ]
+    ],
   });
 
   const [queryState] = querySession;
@@ -357,6 +366,10 @@ export default provide([fetchSession])(function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
+
+  const isFetching = useIsFetching();
+
+  console.log('isFetching', isFetching)
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>

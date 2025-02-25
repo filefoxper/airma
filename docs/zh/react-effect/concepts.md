@@ -8,7 +8,7 @@
 
 ## 会话
 
-会话是指一个可持续的异步状态管理单元。API [useQuery](/zh/react-effect/api?id=usequery) 可创建一个查询会话； [useMutation](/zh/react-effect/api?id=usemutation) 建立的则是一个修改会话；[useSession](/zh/react-effect/api?id=usesession) 获取会话；API [session](/zh/react-effect/api?id=session) 预设会话。会话的核心为**异步函数**，所有会话的目标就是将异步函数的执行过程以状态变更的形式描述出来。
+会话是指一个可持续更新的异步状态管理单元。API [useQuery](/zh/react-effect/api?id=usequery) 可创建一个查询会话； [useMutation](/zh/react-effect/api?id=usemutation) 建立的则是一个修改会话；[useSession](/zh/react-effect/api?id=usesession) 可同步会话状态，也能触发会话运行；API [session](/zh/react-effect/api?id=session) 预设会话。会话的核心为**异步函数**，所有会话的目标就是将异步函数的执行过程以状态变更的形式描述出来。
 
 ```ts
 // 创建查询会话
@@ -65,6 +65,7 @@ const {
 * **data** - 会话数据，类型：`T（异步函数执行结果类型）`，即最后一次成功执行异步函数得到的结果。默认初始值为 undefined，如在会话配置中设置了 defaultData，则以 defaultData 为初始值。该字段保留的最后一次成功执行结果，不受最新执行是否失败的影响。
 * **error** - 会话错误信息，类型：`unknown`，即最新一次执行异步函数所得的出错信息。初始值 undefined，最新一次执行失败时才可能有值。如最新一次执行成功，该值将变成 undefined.
 * **variables** - 会话回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，即最新一次执行完异步函数使用的回执参数记录。初始值为 undefined。
+* **payload** - 会话执行附加数据，任意类型，默认为 undefined，可用于标记每次会话执行的目的。
 * **isFetching** - 会话是否正在执行，类型：`boolean`。
 * **isError** - 会话最新执行结果是否出错，类型：`boolean`，当该值为 true 时，会话执行失败，error 字段可能有值，否则 error 为 undefined。
 * **sessionLoaded** - 会话是否成功执行过，类型：`boolean`。
@@ -79,7 +80,7 @@ const {
 * **lastFailedRoundVariables** - 最近一次失败的回执参数，类型：`Parameter（异步函数传参元组类型或 undefined 类型）`，初始值为 undefined。
 * **online** - 会话是否在线（可用）。类型：`boolean`，初始值为 true。该字段可用于描述当前会话是否可用。当会话 store 所在组件或本地会话所在组件被卸载时，该字段变为 false。通过 [Strategy.validate 策略](/zh/react-effect/api?id=例子)，可对当前会话的可用性进行校验。
 
-关于 **triggerType**
+关于 **triggerType** 触发类型
 
 * **mount** - 加载时触发会话。
 * **update** - 配置项依赖 config.deps 或 config.variables 更新时触发会话。
@@ -148,6 +149,8 @@ useMutation(promiseCallback, {
 * **variables** - 推荐会话执行参数，类型：`Parameter（异步函数传参元组类型）`，可选。如未设置 *deps* 配置项，则默认以 variables 作更新触发依赖项。
 * **defaultData** - 会话默认数据，类型：`T（异步函数执行结果类型）`，可选。如设置此项，当会话处于尚未执行的初始状态时，会话数据 *data* 为当前设置值，且会话加载标记字段 *loaded* 恒为 true。
 * **strategy** - 会话[策略](/zh/react-effect/concepts?id=策略)，类型：`Array<StrategyType>|StrategyType`，用于干预会话执行过程和结果的函数。
+* **payload** - 会话附加数据，任意类型，可用于标识当前会话的目的。会话执行完毕后会出现在会话状态字段中。
+* **manual** - 会话人工执行限制，boolean 类型。当 manual 为 true 时，强制只支持人工触发执行方式，相当于 **triggerOn: ['manual']** 设置。
 
 所有配置项均可不设置，这时会话处于强制人工执行模式。
 
@@ -197,9 +200,51 @@ const callExecuteMutation = ()=>{
 };
 ```
 
+触发附加数据
+
+* **trigger.payload** - 使用 trigger.payload 方法可以生成一个添加会话附加数据的触发器，执行后附加数据将出现在会话状态的同名字段中。
+* **execute.payload** - 使用 execute.payload 方法可以生成一个添加会话附加数据的执行器，执行后附加数据将出现在会话状态的同名字段中。
+
+提示：若不使用 payload 方法直接触发或执行，将使用当前执行器 useQuery 默认配置中的 payload 字段。
+
+```ts
+import {useQuery, useResponse} from '@airma/react-effect';
+
+const [
+    querySessionState,
+    // 查询触发方法
+    triggerQuery,
+    // 查询执行方法
+    executeQuery
+] = useQuery(promiseCallback, [param1, param2]);
+
+const callTriggerQuery = ()=>{
+    // 添加会话附加值触发执行查询
+    triggerQuery.payload('trigger')();
+};
+
+const callExecuteQuery = ()=>{
+    // 添加会话附加值执行查询方法
+    executeQuery.payload('execute')(param1, param2);
+};
+
+useResponse((sessionState)=>{
+    const {payload} = sessionState;
+    if(!payload){
+        console.log('effect execute', payload);
+        return;
+    }
+    if(payload === 'trigger'){
+        console.log('manual trigger', payload);
+        return;
+    }
+    console.log('manual execute', payload);
+}, querySessionState);
+```
+
 ## 键
 
-**键**是用于创建和监听库的函数。在使用 React.Context 动态库维护会话状态的过程中，[Provider](/zh/react-effect/api?id=provider) 组件使用**键**生成内部库；useQuery/useMutation 通过**键**获取最新库存会话状态数据，执行库存异步函数，更新库的会话状态；useSession 也可通过**键**同步库中的会话状态，人工触发会话。
+**键**是用于创建和监听库的函数。在使用 React.Context 动态库维护会话状态的过程中，[Provider](/zh/react-effect/api?id=provider) 组件使用**键**生成内部库；useQuery/useMutation 通过**键**同步库中的会话状态，执行库的异步函数；useSession 也可通过**键**同步库中的会话状态，人工触发会话。
 
 ```ts
 import React from 'react';
@@ -241,7 +286,8 @@ const SearchButton = ()=>{
     );
 }
 
-// 使用会话键在 Provider 组件中创建本地库 
+// 使用会话键在 Provider 组件中创建本地库，
+// provide 高阶函数支持直接双重调用 
 const App = provide(userQueryKey)(()=>{
     const [query, setQuery] = useState({name:'', username:''});
     const [
@@ -260,7 +306,7 @@ const App = provide(userQueryKey)(()=>{
 })
 ```
 
-[session](/zh/react-effect/api?id=session) API 通过 `session(promiseCallback, 'query').createStore()` 产生的动态库是并非真库，而是**键**的库形态。
+[session](/zh/react-effect/api?id=session) API 通过 `session(promiseCallback, 'query').createKey()` 也可以产生键。
 
 因为会话的**键**库系统完全利用了 `@airma/react-state` 的[键](/zh/react-state/concepts?id=键)库系统，会话**键**就是一种特殊的模型**键**，因此，两者的键库是可以通用的。关于[库](/zh/react-state/guides?id=createkey-与-provide)的理解也可以参考 `@airma/react-state` 中的介绍。
 

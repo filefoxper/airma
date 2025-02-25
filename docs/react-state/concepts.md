@@ -7,22 +7,22 @@ There are some concepts for understanding the working principles.
 
 ## Model
 
-`Model` is a function returns an object for render and do actions. The only parameter for `model` function is its `state`, every action method should return a new `state`.
+`Model` is a function returns an object for render and do actions. The only parameter for `model` function is `state`, every action method should return a new `state`.
 
 A model looks like:
 
 ```ts
-const model = <T>(param:T) =>({
-    // data for render
-    data1: param.data1,
-    data2: ......,
+const model = <T>(state:T) =>({
+    // data for render from state
+    data1: state.data1,
+    data2: state,
     ......,
     // action method for calling from instance 
     method1():T{
-        return nextParam;
+        return nextState;
     },
     method2():T{
-        return nextParam;
+        return nextState;
     },
     ......
 });
@@ -33,17 +33,20 @@ Examples:
 1. count model:
 
 ```ts
+// state is a number, it can be any param name.
+// model is a function accepts state and returns an instance object.
 const counter = (count:number)=>{
     return {
         // count value
         count,
         // is count a negative number
         isNegative: count<0,
-        // method to increase count
+        // Action method to increase count.
+        // The action method should return a new state, and be a directly property of this instance.
         increase(){
             return count+1;
         },
-        // method to decrease count
+        // Action method to decrease count
         decrease(){
             return count-1;
         }
@@ -54,7 +57,7 @@ const counter = (count:number)=>{
 2. toggle model:
 
 ```ts
-// You can define a tuple array as return instance too.
+// The instance can be an array.
 const toggler = (visible:boolean):ToggleInstance =>[
     visible, 
     ()=>!visible
@@ -63,21 +66,19 @@ const toggler = (visible:boolean):ToggleInstance =>[
 
 ### How does it work?
 
-API `useModel` and `useSelector` provides an instance object by calling `model` with its state. When action method from the instance object is called, a new state is generated. Then the state management core of `@airma/react-state` recalls model with this new state, and refreshes instance for rerender.
+API `useModel` contains a store, it calls model function with a initialize state, and generates a initialized instance. Call method from instance can generate and dispatch a new state to store, then the store recalls model with this new state to generate a new instance.
 
 Step 1:
 
 ```ts
 import {useModel} from '@airma/react-state';
 
+// initialize instance with default state 0.
 const {count, increase} = useModel(counter, 0);
 
 function callIncrease(){
-    // state: 0
     increase(); 
-    // state: 0
-    // generate next state 1;
-    // send next state to state-management core;
+    // call action method from instance, generates a new state 1, and dispatch it to store.
 }
 ......
 ```
@@ -85,9 +86,9 @@ function callIncrease(){
 Step 2:
 
 ```
-state-management core:
-1. recalls `counter` with next state 1;
-2. notify `useModel` with new state and new instance.
+local store:
+1. recalls `counter` with new state to generate a new instance;
+2. notify this new instance and state to `useModel` API.
 ```
 
 Step 3:
@@ -95,8 +96,7 @@ Step 3:
 ```ts
 import {useModel} from '@airma/react-state';
 
-// accept new state and instance from core;
-// use useState to update all.
+// Accept new state and instance from store, and use `React.useState` to update all.
 const {count, increase} = useModel(counter, 0);
 
 function callIncrease(){
@@ -107,7 +107,7 @@ function callIncrease(){
 
 ## Key
 
-In `@airma/react-state`, sharing state changes among different components need to use store, and store is created by `key`. Every `key` is unique, it can be used to link store.
+Key is a model wrapper for creating store. It is also a unique identifier for syncing state changes from store. Every store contains a unique key, no matter if the created store is a dynamic one or a static one.
 
 ```ts
 import {
@@ -117,7 +117,7 @@ import {
     useSelector
 } from '@airma/react-state';
 
-// create key for generate store
+// create key for generating store
 const counterKey = createKey((count:number)=>{
     return {
         count,
@@ -129,7 +129,7 @@ const counterKey = createKey((count:number)=>{
             return count-1;
         }
     }
-// give the key a static default state
+// give the key a default state
 }, 0);
 
 const Increase = memo(()=>{
@@ -159,7 +159,7 @@ const Component = provide(counterKey)(function Comp() {
 });
 ```
 
-The API [createKey](/react-state/api?id=createkey) can wrap a model function to be a unique `key` with or without a default state. The example above shows how to initialize static state with `key`. There is also way for [initilizing dynamic state in render time](/react-state/index?id=initialize-a-dynamic-state-for-store-in-render).
+The API [createKey](/react-state/api?id=createkey) can wrap a model function to be a unique `key` with or without a default state. The example above shows how to initialize default state with `key`. There is also a way for initializing default state in render time.
 
 ```ts
 import {
@@ -169,7 +169,7 @@ import {
     useSelector
 } from '@airma/react-state';
 
-// create key for generate store
+// create key for generating store
 const counterKey = createKey((count:number)=>{
     return {
         count,
@@ -181,7 +181,6 @@ const counterKey = createKey((count:number)=>{
             return count-1;
         }
     }
-// give the key a static default state
 });
 
 const Increase = memo(()=>{
@@ -197,7 +196,7 @@ const Decrease = memo(()=>{
     return <button onClick={decrease}>-</button>;
 });
 const Component = provide(counterKey)(function Comp() {
-    // initialize a dynamic state in render time.
+    // initialize a default state in render time.
     useModel(counterKey, 0);
     return (
         <div>
