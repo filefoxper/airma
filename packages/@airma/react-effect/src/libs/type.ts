@@ -174,6 +174,7 @@ export type QueryConfig<T, C extends PromiseCallback<T>> = {
   defaultData?: T;
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
+  ignoreStrategyWrapper?: boolean;
   loaded?: boolean;
   manual?: boolean;
   payload?: unknown;
@@ -186,6 +187,7 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T>;
+  ignoreStrategyWrapper?: boolean;
   loaded?: boolean;
   payload?: unknown;
   experience?: 'next';

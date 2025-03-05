@@ -129,6 +129,7 @@ declare type QueryConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
+  ignoreStrategyWrapper?: boolean;
   manual?: boolean;
   payload?: unknown;
 };
@@ -152,6 +153,7 @@ declare type MutationConfig<T, C extends PromiseCallback<T>> = {
   triggerOn?: TriggerType[];
   variables?: Parameters<C>;
   strategy?: StrategyCollectionType<T, Parameters<C>>;
+  ignoreStrategyWrapper?: boolean;
   payload?: unknown;
 };
 

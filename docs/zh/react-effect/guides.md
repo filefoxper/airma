@@ -941,7 +941,6 @@ ConfigProvider 组件用于全局配置 ：
 
 * batchUpdate - 批量更新方法。当环境中 react 版本 < 18.0.0 时，需要使用 react-dom 的批量更新状态方法  unstable_batchedUpdates 优化状态更新过程。
 * experience - 体验下一个大版本特性
-* useGlobalFetching - 支持通过 [useIsFetching](/zh/react-effect/api?id=useisfetching) 监听所有会话的 fetching 状态。**（自v18.3.2开始，该字段被废弃）**
 * strategy - 公共策略链定义函数。用于定义运行时的动态公共策略链。
 
 ```ts
@@ -949,7 +948,7 @@ import {unstable_batchedUpdates} from 'react-dom';
 import {
     ConfigProvider, 
     Strategy,
-    useIsFetching
+    useQuery
 } from '@airma/react-effect';
 import type {GlobalConfig} from '@airma/react-effect';
 
@@ -970,9 +969,117 @@ const globalConfig: GlobalConfig = {
 }
 
 const App = ()=>{
-    // 所有会话的 isFetching 状态。
-    const isFetching = useIsFetching();
-    return isFetching? <Fetching/> : <Content/>
+    // 当前 useQuery 运行策略：Strategy.debounce(300),Strategy.memo(), Strategy.failure(e => { message.error(e); })
+    useQuery(promiseCallback,{
+        strategy:[
+            Strategy.debounce(300),
+        ]
+    });
+    return ......;
+}
+
+<ConfigProvider value={globalConfig}>
+    <App />
+</ConfigProvider>
+```
+
+通过向 useQuery/useMutation 配置 ignoreStrategyWrapper 选项，可忽略 ConfigProvider 提供的公共策略。
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy,
+    useQuery
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    // 使用 unstable_batchedUpdates 优化渲染性能
+    batchUpdate: unstable_batchedUpdates,
+    // 设置公共策略链动态组合函数
+    strategy: (
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        ...s, 
+        sessionType === 'query'? Strategy.memo():null,
+        Strategy.failure(e => {
+            message.error(e);
+        })
+    ]
+}
+
+const App = ()=>{
+    // 当前 useQuery 运行策略：Strategy.debounce(300),Strategy.memo(), Strategy.failure(e => { message.error(e); })
+    useQuery(promiseCallback,{
+        strategy:[
+            Strategy.debounce(300),
+        ]
+    });
+
+    // 当前 useQuery 运行策略：Strategy.debounce(300)
+    useQuery(promiseCallback,{
+        strategy:[
+            Strategy.debounce(300),
+        ],
+        // 忽略公共策略链
+        ignoreStrategyWrapper:true
+    });
+    return ......;
+}
+
+<ConfigProvider value={globalConfig}>
+    <App />
+</ConfigProvider>
+```
+
+通过全局配置 experience: next, 可开启下一个大版本特性。
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy,
+    useQuery
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    // 使用 unstable_batchedUpdates 优化渲染性能
+    batchUpdate: unstable_batchedUpdates,
+    // 可开启下一个大版本特性
+    experience: 'next',
+    // 设置公共策略链动态组合函数
+    strategy: (
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        // 18.6.0 版本开始 Strateg.failure 必须放在首位，以确保兜底策略能正常运行
+        Strategy.failure(e => {
+            message.error(e);
+        }),
+        ...s, 
+        sessionType === 'query'? Strategy.memo():null,
+    ]
+}
+
+const App = ()=>{
+    useQuery(promiseCallback,{
+        strategy:[
+            Strategy.debounce(300),
+            Strategy.failure(e => {
+                if(e.code==='xxx'){
+                    // 正常处理异常后，公共 Strategy.failure 策略会被阻止
+                    processError(e);
+                    return;
+                }
+                // 抛出的异常会继续出发公共的 Strategy.failure 策略
+                throw e;
+            })
+        ]
+    });
+    return ......;
 }
 
 <ConfigProvider value={globalConfig}>

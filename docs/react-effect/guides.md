@@ -925,21 +925,21 @@ const App = ()=>{
 
 ## ConfigProvider
 
-It can config a common strategies for all useQuery/useMutation API usages. It also can support a global fetching usage.
+It can config a common strategies for all useQuery/useMutation API usages. 
 
 ```ts
 import {unstable_batchedUpdates} from 'react-dom';
 import {
     ConfigProvider, 
     Strategy,
-    useIsFetching
+    useQuery,
 } from '@airma/react-effect';
 import type {GlobalConfig} from '@airma/react-effect';
 
 const globalConfig: GlobalConfig = {
     // use batchUpdate to optimize update performance.
     batchUpdate: unstable_batchedUpdates,
-    // set common strategies
+    // set a common strategies
     strategy: (
         s: StrategyType[], 
         sessionType: 'query'|'mutation'
@@ -953,9 +953,111 @@ const globalConfig: GlobalConfig = {
 }
 
 const App = ()=>{
-    // If there is any session in fetching, it is `true`.
-    const isFetching = useIsFetching();
-    return isFetching? <Fetching/> : <Content/>
+    // It works with common strategies: Strategy.debounce(300), Strategy.memo(), Strategy.failure(e => {message.error(e);})
+    useQuery(promiseCallback, {
+        strategy: [Strategy.debounce(300)]
+    });
+    return ......;
+}
+
+<ConfigProvider value={globalConfig}>
+    <App />
+</ConfigProvider>
+```
+
+To stop using common strategies, set `ignoreStrategyWrapper` option to config.
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy,
+    useQuery
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    // use batchUpdate to optimize update performance.
+    batchUpdate: unstable_batchedUpdates,
+    // set a common strategies
+    strategy: (
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        ...s, 
+        sessionType === 'query'? Strategy.memo():null,
+        Strategy.failure(e => {
+            message.error(e);
+        })
+    ]
+}
+
+const App = ()=>{
+    // It works with common strategies: Strategy.debounce(300), Strategy.memo(), Strategy.failure(e => {message.error(e);})
+    useQuery(promiseCallback, {
+        strategy: [Strategy.debounce(300)]
+    });
+
+    // It works with common strategies: Strategy.debounce(300)
+    useQuery(promiseCallback, {
+        strategy: [Strategy.debounce(300)],
+        ignoreStrategyWrapper: true
+    });
+
+    return ......;
+}
+
+<ConfigProvider value={globalConfig}>
+    <App />
+</ConfigProvider>
+```
+
+Set `experience: 'next'` to experince new features in next big version.
+
+```ts
+import {unstable_batchedUpdates} from 'react-dom';
+import {
+    ConfigProvider, 
+    Strategy,
+    useQuery,
+} from '@airma/react-effect';
+import type {GlobalConfig} from '@airma/react-effect';
+
+const globalConfig: GlobalConfig = {
+    // use batchUpdate to optimize update performance.
+    batchUpdate: unstable_batchedUpdates,
+    // To experince new features in next big version.
+    experience: 'next',
+    // set a common strategies
+    strategy: (
+        s: StrategyType[], 
+        sessionType: 'query'|'mutation'
+    ) => [
+        // In 18.6.0, The common Strategy.failure should be put on top
+        Strategy.failure(e => {
+            message.error(e);
+        }),
+        ...s, 
+        sessionType === 'query'? Strategy.memo():null
+    ]
+}
+
+const App = ()=>{
+    // It works with common strategies: Strategy.debounce(300), Strategy.memo(), Strategy.failure(e => {message.error(e);})
+    useQuery(promiseCallback, {
+        strategy: [
+            Strategy.debounce(300),
+            Strategy.response.failure((err)=>{
+                // process some conditions about error, and throw others to the default Strategy.failure process.
+                if(err.code === 'xxx'){
+                    processError(err);
+                    return;
+                }
+                throw err;
+            });
+        ]
+    });
+    return ......;
 }
 
 <ConfigProvider value={globalConfig}>

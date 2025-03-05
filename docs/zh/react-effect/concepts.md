@@ -150,6 +150,7 @@ useMutation(promiseCallback, {
 * **defaultData** - 会话默认数据，类型：`T（异步函数执行结果类型）`，可选。如设置此项，当会话处于尚未执行的初始状态时，会话数据 *data* 为当前设置值，且会话加载标记字段 *loaded* 恒为 true。
 * **strategy** - 会话[策略](/zh/react-effect/concepts?id=策略)，类型：`Array<StrategyType>|StrategyType`，用于干预会话执行过程和结果的函数。
 * **payload** - 会话附加数据，任意类型，可用于标识当前会话的目的。会话执行完毕后会出现在会话状态字段中。
+* **ignoreStrategyWrapper** - 用于忽略来自 ConfigProvider 的公共策略。类型：`boolean`，可选。
 * **manual** - 会话人工执行限制，boolean 类型。当 manual 为 true 时，强制只支持人工触发执行方式，相当于 **triggerOn: ['manual']** 设置。
 
 所有配置项均可不设置，这时会话处于强制人工执行模式。
