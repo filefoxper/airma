@@ -574,7 +574,8 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     deps,
     manual: man,
     triggerOn = ['mount', 'update', 'manual'],
-    strategy
+    strategy,
+    ignoreStrategyWrapper
   } = con;
 
   const manual = !deps && !variables ? true : man;
@@ -582,9 +583,10 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback, experience } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
-  const strategies = strategyCallback
-    ? strategyCallback(currentStrategies, 'query')
-    : currentStrategies;
+  const strategies =
+    strategyCallback && !ignoreStrategyWrapper
+      ? strategyCallback(currentStrategies, 'query')
+      : currentStrategies;
 
   const promiseConfig = {
     experience,
@@ -612,14 +614,19 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   const callback =
     typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
   const con = parseConfig(callback, 'mutation', config);
-  const { triggerOn: triggerTypes = ['manual'], strategy } = con;
+  const {
+    triggerOn: triggerTypes = ['manual'],
+    strategy,
+    ignoreStrategyWrapper
+  } = con;
 
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback, experience } = scopeEffectConfig;
   const currentStrategies = toStrategies(strategy);
-  const strategies = strategyCallback
-    ? strategyCallback(currentStrategies, 'mutation')
-    : currentStrategies;
+  const strategies =
+    strategyCallback && !ignoreStrategyWrapper
+      ? strategyCallback(currentStrategies, 'mutation')
+      : currentStrategies;
 
   const promiseConfig = {
     experience,

@@ -173,3 +173,7 @@
 * add payload method to trigger and execute methods: trigger.payload(x)(); then the session state contains this payload data after execution is finished.
 * add session().createKey() method to create session key with common API supports.
 * the old method session().createStore() generates a static store from this version. For this store still has a key, so, if provide it to a Provider, it still can generate a dynamic store in Provider. So, there is no worry about it in old version usage. 
+
+# v18.5.14
+
+* provide `ignoreStrategyWrapper` option to the config of `useQuery/useMutation` to ignore the common strategies from `ConfigProvider`.

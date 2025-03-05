@@ -138,6 +138,7 @@ The full config fields are:
 * **payload** - A default payload data when the session is executing, it will append to session state after the execution finishes.
 * **defaultData** - The default data for session. If it is setted, the `sessionState.data` has a default data at begining, and `sessionState.loaded` is always `true`.
 * **strategy** - The executing features for session. It can be a single [strategy](/react-effect/concepts?id=strategy) or an strategy array.
+* **ignoreStrategyWrapper** - A flag to ignore the common strategies from `ConfigProvider`.
 
 The default **triggerOn** setting of useQuery and useMutation are different.
 
