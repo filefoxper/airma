@@ -145,6 +145,12 @@ export interface StrategyType<T = any> {
     ) => Promise<SessionState<T>>;
     localCache: { current: any };
     triggerType: TriggerType;
+    payload: unknown | undefined;
+    execute: (
+      triggerType: TriggerType,
+      payload: unknown | undefined,
+      variables: any[]
+    ) => Promise<SessionState<T>>;
     executeContext: {
       set: (key: any, value: any) => void;
       get: (key: any) => any;
@@ -158,10 +164,17 @@ export type StrategyEffectDestroy<T = any> = [
   (s: SessionState<T>, p: SessionState<T>) => boolean
 ];
 
+export interface StrategyConfig<T = any> {
+  list: (StrategyType<T> | null | undefined)[];
+  withoutWrapper?: boolean;
+  withoutDefault?: boolean;
+}
+
 export type StrategyCollectionType<T = any> =
   | undefined
   | null
   | StrategyType<T>
+  | StrategyConfig<T>
   | (StrategyType<T> | null | undefined)[];
 
 export type KeyBy<C extends PromiseCallback<any>> = (

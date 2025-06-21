@@ -137,13 +137,47 @@ The full config fields are:
 * **variables** - The parameters for execution, it should be an array. If there is no `deps` option in config, it is used as a default `deps` by session.
 * **payload** - A default payload data when the session is executing, it will append to session state after the execution finishes.
 * **defaultData** - The default data for session. If it is setted, the `sessionState.data` has a default data at begining, and `sessionState.loaded` is always `true`.
-* **strategy** - The executing features for session. It can be a single [strategy](/react-effect/concepts?id=strategy) or an strategy array.
+* **strategy** - The executing features for session. It can be a single [strategy](/react-effect/concepts?id=strategy), an strategy array or an [config object](/react-effect/concepts?id=strategy-config).
 * **ignoreStrategyWrapper** - A flag to ignore the common strategies from `ConfigProvider`.
+
+#### TriggerOn
 
 The default **triggerOn** setting of useQuery and useMutation are different.
 
 * useQuery - `['mount', 'update', 'manual']`
 * useMutation - `['manual']`
+
+#### Strategy Config
+
+The **strategy** chains in working session is composed by a customized setting, a common wrapper function and a default strategy for useQuery or useMutation.
+
+The common strategies wrapper function is from `ConfigProvider`, it can be ignored by setting `ignoreStrategyWrapper` in session config or  `withoutWrapper` in a strategy config.
+
+The default strategy in useQuery and useMutation is:
+
+* useQuery - takeLatest strategy, it ensures that useQuery always sets a latest execution data to session state.
+* useMutation - atomically strategy, it ensures that useMutation always execute atomically when it is triggered manually.
+
+Use strategy config to customize details of executing strategies.
+
+```ts
+useQuery(promiseCallback, {
+    variables: [param1, param2],
+    strategy: {
+        list: [
+            Strategy.debounce(300),
+            Strategy.validate(([param1])=>!!param1),
+            Strategy.response.success((data)=>{
+                console.log(data);
+            })
+        ],
+        // ignore default strategy in useQuery/useMutation
+        withoutDefault: true,
+        // ignore common wrapper strategies from ConfigProvider
+        withoutWrapper: true
+    }
+});
+```
 
 ### Trigger and execute
 

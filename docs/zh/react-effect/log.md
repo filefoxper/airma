@@ -178,3 +178,8 @@
 ## v18.5.14
 
 * 在 useQuery/useMutation 的 config 中新增 `ignoreStrategyWrapper` 选项用于忽略 ConfigProvider 提供的公共策略。
+
+## v18.5.15
+
+* 新增 `Strategy.atomic` 策略，用于支持原子操作。
+* 新增 策略配置对象，用于详细配置会话策略。

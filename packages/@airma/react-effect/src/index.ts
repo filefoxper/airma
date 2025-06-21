@@ -582,9 +582,13 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   const triggerTypes: TriggerType[] = manual ? ['manual'] : triggerOn;
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback, experience } = scopeEffectConfig;
-  const currentStrategies = toStrategies(strategy);
+  const {
+    list: currentStrategies,
+    withoutWrapper,
+    withoutDefault
+  } = toStrategies(strategy);
   const strategies =
-    strategyCallback && !ignoreStrategyWrapper
+    strategyCallback && !ignoreStrategyWrapper && !withoutWrapper
       ? strategyCallback(currentStrategies, 'query')
       : currentStrategies;
 
@@ -592,7 +596,9 @@ export function useQuery<T, C extends PromiseCallback<T>>(
     experience,
     ...con,
     triggerOn: triggerTypes,
-    strategy: strategies.concat(latest() as StrategyType | null | undefined)
+    strategy: withoutDefault
+      ? strategies
+      : strategies.concat(latest() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(
@@ -622,9 +628,13 @@ export function useMutation<T, C extends PromiseCallback<T>>(
 
   const scopeEffectConfig = useGlobalConfig() || {};
   const { strategy: strategyCallback, experience } = scopeEffectConfig;
-  const currentStrategies = toStrategies(strategy);
+  const {
+    list: currentStrategies,
+    withoutWrapper,
+    withoutDefault
+  } = toStrategies(strategy);
   const strategies =
-    strategyCallback && !ignoreStrategyWrapper
+    strategyCallback && !ignoreStrategyWrapper && !withoutWrapper
       ? strategyCallback(currentStrategies, 'mutation')
       : currentStrategies;
 
@@ -632,7 +642,9 @@ export function useMutation<T, C extends PromiseCallback<T>>(
     experience,
     ...con,
     triggerOn: triggerTypes,
-    strategy: strategies.concat(block() as StrategyType | null | undefined)
+    strategy: withoutDefault
+      ? strategies
+      : strategies.concat(block() as StrategyType | null | undefined)
   };
 
   return usePromiseCallbackEffect<T, C>(

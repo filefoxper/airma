@@ -177,3 +177,8 @@
 # v18.5.14
 
 * provide `ignoreStrategyWrapper` option to the config of `useQuery/useMutation` to ignore the common strategies from `ConfigProvider`.
+
+# v18.5.15
+
+* add `Strategy.atomic` to support atomic operations.
+* add strategy config object to `useQuery/useMutation` config to support detail config for strategies.

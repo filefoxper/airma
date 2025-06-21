@@ -4,6 +4,7 @@ import {
   QueryConfig,
   SessionState,
   StrategyCollectionType,
+  StrategyConfig,
   StrategyEffect,
   StrategyType,
   TriggerType
@@ -60,10 +61,14 @@ export function composeStrategies(
   };
 }
 
-export function toStrategies(
-  strategy: StrategyCollectionType
-): (StrategyType | null | undefined)[] {
-  return Array.isArray(strategy) ? strategy : [strategy];
+export function toStrategies(strategy: StrategyCollectionType): StrategyConfig {
+  if (Array.isArray(strategy)) {
+    return { list: strategy };
+  }
+  if (strategy == null || typeof strategy === 'function') {
+    return { list: [strategy] };
+  }
+  return strategy;
 }
 
 function createRuntimeCache() {
@@ -104,7 +109,7 @@ export function useStrategyExecution<T>(
   config: QueryConfig<T, any>
 ) {
   const { strategy } = config;
-  const strategies = toStrategies(strategy);
+  const { list: strategies } = toStrategies(strategy);
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
   );
@@ -141,6 +146,15 @@ export function useStrategyExecution<T>(
         }
         return sessionRunner(triggerType, payload, runtimeVariables);
       };
+
+      const execute = function execute(
+        tType: TriggerType,
+        pd: unknown | undefined,
+        vars: any[]
+      ) {
+        return sessionRunner(tType, pd, vars);
+      };
+
       const requires = {
         getSessionState: () => {
           const s = signal().state;
@@ -149,8 +163,10 @@ export function useStrategyExecution<T>(
         },
         variables: runtimeVariables,
         runner,
+        execute,
         triggerType,
         config,
+        payload,
         localCache: strategyStoreRef,
         executeContext: createRuntimeCache()
       };

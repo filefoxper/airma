@@ -163,7 +163,11 @@ It is a set for often used [strategies](/react-effect/concepts?id=strategy).
 
 ```ts
 const Strategy: {
-  cache:(op?: {
+  atomic: (op?{
+    throttle?:boolean,
+    stopWhenError?:boolean,
+  }) => StrategyType;
+  cache: (op?: {
     key?: (variables: any[]) => string;
     staleTime?: number;
     capacity?: number;
@@ -196,6 +200,15 @@ const Strategy: {
   };
 };
 ```
+
+### Strategy.atomic
+
+It makes the session execution atomic. When more than one session execution is triggered, only the first one is executed, the others are waiting for the first one to be completed.
+
+#### Parameters
+
+* **op.throttle** - (**Default: true**) It is an optional boolean value, if it is true, the session execution will be throttled, only the first trigger and the last trigger will be executed.
+* **op.stopWhenError** - (**Default: true**) It is an optional boolean value, if it is true, the session execution will be stopped when an error occurs.
 
 ### Strategy.cache
 
