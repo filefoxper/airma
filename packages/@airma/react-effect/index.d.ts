@@ -118,10 +118,17 @@ export declare interface MutationSessionKey<E extends PromiseCallback<any>>
   payload: [E, { sessionType?: 'mutation' }];
 }
 
+declare interface StrategyConfig<T = any, V extends any[] = any[]> {
+  list: (StrategyType<T, V> | null | undefined)[];
+  withoutWrapper?: boolean;
+  withoutDefault?: boolean;
+}
+
 declare type StrategyCollectionType<T = any, V extends any[] = any[]> =
   | undefined
   | null
   | StrategyType<T, V>
+  | StrategyConfig<T, V>
   | (StrategyType<T, V> | null | undefined)[];
 
 declare type QueryConfig<T, C extends PromiseCallback<T>> = {
@@ -410,6 +417,10 @@ export declare const ConfigProvider: FunctionComponent<{
 export declare type HostStage = 'mounted' | 'unmounted';
 
 export declare const Strategy: {
+  atomic: <T = any, V extends any[] = any[]>(op?: {
+    throttle?: boolean;
+    stopWhenError?: boolean;
+  }) => StrategyType<T, V>;
   cache: <T = any, V extends any[] = any[]>(op?: {
     key?: (vars: V) => string;
     staleTime?: number;

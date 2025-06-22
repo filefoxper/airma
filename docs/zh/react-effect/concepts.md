@@ -148,12 +148,46 @@ useMutation(promiseCallback, {
 * **deps** - 会话更新触发模式依赖项，类型：`any[]`，可选。当依赖项发生更新，则触发会话以 variables 为参数执行异步函数。相当于通过 useEffect 调用异步函数。
 * **variables** - 推荐会话执行参数，类型：`Parameter（异步函数传参元组类型）`，可选。如未设置 *deps* 配置项，则默认以 variables 作更新触发依赖项。
 * **defaultData** - 会话默认数据，类型：`T（异步函数执行结果类型）`，可选。如设置此项，当会话处于尚未执行的初始状态时，会话数据 *data* 为当前设置值，且会话加载标记字段 *loaded* 恒为 true。
-* **strategy** - 会话[策略](/zh/react-effect/concepts?id=策略)，类型：`Array<StrategyType>|StrategyType`，用于干预会话执行过程和结果的函数。
+* **strategy** - 会话[策略](/zh/react-effect/concepts?id=策略)，类型：`Array<StrategyType>|StrategyType|StrategyConfig`，用于干预会话执行过程和结果的函数、函数数组或策略配置。
 * **payload** - 会话附加数据，任意类型，可用于标识当前会话的目的。会话执行完毕后会出现在会话状态字段中。
 * **ignoreStrategyWrapper** - 用于忽略来自 ConfigProvider 的公共策略。类型：`boolean`，可选。
 * **manual** - 会话人工执行限制，boolean 类型。当 manual 为 true 时，强制只支持人工触发执行方式，相当于 **triggerOn: ['manual']** 设置。
 
 所有配置项均可不设置，这时会话处于强制人工执行模式。
+
+#### 策略配置
+
+会话运行的策略通常有**公共策略（ConfigProvider props.strategy）** 、 **自定义策略** 以及 **默认策略** 三部分组成。
+
+公共策略是通过 [ConfigProvider](/zh/react-effect/api?id=configprovider) 组件的 props.strategy 属性配置的，该策略会作用于所有会话。
+
+自定义策略是通过会话配置项的 strategy 属性配置的，该策略只作用于当前会话。
+
+默认策略是 `@airma/react-effect` 内置的策略：
+
+* useQuery - latest 最新取值策略，即只保留最新一次请求数据的结果。
+* useMutation - blocking 阻塞策略，即在人工触发时使用阻塞运行方式，更新触发时直接运行。
+
+通过策略配置对象，可以详细制定是否采用默认策略或公共策略。
+
+```ts
+useQuery(promiseCallback, {
+    variables: [param1, param2],
+    strategy: {
+        list: [
+            Strategy.debounce(300),
+            Strategy.validate(([v1])=>!!v1),
+            Strategy.response.success((data)=>{
+                console.log(data);
+            })
+        ],
+        // 忽略默认策略
+        withoutDefault: true,
+        // 忽略公共策略
+        withoutWrapper: true
+    }
+});
+```
 
 ### 触发和执行
 

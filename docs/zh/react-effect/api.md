@@ -182,6 +182,10 @@ function useLoadedSession(sessionKey):[sessionState, trigger, execute]
 
 ```ts
 const Strategy: {
+  atomic: (op?{
+    throttle?:boolean,
+    stopWhenError?:boolean,
+  }) => StrategyType;
   cache:(op?: {
     key?: (variables: any[]) => string;
     staleTime?: number;
@@ -215,6 +219,15 @@ const Strategy: {
   };
 };
 ```
+
+### Strategy.atomic
+
+原子策略。该策略用于保证异步函数的原子性，即一次只能执行一个异步操作。会话正在工作期触发的请求会在队列中等待执行。
+
+#### 参数
+
+* **op.throttle** - （**默认 true**）可选，boolean 类型。用于设置是否开启节流，当该值为 true 时，表示开启节流模式，会话会在当前工作完成后直接执行工作期触发的最后一次请求。
+* **op.stopWhenError** - （**默认 true**）可选，boolean 类型。用于设置是否在遇到错误时停止后续请求。
 
 ### Strategy.cache
 

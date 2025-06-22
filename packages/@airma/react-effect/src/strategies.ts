@@ -529,7 +529,10 @@ response.failure = function responseFailure<T>(
         if (Array.isArray(strategy)) {
           return strategy;
         }
-        return [strategy];
+        if (typeof strategy === 'function') {
+          return [strategy];
+        }
+        return strategy.list;
       })();
       const currentIndex = strategies.indexOf(sc);
       const failureStrategies = strategies.filter(
@@ -652,7 +655,9 @@ function cache(option?: {
         variables,
         visited: true
       };
-      return Promise.resolve(cacheState);
+      return new Promise(resolve => {
+        resolve(cacheState);
+      });
     }
     return runner(c => {
       return cacheData && (!staleTime || staleTime < 0)
@@ -677,7 +682,63 @@ function cache(option?: {
   };
 }
 
+function atomic(option?: {
+  throttle?: boolean;
+  stopWhenError?: boolean;
+}): StrategyType {
+  const { throttle: t = true, stopWhenError = true } = option ?? {};
+  return function atomicStrategy(requires): Promise<SessionState> {
+    const { runner, localCache, triggerType, payload, variables, execute } =
+      requires;
+    if (localCache.current) {
+      localCache.current.queue = t
+        ? [{ triggerType, payload, variables }]
+        : [...localCache.current.queue, { triggerType, payload, variables }];
+      return localCache.current.promise.then((sessionData: SessionState) => ({
+        ...sessionData,
+        abandon: true
+      }));
+    }
+    const promise = runner();
+    const consumeCacheQueue = function consumeCacheQueue(
+      lastSessionData: SessionState
+    ): Promise<SessionState> {
+      if (lastSessionData.isError && stopWhenError) {
+        return new Promise(resolve => {
+          resolve(lastSessionData);
+        });
+      }
+      const currentCache = localCache.current;
+      if (!currentCache || !currentCache.queue.length) {
+        return new Promise(resolve => {
+          resolve(lastSessionData);
+        });
+      }
+      const [currentTask, ...rest] = currentCache.queue;
+      localCache.current.queue = rest;
+      return execute(
+        currentTask.triggerType,
+        currentTask.payload,
+        currentTask.variables ?? []
+      ).then(data => {
+        return consumeCacheQueue(data);
+      });
+    };
+    localCache.current = {
+      queue: [],
+      promise: promise.then((sessionData: SessionState) => {
+        return consumeCacheQueue(sessionData).then(data => {
+          localCache.current = undefined;
+          return data;
+        });
+      })
+    };
+    return localCache.current.promise;
+  };
+}
+
 export const Strategy = {
+  atomic,
   cache,
   debounce,
   error,
