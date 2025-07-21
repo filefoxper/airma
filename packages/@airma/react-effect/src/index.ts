@@ -324,7 +324,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     );
   };
 
-  const triggerWithPayload = function triggerWithPayload(
+  const triggerWithPayload = usePersistFn(function triggerWithPayload(
     payloadWrapper: { payload: unknown } | undefined
   ) {
     if (triggerTypes.indexOf('manual') < 0) {
@@ -349,13 +349,13 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
     sessionExecution('manual', payload);
     return true;
-  };
+  });
 
   const trigger = () => {
     return triggerWithPayload(undefined);
   };
 
-  const executeWithPayload = function executeWithPayload(
+  const executeWithPayload = usePersistFn(function executeWithPayload(
     payloadWrapper: { payload: unknown } | undefined,
     ...vars: Parameters<C>
   ) {
@@ -381,7 +381,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     });
     sessionExecution('manual', payload, vars);
     return true;
-  };
+  });
 
   const execute = (...vars: Parameters<C>) => {
     return executeWithPayload(undefined, ...vars);

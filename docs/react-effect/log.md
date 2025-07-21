@@ -182,3 +182,7 @@
 
 * add `Strategy.atomic` to support atomic operations.
 * add strategy config object to `useQuery/useMutation` config to support detail config for strategies.
+
+# v18.5.16
+
+* fix the problem about stale strategies usage when use `useSession` trigger way.

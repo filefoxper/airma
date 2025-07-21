@@ -183,3 +183,7 @@
 
 * 新增 `Strategy.atomic` 策略，用于支持原子操作。
 * 新增 策略配置对象，用于详细配置会话策略。
+
+## v18.5.16
+
+* 修复通过 `useSession` 触发 `useQuery/useMutation` 无法使用最新 strategies 的问题。
