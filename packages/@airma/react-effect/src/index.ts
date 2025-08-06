@@ -1,8 +1,6 @@
 import {
   createElement,
-  FunctionComponent,
   lazy,
-  ReactNode,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,9 +9,9 @@ import {
 import {
   Provider as ModelProvider,
   provide as provideKeys,
-  ModelLike,
-  Signal,
-  useSignal
+  useSignal,
+  validations,
+  useActProcess
 } from '@airma/react-state';
 import {
   useMount,
@@ -22,6 +20,22 @@ import {
   useUpdate
 } from '@airma/react-hooks-core';
 import {
+  parseConfig,
+  useSessionBuildModel,
+  createSessionKey,
+  createSessionStore,
+  parseMeta,
+  parseStoreMeta
+} from './libs/model';
+import { globalControllerStore, useGlobalConfig } from './libs/global';
+import {
+  block,
+  latest,
+  toStrategies,
+  useStrategyExecution
+} from './libs/strategy';
+import { logger } from './libs/tools';
+import type {
   SessionState,
   PromiseCallback,
   QueryConfig,
@@ -41,21 +55,11 @@ import {
   ControlData,
   Tunnel,
   Resolver,
-  StrategyEffectDestroy
+  StrategyEffectDestroy,
+  SessionInstance,
+  SessionStore
 } from './libs/type';
-import {
-  parseConfig,
-  useSessionBuildModel,
-  createSessionKey
-} from './libs/model';
-import { globalControllerStore, useGlobalConfig } from './libs/global';
-import {
-  block,
-  latest,
-  toStrategies,
-  useStrategyExecution
-} from './libs/strategy';
-import { logger } from './libs/tools';
+import type { Signal } from '@airma/react-state';
 
 function noop() {
   /* noop */
@@ -107,10 +111,10 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  signal: Signal<SessionKey<C>>
+  signal: Signal<SessionState<T>, SessionInstance<T>>
 ): Controller {
   function getController() {
-    const payload = signal.getConnection().getPayload();
+    const payload = signal.store.payload();
     return payload as FullControlData | undefined;
   }
   return {
@@ -213,9 +217,9 @@ function useTunnels(controller: Controller) {
 }
 
 function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  callback: C | SessionKey<C> | { key: SessionKey<C> },
   sessionType: SessionType,
-  config: QueryConfig<T, C> | Parameters<C>,
+  config: QueryConfig<T, C>,
   isFullFunctionalConfig: boolean
 ): [
   SessionState<T>,
@@ -238,14 +242,17 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   } = con;
 
   useInitialize(() => {
-    const mayKey = callback as SessionKey<C>;
+    const mayKey = parseMeta(callback);
+    if (validations.isModelKey(mayKey) && mayKey.sessionPayload) {
+      const [, d] = mayKey.sessionPayload;
+      return signal.store.payload(p => (p != null ? p : { ...d }));
+    }
     if (
-      typeof mayKey.isFactory === 'function' &&
-      mayKey.isFactory() &&
-      mayKey.payload
+      validations.isModelStore(mayKey) &&
+      (mayKey as SessionStore<C>).sessionPayload
     ) {
-      const [, d] = mayKey.payload;
-      return signal.getConnection().setPayload(p => (p != null ? p : { ...d }));
+      const [, d] = (mayKey as SessionStore<C>).sessionPayload;
+      return signal.store.payload(p => (p != null ? p : { ...d }));
     }
     return null;
   });
@@ -268,7 +275,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
-      const online = !signal.getConnection().isDestroyed();
+      const online = !signal.store.isDestroyed();
       return {
         ...signal().state,
         ...data,
@@ -389,6 +396,8 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   const effectDeps = deps || variables || [];
 
+  const processor = useActProcess();
+
   useLayoutEffect(() => {
     tunnelController.registry({
       key: keyRef.current,
@@ -449,20 +458,30 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
   }, [stableInstance.request]);
 
   useEffect(() => {
-    const { setGlobalFetchingKey, removeGlobalFetchingKey } =
-      globalControlSignal();
-    if (stableInstance.state.isFetching) {
-      setGlobalFetchingKey(keyRef.current);
-    } else {
-      removeGlobalFetchingKey(keyRef.current);
-    }
+    const operateGlobalFetchingKey = function operateGlobalFetchingKey() {
+      const { setGlobalFetchingKey, removeGlobalFetchingKey } =
+        globalControlSignal();
+      if (stableInstance.state.isFetching) {
+        setGlobalFetchingKey(keyRef.current);
+      } else {
+        removeGlobalFetchingKey(keyRef.current);
+      }
+    };
+    processor.act(() => {
+      operateGlobalFetchingKey();
+    });
   }, [stableInstance.state.isFetching]);
 
   useUnmount(() => {
-    const { removeGlobalFetchingKey } = globalControlSignal();
-    removeGlobalFetchingKey(keyRef.current);
-    fetchingKeyController.removeFetchingKey(keyRef.current);
-    preloadRef.current = null;
+    const destroy = function destroy() {
+      const { removeGlobalFetchingKey } = globalControlSignal();
+      removeGlobalFetchingKey(keyRef.current);
+      fetchingKeyController.removeFetchingKey(keyRef.current);
+      preloadRef.current = null;
+    };
+    processor.act(() => {
+      destroy();
+    });
   });
 
   const prevStateRef = useRef(stableInstance.state);
@@ -475,20 +494,57 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       .map(cache => {
         const [destroy, effectFilter] = cache;
         if (effectFilter(stableInstance.state, prevState)) {
-          destroy();
+          processor.act(() => destroy());
           return undefined;
         }
         return cache;
       })
       .filter((cache): cache is StrategyEffectDestroy<T> => cache != null);
     destroyCacheRef.current = nextDestroyCache;
+    const effectStrategyContextStore: { current: [any, any][] } = {
+      current: []
+    };
+    const effectStrategyContext = {
+      set(k: any, v: any) {
+        const mappedContextStoreCurrent =
+          effectStrategyContextStore.current.map(s =>
+            s[0] === k ? ([k, v] as [any, any]) : s
+          );
+        effectStrategyContextStore.current = mappedContextStoreCurrent.some(
+          s => s[0] === k
+        )
+          ? mappedContextStoreCurrent
+          : [...mappedContextStoreCurrent, [k, v] as [any, any]];
+      },
+      get(k: any) {
+        const found = effectStrategyContextStore.current.find(s => s[0] === k);
+        if (found) {
+          return found[1];
+        }
+        return undefined;
+      }
+    };
     const results = strategyEffects.map(effectCallback => {
       if (typeof effectCallback === 'function') {
-        return effectCallback(stableInstance.state, prevState, con);
+        return processor.act(() =>
+          effectCallback(
+            stableInstance.state,
+            prevState,
+            con,
+            effectStrategyContext
+          )
+        );
       }
       const [callbackOfEffect, effectFilter] = effectCallback;
       if (effectFilter(stableInstance.state, prevState)) {
-        const destroy = callbackOfEffect(stableInstance.state, prevState, con);
+        const destroy = processor.act(() =>
+          callbackOfEffect(
+            stableInstance.state,
+            prevState,
+            con,
+            effectStrategyContext
+          )
+        );
         if (typeof destroy === 'function') {
           const destroyCaches = destroyCacheRef.current;
           destroyCacheRef.current = [...destroyCaches, [destroy, effectFilter]];
@@ -500,7 +556,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
     return () => {
       results.forEach(r => {
         if (typeof r === 'function') {
-          r();
+          processor.act(() => r());
         }
       });
     };
@@ -566,8 +622,7 @@ export function useQuery<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
-  const callback =
-    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
+  const callback = sessionLike;
   const con = parseConfig(callback, 'query', config);
   const {
     variables,
@@ -617,8 +672,7 @@ export function useMutation<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
-  const callback =
-    typeof sessionLike === 'function' ? sessionLike : sessionLike.key;
+  const callback = sessionLike;
   const con = parseConfig(callback, 'mutation', config);
   const {
     triggerOn: triggerTypes = ['manual'],
@@ -663,9 +717,8 @@ export function useSession<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
-  const sessionKey =
-    typeof sessionKeyLike === 'function' ? sessionKeyLike : sessionKeyLike.key;
-  const [, padding] = sessionKey.payload;
+  const sessionKey = parseStoreMeta(sessionKeyLike);
+  const [, padding] = sessionKey.sessionPayload;
   const { sessionType: sessionKeyType } = padding;
   const signal = useSignal(sessionKey);
   const sessionState = signal().state;
@@ -679,7 +732,8 @@ export function useSession<T, C extends PromiseCallback<T>>(
   const { loaded } = sessionState;
   if (sessionType && sessionKeyType && sessionType !== sessionKeyType) {
     throw new Error(
-      `The sessionType is not matched, can not use '${sessionKeyType} type' sessionKey with '${sessionType} type' useSession.`
+      `The sessionType is not matched, can not use '${sessionKeyType} type' sessionKey 
+      with '${sessionType} type' useSession.`
     );
   }
   if (shouldLoaded && !loaded) {
@@ -880,6 +934,7 @@ export function useResponse<T>(
   const sessionState = Array.isArray(state) ? state[0] : state;
   const initialRound = useInitialize(() => sessionState.round);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const processor = useActProcess();
   useEffect(() => {
     if (sessionState.round === 0) {
       return noop;
@@ -893,7 +948,7 @@ export function useResponse<T>(
       sessionState.sessionLoaded &&
       !sessionState.isError;
     if (isErrorResponse || isSuccessResponse) {
-      const res = process(sessionState);
+      const res = processor.act(() => process(sessionState));
       return typeof res === 'function' ? res : noop;
     }
     return noop;
@@ -907,6 +962,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
   const sessionState = Array.isArray(state) ? state[0] : state;
   const initialRound = useInitialize(() => sessionState.lastSuccessfulRound);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const processor = useActProcess();
   useEffect(() => {
     if (sessionState.lastSuccessfulRound === 0) {
       return noop;
@@ -919,7 +975,9 @@ useResponse.useSuccess = function useResponseSuccess<T>(
       sessionState.sessionLoaded &&
       !sessionState.isError;
     if (isSuccessResponse) {
-      const res = process(sessionState.data as T, sessionState);
+      const res = processor.act(() =>
+        process(sessionState.data as T, sessionState)
+      );
       return typeof res === 'function' ? res : noop;
     }
     return noop;
@@ -933,6 +991,7 @@ useResponse.useFailure = function useResponseFailure(
   const sessionState = Array.isArray(state) ? state[0] : state;
   const initialRound = useInitialize(() => sessionState.lastFailedRound);
   const { watchOnly } = (Array.isArray(state) ? state[1] : undefined) ?? {};
+  const processor = useActProcess();
   useEffect(() => {
     if (sessionState.lastFailedRound === 0) {
       return noop;
@@ -942,7 +1001,9 @@ useResponse.useFailure = function useResponseFailure(
     }
     const isErrorResponse = !sessionState.isFetching && sessionState.isError;
     if (isErrorResponse) {
-      const res = process(sessionState.error, sessionState);
+      const res = processor.act(() =>
+        process(sessionState.error, sessionState)
+      );
       return typeof res === 'function' ? res : noop;
     }
     return noop;
@@ -953,7 +1014,7 @@ export const Provider = ModelProvider;
 
 export const provide = provideKeys;
 
-export { createSessionKey };
+export { createSessionKey, createSessionStore };
 
 export { Strategy } from './strategies';
 
@@ -980,94 +1041,37 @@ const session = function session<T, C extends PromiseCallback<T>>(
     return useMutation(sessionCallback, c);
   };
 
-  const storeApi = function storeApi(k?: any, keys: any[] = []) {
-    const key =
-      k != null ? k : createSessionKey(sessionCallback, queryType).static();
+  const storeApi = function storeApi() {
+    const sessionStore = createSessionStore(sessionCallback, queryType);
     const useStoreApiQuery = function useStoreApiQuery(
       c?: QueryConfig<T, C> | Parameters<C>
     ) {
-      return useQuery(key, c);
+      return useQuery(sessionStore, c);
     };
     const useStoreApiMutation = function useStoreApiMutation(
       c?: MutationConfig<T, C> | Parameters<C>
     ) {
-      return useMutation(key, c);
+      return useMutation(sessionStore, c);
     };
     const useStoreApiSession = function useStoreApiSession() {
-      return useSession(key, queryType);
+      return useSession(sessionStore, queryType);
     };
     const useStoreApiLoadedSession = function useStoreApiLoadedSession() {
-      return useLoadedSession(key, queryType);
+      return useLoadedSession(sessionStore, queryType);
     };
-    const withKeys = function withKeys(
-      ...stores: (
-        | {
-            key: ModelLike;
+    return sessionStore.extends(
+      queryType === 'query'
+        ? {
+            useSession: useStoreApiSession,
+            useLoadedSession: useStoreApiLoadedSession,
+            useQuery: useStoreApiQuery
           }
-        | ModelLike
-      )[]
-    ) {
-      const nks = keys.concat(
-        stores.map(store => (typeof store === 'function' ? store : store.key))
-      );
-      return storeApi(key, nks);
-    };
-    const storeApiProvide = function storeApiProvide() {
-      return provide([key, ...keys] as any);
-    };
-    const storeApiProvideTo = function storeApiProvideTo(
-      component: FunctionComponent
-    ) {
-      return provide([key, ...keys] as any)(component);
-    };
-    const StoreApiProvider = function StoreApiProvider({
-      children
-    }: {
-      children?: ReactNode;
-    }) {
-      return createElement(Provider, { value: [key, ...keys] }, children);
-    };
-    const globalApi = function globalApi() {
-      const globalKey = key;
-      const globalApiHooks = {
-        key,
-        useSession() {
-          return useSession(globalKey, queryType);
-        },
-        useLoadedSession() {
-          return useLoadedSession(globalKey, queryType);
-        }
-      };
-      const useGlobalApiQuery = function useGlobalApiQuery(
-        c?: QueryConfig<T, C> | Parameters<C>
-      ) {
-        return useQuery(globalKey, c);
-      };
-      const useGlobalApiMutation = function useGlobalApiMutation(
-        c?: MutationConfig<T, C> | Parameters<C>
-      ) {
-        return useMutation(globalKey, c);
-      };
-      return queryType === 'query'
-        ? { ...globalApiHooks, useQuery: useGlobalApiQuery }
-        : { ...globalApiHooks, useMutation: useGlobalApiMutation };
-    };
-    const sessionStoreApi = {
-      key,
-      with: withKeys,
-      /**
-       * @deprecated
-       */
-      static: globalApi,
-      useSession: useStoreApiSession,
-      useLoadedSession: useStoreApiLoadedSession,
-      provide: storeApiProvide,
-      provideTo: storeApiProvideTo,
-      Provider: StoreApiProvider
-    };
-    return queryType === 'query'
-      ? { ...sessionStoreApi, useQuery: useStoreApiQuery }
-      : { ...sessionStoreApi, useMutation: useStoreApiMutation };
+        : {
+            useSession: useStoreApiSession,
+            useLoadedSession: useStoreApiLoadedSession,
+            useMutation: useStoreApiMutation
+          }
+    );
   };
 
   const keyApi = function keyApi() {
@@ -1099,6 +1103,7 @@ const session = function session<T, C extends PromiseCallback<T>>(
   };
 
   const api = {
+    sessionType: queryType,
     createStore: storeApi,
     createKey: keyApi
   };

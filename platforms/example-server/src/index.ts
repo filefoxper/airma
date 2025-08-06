@@ -1,31 +1,6 @@
 import http from 'http';
 import app from './app';
 
-/**
- * Get port from environment and store in Express.
- */
-
-const port = normalizePort((process.env.PORT as string | undefined) || '9999');
-app.set('port', port);
-
-/**
- * Create HTTP server.
- */
-
-const server = http.createServer(app);
-
-/**
- * Listen on provided port, on all network interfaces.
- */
-
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
-
-/**
- * Normalize a port into a number, string, or false.
- */
-
 function normalizePort(val: string) {
   const port = parseInt(val, 10);
 
@@ -42,9 +17,7 @@ function normalizePort(val: string) {
   return false;
 }
 
-/**
- * Event listener for HTTP server "error" event.
- */
+const port = normalizePort((process.env.PORT as string | undefined) || '9999');
 
 function onError(error: any) {
   if (error.syscall !== 'listen') {
@@ -68,6 +41,8 @@ function onError(error: any) {
   }
 }
 
+const server = http.createServer(app);
+
 /**
  * Event listener for HTTP server "listening" event.
  */
@@ -79,3 +54,9 @@ function onListening() {
   }
   const bind = typeof addr === 'string' ? `pipe ${addr}` : `port ${addr.port}`;
 }
+
+app.set('port', port);
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);

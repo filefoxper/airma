@@ -1,2 +1,2 @@
 * [English](/)
-* [首页](/zh/index.md)
+* [首页](/zh/index)

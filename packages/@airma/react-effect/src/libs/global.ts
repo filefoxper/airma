@@ -12,10 +12,13 @@ export const globalControllerStore = model(globalController).createStore(
 const GlobalConfigContext = createContext<GlobalConfig | null>(null);
 
 export function ConfigProvider({ value, children }: ConfigProviderProps) {
-  const stateConfig = useMemo(
-    () => (value.batchUpdate ? { batchUpdate: value.batchUpdate } : {}),
-    []
-  );
+  const stateConfig = useMemo(() => {
+    if (value == null) {
+      return undefined;
+    }
+    const { batchUpdate, test } = value;
+    return { batchUpdate, test };
+  }, []);
   const child = createElement(
     GlobalConfigContext.Provider,
     { value },

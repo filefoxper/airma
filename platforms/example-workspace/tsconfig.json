@@ -2,10 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": "./",
-    "jsx": "react",
     "paths": {
       "@/*": ["src/*"],
       "@test/*": ["test/*"]
     }
-  }
+  },
+  "include": [".","../../packages/@airma"]
 }

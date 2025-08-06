@@ -1,6 +1,6 @@
-import { ErrorResponse, RequestConfig, ResponseData } from './type';
 import { defaultHeaders } from './constant';
 import { simpleParamsProcessor } from './params';
+import type { ErrorResponse, RequestConfig, ResponseData } from './type';
 
 function request<T>(
   input: string,

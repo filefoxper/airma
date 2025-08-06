@@ -12,8 +12,8 @@
 
 `@airma` provides simple and useful packages for react developing env:
 
-1. [@airma/react-state](/react-state/index)
-2. [@airma/react-effect](/react-effect/index)
+1. [@airma/react-state](/react-state/current/index)
+2. [@airma/react-effect](/react-effect/current/index)
 3. [@airma/react-hooks](/react-hooks/index)
 
 The package can be used without react:
@@ -114,7 +114,7 @@ recallWithVariables(props.groupId);
 ......
 ```
 
-Read [documents](/react-effect/index) of `@airma/react-effect` for more informations.
+Read [documents](/react-effect/current/index) of `@airma/react-effect` for more informations.
 
 ### @airma/react-hooks
 

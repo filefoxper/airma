@@ -1,4 +1,6 @@
 const generateConfig = require('./webpack.basic');
+const EslintWebpackPlugin = require('eslint-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ReactRefreshPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const WebpackBar = require('webpackbar');
@@ -19,11 +21,24 @@ module.exports = function config() {
         "@airma/react-hooks-core":"@airma/react-hooks-core/src",
         "@airma/react-effect":"@airma/react-effect/src",
         "@airma/react-hooks":"@airma/react-hooks/src",
-        "react":path.join(__dirname,'node_modules','react'),
-        "react-dom":path.join(__dirname,'node_modules','react-dom')
       }
     },
     plugins: [
+        new ForkTsCheckerWebpackPlugin({
+            async: true,
+            typescript: {
+                memoryLimit: 4096,
+            },
+        }),
+        new EslintWebpackPlugin({
+            context: path.join(__dirname, '..','..'),
+            extensions: ['ts', 'tsx'],
+            files: [
+                path.join('.', 'platforms', 'example-workspace','src'),
+            ],
+            emitWarning: false,
+            cacheLocation: path.join(__dirname, 'node_modules', '.cache', 'eslint-develop'),
+        }),
       new ReactRefreshPlugin({
         esModule:true
       }),

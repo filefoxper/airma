@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es6",
     "module": "esnext",
-    "lib": ["es2019", "dom"],
+    "lib": ["es7", "dom"],
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "importHelpers": true,
+    "jsx": "react",
     "esModuleInterop": true,
     "strict": true,
     "noEmit": true,
@@ -14,10 +15,6 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "forceConsistentCasingInFileNames": true
+    "importsNotUsedAsValues": "preserve"
   },
-  "exclude": [
-    "node_modules",
-    "test"
-  ]
 }

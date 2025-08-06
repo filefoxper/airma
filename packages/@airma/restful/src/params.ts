@@ -1,4 +1,4 @@
-import type { ParamsProcessor } from '../index';
+import type { ParamsProcessor } from './type';
 
 const combineKey = (parentKey: string | undefined, key: string): string =>
   parentKey ? `${parentKey}[${key}]` : key;

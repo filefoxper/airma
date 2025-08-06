@@ -10,7 +10,9 @@ type User = {
 };
 const users: User[] = Array.from({ length: 15 }).map((d, i) => ({
   id: i,
+  // eslint-disable-next-line no-underscore-dangle
   name: casual._name(),
+  // eslint-disable-next-line no-underscore-dangle
   username: casual._username(),
   age: casual.integer(10, 40)
 }));
@@ -56,7 +58,7 @@ export default class UserRoute {
     const { query } = req;
     const { id } = query as { id?: number };
     if (id == null) {
-      res.status(500).send({ message: `The id param is required.` });
+      res.status(500).send({ message: 'The id param is required.' });
     } else {
       const user = users.find(u => u.id === Number(id));
       if (user == null) {

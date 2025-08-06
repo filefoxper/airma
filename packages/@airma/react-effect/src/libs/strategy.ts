@@ -1,23 +1,26 @@
-import { useEffect, useRef } from 'react';
-import { Signal } from '@airma/react-state';
-import {
+import { useRef } from 'react';
+import { useUnmount } from '@airma/react-hooks-core';
+import { useActProcess } from '@airma/react-state';
+import type { Signal } from '@airma/react-state';
+import type {
   QueryConfig,
+  SessionInstance,
   SessionState,
+  SessionToken,
   StrategyCollectionType,
   StrategyConfig,
   StrategyEffect,
   StrategyType,
   TriggerType
 } from './type';
-import { effectModel } from './model';
 
 export function composeStrategies(
   strategies: (StrategyType | undefined | null)[]
 ): StrategyType {
   return function strategy(v) {
     const tempSessionSetters: ((s: SessionState) => SessionState)[] = [];
-    const defaultStrategy: StrategyType = value =>
-      value.runner(s => {
+    const defaultStrategy: StrategyType = value => {
+      return value.runner(s => {
         return tempSessionSetters.reduce((r, c) => {
           if (r.abandon) {
             return r;
@@ -25,6 +28,7 @@ export function composeStrategies(
           return c(r);
         }, s);
       });
+    };
     const storeSlots = v.localCache.current as { current: any }[];
     const callback = [...strategies]
       .reverse()
@@ -41,7 +45,15 @@ export function composeStrategies(
             if (setSessionState != null) {
               tempSessionSetters.push(setSessionState);
             }
-            return r(nextValue);
+            if (nextValue.getSessionToken().status === 'abandon') {
+              const currentState = nextValue.getSessionState();
+              return Promise.resolve({ ...currentState, abandon: true });
+            }
+            return r(nextValue).then(d => {
+              return nextValue.getSessionToken().status === 'abandon'
+                ? { ...d, abandon: true }
+                : d;
+            });
           };
           return c({ ...nextValue, runner: nextRunner });
         };
@@ -99,8 +111,52 @@ function createRuntimeCache() {
   };
 }
 
+function useSessionToken() {
+  const tokensRef = useRef<SessionToken[]>([]);
+
+  const createToken = (): SessionToken => {
+    const currentTokens = tokensRef.current;
+    const token: SessionToken = {
+      status: 'normal',
+      abandon() {
+        throw new Error('This Session token has not been initialized');
+      },
+      silence() {
+        throw new Error('This Session token has not been initialized');
+      }
+    };
+    token.abandon = function abandon(tokens?: SessionToken[]) {
+      if (tokens != null) {
+        tokens.forEach(t => {
+          t.abandon();
+        });
+        return;
+      }
+      token.status = 'abandon';
+      tokensRef.current = tokensRef.current.filter(t => t !== token);
+    };
+    token.silence = function silence() {
+      if (token.status === 'abandon') {
+        return;
+      }
+      token.status = 'silent';
+    };
+    tokensRef.current = [...currentTokens, token];
+    return token;
+  };
+  return {
+    createToken,
+    removeToken(token: SessionToken) {
+      tokensRef.current = tokensRef.current.filter(t => t !== token);
+    },
+    getTokens() {
+      return tokensRef.current;
+    }
+  };
+}
+
 export function useStrategyExecution<T>(
-  signal: Signal<typeof effectModel>,
+  signal: Signal<SessionState, SessionInstance>,
   sessionRunner: (
     triggerType: TriggerType,
     payload: unknown | undefined,
@@ -108,11 +164,18 @@ export function useStrategyExecution<T>(
   ) => Promise<SessionState<T>>,
   config: QueryConfig<T, any>
 ) {
+  const sessionTokens = useSessionToken();
+  const processor = useActProcess();
   const { strategy } = config;
   const { list: strategies } = toStrategies(strategy);
   const strategyStoreRef = useRef<{ current: any }[]>(
     strategies.map(() => ({ current: undefined }))
   );
+
+  const unmountRef = useRef(false);
+  useUnmount(() => {
+    unmountRef.current = true;
+  });
 
   const effects = strategies
     .map(s => {
@@ -121,7 +184,8 @@ export function useStrategyExecution<T>(
       }
       return s.effect;
     })
-    .filter((e): e is StrategyEffect<any> => !!e);
+    .filter((e): e is StrategyEffect<any> => !!e)
+    .reverse();
 
   return [
     function callWithStrategy(
@@ -134,14 +198,16 @@ export function useStrategyExecution<T>(
         setSessionState?: (s: SessionState<T>) => SessionState<T>
       ) {
         const { state: current, setState } = signal();
-        const initialFetchingState = { ...current, isFetching: true };
+        const initialFetchingState = current;
         const fetchingState = setSessionState
           ? setSessionState(initialFetchingState)
-          : initialFetchingState;
+          : { ...initialFetchingState, abandon: true };
         if (!fetchingState.abandon) {
-          setState({
-            ...fetchingState,
-            triggerType
+          processor.act(() => {
+            setState({
+              ...fetchingState,
+              triggerType
+            });
           });
         }
         return sessionRunner(triggerType, payload, runtimeVariables);
@@ -155,11 +221,23 @@ export function useStrategyExecution<T>(
         return sessionRunner(tType, pd, vars);
       };
 
+      const token = sessionTokens.createToken();
       const requires = {
         getSessionState: () => {
           const s = signal().state;
-          const online = !signal.getConnection().isDestroyed();
+          const online = !signal.store.isDestroyed();
           return { ...s, online };
+        },
+        getSessionToken: () => {
+          return token;
+        },
+        getSessionWork: () => {
+          return { online: !unmountRef.current };
+        },
+        abandon(data?: SessionState<T>) {
+          return data
+            ? { ...data, abandon: true }
+            : { ...signal().state, abandon: true };
         },
         variables: runtimeVariables,
         runner,
@@ -170,12 +248,37 @@ export function useStrategyExecution<T>(
         localCache: strategyStoreRef,
         executeContext: createRuntimeCache()
       };
-      return composeStrategies(strategies)(requires).then(data => {
+
+      function ifFetching() {
+        return !!sessionTokens.getTokens().filter(t => t.status === 'normal')
+          .length;
+      }
+
+      const roundWork = composeStrategies(strategies)(requires);
+      processor.act(() => {
+        signal().setState({
+          ...signal().state,
+          isFetching: ifFetching(),
+          roundStatus: 'start'
+        });
+      });
+      return roundWork.then(data => {
+        if (token.status !== 'abandon') {
+          sessionTokens.removeToken(token);
+        }
+        const currentState = signal().state;
+        const isFetching = ifFetching();
         if (data.abandon) {
-          const currentState = signal().state;
+          if (!isFetching) {
+            processor.act(() => {
+              signal().setState({ ...currentState, isFetching: false });
+            });
+          }
           return { ...currentState, abandon: true };
         }
-        signal().setState(data);
+        processor.act(() => {
+          signal().setState({ ...data, isFetching, roundStatus: 'end' });
+        });
         return data;
       });
     },
@@ -185,13 +288,19 @@ export function useStrategyExecution<T>(
 
 export function latest(): StrategyType {
   return function latestStrategy(requires): Promise<SessionState> {
-    const { runner, localCache } = requires;
-    localCache.current = localCache.current || 0;
-    const version = localCache.current + 1;
-    localCache.current = version;
+    const { runner, localCache, getSessionToken } = requires;
+    const token = getSessionToken();
+    localCache.current = localCache.current || { version: null, tokens: [] };
+    const { tokens } = localCache.current;
+    const version = token;
+    localCache.current = { version, tokens: [...tokens, token] };
     return runner().then(sessionData => {
-      if (localCache.current !== version) {
-        return { ...sessionData, abandon: true };
+      if (localCache.current.version === version) {
+        const otherTokens: SessionToken[] = localCache.current.tokens.filter(
+          (t: SessionToken) => t !== token
+        );
+        token.abandon(otherTokens);
+        localCache.current = { version: null, tokens: [] };
       }
       return sessionData;
     });
@@ -200,15 +309,14 @@ export function latest(): StrategyType {
 
 export function block(): StrategyType {
   return function blockStrategy(requires): Promise<SessionState> {
-    const { runner, localCache, triggerType } = requires;
+    const { runner, localCache, triggerType, abandon } = requires;
     if (triggerType !== 'manual') {
       return runner();
     }
     if (localCache.current) {
-      return localCache.current.then((sessionData: SessionState) => ({
-        ...sessionData,
-        abandon: true
-      }));
+      return localCache.current.then((sessionData: SessionState) =>
+        abandon(sessionData)
+      );
     }
     const promise = runner();
     localCache.current = promise.then((sessionData: SessionState) => {

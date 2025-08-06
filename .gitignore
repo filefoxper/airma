@@ -3,4 +3,4 @@ node_modules/
 /es
 /esm
 /.idea/
-/coverage/
+coverage/

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Promisify } from './type';
+import type { Promisify } from './type';
 
 function isObject(data: any): data is Record<string, unknown> {
   return data && typeof data === 'object';
