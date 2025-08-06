@@ -246,16 +246,11 @@ export function useSelector<
   R extends (getInstance: () => T) => any = (getInstance: () => T) => T
 >(
   modelKeyOrStore: ModelKey<S, T, R> | Store<S, T, R>,
-  callback: (instance: T) => any
-): ReturnType<typeof callback>;
-export function useSelector<
-  S,
-  T extends ModelInstance,
-  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
->(
-  modelKeyOrStore: ModelKey<S, T, R> | Store<S, T, R>,
   callback: (instance: T) => any,
-  equalFn?: (c: unknown, n: unknown) => boolean
+  equalFn?: (
+    c: ReturnType<typeof callback>,
+    n: ReturnType<typeof callback>
+  ) => boolean
 ): ReturnType<typeof callback>;
 export function useSelector<
   S,
@@ -263,7 +258,25 @@ export function useSelector<
   R extends (getInstance: () => T) => any = (getInstance: () => T) => T
 >(
   modelKeyOrStore: ModelKey<S, T, R> | Store<S, T, R>,
-  callback?: (instance: T) => any,
+  callback: undefined,
+  equalFn?: (c: ReturnType<R>, n: ReturnType<R>) => boolean
+): ReturnType<R>;
+export function useSelector<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+>(
+  modelKeyOrStore: ModelKey<S, T, R> | Store<S, T, R>,
+  callback: undefined | ((instance: T) => any),
+  equalFn?: (c: unknown, n: unknown) => boolean
+): any;
+export function useSelector<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+>(
+  modelKeyOrStore: ModelKey<S, T, R> | Store<S, T, R>,
+  callback?: undefined | ((instance: T) => any),
   equalFn?: (c: unknown, n: unknown) => boolean
 ): any {
   const unmountRef = useRef(false);
@@ -397,14 +410,14 @@ export const model = function model<
 
     function useKeySelector(): ReturnType<R>;
     function useKeySelector(
-      callback: (instance: T) => any
-    ): ReturnType<typeof callback>;
-    function useKeySelector(
       callback: (instance: T) => any,
-      equality?: (a: unknown, b: unknown) => boolean
+      equality?: (
+        a: ReturnType<typeof callback>,
+        b: ReturnType<typeof callback>
+      ) => boolean
     ): ReturnType<typeof callback>;
     function useKeySelector(
-      callback?: (instance: T) => any,
+      callback?: undefined | ((instance: T) => any),
       equality?: (a: unknown, b: unknown) => boolean
     ): any {
       return useSelector(key, callback, equality);
@@ -445,18 +458,15 @@ export const model = function model<
 
     function useStoreSelector(): ReturnType<R>;
     function useStoreSelector(
-      callback: (instance: T) => any
-    ): ReturnType<typeof callback>;
-    function useStoreSelector(
       callback: (instance: T) => any,
-      equality: (
+      equality?: (
         a: ReturnType<typeof callback>,
         b: ReturnType<typeof callback>
       ) => boolean
     ): ReturnType<typeof callback>;
     function useStoreSelector(
-      callback?: (instance: T) => any,
-      equality?: (a: any, b: any) => boolean
+      callback?: undefined | ((instance: T) => any),
+      equality?: (a: unknown, b: unknown) => boolean
     ): any {
       return useSelector(store, callback, equality);
     }
