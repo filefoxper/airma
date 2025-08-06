@@ -1,0 +1,61 @@
+{
+  "name": "@airma/react-model",
+  "version": "1.0.0",
+  "description": "the purpose of this project is make useReducer more simplify",
+  "license": "MIT",
+  "author": "Jimmy.Harding",
+  "homepage": "https://filefoxper.github.io/airma/#/react-state/index",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filefoxper/airma"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "analyze": "webpack --config webpack.analyze.js",
+    "build": "webpack",
+    "docs": "docsify serve ./docs",
+    "lint": "eslint src --fix --ext .ts,.tsx ",
+    "lint-init": "eslint --init",
+    "test": "jest --coverage"
+  },
+  "typings": "index.d.ts",
+  "dependencies": {
+    "@airma/react-hooks-core": "^18.4.0",
+    "as-model": "^0.1.7",
+    "react": ">=16.8.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.16.6",
+    "eslint": "^8.27.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-import-resolver-typescript": "^3.5.2",
+    "eslint-plugin-import": "^2.26.0",
+    "husky": "^7.0.1",
+    "jest": "29.3.1",
+    "pre-commit": "^1.2.2",
+    "prettier": "2.3.2",
+    "prettier-eslint": "^12.0.0",
+    "prettier-eslint-cli": "^5.0.1",
+    "regenerator-runtime": "0.13.5",
+    "rewire": "5.0.0",
+    "typescript": "4.9.5"
+  },
+  "keywords": [
+    "agent",
+    "browser",
+    "closures",
+    "hook",
+    "method-dispatch",
+    "react",
+    "react-query support",
+    "state",
+    "state-management",
+    "typescript",
+    "useReducer"
+  ]
+}

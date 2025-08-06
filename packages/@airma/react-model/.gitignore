@@ -1,0 +1,7 @@
+node_modules/
+/.idea/
+/.vscode/
+/dist/
+/bin/
+/esm/
+.pmnps.local.json
