@@ -13,7 +13,8 @@ import {
   provide as provideKeys,
   ModelLike,
   Signal,
-  useSignal
+  useSignal,
+  validations
 } from '@airma/react-state';
 import {
   useMount,
@@ -41,7 +42,8 @@ import {
   ControlData,
   Tunnel,
   Resolver,
-  StrategyEffectDestroy
+  StrategyEffectDestroy,
+  SessionInstance
 } from './libs/type';
 import {
   parseConfig,
@@ -107,10 +109,10 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  signal: Signal<SessionKey<C>>
+  signal: Signal<SessionState<T>, SessionInstance<T>>
 ): Controller {
   function getController() {
-    const payload = signal.getConnection().getPayload();
+    const payload = signal.store.payload();
     return payload as FullControlData | undefined;
   }
   return {
@@ -239,13 +241,9 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
 
   useInitialize(() => {
     const mayKey = callback as SessionKey<C>;
-    if (
-      typeof mayKey.isFactory === 'function' &&
-      mayKey.isFactory() &&
-      mayKey.payload
-    ) {
+    if (validations.isModelKey(mayKey) && mayKey.payload) {
       const [, d] = mayKey.payload;
-      return signal.getConnection().setPayload(p => (p != null ? p : { ...d }));
+      return signal.store.payload(p => (p != null ? p : { ...d }));
     }
     return null;
   });
@@ -268,7 +266,7 @@ function usePromiseCallbackEffect<T, C extends PromiseCallback<T>>(
       const abandon =
         fetchingKeyController.getFinalFetchingKey() != null &&
         keyRef.current !== fetchingKeyController.getFinalFetchingKey();
-      const online = !signal.getConnection().isDestroyed();
+      const online = !signal.store.isDestroyed();
       return {
         ...signal().state,
         ...data,

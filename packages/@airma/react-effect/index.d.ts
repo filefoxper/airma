@@ -1,9 +1,4 @@
-import {
-  ModelKeys,
-  ModelKey,
-  ModelLike,
-  ModelCreation
-} from '@airma/react-state';
+import { ModelKey, StoreIndex } from '@airma/react-state';
 import {
   FunctionComponent,
   ReactNode,
@@ -11,6 +6,9 @@ import {
   LazyExoticComponent,
   ExoticComponent
 } from 'react';
+import { SessionRequest } from './src/libs/type';
+
+export declare type ModelKeys = ModelKey | StoreIndex;
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -64,6 +62,16 @@ export declare type SessionState<T = any, V extends any[] = any[]> =
   | LoadedSessionState<T, V>
   | UnloadedSessionState;
 
+export declare interface SessionInstance<T = any> {
+  state: SessionState<T>;
+  request: SessionRequest | undefined;
+  setState: (
+    s: SessionState<T>
+  ) => SessionState<T> & { request?: SessionRequest };
+  trigger: () => SessionState<T> & { request?: SessionRequest };
+  execute: (variables: any[]) => SessionState<T> & { request?: SessionRequest };
+}
+
 export declare interface StrategyType<T = any, V extends any[] = any[]> {
   (runtime: {
     getSessionState: () => SessionState<T, V>;
@@ -95,16 +103,8 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export declare interface SessionKey<
-  E extends PromiseCallback<any>
-> extends ModelKey<
-    (st: SessionState & { version?: number }) => {
-      state: SessionState;
-      version: number;
-      setState: (s: SessionState) => SessionState & { version?: number };
-      trigger: () => SessionState & { version?: number };
-    }
-  > {
+export declare interface SessionKey<E extends PromiseCallback<any>>
+  extends ModelKey<SessionState, SessionInstance> {
   payload: [E, { sessionType?: SessionType }];
 }
 
@@ -179,7 +179,7 @@ declare type DefaultMutationConfig<
   );
 
 declare interface SessionCreation<E extends PromiseCallback<any>>
-  extends ModelCreation {
+  extends StoreIndex {
   key: SessionKey<E>;
 }
 
@@ -385,20 +385,10 @@ export declare const useResponse: {
   ) => void;
 };
 
-export declare const Provider: FunctionComponent<
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      keys: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      storeCreators: ModelKeys;
-      children?: ReactNode;
-    }
->;
+export declare const Provider: FunctionComponent<{
+  value: ModelKeys[];
+  children?: ReactNode;
+}>;
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
@@ -567,29 +557,6 @@ declare interface SessionStoreApi<D extends PromiseCallback<any>>
   extends SessionCreation<D> {
   useSession: UseSessionShort<D>;
   useLoadedSession: UseLoadedSessionShort<D>;
-  /**
-   * @deprecated not recommend
-   * @param key
-   */
-  with: <M extends ModelKey<ModelLike>>(
-    ...key: ({ key: M } | M)[]
-  ) => SessionStoreApi<D>;
-  /**
-   * @deprecated not recommend
-   */
-  provide: <P>() => (
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
-  /**
-   * @deprecated not recommend
-   */
-  provideTo: <P>(
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
-  /**
-   * @deprecated not recommend
-   */
-  Provider: FunctionComponent<{ children?: ReactNode }>;
 }
 
 declare interface QueryKeyApi<D extends PromiseCallback<any>>

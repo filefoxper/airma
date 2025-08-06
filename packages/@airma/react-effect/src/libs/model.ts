@@ -1,11 +1,12 @@
-import { createKey, Signal, useSignal } from '@airma/react-state';
+import { createKey, Signal, useSignal, validations } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
   SessionKey,
   PromiseCallback,
   QueryConfig,
-  SessionRequest
+  SessionRequest,
+  SessionInstance
 } from './type';
 
 export function effectModel(
@@ -114,12 +115,12 @@ function parseEffect<
   sessionType: SessionType,
   config?: C
 ): [SessionKey<E>, E, C | undefined, boolean] {
-  const { isFactory } = callback as SessionKey<E>;
-  const isSessionKey = typeof isFactory === 'function' && isFactory();
+  const isSessionKey = validations.isModelKey(callback);
   if (!isSessionKey) {
     return [effectModel as SessionKey<E>, callback as E, config, false];
   }
-  const { payload } = callback as SessionKey<E>;
+  const caller = callback as unknown;
+  const { payload } = caller as SessionKey<E>;
   const [effectCallback, { sessionType: keyType }] = payload as [
     E,
     { sessionType?: SessionType }
@@ -131,7 +132,7 @@ function parseEffect<
       }'`
     );
   }
-  return [callback as SessionKey<E>, effectCallback, config, true];
+  return [caller as SessionKey<E>, effectCallback, config, true];
 }
 
 export function parseConfig<T, C extends PromiseCallback<T>>(
@@ -155,7 +156,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  Signal<typeof effectModel>,
+  Signal<SessionState, SessionInstance>,
   QueryConfig<T, C>,
   C
 ] {

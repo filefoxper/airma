@@ -324,9 +324,10 @@ export default provide(fetchSession).to(function App() {
   const conditionSignal = useSignal(store,{valid:defaultCondition,display:defaultCondition,creating:false});
   const { queryData, creating, cancel } = useSelector(store,
     s => pick(s, 'queryData', 'creating', 'cancel'),
-    shallowEqual
+      shallowEqual
   );
 
+  console.log('render creating',creating)
     useEffect(() => {
         setTimeout(()=>{
             store.instance().changeDisplay({...defaultCondition,name:''})

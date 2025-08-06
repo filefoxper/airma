@@ -21,6 +21,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "as-model": "^0.1.24",
     "casual": "^1.6.2",
     "classnames": "^2.3.2",
     "cookie-parser": "^1.4.6",

@@ -6,15 +6,16 @@ import {
 } from 'react';
 import {
   GlobalConfig as StateGlobalConfig,
-  ModelCreation,
   ModelKey,
-  ModelKeys
+  StoreIndex
 } from '@airma/react-state';
 import { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
 
 export declare type GlobalConfig = StateGlobalConfig & EffectGlobalConfig;
 
 export * from '@airma/react-hooks-core';
+
+export declare type ModelKeys = StoreIndex | ModelKey;
 
 export {
   createKey,
@@ -47,16 +48,10 @@ export declare function provide(...storeCreators: ModelKeys[]): {
   ) => typeof component;
 };
 
-export declare const Provider: FunctionComponent<
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      storeCreators: ModelKeys;
-      children?: ReactNode;
-    }
->;
+export declare const Provider: FunctionComponent<{
+  value: ModelKeys[];
+  children?: ReactNode;
+}>;
 
 export declare const ConfigProvider: FunctionComponent<{
   value: GlobalConfig;

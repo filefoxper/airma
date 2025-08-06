@@ -1,4 +1,4 @@
-import { ModelKey, ModelKeys } from '@airma/react-state';
+import { ModelKey } from '@airma/react-state';
 import {
   ComponentType,
   ExoticComponent,
@@ -31,27 +31,22 @@ export type SessionRequest = {
   variables?: any[];
 };
 
+export interface SessionInstance<T = any> {
+  state: SessionState<T>;
+  request: SessionRequest | undefined;
+  setState: (
+    s: SessionState<T>
+  ) => SessionState<T> & { request?: SessionRequest };
+  trigger: () => SessionState<T> & { request?: SessionRequest };
+  execute: (variables: any[]) => SessionState<T> & { request?: SessionRequest };
+}
+
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { request?: SessionRequest }) => {
-    state: SessionState;
-    request: SessionRequest | undefined;
-    setState: (s: SessionState) => SessionState & { request?: SessionRequest };
-    trigger: () => SessionState & { request?: SessionRequest };
-    execute: (variables: any[]) => SessionState & { request?: SessionRequest };
-  }
+  SessionState,
+  SessionInstance
 > & {
   payload: [E, { sessionType?: SessionType }];
 };
-
-export interface QuerySessionKey<E extends PromiseCallback<any>>
-  extends SessionKey<E> {
-  payload: [E, { sessionType?: 'query' }];
-}
-
-export interface MutationSessionKey<E extends PromiseCallback<any>>
-  extends SessionKey<E> {
-  payload: [E, { sessionType?: 'mutation' }];
-}
 
 export type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -177,10 +172,6 @@ export type StrategyCollectionType<T = any> =
   | StrategyConfig<T>
   | (StrategyType<T> | null | undefined)[];
 
-export type KeyBy<C extends PromiseCallback<any>> = (
-  variables: Parameters<C>
-) => string;
-
 export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
   triggerOn?: TriggerType[];
@@ -215,41 +206,10 @@ export type GlobalConfig = {
   ) => (StrategyType | null | undefined)[];
 };
 
-export type GlobalSessionProviderProps = {
-  config?: GlobalConfig;
-  keys?: ModelKeys;
-  children?: ReactNode;
-};
-
 export type ConfigProviderProps = {
   value: GlobalConfig;
   children?: ReactNode;
 };
-
-export type Status = {
-  isFetching: boolean;
-  loaded: boolean;
-  isError: boolean;
-};
-
-export type SessionProviderProps = {
-  value: ModelKeys;
-  children?: ReactNode;
-};
-
-export type LoadedSessionResult<
-  D extends PromiseCallback<any> | SessionKey<any>
-> = [
-  LoadedSessionState<PCR<D>>,
-  () => Promise<LoadedSessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-];
-
-export type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
-  SessionState<PCR<D>>,
-  () => Promise<SessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-];
 
 export type AbstractSessionResult = [
   SessionState,

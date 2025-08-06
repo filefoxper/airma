@@ -6,7 +6,6 @@ module.exports = {
     [
       '@babel/preset-env',
       {
-        modules: false,
         targets: {
           chrome: '91',
           edge:'91',
