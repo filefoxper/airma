@@ -1,4 +1,4 @@
-import { StoreCollection, Action } from 'as-model';
+import { StoreCollection, Action, ModelInstance, Dispatch } from 'as-model';
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
@@ -19,3 +19,10 @@ export type ModelStores = {
   collections: StoreCollection;
   parent?: ModelStores;
 };
+
+export interface SignalGenerator<T extends ModelInstance> {
+  (): T;
+  startStatistics: () => void;
+  stopStatistics: () => void;
+  subscribe: (dispatcher: Dispatch) => () => void;
+}
