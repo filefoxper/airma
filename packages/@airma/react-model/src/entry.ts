@@ -23,10 +23,16 @@ export const model = function model<
     ? config({}).model<S, T, R>(modelLike, selector)
     : config({}).model<S, T, R>(modelLike);
 
+  const {
+    createKey: originalCreateKey,
+    createStore: originalCreateStore,
+    select: originalSelect
+  } = modelUsage;
+
   function select<
     C extends (getInstance: () => T) => any = (getInstance: () => T) => T
   >(callback: C) {
-    const newUsage = modelUsage.select(callback);
+    const newUsage = originalSelect(callback);
     return model(newUsage);
   }
 
@@ -35,8 +41,8 @@ export const model = function model<
   ) {
     const hasDefaultState = arguments.length > 0;
     const key = hasDefaultState
-      ? modelUsage.createKey(defaultState)
-      : modelUsage.createKey();
+      ? originalCreateKey(defaultState)
+      : originalCreateKey();
 
     const useKeyModel = function useKeyModel<KD extends S>(
       defaultModelState?: KD
@@ -109,12 +115,11 @@ export const model = function model<
     ): any {
       return useSelector(key, callback, equality);
     }
-    return {
-      key,
+    return key.extends({
       useModel: useKeyModel,
       useSignal: useKeySignal,
       useSelector: useKeySelector
-    };
+    });
   };
 
   const createUsageStore = function createUsageStore<D extends S>(
@@ -122,8 +127,8 @@ export const model = function model<
   ) {
     const hasDefaultState = arguments.length > 0;
     const store = hasDefaultState
-      ? modelUsage.createStore(defaultState)
-      : modelUsage.createStore();
+      ? originalCreateStore(defaultState)
+      : originalCreateStore();
     const { key } = store;
     const useStoreModel = function useStoreModel<KD extends S>(
       defaultModelState?: KD
@@ -197,15 +202,12 @@ export const model = function model<
       return useSelector(store, callback, equality);
     }
 
-    return {
-      key,
-      store,
+    return store.extends({
       useModel: useStoreModel,
       useSignal: useStoreSignal,
       useSelector: useStoreSelector,
-      getInstance: store.getInstance,
       instance: store.getInstance
-    };
+    });
   };
 
   const useUsageModel = function useUsageModel<KD extends S>(
@@ -281,19 +283,17 @@ export const model = function model<
     return useControlledModel(modelUsage, state, onChange);
   }
 
-  const modelUsageConstructor = function modelUsageConstructor(state: S) {
-    return modelUsage(state);
-  };
+  modelUsage.extends({
+    select,
+    createKey: createUsageKey,
+    createStore: createUsageStore,
+    useControlledModel: useUsageControlledModel,
+    useModel: useUsageModel,
+    useSignal: useUsageSignal,
+    useSelector: useUsageSelector
+  });
 
-  modelUsageConstructor.select = select;
-  modelUsageConstructor.createKey = createUsageKey;
-  modelUsageConstructor.createStore = createUsageStore;
-  modelUsageConstructor.useControlledModel = useUsageControlledModel;
-  modelUsageConstructor.useModel = useUsageModel;
-  modelUsageConstructor.useSignal = useUsageSignal;
-  modelUsageConstructor.useSelector = useUsageSelector;
-
-  return modelUsageConstructor;
+  return modelUsage;
 };
 
 const asModel = config({}).model;

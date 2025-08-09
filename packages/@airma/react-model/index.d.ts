@@ -252,8 +252,7 @@ declare interface ModelKeyApi<
   S,
   T extends ModelInstance,
   R extends (getInstance: () => T) => any = (getInstance: () => T) => T
-> {
-  key: ModelKey<S, T, R>;
+> extends ModelKey<S, T, R> {
   useModel: <D extends S>(defaultState?: D) => T;
   useSignal: <D extends S>(defaultState?: D) => Signal<T>;
   useSelector: ApiSelector<S, T, R>;
@@ -263,13 +262,10 @@ declare interface StoreApi<
   S,
   T extends ModelInstance,
   R extends (getInstance: () => T) => any = (getInstance: () => T) => T
-> {
-  key: ModelKey<S, T, R>;
-  store: Store<S, T, R>;
+> extends Store<S, T, R> {
   useModel: <D extends S>(defaultState?: D) => T;
   useSignal: <D extends S>(defaultState?: D) => Signal<T>;
   useSelector: ApiSelector<S, T, R>;
-  getInstance: () => T;
   instance: () => T;
 }
 
