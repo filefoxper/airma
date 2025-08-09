@@ -156,5 +156,6 @@ export function useSignal<S, T extends ModelInstance, D extends S>(
   const handler = useSignalSubscribe(signal);
   signalCallback.useWatch = handler.useWatch;
   signalCallback.useEffect = handler.useEffect;
+  signalCallback.payload = signal.payload;
   return usePersistFn(signalCallback);
 }

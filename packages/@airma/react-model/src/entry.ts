@@ -196,8 +196,10 @@ export const model = function model<
     ): any {
       return useSelector(store, callback, equality);
     }
+
     return {
       key,
+      store,
       useModel: useStoreModel,
       useSignal: useStoreSignal,
       useSelector: useStoreSelector,

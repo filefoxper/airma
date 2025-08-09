@@ -26,12 +26,11 @@ export const ModelStoresContext = createContext<ModelStores | undefined>(
 export const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
 export const Provider: FC<{
-  keys?: Array<StoreIndex | ModelKey>;
   value?: Array<StoreIndex | ModelKey>;
   children?: ReactNode;
-}> = function RequiredModelProvider({ keys, value, children }) {
+}> = function RequiredModelProvider({ value, children }) {
   const storeKeys = (function extractCreators() {
-    return keys != null ? keys : value;
+    return value;
   })();
   if (storeKeys == null) {
     throw new Error('You need to provide keys to `Provider`');

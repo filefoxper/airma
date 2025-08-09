@@ -2,6 +2,7 @@ import {
   config,
   Model,
   ModelInstance,
+  ModelKey,
   shallowEqual as shallowEq
 } from 'as-model';
 
@@ -16,11 +17,13 @@ export { provide, Provider, ConfigProvider } from './provider';
 export const shallowEqual = shallowEq;
 
 export const createKey = function createKey<S, T extends ModelInstance>(
-  m: Model<S, T>,
-  s?: S
-) {
+  modelFn: Model<S, T>,
+  defaultState?: S
+): ModelKey<S, T> {
   const hasDefaultState = arguments.length > 1;
-  return hasDefaultState ? config({}).createKey(m, s) : config({}).createKey(m);
+  return hasDefaultState
+    ? config({}).createKey(modelFn, defaultState)
+    : config({}).createKey(modelFn);
 };
 
 export { model } from './entry';
