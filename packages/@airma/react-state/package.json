@@ -24,8 +24,8 @@
   },
   "typings": "index.d.ts",
   "dependencies": {
-    "as-model": "^0.1.9",
     "@airma/react-hooks-core": "^18.4.0",
+    "as-model": "^0.1.11",
     "react": ">=16.8.0"
   },
   "devDependencies": {

@@ -155,7 +155,10 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  Signal<typeof effectModel>,
+  Signal<
+    SessionState & { request?: SessionRequest },
+    ReturnType<typeof effectModel>
+  >,
   QueryConfig<T, C>,
   C
 ] {

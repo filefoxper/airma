@@ -1,10 +1,10 @@
-import { ModelKey, ModelKeys } from '@airma/react-state';
 import {
   ComponentType,
   ExoticComponent,
   LazyExoticComponent,
   ReactNode
 } from 'react';
+import { ModelKey } from 'as-model';
 
 type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
   T extends PromiseCallback<infer R>
@@ -32,13 +32,7 @@ export type SessionRequest = {
 };
 
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { request?: SessionRequest }) => {
-    state: SessionState;
-    request: SessionRequest | undefined;
-    setState: (s: SessionState) => SessionState & { request?: SessionRequest };
-    trigger: () => SessionState & { request?: SessionRequest };
-    execute: (variables: any[]) => SessionState & { request?: SessionRequest };
-  }
+  SessionState & { request?: SessionRequest }
 > & {
   payload: [E, { sessionType?: SessionType }];
 };

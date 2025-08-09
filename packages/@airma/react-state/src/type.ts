@@ -1,6 +1,4 @@
-import type { Action, AirReducer, ModelFactoryStore } from './libs/type';
-
-export type Selector = ModelFactoryStore<any>;
+import { StoreCollection, Action, ModelInstance, Dispatch } from 'as-model';
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
@@ -15,4 +13,16 @@ export interface EffectOn<T> {
     actionGetter: (ins: T) => ((...args: any[]) => any)[]
   ) => EffectOn<T>;
   onChanges: (changeGetter: (ins: T) => any[]) => EffectOn<T>;
+}
+
+export type ModelStores = {
+  collections: StoreCollection;
+  parent?: ModelStores;
+};
+
+export interface SignalGenerator<T extends ModelInstance> {
+  (): T;
+  startStatistics: () => void;
+  stopStatistics: () => void;
+  subscribe: (dispatcher: Dispatch) => () => void;
 }

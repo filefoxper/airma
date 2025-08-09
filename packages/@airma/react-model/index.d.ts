@@ -285,3 +285,9 @@ declare interface ModelUsageApi<
   useSignal: <D extends S>(defaultState?: D) => Signal<T>;
   useSelector: ApiSelector<S, T, R>;
 }
+
+export declare function model<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+>(modelLike: Model<S, T> | ModelUsage<S, T, R>): ModelUsageApi<S, T, R>;

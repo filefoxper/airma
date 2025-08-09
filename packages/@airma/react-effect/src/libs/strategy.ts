@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Signal } from '@airma/react-state';
 import {
   QueryConfig,
+  SessionRequest,
   SessionState,
   StrategyCollectionType,
   StrategyConfig,
@@ -100,7 +101,10 @@ function createRuntimeCache() {
 }
 
 export function useStrategyExecution<T>(
-  signal: Signal<typeof effectModel>,
+  signal: Signal<
+    SessionState & { request?: SessionRequest },
+    ReturnType<typeof effectModel>
+  >,
   sessionRunner: (
     triggerType: TriggerType,
     payload: unknown | undefined,
@@ -158,7 +162,7 @@ export function useStrategyExecution<T>(
       const requires = {
         getSessionState: () => {
           const s = signal().state;
-          const online = !signal.getConnection().isDestroyed();
+          const online = !signal.store.isDestroyed();
           return { ...s, online };
         },
         variables: runtimeVariables,
