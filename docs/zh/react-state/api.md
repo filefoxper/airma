@@ -160,7 +160,11 @@ interface Signal {
   useWatch:(call:()=>void)=>EffectOn
 }
 
-function useSignal(modelLike, defaultState?): (()=>instance)&;Signal
+interface SignalOpts{
+  cutOff?:boolean
+}
+
+function useSignal(modelLike, defaultState?): ((opts?:SignalOpts)=>instance)&;Signal
 ```
 
 参数：
@@ -171,6 +175,10 @@ function useSignal(modelLike, defaultState?): (()=>instance)&;Signal
 返回
 
 * 实例获取函数，该函数始终返回当前最新的实例对象。在组件render阶段获取的实例属性会默认记入渲染属性集合，当且仅当该集合中的属性发生改变时，再次渲染组件。
+
+实例获取函数入参配置（可选） - **至 v18.5.11 版本开始支持**：
+
+* cutOff - （可选）类型为布尔值（boolean），当 cutOff 为 true 时，意为切断当前信号的渲染收集功能，当前获取函数获取的实例为获取时的最新实例数据，但通过该实例获取的数据变化不再引起组件渲染。
 
 例子
 
@@ -212,6 +220,62 @@ const Sym = ()=>{
 const Counter = ()=>{
     // 若选取数据未发生变化，不渲染组件
     const {count} = useSignal(counter)();;
+    return ......
+}
+
+export default ()=>{
+    return (
+        <Provider value={counter}>
+            <Decrease/>
+            <Sym/>
+            <Counter/>
+            <Increase/>
+        </Provider>
+    );
+}
+```
+
+通过设置 cutOff 配置参数可以强行切断单挑 signal 的渲染信号。
+
+```ts
+import React from 'react';
+import {
+  Provider, 
+  createKey, 
+  useSignal
+} from '@airma/react-state';
+
+const counter = createKey((state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase:()=> state + 1,
+    decrease:()=> state - 1,
+}));
+
+const Increase = ()=>{
+    const signal = useSignal(counter);
+    // 若选取数据未发生变化，不渲染组件
+    const increase = signal().increase;
+    return ......
+}
+
+const Decrease = ()=>{
+    // 若选取数据未发生变化，不渲染组件
+    const {decrease} = useSignal(counter)();
+
+    return ......
+}
+
+const Sym = ()=>{
+    const [visible, setVisible] = useState(true);
+    // 若设置 {cutOff: true}，则切断信号，不再重渲染组件
+    const {isNegative} = useSignal(counter)({cutOff:!visible});
+    return visible? ...... : null;
+}
+
+const Counter = ()=>{
+    // 若选取数据未发生变化，不渲染组件
+    const {count} = useSignal(counter)();
     return ......
 }
 

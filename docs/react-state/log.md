@@ -163,8 +163,12 @@
 
 * update readme for npm.
 
-## v18.5.10 2025=02-25
+## v18.5.10 2025-02-25
 
 * enhance provide API: provide(modelKey, modelStore)(Component).
 * model().createStore() creates a static store. But it contains a key, so, it still can be used to create dynamic store by using API provide.
 * add new API model().createKey() to support create a model key with common API supports.
+  
+## v18.5.11 2025-08-20
+
+* enhance useSignal API, add signal options `cutOff` to cut off render signal, like: `useSignal(xxx)({cutOff: !isActive})`.

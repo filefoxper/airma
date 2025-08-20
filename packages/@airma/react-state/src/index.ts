@@ -507,7 +507,8 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
     }
   }, [needInitializeScopeConnection]);
 
-  const signalCallback = function signalCallback() {
+  const signalCallback = function signalCallback(opts?: { cutOff?: boolean }) {
+    const { cutOff } = opts ?? {};
     openSignalRef.current = true;
     if (signalStale.selection !== prevSelectionRef.current) {
       signalStale.selection = null;
@@ -520,7 +521,8 @@ function useSourceTupleModel<S, T extends AirModelInstance, D extends S>(
           signalStale.selection != null &&
           signalStale.selection === prevSelectionRef.current &&
           !unmountRef.current &&
-          !isEffectStageRef.current
+          !isEffectStageRef.current &&
+          !cutOff
         ) {
           const selectionMap: Record<string, true> = {};
           signalStale.selection.forEach(k => {

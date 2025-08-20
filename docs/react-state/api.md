@@ -441,7 +441,11 @@ interface Signal {
   useWatch:(call:()=>void)=>EffectOn
 }
 
-function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
+interface SignalOpts{
+  cutOff?: boolean
+}
+
+function useSignal(modelFnOrKey, defaultState?): ((opts?:SignalOpts)=>instance)&;Signal
 ```
 
 * modelFnOrKey - A function accepts a state parameter, and returns an object to provide display data and action methods. It also can be a model key, created by [createKey](/react-state/api?id=createkey) API.
@@ -450,6 +454,10 @@ function useSignal(modelFnOrKey, defaultState?): (()=>instance)&;Signal
 Returns
 
 * A signal callback function to generate a current instance object of model.
+
+Signal function parameter (Optional, **Support from version v18.5.11**):
+
+* cutOff - (Optional) When it is `true`, the rerender signal of the instance returned by `signal function` is broken, this instance data changes can not rerender it.
 
 Explain
 
