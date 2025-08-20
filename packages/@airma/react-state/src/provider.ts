@@ -29,9 +29,7 @@ export const Provider: FC<{
   value?: Array<StoreIndex | ModelKey>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
-  const storeKeys = (function extractCreators() {
-    return value;
-  })();
+  const storeKeys = value;
   if (storeKeys == null) {
     throw new Error('You need to provide keys to `Provider`');
   }
