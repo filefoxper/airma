@@ -582,11 +582,50 @@ if(!isNegative){
     } = countingSignal();
     return ......;
 }
+return ......;
 ```
 
 It is a better choice than [useSelector](/react-state/guides?id=useselector) for reducing the frequency of component render when it works with a store.
 
 A signal callback provides a hook API for adding effects to the action methods.
+
+### signal options
+
+This feature is **supported from version 18.5.11**. Setting signal option like `cutOff` can do things like cut off the rerender signal of the instance which is returned by the setted signal function.
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+// The `isNegative` is added for rerender optimization.
+// When `isNegative` changes, it rerenders component.
+const {
+    // render usage field
+    isNegative
+} = countingSignal();
+
+const {
+    // For the `cutOff: true` config, 
+    // the `count` can not be added into rerender optimization.
+    // When `count` changes, it can not rerender component.
+    // But, it still represents the newest value of `count` in the render time.
+    count
+} = countingSignal({cutOff: true});
+
+return ......;
+```
 
 ### signal.useEffect
 

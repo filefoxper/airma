@@ -706,6 +706,42 @@ if(!isNegative){
     } = countingSignal();
     return ......;
 }
+return ......;
+```
+
+### signal 函数配置
+
+通过为 signal 函数添加入参配置 `cutOff:true` 可切断当前 signal 函数的渲染信号。
+
+```ts
+import {useSignal} from '@airma/react-state';
+
+const counting = (state:number)=>({
+    count: state,
+    isNegative: state<0,
+    increase(){
+        return state+1;
+    },
+    decrease(){
+        return state-1;
+    }
+});
+
+const countingSignal = useSignal(counting, props.defaultCount??0);
+
+// isNegative 被标记为渲染相关字段，当 `isNegative` 变更时，组件会重新渲染。
+const {
+    // isNegative 被标记为渲染相关字段
+    isNegative
+} = countingSignal();
+
+const {
+    // 因为配置项 cutOff 为 true，count 不会被标记为渲染相关字段，
+    // 但渲染时依然可以获取最新的 count 值，
+    // count 变化只是失去了主动渲染的能力
+    count
+} = countingSignal({cutOff:true});
+return ......;
 ```
 
 ### signal.useEffect

@@ -86,7 +86,7 @@ declare interface EffectDeps<R extends ModelLike> {
 }
 
 declare interface Signal<R extends ModelLike> {
-  (): Instance<R>;
+  (opts?: { cutOff?: boolean }): Instance<R>;
   useEffect: (
     callback: (
       instance: Instance<R>,
