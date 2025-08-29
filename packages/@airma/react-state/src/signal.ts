@@ -1,14 +1,13 @@
 import {
   Action,
   createSignal,
-  Dispatch,
   Model,
   ModelInstance,
   ModelKey,
   shallowEqual,
   Store
 } from 'as-model';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { usePersistFn } from '@airma/react-hooks-core';
 import { useInitialize, useModelInitialize } from './initialize';
 import { SignalGenerator } from './type';
@@ -155,12 +154,14 @@ export function useSignal<S, T extends ModelInstance, D extends S>(
   useEffect(() => {
     return signalStore.subscribe(subscription);
   }, []);
-  const signalCallback = function signalCallback() {
-    return signal();
-  };
-  const handler = useSignalSubscribe(signal);
-  signalCallback.useWatch = handler.useWatch;
-  signalCallback.useEffect = handler.useEffect;
-  signalCallback.store = signal.store;
-  return usePersistFn(signalCallback);
+  return useMemo(() => {
+    const signalCallback = function signalCallback() {
+      return signal();
+    };
+    const handler = useSignalSubscribe(signal);
+    signalCallback.useWatch = handler.useWatch;
+    signalCallback.useEffect = handler.useEffect;
+    signalCallback.store = signal.store;
+    return signalCallback;
+  }, [token]);
 }

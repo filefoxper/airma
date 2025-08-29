@@ -135,7 +135,7 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<S, T, R>, KD?];
+      ) as [Store<S, T>, KD];
       return useModel<S, T, KD>(...parameters);
     };
 
@@ -144,7 +144,7 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<S, T, R>, KD?];
+      ) as [Store<S, T>, KD?];
       return useSignal<S, T, KD>(...parameters);
     };
 
