@@ -1,5 +1,5 @@
-import { ModelKey, ModelKeys } from '@airma/react-state';
-import {
+import type { ModelKey, ModelStore } from '@airma/react-state';
+import type {
   ComponentType,
   ExoticComponent,
   LazyExoticComponent,
@@ -10,15 +10,25 @@ type PCR<T extends PromiseCallback<any> | SessionKey<any>> =
   T extends PromiseCallback<infer R>
     ? R
     : T extends SessionKey<infer C>
-    ? PCR<C>
-    : never;
+      ? PCR<C>
+      : never;
 
 type MCC<T extends PromiseCallback<any> | SessionKey<any>> =
   T extends PromiseCallback<any>
     ? T
     : T extends SessionKey<infer C>
-    ? C
-    : never;
+      ? C
+      : never;
+
+export interface SessionToken {
+  status: 'normal' | 'abandon' | 'silent';
+  abandon: (tokens?: SessionToken[]) => any;
+  silence: () => any;
+}
+
+export interface SessionWork {
+  online: boolean;
+}
 
 export type LazyComponentSupportType<P> = ComponentType<P> | ExoticComponent<P>;
 
@@ -31,27 +41,30 @@ export type SessionRequest = {
   variables?: any[];
 };
 
+export interface SessionInstance<T = any> {
+  state: SessionState<T>;
+  request: SessionRequest | undefined;
+  setState: (
+    s: SessionState<T> & { roundStatus?: 'start' | 'end' }
+  ) => SessionState<T> & { request?: SessionRequest };
+  trigger: () => SessionState<T> & { request?: SessionRequest };
+  execute: (variables: any[]) => SessionState<T> & { request?: SessionRequest };
+}
+
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  (st: SessionState & { request?: SessionRequest }) => {
-    state: SessionState;
-    request: SessionRequest | undefined;
-    setState: (s: SessionState) => SessionState & { request?: SessionRequest };
-    trigger: () => SessionState & { request?: SessionRequest };
-    execute: (variables: any[]) => SessionState & { request?: SessionRequest };
-  }
+  SessionState,
+  SessionInstance
 > & {
-  payload: [E, { sessionType?: SessionType }];
+  sessionPayload: [E, { sessionType?: SessionType }];
 };
 
-export interface QuerySessionKey<E extends PromiseCallback<any>>
-  extends SessionKey<E> {
-  payload: [E, { sessionType?: 'query' }];
-}
-
-export interface MutationSessionKey<E extends PromiseCallback<any>>
-  extends SessionKey<E> {
-  payload: [E, { sessionType?: 'mutation' }];
-}
+export type SessionStore<E extends PromiseCallback<any>> = ModelStore<
+  SessionState,
+  SessionInstance
+> & {
+  key: SessionKey<E>;
+  sessionPayload: [E, { sessionType?: SessionType }];
+};
 
 export type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -114,23 +127,32 @@ export type SessionState<T = any> =
 
 export type CheckLazyComponentSupportType<
   T extends LazyComponentSupportType<any>
-> = T extends LazyComponentSupportType<infer P>
-  ? P extends { error?: ErrorSessionState }
-    ? LazyExoticComponent<T>
-    : never
-  : never;
+> =
+  T extends LazyComponentSupportType<infer P>
+    ? P extends { error?: ErrorSessionState }
+      ? LazyExoticComponent<T>
+      : never
+    : never;
 
 export type StrategyEffect<T> =
   | ((
       state: SessionState<T>,
       prevState: SessionState<T>,
-      config: QueryConfig<T, any>
+      config: QueryConfig<T, any>,
+      context: {
+        set: (key: any, value: any) => void;
+        get: (key: any) => any;
+      }
     ) => void | (() => void))
   | [
       (
         state: SessionState<T>,
         prevState: SessionState<T>,
-        config: QueryConfig<T, any>
+        config: QueryConfig<T, any>,
+        context: {
+          set: (key: any, value: any) => void;
+          get: (key: any) => any;
+        }
       ) => void | (() => void),
       (state: SessionState<T>, prevState: SessionState<T>) => boolean
     ];
@@ -138,7 +160,10 @@ export type StrategyEffect<T> =
 export interface StrategyType<T = any> {
   (value: {
     getSessionState: () => SessionState<T>;
+    getSessionToken: () => SessionToken;
+    getSessionWork: () => SessionWork;
     variables: any[];
+    abandon: (data?: SessionState<T>) => SessionState<T>;
     config: QueryConfig<T, any>;
     runner: (
       setFetchingSessionState?: (s: SessionState<T>) => SessionState<T>
@@ -170,16 +195,18 @@ export interface StrategyConfig<T = any> {
   withoutDefault?: boolean;
 }
 
+export interface SessionTask {
+  variables: any[];
+  payload: unknown | undefined;
+  triggerType: TriggerType;
+}
+
 export type StrategyCollectionType<T = any> =
   | undefined
   | null
   | StrategyType<T>
   | StrategyConfig<T>
   | (StrategyType<T> | null | undefined)[];
-
-export type KeyBy<C extends PromiseCallback<any>> = (
-  variables: Parameters<C>
-) => string;
 
 export type QueryConfig<T, C extends PromiseCallback<T>> = {
   deps?: any[];
@@ -209,47 +236,19 @@ export type MutationConfig<T, C extends PromiseCallback<T>> = {
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
   experience?: 'next';
+  test?: {
+    act: (callback: () => any) => any;
+  };
   strategy?: (
     strategy: (StrategyType | null | undefined)[],
     type: 'query' | 'mutation'
   ) => (StrategyType | null | undefined)[];
 };
 
-export type GlobalSessionProviderProps = {
-  config?: GlobalConfig;
-  keys?: ModelKeys;
-  children?: ReactNode;
-};
-
 export type ConfigProviderProps = {
   value: GlobalConfig;
   children?: ReactNode;
 };
-
-export type Status = {
-  isFetching: boolean;
-  loaded: boolean;
-  isError: boolean;
-};
-
-export type SessionProviderProps = {
-  value: ModelKeys;
-  children?: ReactNode;
-};
-
-export type LoadedSessionResult<
-  D extends PromiseCallback<any> | SessionKey<any>
-> = [
-  LoadedSessionState<PCR<D>>,
-  () => Promise<LoadedSessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<LoadedSessionState<PCR<D>>>
-];
-
-export type SessionResult<D extends PromiseCallback<any> | SessionKey<any>> = [
-  SessionState<PCR<D>>,
-  () => Promise<SessionState<PCR<D>>>,
-  (...variables: Parameters<MCC<D>>) => Promise<SessionState<PCR<D>>>
-];
 
 export type AbstractSessionResult = [
   SessionState,

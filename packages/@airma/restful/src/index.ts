@@ -1,3 +1,5 @@
+import { defaultHeaders, defaultRestConfig } from './constant';
+import { request } from './request';
 import type {
   PromiseValue,
   Method,
@@ -10,8 +12,6 @@ import type {
   Meta,
   RuntimeRestConfig
 } from './type';
-import { defaultHeaders, defaultRestConfig } from './constant';
-import { request } from './request';
 
 export function rest(url: string | HttpProperties): HttpType {
   const defaultHttpProperties = {

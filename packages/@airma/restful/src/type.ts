@@ -49,7 +49,7 @@ export type Request = (
   requestConfig: RequestConfig
 ) => Promise<ResponseData>;
 
-type ParamsProcessor = {
+export type ParamsProcessor = {
   stringify: (params: Record<string | number, any>) => string;
   parse: (query: string) => Record<string | number, any>;
 };

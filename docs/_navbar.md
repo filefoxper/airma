@@ -1,2 +1,2 @@
-* [中文](/zh/index.md)
+* [中文](/zh/index)
 * [Package Scope](/)

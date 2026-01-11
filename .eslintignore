@@ -8,4 +8,5 @@ docs/
 jest.config.js
 babel.config.js
 index.js
+build.js
 webpack.*.js

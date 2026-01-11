@@ -11,7 +11,9 @@ export const request = (url: string) => {
   return <T>(Target: { new (): T & RouterHolder }) => {
     const router = Router();
     const { prototype } = Target;
+    // eslint-disable-next-line no-underscore-dangle
     prototype._router = router;
+    // eslint-disable-next-line no-underscore-dangle
     prototype._routerHolder = [url, router];
     return Target;
   };
@@ -24,14 +26,18 @@ export const invoke = (method: MethodType, url: string) => {
     desc: PropertyDescriptor
   ) => {
     const callback: (...args: any[]) => any = desc.value;
-    desc.value = function () {
+    // eslint-disable-next-line no-param-reassign
+    desc.value = function descValue() {
+      // eslint-disable-next-line no-underscore-dangle
       const router = target._router;
       if (!router) {
         return;
       }
       router[method](url, callback.bind(this));
     };
+    // eslint-disable-next-line no-param-reassign
     desc.enumerable = true;
+    // eslint-disable-next-line no-param-reassign
     desc.value.isRoute = true;
   };
 };

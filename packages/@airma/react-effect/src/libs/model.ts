@@ -1,11 +1,19 @@
-import { createKey, Signal, useSignal } from '@airma/react-state';
+import {
+  createKey,
+  createStore,
+  useSignal,
+  validations
+} from '@airma/react-state';
+import type { Signal } from '@airma/react-state';
 import type {
   SessionState,
   SessionType,
   SessionKey,
   PromiseCallback,
   QueryConfig,
-  SessionRequest
+  SessionRequest,
+  SessionInstance,
+  SessionStore
 } from './type';
 
 export function effectModel(
@@ -13,14 +21,24 @@ export function effectModel(
 ) {
   const { request, ...rest } = state;
   const mergeVersion = (
-    s: SessionState
-  ): SessionState & { request?: SessionRequest } => {
+    s: SessionState & { roundStatus?: 'start' | 'end' }
+  ): SessionState & {
+    request?: SessionRequest;
+    roundStatus?: 'start' | 'end';
+  } => {
     return { ...s, request, uniqueKey: state.uniqueKey };
   };
-  const checkIfANewRound = (s: SessionState): SessionState => {
-    if (s.isFetching) {
+  const checkIfANewRound = (
+    nextS: SessionState & { roundStatus?: 'start' | 'end' }
+  ): SessionState => {
+    const { roundStatus, ...s } = nextS;
+    if (!roundStatus) {
+      return s;
+    }
+    if (roundStatus === 'start') {
       return { ...s, stale: state.stale || { data: state.data } };
     }
+
     return {
       ...s,
       visited: state.visited ? state.visited : !s.isError,
@@ -43,7 +61,11 @@ export function effectModel(
     state: rest,
     request,
     setState(
-      s: SessionState | ((p: SessionState) => SessionState)
+      s:
+        | (SessionState & { roundStatus?: 'start' | 'end' })
+        | ((
+            p: SessionState
+          ) => SessionState & { roundStatus?: 'start' | 'end' })
     ): SessionState & { request?: SessionRequest } {
       if (typeof s !== 'function') {
         return checkIfANewRound(mergeVersion(s));
@@ -104,23 +126,73 @@ export const defaultPromiseResult = (config?: {
     lastFailedRoundVariables: undefined,
     online: true,
     ...config
-  } as SessionState);
+  }) as SessionState;
+
+export function parseStoreMeta<E extends (...p: any[]) => any>(
+  callback: E | SessionKey<E> | { key: SessionKey<E> }
+): SessionKey<E> | SessionStore<E> {
+  const storeLike = callback as { key: SessionKey<E> };
+  const isSessionKey = validations.isModelKey(callback);
+  const errorMessage =
+    'API `useSession` can not use a session callback directly. Please set a session key or session store.';
+  if (!isSessionKey && !validations.isModelKey(storeLike.key)) {
+    throw new Error(errorMessage);
+  }
+  const sessionCaller = callback as SessionKey<E> | { key: SessionKey<E> };
+  if (
+    validations.isModelStore(sessionCaller) ||
+    validations.isModelKey(sessionCaller)
+  ) {
+    return sessionCaller as SessionKey<E> | SessionStore<E>;
+  }
+  if (!validations.isModelKey(storeLike.key)) {
+    throw new Error(errorMessage);
+  }
+  return sessionCaller.key as SessionKey<E>;
+}
+
+export function parseMeta<E extends (...p: any[]) => any>(
+  callback: E | SessionKey<E> | { key: SessionKey<E> }
+): E | SessionKey<E> | SessionStore<E> {
+  const storeLike = callback as { key: SessionKey<E> };
+  const isSessionKey = validations.isModelKey(callback);
+  if (!isSessionKey && !validations.isModelKey(storeLike.key)) {
+    return callback as E;
+  }
+  const sessionCaller = callback as SessionKey<E> | { key: SessionKey<E> };
+  if (
+    validations.isModelStore(sessionCaller) ||
+    validations.isModelKey(sessionCaller)
+  ) {
+    return sessionCaller as SessionKey<E> | SessionStore<E>;
+  }
+  if (!validations.isModelKey(storeLike.key)) {
+    return callback as E;
+  }
+  return sessionCaller.key as SessionKey<E>;
+}
 
 function parseEffect<
   E extends (...p: any[]) => any,
   C extends Record<string, any> = Record<string, any>
 >(
-  callback: E | SessionKey<E>,
+  callback: E | SessionKey<E> | { key: SessionKey<E> },
   sessionType: SessionType,
   config?: C
-): [SessionKey<E>, E, C | undefined, boolean] {
-  const { isFactory } = callback as SessionKey<E>;
-  const isSessionKey = typeof isFactory === 'function' && isFactory();
-  if (!isSessionKey) {
+): [SessionKey<E> | SessionStore<E>, E, C | undefined, boolean] {
+  const storeLike = callback as { key: SessionKey<E> };
+  const isSessionKey = validations.isModelKey(callback);
+  if (!isSessionKey && !validations.isModelKey(storeLike.key)) {
     return [effectModel as SessionKey<E>, callback as E, config, false];
   }
-  const { payload } = callback as SessionKey<E>;
-  const [effectCallback, { sessionType: keyType }] = payload as [
+  const sessionCaller = callback as SessionKey<E> | { key: SessionKey<E> };
+  const caller =
+    validations.isModelStore(sessionCaller) ||
+    validations.isModelKey(sessionCaller)
+      ? (sessionCaller as SessionKey<E> | SessionStore<E>)
+      : (sessionCaller.key as SessionKey<E>);
+  const { sessionPayload } = caller;
+  const [effectCallback, { sessionType: keyType }] = sessionPayload as [
     E,
     { sessionType?: SessionType }
   ];
@@ -131,11 +203,11 @@ function parseEffect<
       }'`
     );
   }
-  return [callback as SessionKey<E>, effectCallback, config, true];
+  return [caller, effectCallback, config, true];
 }
 
 export function parseConfig<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  callback: C | SessionKey<C> | { key: SessionKey<C> },
   sessionType: SessionType,
   config?: QueryConfig<T, C> | Parameters<C>
 ): QueryConfig<T, C> {
@@ -149,18 +221,18 @@ export function parseConfig<T, C extends PromiseCallback<T>>(
 }
 
 export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
-  callback: C | SessionKey<C>,
+  callback: C | SessionKey<C> | { key: SessionKey<C> },
   uniqueKey: unknown,
   sessionType: SessionType,
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  Signal<typeof effectModel>,
+  Signal<SessionState, SessionInstance>,
   QueryConfig<T, C>,
   C
 ] {
   const cg = Array.isArray(config) ? { variables: config } : config;
-  const [model, effectCallback, con, isSessionKey] = parseEffect<
+  const [model, effectCallback, con, isSessionKeyOrStore] = parseEffect<
     C,
     QueryConfig<T, C>
   >(callback, sessionType, cg);
@@ -172,7 +244,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   );
   const modelParams: [typeof model, SessionState<T>?] =
     (function computeParams() {
-      if (!isSessionKey) {
+      if (!isSessionKeyOrStore) {
         return [
           model,
           defaultPromiseResult(
@@ -207,15 +279,40 @@ export function createSessionKey<E extends (...params: any[]) => Promise<any>>(
   effectCallback: E,
   sessionType?: SessionType
 ): SessionKey<E> {
-  const model = createKey(effectModel, defaultPromiseResult()) as SessionKey<E>;
+  const modelKey = createKey(
+    effectModel,
+    defaultPromiseResult()
+  ) as SessionKey<E>;
   const effectCallbackReplace: E = function effectCallbackReplace(
     ...params: any[]
   ) {
     return effectCallback(...params);
   } as E;
-  model.payload = [
+  modelKey.sessionPayload = [
     effectCallbackReplace,
     sessionType ? { sessionType } : {}
   ] as [E, { sessionType?: SessionType }];
-  return model as SessionKey<E>;
+  return modelKey as SessionKey<E>;
+}
+
+export function createSessionStore<
+  E extends (...params: any[]) => Promise<any>
+>(effectCallback: E, sessionType?: SessionType): SessionStore<E> {
+  const modelStore = createStore(
+    effectModel,
+    defaultPromiseResult()
+  ) as SessionStore<E>;
+  const effectCallbackReplace: E = function effectCallbackReplace(
+    ...params: any[]
+  ) {
+    return effectCallback(...params);
+  } as E;
+  const createSessionPayload = () =>
+    [effectCallbackReplace, sessionType ? { sessionType } : {}] as [
+      E,
+      { sessionType?: SessionType }
+    ];
+  modelStore.sessionPayload = createSessionPayload();
+  modelStore.key.sessionPayload = createSessionPayload();
+  return modelStore as SessionStore<E>;
 }

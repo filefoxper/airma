@@ -1,23 +1,20 @@
-import {
-  ComponentType,
-  ExoticComponent,
-  FunctionComponent,
-  ReactNode
-} from 'react';
-import {
+import type { ComponentType, ExoticComponent, ReactNode } from 'react';
+import type {
   GlobalConfig as StateGlobalConfig,
-  ModelCreation,
   ModelKey,
-  ModelKeys
+  StoreIndex
 } from '@airma/react-state';
-import { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
+import type { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
 
 export declare type GlobalConfig = StateGlobalConfig & EffectGlobalConfig;
 
 export * from '@airma/react-hooks-core';
 
+export declare type ModelKeys = StoreIndex | ModelKey;
+
 export {
   createKey,
+  createStore,
   useModel,
   useSignal,
   useControlledModel,
@@ -27,6 +24,7 @@ export {
 
 export {
   createSessionKey,
+  createSessionStore,
   Strategy,
   useQuery,
   useMutation,
@@ -38,7 +36,16 @@ export {
   session
 } from '@airma/react-effect';
 
-export declare function provide(...storeCreators: ModelKeys[]): {
+export declare function provide(
+  ...storeCreators: (
+    | StoreIndex
+    | ModelKey
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey>
+    | Record<number, StoreIndex>
+    | Record<number, ModelKey>
+  )[]
+): {
   <P extends Record<string, any>>(
     component: ComponentType<P> | ExoticComponent<P>
   ): typeof component;
@@ -47,18 +54,20 @@ export declare function provide(...storeCreators: ModelKeys[]): {
   ) => typeof component;
 };
 
-export declare const Provider: FunctionComponent<
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      storeCreators: ModelKeys;
-      children?: ReactNode;
-    }
->;
+export declare const Provider: FC<{
+  value:
+    | Array<
+        | StoreIndex
+        | ModelKey
+        | Record<string, StoreIndex>
+        | Record<string, ModelKey>
+      >
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey>;
+  children?: ReactNode;
+}>;
 
-export declare const ConfigProvider: FunctionComponent<{
+export declare const ConfigProvider: FC<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;

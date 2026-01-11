@@ -1,0 +1,10 @@
+node_modules
+dist/*
+res/*
+babel.config.js
+jest.config.js
+process.env.js
+webpack.*.js
+.eslintrc.js
+.prettierrc.js
+stylelint.config.js

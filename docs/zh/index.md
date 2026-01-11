@@ -2,8 +2,8 @@
 
 `@airma` 是一款用于辅助 react `>=16.8.0` 版本的编码的工具库，它包含了多样化的简易状态管理功能。
 
-* [@airma/react-state](/zh/react-state/index)
-* [@airma/react-effect](/zh/react-effect/index)
+* [@airma/react-state](/zh/react-state/current/index)
+* [@airma/react-effect](/zh/react-effect/current/index)
 * [@airma/react-hooks](/zh/react-hooks/index)
 
 与 React 关系不大的 http rest style 请求工具库：
@@ -35,7 +35,7 @@ const {
 } = instance;
 ```
 
-[相关文档](/zh/react-state/index.md)
+[相关文档](/zh/react-state/current/index)
 
 
 ### @airma/react-effect
@@ -73,7 +73,7 @@ const [
 );
 ```
 
-[相关文档](/zh/react-effect/index)
+[相关文档](/zh/react-effect/current/index)
 
 ### @airma/react-hooks
 

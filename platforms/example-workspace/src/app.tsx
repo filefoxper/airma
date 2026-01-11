@@ -1,34 +1,18 @@
-import React, {
-  memo,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState
-} from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
-    createKey,
-    useSignal,
-    useSelector,
-    createSessionKey,
-    provide,
-    Strategy,
-    useIsFetching,
-    useMutation,
-    useQuery,
-    useSession,
-    useUpdate,
-    useResponse,
-    useControlledModel, useModel
+  createKey,
+  useSignal,
+  useSelector,
+  Strategy,
+  useIsFetching,
+  useControlledModel,
+  provide,
+  shallowEqual
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
-import { pick } from 'lodash';
-import {
-  ErrorSessionState,
-  session,
-  useLazyComponent
-} from '@airma/react-effect';
-import { model, shallowEqual } from '@airma/react-state';
+import { session } from '@airma/react-effect';
+import { model } from '@airma/react-state';
+import type { ErrorSessionState } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
   ...c,
@@ -42,25 +26,25 @@ type User = {
   age: number;
 };
 
-type Condition = {
+type ConditionType = {
   name: string;
   username: string;
   age?: string;
 };
 
 type Query = {
-  display: Condition;
-  valid: Condition;
+  display: ConditionType;
+  valid: ConditionType;
   creating: boolean;
 };
 
-const defaultCondition: Condition = {
-  name: 'Mr',
+const defaultCondition: ConditionType = {
+  name: '',
   username: '',
   age: undefined
 };
 
-const userQuery = (validQuery: Condition) =>
+const userQuery = (validQuery: ConditionType) =>
   rest('/api/user')
     .path('list')
     .setParams(validQuery)
@@ -70,7 +54,7 @@ const userQuery = (validQuery: Condition) =>
         return new Promise(resolve => {
           setTimeout(() => {
             resolve(d);
-          }, 700);
+          }, 500);
         }) as Promise<User[]>;
       },
       e => {
@@ -84,17 +68,17 @@ const userQuery = (validQuery: Condition) =>
 
 const userSave = (u: Omit<User, 'id'>) =>
   new Promise((resolve, reject) => {
-      setTimeout(()=>{
-          resolve(
-              rest('/api/user')
-                  .setBody(u)
-                  .post<null>()
-                  .then(() => true)
-          );
-      },1000)
+    setTimeout(() => {
+      resolve(
+        rest('/api/user')
+          .setBody(u)
+          .post<null>()
+          .then(() => true)
+      );
+    }, 1000);
   });
 
-export const fetchSession = session(userQuery, 'query').createKey();
+export const fetchSession = session(userQuery, 'query').createStore();
 
 export const saveSession = session(userSave, 'mutation');
 
@@ -107,7 +91,7 @@ const test = (state: number) => {
   };
 };
 
-const testKey = createKey(test)
+const testKey = createKey(test);
 
 const counting = (state: number) => {
   return {
@@ -126,12 +110,12 @@ const store = model((query: Query) => {
     return { ...query, valid: { ...query.display } };
   };
   const queryData = model.createField(() => {
-    return {...query.valid};
+    return { ...query.valid };
   }, [query.valid]);
-  const sourceQueryData = model.createField(()=>{
-      return query.valid;
+  const sourceQueryData = model.createField(() => {
+    return query.valid;
   });
-  const displayQueryData = model.createField(()=>query.display)
+  const displayQueryData = model.createField(() => query.display);
   return {
     queryData,
     sourceQueryData,
@@ -139,7 +123,7 @@ const store = model((query: Query) => {
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
-    getValidQuery:model.createMethod(()=>query.valid),
+    getValidQuery: model.createMethod(() => query.valid),
     create() {
       return { ...query, creating: true };
     },
@@ -149,17 +133,16 @@ const store = model((query: Query) => {
     cancel() {
       return { ...query, creating: false };
     },
-    changeDisplay(display: Partial<Condition>) {
+    changeDisplay(display: Partial<ConditionType>) {
       return { ...query, display: { ...query.display, ...display } };
     },
     query: handleQuery
   };
-})
-  .createStore();
+}).createStore();
 
 const Info = memo(() => {
-  const [{ isFetching, isError, error,visited }] = fetchSession.useSession();
-  if (isFetching&&!visited) {
+  const [{ isFetching, isError, error, visited }] = fetchSession.useSession();
+  if (isFetching) {
     return <span>fetching...</span>;
   }
   return isError ? <span style={{ color: 'red' }}>{error}</span> : null;
@@ -174,57 +157,70 @@ const creatingStore = model((userData: Omit<User, 'id'>) => {
     changeName(name: string) {
       return { ...userData, name };
     },
+    setUser(u: Omit<User, 'id'>) {
+      return u;
+    },
     update() {
       return { ...userData };
     }
   };
-})
+}).produce(getInstance => {
+  const instance = getInstance();
+  return {
+    ...instance,
+    async fetchDefault() {
+      const list = await userQuery(defaultCondition);
+      const [first] = list;
+      const { username, name } = first;
+      getInstance().setUser({
+        name: `${name}_${Date.now()}`,
+        username: `${username}_${Date.now()}`,
+        age: 15
+      });
+    }
+  };
+});
 
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
     const creating = store.useSelector(s => s.creating);
-    const { user, changeUsername, changeName } = creatingStore.useModel({
-      name: '',
-      username: '',
-      age: 10
-    });
+    const signal = creatingStore.useSignal({ name: '', username: '', age: 10 });
+
+    const { user, changeUsername, changeName, fetchDefault } = signal();
 
     const [fs, query] = fetchSession.useSession();
+
+    useEffect(() => {
+      fetchDefault();
+    }, [fetchDefault]);
 
     const [sessionState, save] = saveSession.useMutation({
       variables: [user],
       strategy: [
-        Strategy.validate(async ([u],isOnline) => {
-            if(!isOnline()){
-                return false;
-            }
+        Strategy.validate(async ([u], isOnline) => {
+          if (!isOnline()) {
+            return false;
+          }
           if (!u.name || !u.username) {
             return false;
           }
           return true;
-        }), 
+        }),
         Strategy.once(),
+        Strategy.response.success(() => {
+          console.log('save success');
+          query();
+          onClose();
+        })
       ]
     });
 
-    useResponse.useSuccess(() => {
-      console.log('save success');
-      const promise = query();
-      promise.then((d)=>{
-          console.log('trigger query promise',d)
-          if(d.abandon){
-              return;
-          }
-          onClose();
-      })
-    }, sessionState);
-
-    const lazySave = ()=>{
-        onClose();
-        setTimeout(()=>{
-            save();
-        },1000)
-    }
+    const lazySave = () => {
+      onClose();
+      setTimeout(() => {
+        save();
+      }, 1000);
+    };
 
     return (
       <div>
@@ -244,29 +240,40 @@ const Creating = memo(
             onChange={e => changeUsername(e.target.value)}
           />
         </div>
-          <div style={{marginTop: 12}}>
-              <button type="button" style={{marginLeft: 12}} onClick={save}>
-                  submit
-              </button>
-              <button type="button" style={{marginLeft: 12}} onClick={lazySave}>
-                  lazy submit
-              </button>
-              <button type="button" style={{marginLeft: 8}} onClick={onClose}>
-                  cancel
-              </button>
-          </div>
+        <div style={{ marginTop: 12 }}>
+          <button type="button" style={{ marginLeft: 12 }} onClick={save}>
+            submit
+          </button>
+          <button type="button" style={{ marginLeft: 12 }} onClick={lazySave}>
+            lazy submit
+          </button>
+          <button type="button" style={{ marginLeft: 8 }} onClick={onClose}>
+            cancel
+          </button>
+        </div>
       </div>
     );
   }
 );
 
-const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () => void }) {
+const Condition = memo(function Condition({
+  parentTrigger
+}: {
+  parentTrigger: () => void;
+}) {
   const q = useMemo(() => ({ ...defaultCondition, name: 'Mr' }), []);
-  const { displayQuery, queryData,sourceQueryData,displayQueryData, create, changeDisplay, submit } =
-    store.useModel();
+  const {
+    displayQuery,
+    queryData,
+    sourceQueryData,
+    displayQueryData,
+    create,
+    changeDisplay,
+    submit
+  } = store.useModel();
 
   const isFetching = useIsFetching();
-  const [,,execute] = fetchSession.useSession();
+  const [, , execute] = fetchSession.useSession();
 
   const handleTrigger = () => {
     parentTrigger();
@@ -295,7 +302,11 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
       <button type="button" style={{ marginLeft: 12 }} onClick={() => submit()}>
         query
       </button>
-      <button type="button" style={{ marginLeft: 12 }} onClick={()=>execute.payload('trigger')({name:'Mr',username:''})}>
+      <button
+        type="button"
+        style={{ marginLeft: 12 }}
+        onClick={() => execute.payload('trigger')({ name: 'Mr', username: '' })}
+      >
         trigger
       </button>
       <button type="button" style={{ marginLeft: 12 }} onClick={handleTrigger}>
@@ -311,7 +322,7 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
       </button>
     </div>
   );
-})
+});
 
 // store.instance({
 //     valid: defaultCondition,
@@ -320,44 +331,39 @@ const Condition = memo(function Condition({parentTrigger}: { parentTrigger: () =
 // }).changeDisplay({...defaultCondition,name:''});
 // store.instance().submit();
 
-export default provide(fetchSession).to(function App() {
-  const conditionSignal = useSignal(store,{valid:defaultCondition,display:defaultCondition,creating:false});
-  const { queryData, creating, cancel } = useSelector(store,
-    s => pick(s, 'queryData', 'creating', 'cancel'),
+const App = provide({ fetchSession }).to(function App() {
+  useSignal(store, {
+    valid: defaultCondition,
+    display: defaultCondition,
+    creating: false
+  });
+  const { queryData, creating, cancel } = useSelector(
+    store,
+    s => ({ queryData: s.queryData, creating: s.creating, cancel: s.cancel }),
     shallowEqual
   );
-
-    useEffect(() => {
-        setTimeout(()=>{
-            store.instance().changeDisplay({...defaultCondition,name:''})
-            store.instance().submit()
-        },1000)
-    }, []);
-
-  conditionSignal
-    .useEffect(ins => {
-      console.log('signal creating', ins.creating);
-    });
-
-  const querySession = useQuery(fetchSession,{
+  const querySession = fetchSession.useQuery({
     variables: [queryData.get()],
     defaultData: [],
-    payload:'effect',
+    payload: 'effect',
     strategy: [
       Strategy.cache({ capacity: 10 }),
-        Strategy.response.success((data, sessionData)=>{
-            console.log('query payload',sessionData.payload)
-        }),
+      Strategy.debounce(700),
+      Strategy.response.success(() => {
+        console.log('query success');
+      }),
       Strategy.response.failure(e => {
         console.log('error', e);
-        // throw e;
+        throw e;
+      }),
+      Strategy.response.failure(e => {
+        console.log('stop', e);
+        throw e;
       })
-    ],
+    ]
   });
 
-  const [queryState] = querySession;
-
-  const [{ data, variables }, t] = querySession;
+  const [{ data, variables, lastSuccessfulRound }, t] = querySession;
 
   const [q] = variables ?? [];
 
@@ -366,10 +372,6 @@ export default provide(fetchSession).to(function App() {
   const instance = useControlledModel(counting, count, s => setCount(s));
 
   const { value, increase, decrease } = instance;
-
-  const isFetching = useIsFetching();
-
-  console.log('isFetching', isFetching)
 
   return (
     <div style={{ padding: '12px 24px', overflowY: 'auto', height: '100vh' }}>
@@ -400,3 +402,11 @@ export default provide(fetchSession).to(function App() {
     </div>
   );
 });
+
+export default function Main() {
+  const [{ data, lastSuccessfulRound }] = fetchSession.useQuery({
+    variables: [{ name: 'Dr', username: '' }],
+    deps: []
+  });
+  return <App />;
+}

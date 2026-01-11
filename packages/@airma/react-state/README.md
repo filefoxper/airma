@@ -11,7 +11,7 @@
 
 # @airma/react-state
 
-Simple `reducer-like` state-management with method action dispatch mode for react components.
+Simple model state-management with method action dispatch mode for react components.
 
 ## Documents
 
@@ -20,7 +20,7 @@ Simple `reducer-like` state-management with method action dispatch mode for reac
 
 ## Code first
 
-Create `reducer-like` function:
+Create model function:
 
 ```js
 export function counting(state:number){
@@ -41,7 +41,7 @@ export function counting(state:number){
 }
 ```
 
-Use `reducer-like` function:
+Use model function:
 
 ```tsx
 import {counting} from './model';
@@ -54,7 +54,7 @@ const {count, increase, decrease, add} = useModel(counting, 0); // initialState 
 ......
 ```
 
-The `reducer-like` function has a simple name `model`. Use API `model` can make it more simple.
+The model function returns an instance to manage the actions and state. Use API **model** can make it more simple.
 
 ### Local state management
 
@@ -81,11 +81,11 @@ const {count, increase, decrease, add} = counting.useModel(0);
 ......
 ```
 
-Though, the basic function about `model` is enhancing `React.useReducer` to manage a local state, it also can be used to manage a scope state from dynamic store or static store. 
+This is just a local state management. It also can be used as a top store state management.
 
 ### Dynamic store state management
 
-API `createKey` can create a model template for creating a dynamic store. The template is also a key to synchronize state changes from store.
+API **createKey** can create a model wrapper for generating a dynamic store. It is also a key to subscribe this store.
 
 ```tsx
 import {memo} from 'react';
@@ -105,16 +105,16 @@ const countingKey = model(function counting(state:number){
 }).createKey(0);
 // Create a key. 
 // The key can be used to create a store.
-// The key can be used to synchronize state changes from store.
+// The key can be used to subscribe state changes from store.
 ......
 const Increase = memo(()=>{
-    // use countingKey.useSelector can synchronize state changes from store,
+    // use countingKey.useSelector can subscribe state changes from store,
     // when the selected result is changed it rerender component. 
     const increase = countingKey.useSelector(i => i.increase);
     return <button onClick={increase}>+</button>;
 });
 const Count = memo(()=>{
-    // use countingKey.useModel can synchronize state changes from store.
+    // use countingKey.useModel can subscribe state changes from store.
     const {count} = countingKey.useModel();
     return <span>{count}</span>;
 });
@@ -135,11 +135,11 @@ const Component = provide(countingKey).to(function Comp() {
 });
 ......
 ```
-A dynamic store should be created in a component, and synchronized in the children components by using `React.Context`.
+A dynamic store should be created in a component, and be subscribed in the children components by using **React.Context**.
 
-A static store should be created in a global scope, and used in any component without provider.
+A static store should be created in a global scope, and be subscribed in any component without provider.
 
-Using `model(xxx).createStore()` can build a static store.
+Using **model(xxx).createStore()** can build a static store.
 
 ### Static store state management
 
@@ -184,11 +184,11 @@ const Component = function Comp() {
 };
 ```
 
-The `useSelector` API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
+The **useSelector** API is helpful for reducing render frequency, only when the selected result is changed, it make its owner component rerender. 
 
 ### A high performance usage about useSignal
 
-In `@airma/react-state@18.4.0`, a more simple and higher performance API `useSignal` is provided.
+API **useSignal** is designed to be a simple and high performance usage to replace **useSelector** in some cases.
 
 ```ts
 import {model} from '@airma/react-state';
@@ -240,27 +240,104 @@ const Component = function Comp({defaultCount}:{defaultCount:number}) {
 };
 ```
 
-The `useSignal` API is even better than API `useSelector`, it computes out when to rerender component by the fields getting from instance automatically. And by using the `signal` function, it always provides a newest instance in usage point, so it can avoid stale data and zombie-children problems more effectively.
+ API **useSignal** is even better than API **useSelector**, it generates a signal callback. Call the signal callback can get a newest instance. The instance compares its render time using properties with the store instance properties, when these properties changes, it make **useSignal** rerenders component.
 
+### Simulate asynchronous action
+
+```ts
+import {memo} from 'react';
+import {model} from '@airma/react-state';
+
+const fetchSettingStep = ():Promise<number> =>{
+    return new Promise((resolve)=>{
+        setTimeout(()=>{
+            resolve(2);
+        }, 300)
+    });
+}
+
+const countingKey = model(function counting(state:number){
+    return {
+        count: state,
+        increase:()=>state + 1,
+        decrease:()=>state - 1,
+        add(...additions: number[]){
+            return additions.reduce((result, current)=>{
+                return result + current;
+            }, state);
+        }
+    };
+    // produce instance to be an asynchronous action simulate instance.
+}).produce((getInstance)=>{
+    // getInstance is a function to get current instance object.
+    const instance = getInstance();
+    // returns a produced instance
+    return {
+        ...instance,
+        // compose an async action
+        async increaseBySetting(){
+            const step = await fetchSettingStep();
+            // use getInstance again to get the newest instance.
+            return getInstance().add(step);
+        },
+        async decreaseBySetting(){
+            const step = await fetchSettingStep();
+            return getInstance().add(-step);
+        }
+    }
+}).createKey(0);
+
+......
+const Increase = memo(()=>{
+    // The produced instance is changed by action works, and its methods are persist.
+    const signal = countingKey.useSignal();
+    const {increaseBySetting} = signal();
+    return <button onClick={increaseBySetting}>+</button>;
+});
+const Count = memo(()=>{
+    const {count} = countingKey.useModel();
+    return <span>{count}</span>;
+});
+const Decrease = memo(()=>{
+    const signal = countingKey.useSignal();
+    const {decreaseBySetting} = signal();
+    return <button onClick={decreaseBySetting}>-</button>;
+});
+// The HOC API `provide` can create store from keys in a `Provider` component.
+const Component = provide(countingKey).to(function Comp() {
+    return (
+        <div>
+            <Increase/>
+            <Count/>
+            <Decrease/>
+        </div>
+    );
+});
+......
+```
+
+The produced instance is not a true instance. It has persist methods, and these methods are normal methods, they can only change state by calling methods from getInstance().
 
 ## Why support context store?
 
 The context store is a dynamic store, it has some better features than a static store.
  
- 1. The store data can be destroyed with its `owner` component unmount.
+ 1. The store data can be destroyed with its owner component unmount.
  2. Components with same store factory creates different stores.
  
  ### How to subscribe a grand parent provider store?
 
- The store provider system in `@airma/react-state` is designed with a tree structure. The nearest `provider` finds store one-by-one from itself to its root parent `provider`, and links the nearest matched `provider` store to the subscriber `useModel/useSelector`.
+ The store provider system in `@airma/react-state` is designed with a tree structure. The nearest **provider** finds store one-by-one from itself to its root parent **provider**, and links the nearest matched **provider** store to the subscriber **useModel/useSignal/useSelector**.
 
  ### Does the state change of store leads a whole provider component rerender?
 
- No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like `useModel` and `useSelector`, and then the subscriber rerenders its owner by `useState`. 
+ No, only the hooks subscribing this `store` may rerender their owners. Every store change is notified to its subscriber like **useModel** or **useSelector**, and then the subscriber rerenders its owner by **useState**. 
 
  ## Why not support async action methods
 
  Async action often makes stale data problem and [zombie-children](https://react-redux.js.org/api/hooks#stale-props-and-zombie-children) problem. So, a special tool to resolve this problem is necessary, you can try [@airma/react-effect](https://filefoxper.github.io/airma/#/react-effect/index) with it.
+
+ And from **18.6.0**, you can use **model(xxx).produce** to compose action methods for simulating an asynchronous actions.
 
 There are more examples, concepts and APIs in the [documents](https://filefoxper.github.io/airma/#/react-state/index) of `@airma/react-state`.
 

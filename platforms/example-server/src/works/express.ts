@@ -1,4 +1,4 @@
-import { Express, Router } from 'express';
+import type { Express, Router } from 'express';
 
 export const appRouter = (array: Array<[string, Router]>) => {
   return (app: Express) => {

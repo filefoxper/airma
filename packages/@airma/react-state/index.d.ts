@@ -1,172 +1,123 @@
-import {
-  FunctionComponent,
-  ReactNode,
-  ComponentType,
-  ExoticComponent
-} from 'react';
+import type { ReactNode, ComponentType, ExoticComponent } from 'react';
+import type {
+  StoreIndex as AsStoreIndex,
+  ModelKey as AsModelKey,
+  ModelInstance,
+  ModelUsage,
+  Model,
+  Store,
+  Action,
+  ValidInstance
+} from 'as-model';
 
-declare interface InstanceLike {
-  [key: string]: any;
-  [key: number]: any;
-}
+export declare type ModelKey<
+  S = any,
+  T extends ModelInstance = any,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+> = AsModelKey<S, T, R>;
+
+export declare type ModelStore<
+  S = any,
+  T extends ModelInstance = any,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+> = Store<S, T, R>;
+
+export declare type StoreIndex<
+  S = any,
+  T extends ModelInstance = any,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+> = AsStoreIndex<S, T, R>;
 
 export declare type ModelLike = (state: any) => any;
 
-declare type ExpectInstance<S, T extends InstanceLike> = {
-  [K in keyof T]: T[K] extends
-    | ((...args: any[]) => S)
-    | (((...args: any[]) => any) & { noActionMethod: Record<string, any> })
-    ? T[K]
-    : T[K] extends (...args: any[]) => any
-    ? never
-    : T[K];
-};
-
-declare type PickState<R extends ModelLike> = R extends (state: infer S) => any
-  ? S
-  : never;
-
-declare type Instance<R extends ModelLike> = R extends (
-  state: infer S
-) => infer T
-  ? ExpectInstance<S, T>
-  : never;
-
-declare type Action<R extends ModelLike> = {
-  type: string;
-  method: null | ((...args: any[]) => any);
-  params?: any[];
-  state?: PickState<R>;
-  prevState?: PickState<R>;
-  instance: Instance<R>;
-  prevInstance: Instance<R>;
-};
-
-export declare type ModelKey<R extends ModelLike = ModelLike> = R & {
-  payload?: unknown;
-  isFactory: () => true;
-  static: () => ModelKey<R>;
-};
-
-export declare interface ModelCreation<R extends ModelLike = ModelLike> {
-  key: ModelKey<R>;
-}
-
-export declare function useModel<R extends ModelLike>(
-  model: ModelKey<R>
-): Instance<R>;
-export declare function useModel<R extends ModelLike>(
-  model: ModelCreation<R>
-): Instance<R>;
-export declare function useModel<R extends ModelLike>(
-  model: R
-): undefined extends PickState<R> ? Instance<R> : never;
-export declare function useModel<R extends ModelLike, D extends PickState<R>>(
-  model: ModelKey<R>,
-  state: D
-): Instance<R>;
-export declare function useModel<R extends ModelLike, D extends PickState<R>>(
-  model: ModelCreation<R>,
-  state: D
-): Instance<R>;
-export declare function useModel<R extends ModelLike, D extends PickState<R>>(
-  model: R,
-  state: D
-): Instance<R>;
-export declare function useModel<R extends ModelLike, D extends PickState<R>>(
-  model: R,
+export declare function useModel<
+  S,
+  T extends ModelInstance,
+  D extends S,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+>(
+  modelLike: Model<S, T> | ModelKey<S, T> | Store<S, T> | ModelUsage<S, T, R>,
   state?: D
-): undefined extends PickState<R> ? Instance<R> : never;
+): ReturnType<R>;
 
-declare interface EffectDeps<R extends ModelLike> {
+declare interface EffectDeps<T extends ModelInstance> {
   onActions: (
-    depsPicker: (instance: Instance<R>) => ((...args: any[]) => any)[]
-  ) => EffectDeps<R>;
-  onChanges: (depsPicker: (instance: Instance<R>) => any[]) => EffectDeps<R>;
+    depsPicker: (instance: T) => ((...args: any[]) => any)[]
+  ) => EffectDeps<T>;
+  onChanges: (depsPicker: (instance: T) => any[]) => EffectDeps<T>;
 }
 
-declare interface Signal<R extends ModelLike> {
-  (opts?: { cutOff?: boolean }): Instance<R>;
+declare interface Signal<
+  S,
+  T extends ModelInstance,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+> {
+  (opts?: { cutOff?: boolean }): ReturnType<R>;
   useEffect: (
-    callback: (
-      instance: Instance<R>,
-      action: Action<R> | null
-    ) => void | (() => void)
-  ) => EffectDeps<R>;
+    callback: (instance: T, action: Action<S, T> | null) => void | (() => void)
+  ) => EffectDeps<T>;
   useWatch: (
-    callback: (instance: Instance<R>, action: Action<R> | null) => void
-  ) => EffectDeps<R>;
-  getConnection: () => {
-    isDestroyed: () => boolean;
-    setPayload: <P>(setter: (payload: P) => P) => P;
-    getPayload: <P>() => P;
-  };
+    callback: (instance: T, action: Action<S, T> | null) => void
+  ) => EffectDeps<T>;
+  store: Store<S, T, R>;
 }
 
-export declare function useSignal<R extends ModelLike>(
-  model: ModelKey<R>
-): Signal<R>;
-export declare function useSignal<R extends ModelLike>(
-  model: ModelCreation<R>
-): Signal<R>;
-export declare function useSignal<R extends ModelLike>(
-  model: R
-): undefined extends PickState<R> ? Signal<R> : never;
-export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
-  model: ModelKey<R>,
-  state: D
-): Signal<R>;
-export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
-  model: ModelCreation<R>,
-  state: D
-): Signal<R>;
-export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
-  model: R,
-  state: D
-): Signal<R>;
-export declare function useSignal<R extends ModelLike, D extends PickState<R>>(
-  model: R,
+export declare function useSignal<
+  S,
+  T extends ModelInstance,
+  D extends S,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+>(
+  modelLike: Model<S, T> | ModelKey<S, T> | Store<S, T> | ModelUsage<S, T, R>,
   state?: D
-): undefined extends PickState<R> ? Signal<R> : never;
+): Signal<S, T, R>;
 
 export declare function useControlledModel<
-  R extends ModelLike,
-  D extends PickState<R>
->(model: R, state: D, onChange: (s: PickState<R>) => any): Instance<R>;
+  S,
+  T extends ModelInstance,
+  D extends S,
+  R extends (instance: () => T) => any = (instance: () => T) => T
+>(
+  modelLike: Model<S, T> | ModelUsage<S, T, R>,
+  state: D,
+  onChange: (s: S) => any
+): ReturnType<R>;
 
-export declare type ModelKeys =
-  | {
-      [key: string]: ModelKey | ModelCreation;
-    }
-  | Array<ModelKey | ModelCreation>
-  | ModelKey
-  | ModelCreation;
-
-export declare const Provider: FunctionComponent<
-  | {
-      value: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      keys: ModelKeys;
-      children?: ReactNode;
-    }
-  | {
-      storeCreators: ModelKeys;
-      children?: ReactNode;
-    }
->;
+export declare const Provider: FC<{
+  value:
+    | Array<
+        | StoreIndex
+        | ModelKey
+        | Record<string, StoreIndex>
+        | Record<string, ModelKey>
+      >
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey>;
+  children?: ReactNode;
+}>;
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  test?: {
+    act: (callback: () => any) => any;
+  };
 };
 
-export declare const ConfigProvider: FunctionComponent<{
+export declare const ConfigProvider: FC<{
   value: GlobalConfig;
   children?: ReactNode;
 }>;
 
-export declare function provide(...storeCreators: ModelKeys): {
+export declare function provide(
+  ...value: (
+    | StoreIndex
+    | ModelKey
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey>
+    | Record<number, StoreIndex>
+    | Record<number, ModelKey>
+  )[]
+): {
   <P extends Record<string, any>>(
     component: ComponentType<P> | ExoticComponent<P>
   ): typeof component;
@@ -176,128 +127,130 @@ export declare function provide(...storeCreators: ModelKeys): {
 };
 
 export declare function useSelector<
-  R extends ModelLike,
-  C extends (instance: Instance<R>) => any
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T,
+  C extends (instance: ReturnType<R>) => any = (
+    instance: ReturnType<R>
+  ) => ReturnType<R>
 >(
-  modelCreation: ModelKey<R> | ModelCreation<R>,
+  modelLike: ModelKey<S, T, R> | Store<S, T, R>,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
-export declare function createKey<R extends ModelLike, D extends PickState<R>>(
-  model: R,
+export declare function createKey<S, T extends ModelInstance, D extends S>(
+  modelFn: Model<S, T>,
   defaultState?: D
-): ModelKey<R>;
+): ModelKey<S, T>;
 
-export declare function shallowEqual<R>(prev: R, current: R): boolean;
+export declare function createStore<S, T extends ModelInstance, D extends S>(
+  modelFn: Model<S, T>,
+  defaultState?: D
+): ModelStore<S, T>;
+
+export declare function shallowEqual(prev: unknown, current: unknown): boolean;
 
 /** new API * */
-
-declare type ValidModel<R extends ModelLike> = R extends (
-  state: infer S
-) => infer T
-  ? T extends ExpectInstance<S, T>
-    ? R
-    : (state: S) => ExpectInstance<S, T> & T
-  : never;
-
-declare type ModelUsage<R extends ModelLike> = undefined extends PickState<R>
-  ? (state?: PickState<R>) => Instance<R>
-  : (state: PickState<R>) => Instance<R>;
-
-declare type SignalUsage<R extends ModelLike> = undefined extends PickState<R>
-  ? (state?: PickState<R>) => Signal<R>
-  : (state: PickState<R>) => Signal<R>;
-
-declare type ControlledModelUsage<R extends ModelLike> = (
-  value: PickState<R>,
-  onChange: (value: PickState<R>) => any
-) => Instance<R>;
-
-declare interface StoreUsageApi<R extends ModelLike> extends ModelCreation<R> {
-  useModel: (state?: PickState<R>) => Instance<R>;
-  useSignal: (state?: PickState<R>) => Signal<R>;
-  useSelector: <C extends (instance: ReturnType<R>) => any>(
-    call: C,
-    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
-  ) => ReturnType<C>;
-  instance: (state?: PickState<R>) => Instance<R>;
+declare interface ApiSelector<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+> {
+  <
+    C extends (instance: ReturnType<R>) => any = (
+      instance: ReturnType<R>
+    ) => ReturnType<R>
+  >(
+    callback: C,
+    equality?: (a: ReturnType<C>, b: ReturnType<C>) => boolean
+  ): ReturnType<C>;
 }
 
-declare interface StoreApi<R extends ModelLike> extends ModelCreation<R> {
-  key: ModelKey<R>;
-  /**
-   * @deprecated not recommend
-   */
-  with: <M extends ModelKey<ModelLike>>(
-    ...key: ({ key: M } | M)[]
-  ) => StoreApi<R>;
-  instance: (state?: PickState<R>) => Instance<R>;
-  /**
-   * @deprecated should remove
-   */
-  static: () => StoreUsageApi<R>;
-  /**
-   * @deprecated not recommend
-   */
-  provide: <P>() => (
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
-  /**
-   * @deprecated not recommend
-   */
-  provideTo: <P>(
-    component: ComponentType<P> | ExoticComponent<P>
-  ) => typeof component;
-  /**
-   * @deprecated not recommend
-   */
-  Provider: FunctionComponent<{ children?: ReactNode }>;
-  useModel: (state?: PickState<R>) => Instance<R>;
-  useSignal: (state?: PickState<R>) => Signal<R>;
-  useSelector: <C extends (instance: ReturnType<R>) => any>(
-    call: C,
-    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
-  ) => ReturnType<C>;
+declare interface ModelKeyApi<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+> extends ModelKey<S, T, R> {
+  useModel: <D extends S>(defaultState?: D) => ReturnType<R>;
+  useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
+  useSelector: ApiSelector<S, T, R>;
 }
 
-declare interface KeyApi<R extends ModelLike> extends ModelCreation<R> {
-  key: ModelKey<R>;
-  useModel: (state?: PickState<R>) => Instance<R>;
-  useSignal: (state?: PickState<R>) => Signal<R>;
-  useSelector: <C extends (instance: ReturnType<R>) => any>(
-    call: C,
-    equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
-  ) => ReturnType<C>;
+declare interface StoreApi<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+> extends Store<S, T, R> {
+  useModel: <D extends S>(defaultState?: D) => ReturnType<R>;
+  useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
+  useSelector: ApiSelector<S, T, R>;
+  instance: <D extends S>(defaultState?: D) => ReturnType<R>;
 }
 
-declare interface Api<R extends ModelLike> {
-  useModel: ModelUsage<R>;
-  useSignal: SignalUsage<R>;
-  useControlledModel: ControlledModelUsage<R>;
-  createStore: (state?: PickState<R>) => StoreApi<R>;
-  createKey: (state?: PickState<R>) => KeyApi<R>;
+declare interface ModelUsageApi<
+  S,
+  T extends ModelInstance,
+  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+> extends ModelUsage<S, T, R> {
+  (s: S): ValidInstance<S, T>;
+  createKey: <D extends S>(state?: D) => ModelKeyApi<S, T, R>;
+  createStore: <D extends S>(state?: D) => StoreApi<S, T, R>;
+  produce: <C extends (instance: () => T) => any = (instance: () => T) => T>(
+    s: C
+  ) => ModelUsageApi<S, T, C>;
+  useControlledModel: <D extends S>(
+    state: D,
+    onChange: (s: S) => any
+  ) => ReturnType<R>;
+  useModel: <D extends S>(defaultState?: D) => ReturnType<R>;
+  useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
 }
 
 export declare const model: {
-  <R extends ModelLike>(m: ValidModel<R>): R & Api<R>;
-  create: <M extends ModelLike>(m: ValidModel<M>) => M & Api<M>;
-  /**
-   * @deprecated
-   */
-  createCacheField: <T extends () => any>(
-    callback: T,
-    deps?: unknown[]
-  ) => {
-    get: () => ReturnType<T>;
-  };
+  <
+    S,
+    T extends ModelInstance,
+    R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+  >(
+    modelLike: Model<S, T> | ModelUsage<S, T, R>
+  ): ModelUsageApi<S, T, R>;
   createField: <T extends () => any>(
     callback: T,
     deps?: unknown[]
   ) => {
     get: () => ReturnType<T>;
   };
-  createMethod<R extends (...args: any[]) => any>(
-    callback: R
-  ): R & { noActionMethod: Record<string, any> };
+  createMethod<M extends (...args: any[]) => any>(
+    callback: M
+  ): M & { identifier: (d: any) => boolean };
+};
+
+export declare const validations: {
+  isInstanceFromNoStateModel: (instance: any) => boolean;
+  isModelKey: <
+    S,
+    T extends ModelInstance,
+    R extends (ins: () => T) => any = (ins: () => T) => T
+  >(
+    data: any
+  ) => data is ModelKey<S, T, R>;
+  isModelStore: <
+    S,
+    T extends ModelInstance,
+    R extends (ins: () => T) => any = (ins: () => T) => T
+  >(
+    data: any
+  ) => data is Store<S, T, R>;
+  isModelUsage: <
+    S,
+    T extends ModelInstance,
+    R extends (ins: () => T) => any = (ins: () => T) => T
+  >(
+    data: any
+  ) => data is ModelUsage<S, T, R>;
+};
+
+export declare function useActProcess(): {
+  act: (callback: () => any) => ReturnType<typeof callback>;
 };

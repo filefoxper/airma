@@ -1,4 +1,9 @@
-import { SessionState, StrategyType } from './libs/type';
+import type {
+  SessionState,
+  SessionTask,
+  SessionToken,
+  StrategyType
+} from './libs/type';
 
 function noop() {
   /* noop */
@@ -11,6 +16,8 @@ function debounce(
   const lead = typeof op === 'number' ? false : !!op.lead;
   return function db(value: {
     getSessionState: () => SessionState;
+    getSessionToken: () => SessionToken;
+    abandon: (d?: SessionState) => SessionState;
     runner: () => Promise<SessionState>;
     localCache: {
       current?: {
@@ -22,7 +29,7 @@ function debounce(
     };
   }): Promise<SessionState> {
     function leading() {
-      const { getSessionState: current, runner, localCache: store } = value;
+      const { abandon, runner, localCache: store, getSessionToken } = value;
       if (store.current && store.current.id) {
         clearTimeout(store.current.id);
         store.current.id = undefined;
@@ -31,14 +38,14 @@ function debounce(
         store.current = undefined;
       }, time);
       if (store.current != null) {
+        getSessionToken().abandon();
         store.current.id = timeoutId;
         return store.current.promise.then(d => {
-          return { ...d, abandon: true };
+          return abandon(d);
         });
       }
       const defaultPromise = new Promise<SessionState>(resolve => {
-        const currentState = current();
-        resolve({ ...currentState, abandon: true });
+        resolve(abandon());
       });
       const storeRef: {
         id: any;
@@ -61,7 +68,12 @@ function debounce(
     }
 
     function normal() {
-      const { getSessionState: current, runner, localCache: store } = value;
+      const {
+        getSessionState: current,
+        abandon,
+        runner,
+        localCache: store
+      } = value;
       if (store.current) {
         const { id, resolve } = store.current;
         clearTimeout(id);
@@ -72,12 +84,11 @@ function debounce(
         store.current.version += 1;
         const cVersion = store.current.version;
         return store.current.promise.then(d =>
-          cVersion === store.current?.version || 0 ? d : { ...d, abandon: true }
+          cVersion === store.current?.version || 0 ? d : abandon(d)
         );
       }
       const defaultPromise = new Promise<SessionState>(resolve => {
-        const currentState = current();
-        resolve({ ...currentState, abandon: true });
+        resolve(abandon());
       });
       const storeRef: {
         id: any;
@@ -101,9 +112,7 @@ function debounce(
       store.current = storeRef;
       const currentVersion = storeRef.version;
       return promise.then(d =>
-        store.current?.version || currentVersion === 0
-          ? d
-          : { ...d, abandon: true }
+        store.current?.version || currentVersion === 0 ? d : abandon(d)
       );
     }
     return lead ? leading() : normal();
@@ -113,12 +122,13 @@ function debounce(
 function once(): StrategyType {
   return function oc(runtime: {
     getSessionState: () => SessionState;
+    abandon: (data?: SessionState) => SessionState;
     runner: () => Promise<SessionState>;
     localCache: { current?: Promise<SessionState> };
   }) {
-    const { runner, localCache: store } = runtime;
+    const { runner, localCache: store, abandon } = runtime;
     if (store.current) {
-      return store.current.then(d => ({ ...d, abandon: true }));
+      return store.current.then(d => abandon(d));
     }
     store.current = runner().then(d => {
       if (d.isError) {
@@ -265,16 +275,32 @@ function failure(
   process: (e: unknown, sessionData: SessionState) => any,
   option?: { withAbandoned?: boolean }
 ): StrategyType {
-  const { withAbandoned } = option || {};
   const unit: FailureProcessUnit = { process, option, type: 'process' };
   const next: StrategyType = function next(value) {
-    const { runner, executeContext: runtimeCache, localCache: store } = value;
+    const {
+      runner,
+      executeContext: runtimeCache,
+      getSessionWork,
+      config
+    } = value;
     const failureProcessUnits = (runtimeCache.get(failure) ||
       []) as FailureProcessUnit[];
     const processUnits = [unit, ...failureProcessUnits];
     runtimeCache.set(failure, processUnits);
     return runner().then(d => {
-      const [start] = (runtimeCache.get(failure) || []) as FailureProcessUnit[];
+      const failureProcesses = (runtimeCache.get(failure) ||
+        []) as FailureProcessUnit[];
+      const { online } = getSessionWork();
+      const validateFailureProcesses = failureProcesses.filter(
+        s => online || s.type === 'process'
+      );
+      if (
+        !validateFailureProcesses.length ||
+        validateFailureProcesses.some(t => t.type !== 'process')
+      ) {
+        return d;
+      }
+      const [start] = validateFailureProcesses;
       if (start !== unit || !d.isError) {
         return d;
       }
@@ -299,31 +325,7 @@ function failure(
     process: FailureProcess;
     from: (...args: any[]) => any;
   } = function er(value) {
-    const {
-      runner,
-      executeContext: runtimeCache,
-      localCache: store,
-      config
-    } = value;
-    const { experience } = config;
-    if (experience === 'next') {
-      return next(value);
-    }
-    const hasHigherErrorProcessor = runtimeCache.get(error);
-    runtimeCache.set(error, true);
-    store.current = process;
-    return runner().then(d => {
-      const currentProcess = store.current;
-      if (
-        d.isError &&
-        !hasHigherErrorProcessor &&
-        currentProcess &&
-        (!d.abandon || withAbandoned)
-      ) {
-        currentProcess(d.error, d);
-      }
-      return d;
-    });
+    return next(value);
   };
   er.process = process;
   er.from = failure;
@@ -360,31 +362,31 @@ function validate(
 ): StrategyType {
   return function validStrategy({
     runner,
+    abandon,
     getSessionState: current,
+    getSessionToken,
     variables
   }) {
-    const currentSessionState = current();
     const result = callback(variables, () => current().online);
     if (!result) {
+      getSessionToken().abandon();
       return new Promise(resolve => {
-        resolve({ ...currentSessionState, abandon: true });
+        resolve(abandon());
       });
     }
     if (typeof result === 'object' && typeof result.then === 'function') {
       return result.then(
         r => {
           if (!r) {
-            const state = current();
             return new Promise(resolve => {
-              resolve({ ...state, abandon: true });
+              resolve(abandon());
             });
           }
           return runner();
         },
         () => {
-          const state = current();
           return new Promise(resolve => {
-            resolve({ ...state, abandon: true });
+            resolve(abandon());
           });
         }
       );
@@ -432,7 +434,7 @@ response.success = function responseSuccess<T>(
       ) {
         return noop;
       }
-      if (state.isError || state.isFetching || !state.sessionLoaded) {
+      if (state.isError || !state.sessionLoaded) {
         return noop;
       }
       const res = process(state.data, state);
@@ -449,7 +451,7 @@ response.success = function responseSuccess<T>(
       ) {
         return false;
       }
-      if (state.isError || state.isFetching || !state.sessionLoaded) {
+      if (state.isError || !state.sessionLoaded) {
         return false;
       }
       return true;
@@ -458,71 +460,26 @@ response.success = function responseSuccess<T>(
   return sc;
 };
 
-response.error = function responseError<T>(
-  process: (e: unknown, sessionData: SessionState) => void | (() => void)
-): StrategyType {
-  const sc: StrategyType = function sc(value) {
-    const { runner, executeContext: runtimeCache } = value;
-    runtimeCache.set(error, true);
-    return runner();
-  };
-  sc.effect = [
-    function effectCallback(
-      state: SessionState<T>,
-      prevState: SessionState<T>
-    ) {
-      if (state.round === 0 || state.round === prevState.round) {
-        return noop;
-      }
-      if (!state.isError || state.isFetching) {
-        return noop;
-      }
-      const res = process(state.error, state);
-      if (typeof res === 'function') {
-        return res;
-      }
-      return noop;
-    },
-    (state, prevState) => {
-      if (state.round === 0 || state.round === prevState.round) {
-        return false;
-      }
-      if (!state.isError || state.isFetching) {
-        return false;
-      }
-      return true;
-    }
-  ];
-  return sc;
-};
-
-response.failure = function responseFailure<T>(
+const responseFailure = function responseFailure(
   process: (e: unknown, sessionData: SessionState) => void | (() => void)
 ): StrategyType {
   const unit: FailureProcessUnit = { process, type: 'response.process' };
-  const sc: StrategyType = function sc(value) {
-    const { runner, executeContext: runtimeCache, config } = value;
-    if (config.experience === 'next') {
+  const sc: StrategyType & { from?: any; process?: FailureProcess } =
+    function sc(value) {
+      const { runner, executeContext: runtimeCache, config } = value;
       const failureProcessUnits = (runtimeCache.get(failure) ||
         []) as FailureProcessUnit[];
       const processUnits = [unit, ...failureProcessUnits];
       runtimeCache.set(failure, processUnits);
       return runner();
-    }
-    runtimeCache.set(error, true);
-    return runner();
-  };
+    };
   sc.effect = [
-    function effectCallback(state, prevState, config) {
-      if (!state.isError || state.isFetching) {
+    function effectCallback(state, prevState, config, context) {
+      if (!state.isError) {
         return noop;
       }
-      const { strategy, experience } = config;
-      if (experience !== 'next') {
-        const res = process(state.error, state);
-        return typeof res === 'function' ? res : noop;
-      }
-      const strategies = (function pickStrategies() {
+      const { strategy } = config;
+      const sourceStrategies = (function pickStrategies() {
         if (!strategy) {
           return [];
         }
@@ -534,31 +491,44 @@ response.failure = function responseFailure<T>(
         }
         return strategy.list;
       })();
+      const strategies = [...sourceStrategies].reverse();
       const currentIndex = strategies.indexOf(sc);
+      if (context.get(responseFailure) != null) {
+        return noop;
+      }
+      context.set(responseFailure, currentIndex);
       const failureStrategies = strategies.filter(
         (s, ind): s is StrategyType =>
           typeof s === 'function' &&
-          (s as StrategyType & { from: any }).from === failure &&
-          ind < currentIndex
+          ((s as StrategyType & { from: any }).from === failure ||
+            (s as StrategyType & { from: any }).from === responseFailure) &&
+          ind >= currentIndex
       );
       const failureProcesses = failureStrategies.map(
         s => (s as StrategyType & { process: FailureProcess }).process
       );
-      const currentProcess = failureProcesses.reduce((prev, current) => {
-        return function composedProcess(
-          er: unknown,
-          sessionData: SessionState
-        ): void | (() => void) {
-          try {
-            const r = prev(er, sessionData);
-            return typeof r === 'function' ? r : noop;
-          } catch (e: unknown) {
-            current(e, sessionData);
-            return noop;
+      const { destroy } = failureProcesses.reduce(
+        (result, current) => {
+          const { state: stateInReduce } = result;
+          if (!stateInReduce.isError) {
+            return result;
           }
-        };
-      }, process);
-      const res = currentProcess(state.error, state);
+          try {
+            const r = current(stateInReduce.error, stateInReduce);
+            return {
+              state: { ...stateInReduce, error: undefined, isError: false },
+              destroy: typeof r === 'function' ? r : noop
+            };
+          } catch (e: unknown) {
+            return {
+              state: { ...stateInReduce, error: e },
+              destroy: noop
+            };
+          }
+        },
+        { state, destroy: noop }
+      );
+      const res = destroy;
       if (typeof res === 'function') {
         return res;
       }
@@ -568,14 +538,18 @@ response.failure = function responseFailure<T>(
       if (state.round === 0 || state.round === prevState.round) {
         return false;
       }
-      if (!state.isError || state.isFetching) {
+      if (!state.isError) {
         return false;
       }
       return true;
     }
   ];
+  sc.from = responseFailure;
+  sc.process = process;
   return sc;
 };
+
+response.failure = responseFailure;
 
 function now() {
   return new Date().getTime();
@@ -640,7 +614,7 @@ function cache(option?: {
     static: isStatic
   } = option || {};
   return function cacheStrategy(requies) {
-    const { getSessionState, runner, variables } = requies;
+    const { getSessionState, getSessionToken, runner, variables } = requies;
     const currentState = getSessionState();
     const { cache: cacheInState } = currentState;
     const variableKey = keyBy(variables);
@@ -655,6 +629,7 @@ function cache(option?: {
         variables,
         visited: true
       };
+      getSessionToken().silence();
       return new Promise(resolve => {
         resolve(cacheState);
       });
@@ -685,19 +660,31 @@ function cache(option?: {
 function atomic(option?: {
   throttle?: boolean;
   stopWhenError?: boolean;
+  defineTask?: (
+    task: SessionTask,
+    lastSessionData: SessionState
+  ) => SessionTask[] | SessionTask;
 }): StrategyType {
-  const { throttle: t = true, stopWhenError = true } = option ?? {};
+  const { throttle: t = true, stopWhenError = true, defineTask } = option ?? {};
   return function atomicStrategy(requires): Promise<SessionState> {
-    const { runner, localCache, triggerType, payload, variables, execute } =
-      requires;
+    const {
+      runner,
+      abandon,
+      localCache,
+      triggerType,
+      payload,
+      variables,
+      execute
+    } = requires;
     if (localCache.current) {
-      localCache.current.queue = t
-        ? [{ triggerType, payload, variables }]
-        : [...localCache.current.queue, { triggerType, payload, variables }];
-      return localCache.current.promise.then((sessionData: SessionState) => ({
-        ...sessionData,
-        abandon: true
-      }));
+      localCache.current.queue = (
+        t
+          ? [{ triggerType, payload, variables }]
+          : [...localCache.current.queue, { triggerType, payload, variables }]
+      ) as SessionTask[];
+      return localCache.current.promise.then((sessionData: SessionState) =>
+        abandon(sessionData)
+      );
     }
     const promise = runner();
     const consumeCacheQueue = function consumeCacheQueue(
@@ -714,8 +701,18 @@ function atomic(option?: {
           resolve(lastSessionData);
         });
       }
-      const [currentTask, ...rest] = currentCache.queue;
-      localCache.current.queue = rest;
+      const [lastTask, ...rest] = currentCache.queue as SessionTask[];
+      const taskFragments = defineTask
+        ? (function defineTaskFragment() {
+            const task = defineTask(lastTask, lastSessionData);
+            if (!Array.isArray(task)) {
+              return [task];
+            }
+            return task;
+          })()
+        : [lastTask];
+      const [currentTask, ...restFragments] = taskFragments;
+      localCache.current.queue = [...restFragments, ...rest];
       return execute(
         currentTask.triggerType,
         currentTask.payload,
@@ -725,7 +722,7 @@ function atomic(option?: {
       });
     };
     localCache.current = {
-      queue: [],
+      queue: [] as SessionTask[],
       promise: promise.then((sessionData: SessionState) => {
         return consumeCacheQueue(sessionData).then(data => {
           localCache.current = undefined;
@@ -741,7 +738,6 @@ export const Strategy = {
   atomic,
   cache,
   debounce,
-  error,
   failure,
   memo,
   once,
