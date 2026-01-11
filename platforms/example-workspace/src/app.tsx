@@ -7,11 +7,11 @@ import {
   useIsFetching,
   useControlledModel,
   provide,
-  shallowEqual
+  shallowEqual,
+  model,
+  session
 } from '@airma/react-hooks';
 import { client as cli } from '@airma/restful';
-import { session } from '@airma/react-effect';
-import { model } from '@airma/react-state';
 import type { ErrorSessionState } from '@airma/react-effect';
 
 const { rest } = cli(c => ({
@@ -331,7 +331,19 @@ const Condition = memo(function Condition({
 // }).changeDisplay({...defaultCondition,name:''});
 // store.instance().submit();
 
+const modelFn = model(function mf(s: number) {
+  return {
+    state: s,
+    setState(state: number) {
+      return state;
+    }
+  };
+});
+
 const App = provide({ fetchSession }).to(function App() {
+  const i = modelFn.useModel(0);
+  const { state: val, setState } = i;
+  setState(0);
   useSignal(store, {
     valid: defaultCondition,
     display: defaultCondition,

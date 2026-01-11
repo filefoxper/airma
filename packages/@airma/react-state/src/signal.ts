@@ -15,7 +15,7 @@ import type {
 function useSignalSubscribeConnection<
   S,
   T extends ModelInstance,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 >(
   signal: SignalGenerator<S, T, R>,
   subscription: (ins: T, act: Action | null) => void | (() => void)
@@ -99,7 +99,7 @@ function useSignalSubscribeConnection<
 function getSignalSubscribe<
   S,
   T extends ModelInstance,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 >(signal: SignalGenerator<S, T, R>) {
   const useWatch = function useWatch(
     subscription: (ins: T, act: Action | null) => void | (() => void)
@@ -140,17 +140,17 @@ export function useSignal<
   S,
   T extends ModelInstance,
   D extends S,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 >(
   modelLike:
     | Model<S, T>
     | ModelKey<S, T>
     | Store<S, T, R>
-    | ModelUsage<S, T, R>,
+    | ModelUsage<Model<S, T>, R>,
   state?: D
 ) {
   const hasDefaultState = arguments.length > 1;
-  const store = useModelInitialize(modelLike, {
+  const store = useModelInitialize<S, T, D, R>(modelLike, {
     hasDefaultState,
     state
   });

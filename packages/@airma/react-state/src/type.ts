@@ -32,7 +32,7 @@ export type ModelStores = {
 export interface SignalGenerator<
   S,
   T extends ModelInstance,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 > {
   (): T;
   startStatistics: () => void;

@@ -1,4 +1,4 @@
-import { createKey, provide, shallowEqual, useSelector, useSignal } from '@airma/react-state';
+import { createKey, provide, useSelector, useSignal } from '@airma/react-state';
 import React, { memo, useRef } from 'react';
 import { act as reactAct, render } from '@testing-library/react';
 
