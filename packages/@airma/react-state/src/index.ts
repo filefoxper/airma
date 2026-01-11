@@ -11,14 +11,15 @@ export { provide, Provider, ConfigProvider } from './provider';
 
 export const shallowEqual = shallowEq;
 
-export const createKey = function createKey<S, T extends ModelInstance>(
-  modelFn: Model<S, T>,
-  defaultState?: S
-): ModelKey<S, T> {
+export const createKey = function createKey<
+  S,
+  T extends ModelInstance,
+  D extends S
+>(modelFn: Model<S, T>, defaultState?: D): ModelKey<S, T> {
   const hasDefaultState = arguments.length > 1;
   return hasDefaultState
-    ? config({}).createKey(modelFn, defaultState)
-    : config({}).createKey(modelFn);
+    ? config({}).createKey<S, T, D>(modelFn, defaultState)
+    : config({}).createKey<S, T, D>(modelFn);
 };
 
 export const createStore = function createStore<S, T extends ModelInstance>(

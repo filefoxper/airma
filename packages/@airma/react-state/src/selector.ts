@@ -8,10 +8,18 @@ import type { ModelInstance, ModelKey, Store } from 'as-model';
 export function useSelector<
   S,
   T extends ModelInstance,
-  R extends (getInstance: () => T) => any = (getInstance: () => T) => T,
-  C extends (instance: ReturnType<R>) => any = (
-    instance: ReturnType<R>
-  ) => ReturnType<R>
+  R extends undefined | ((getInstance: () => T) => any) = undefined,
+  C extends (
+    instance: R extends undefined
+      ? T
+      : ReturnType<R extends undefined ? never : R>
+  ) => any = (
+    instance: R extends undefined
+      ? T
+      : ReturnType<R extends undefined ? never : R>
+  ) => ReturnType<
+    R extends undefined ? T : ReturnType<R extends undefined ? never : R>
+  >
 >(
   modelLike: ModelKey<S, T, R> | Store<S, T, R>,
   selector: C,
@@ -29,7 +37,7 @@ export function useSelector<
   });
   const computeResult = function computeResult() {
     const token = selectStore.getToken();
-    const selected = selectStore.select(i => selectorFunction(i()));
+    const selected = selectStore.select(i => selectorFunction(i() as any));
     return { token, selected };
   };
 

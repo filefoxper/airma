@@ -4,23 +4,23 @@ import { useSignal } from './signal';
 import { useSelector } from './selector';
 import type {
   Model,
-  ModelInstance,
   ModelKey,
   ModelUsage,
-  Store
+  Store,
+  Instance,
+  PickState
 } from 'as-model';
 
 export const model = function model<
-  S,
-  T extends ModelInstance,
-  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
->(modelLike: Model<S, T> | ModelUsage<S, T, R>) {
-  const wrapper = validations.isModelUsage<S, T, R>(modelLike)
+  M extends Model,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
+>(modelLike: M | ModelUsage<M, R>) {
+  const wrapper = validations.isModelUsage<M, R>(modelLike)
     ? modelLike.wrapper
     : undefined;
   const modelUsage = wrapper
-    ? config({}).model<S, T, R>(modelLike, wrapper)
-    : config({}).model<S, T, R>(modelLike);
+    ? config({}).model<M, R>(modelLike, wrapper)
+    : config({}).model<M, R>(modelLike);
 
   const {
     createKey: originalCreateKey,
@@ -29,13 +29,15 @@ export const model = function model<
   } = modelUsage;
 
   function produce<
-    C extends (getInstance: () => T) => any = (getInstance: () => T) => T
+    C extends (getInstance: () => Instance<M>) => any = (
+      getInstance: () => Instance<M>
+    ) => Instance<M>
   >(callback: C) {
     const newUsage = originalProduce(callback);
     return model(newUsage);
   }
 
-  const createUsageKey = function createUsageKey<D extends S>(
+  const createUsageKey = function createUsageKey<D extends PickState<M>>(
     defaultState?: D
   ) {
     const hasDefaultState = arguments.length > 0;
@@ -43,28 +45,36 @@ export const model = function model<
       ? originalCreateKey(defaultState)
       : originalCreateKey();
 
-    const useKeyModel = function useKeyModel<KD extends S>(
+    const useKeyModel = function useKeyModel<KD extends PickState<M>>(
       defaultModelState?: KD
     ) {
       const parameters = (
         arguments.length > 0 ? [key, defaultModelState] : [key]
-      ) as [ModelKey<S, T, R>, KD?];
-      return useModel<S, T, KD>(...parameters);
+      ) as [ModelKey<PickState<M>, Instance<M>, R>, KD?];
+      return useModel<PickState<M>, Instance<M>, KD>(...parameters);
     };
 
-    const useKeySignal = function useKeySignal<KD extends S>(
+    const useKeySignal = function useKeySignal<KD extends PickState<M>>(
       defaultModelState?: KD
     ) {
       const parameters = (
         arguments.length > 0 ? [key, defaultModelState] : [key]
-      ) as [ModelKey<S, T, R>, KD?];
-      return useSignal<S, T, KD>(...parameters);
+      ) as [ModelKey<PickState<M>, Instance<M>, R>, KD?];
+      return useSignal<PickState<M>, Instance<M>, KD>(...parameters);
     };
 
     function useKeySelector<
-      C extends (instance: ReturnType<R>) => any = (
-        instance: ReturnType<R>
-      ) => ReturnType<R>
+      C extends (
+        instance: R extends undefined
+          ? Instance<M>
+          : ReturnType<R extends undefined ? never : R>
+      ) => any = (
+        instance: R extends undefined
+          ? Instance<M>
+          : ReturnType<R extends undefined ? never : R>
+      ) => R extends undefined
+        ? Instance<M>
+        : ReturnType<R extends undefined ? never : R>
     >(
       callback: C,
       equality?: (a: ReturnType<C>, b: ReturnType<C>) => boolean
@@ -78,35 +88,43 @@ export const model = function model<
     });
   };
 
-  const createUsageStore = function createUsageStore<D extends S>(
+  const createUsageStore = function createUsageStore<D extends PickState<M>>(
     defaultState?: D
   ) {
     const hasDefaultState = arguments.length > 0;
     const store = hasDefaultState
       ? originalCreateStore(defaultState)
       : originalCreateStore();
-    const useStoreModel = function useStoreModel<KD extends S>(
+    const useStoreModel = function useStoreModel<KD extends PickState<M>>(
       defaultModelState?: KD
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<S, T>, KD];
-      return useModel<S, T, KD>(...parameters);
+      ) as [Store<PickState<M>, Instance<M>>, KD];
+      return useModel<PickState<M>, Instance<M>, KD>(...parameters);
     };
 
-    const useStoreSignal = function useStoreSignal<KD extends S>(
+    const useStoreSignal = function useStoreSignal<KD extends PickState<M>>(
       defaultModelState?: KD
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<S, T>, KD?];
-      return useSignal<S, T, KD>(...parameters);
+      ) as [Store<PickState<M>, Instance<M>>, KD?];
+      return useSignal<PickState<M>, Instance<M>, KD>(...parameters);
     };
 
     function useStoreSelector<
-      C extends (instance: ReturnType<R>) => any = (
-        instance: ReturnType<R>
-      ) => ReturnType<R>
+      C extends (
+        instance: R extends undefined
+          ? Instance<M>
+          : ReturnType<R extends undefined ? never : R>
+      ) => any = (
+        instance: R extends undefined
+          ? Instance<M>
+          : ReturnType<R extends undefined ? never : R>
+      ) => R extends undefined
+        ? Instance<M>
+        : ReturnType<R extends undefined ? never : R>
     >(
       callback: C,
       equality?: (a: ReturnType<C>, b: ReturnType<C>) => boolean
@@ -128,21 +146,21 @@ export const model = function model<
     });
   };
 
-  const useUsageModel = function useUsageModel<KD extends S>(
+  const useUsageModel = function useUsageModel<KD extends PickState<M>>(
     defaultModelState: KD
   ) {
-    return useModel<S, T, KD>(modelLike, defaultModelState);
+    return useModel(modelLike, defaultModelState);
   };
 
-  const useUsageSignal = function useUsageSignal<KD extends S>(
+  const useUsageSignal = function useUsageSignal<KD extends PickState<M>>(
     defaultModelState: KD
   ) {
-    return useSignal<S, T, KD>(modelLike, defaultModelState);
+    return useSignal(modelLike, defaultModelState);
   };
 
-  function useUsageControlledModel<KD extends S>(
+  function useUsageControlledModel<KD extends PickState<M>>(
     state: KD,
-    onChange: (s: S) => any
+    onChange: (s: PickState<M>) => any
   ) {
     return useControlledModel(modelUsage, state, onChange);
   }

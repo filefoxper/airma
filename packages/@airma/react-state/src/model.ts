@@ -15,9 +15,9 @@ export function useControlledModel<
   S,
   T extends ModelInstance,
   D extends S,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 >(
-  modelLike: Model<S, T> | ModelUsage<S, T, R>,
+  modelLike: Model<S, T> | ModelUsage<Model<S, T>, R>,
   state: D,
   onChange: (s: S) => any
 ): T {
@@ -49,17 +49,20 @@ export function useModel<
   S,
   T extends ModelInstance,
   D extends S,
-  R extends (instance: () => T) => any = (instance: () => T) => T
+  R extends undefined | ((instance: () => T) => any) = undefined
 >(
   modelLike:
     | Model<S, T>
     | ModelKey<S, T>
     | Store<S, T, R>
-    | ModelUsage<S, T, R>,
+    | ModelUsage<Model<S, T>, R>,
   state?: D
 ): T {
   const hasDefaultState = arguments.length > 1;
-  const store = useModelInitialize(modelLike, { hasDefaultState, state });
+  const store = useModelInitialize<S, T, D, R>(modelLike, {
+    hasDefaultState,
+    state
+  });
 
   const [data, setData] = useState(() => {
     const ins = store.getInstance();

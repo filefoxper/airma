@@ -24,7 +24,7 @@ export function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
 function findStore<
   S,
   T extends ModelInstance,
-  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+  R extends undefined | ((getInstance: () => T) => any) = undefined
 >(
   stores: ModelStores | null | undefined,
   storeIndex: Key<S, T, R> | StoreIndex<S, T, R>
@@ -43,9 +43,13 @@ export function useModelInitialize<
   S,
   T extends ModelInstance,
   D extends S,
-  R extends (getInstance: () => T) => any = (getInstance: () => T) => T
+  R extends undefined | ((getInstance: () => T) => any) = undefined
 >(
-  model: Model<S, T> | ModelUsage<S, T, R> | ModelKey<S, T, R> | Store<S, T, R>,
+  model:
+    | Model<S, T>
+    | ModelUsage<Model<S, T>, R>
+    | ModelKey<S, T, R>
+    | Store<S, T, R>,
   opt?: {
     controlled?: boolean;
     hasDefaultState?: boolean;
@@ -78,9 +82,11 @@ export function useModelInitialize<
         return foundStore;
       }
       if (controlled) {
-        return config({ controlled }).model<S, T, R>(model).createStore();
+        return config({ controlled })
+          .model<Model<S, T>, R>(model)
+          .createStore();
       }
-      if (validations.isModelUsage<S, T, R>(model)) {
+      if (validations.isModelUsage<Model<S, T>, R>(model)) {
         return model.createStore();
       }
       const { createStore } = config(
@@ -99,7 +105,7 @@ export function useModelInitialize<
               }
             }
           : {}
-      ).model<S, T, R>(model);
+      ).model<Model<S, T>, R>(model);
       return createStore();
     })();
     if (hasDefaultState) {
