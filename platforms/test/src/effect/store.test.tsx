@@ -1,6 +1,8 @@
 import React from 'react';
 import { createSessionKey, createSessionStore, provide, useQuery, useSession } from '@airma/react-effect';
 import { waitFor } from '@testing-library/react';
+import { createKey, useModel } from '@airma/react-state';
+import { act } from '@testing-library/react-hooks';
 import { renderEffectHook } from '@/util';
 import type { ReactNode } from 'react';
 
@@ -69,6 +71,30 @@ describe('动态会话库的用法', () => {
       { wrapper: provide(sessionKey).to(({ children }: { children?: ReactNode }) => <>{children}</>) },
     );
     await waitFor(() => expect(result.current.sessionState.data).toBe('session:test'));
+  });
+
+  test('provide 可同时支持会话键和 @airma/react-state 模型键', async () => {
+    const counterKey = createKey((count: number) => {
+      return {
+        count,
+        increase: () => count + 1,
+        decrease: () => count - 1,
+      };
+    });
+    const sessionKey = createSessionKey(sessionCallback, 'query');
+    const { result } = renderEffectHook(
+      () => {
+        const { count, increase } = useModel(counterKey, 0);
+        const [sessionState] = useQuery(sessionKey, [`${count}`]);
+        return { sessionState, increase };
+      },
+      { wrapper: provide(sessionKey, counterKey).to(({ children }: { children?: ReactNode }) => <>{children}</>) },
+    );
+    await waitFor(() => result.current.sessionState.round === 1);
+    act(() => {
+      result.current.increase();
+    });
+    await waitFor(() => expect(result.current.sessionState.data).toBe('session:1'));
   });
 
   test('会话键不能在其 provide 范围外使用', async () => {

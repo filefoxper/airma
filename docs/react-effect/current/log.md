@@ -202,3 +202,7 @@
 * add *createSessionStore* API.
 * add session token to control sessionState.isFetching and sessionState.round.
 * package dependencies: @airma/react-state upgrade to 18.6.0. 
+
+# v18.6.1
+
+* complement some typescript support
