@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-hooks';
-import { createKey, provide, useControlledModel, useModel } from '@airma/react-state';
+import { createKey, model, provide, useControlledModel, useModel } from '@airma/react-state';
 import React, { memo, useRef, useState } from 'react';
 import { act as reactAct, render } from '@testing-library/react';
 
@@ -24,6 +24,14 @@ const counter = function counter(count: number) {
 describe('useModel 的用法', () => {
   test('通过 useModel 可直接获取当前模型实例', () => {
     const { result } = renderHook(() => useModel(counter, 0));
+    act(() => {
+      result.current.increase();
+    });
+    expect(result.current.count).toBe(1);
+  });
+
+  test('通过 useModel 可直接获取 model 化模型的实例', () => {
+    const { result } = renderHook(() => useModel(model(counter), 0));
     act(() => {
       result.current.increase();
     });
@@ -133,6 +141,18 @@ describe('useControlledModel 可用于非受控状态管理', () => {
     const { result } = renderHook(() => {
       const [value, setValue] = useState(0);
       const instance = useControlledModel(counter, value, setValue);
+      return { instance, value };
+    });
+    act(() => {
+      result.current.instance.increase();
+    });
+    expect(result.current.value).toBe(1);
+  });
+
+  test('useControlledModel 也可以使用 model 化模型', () => {
+    const { result } = renderHook(() => {
+      const [value, setValue] = useState(0);
+      const instance = useControlledModel(model(counter), value, setValue);
       return { instance, value };
     });
     act(() => {

@@ -180,3 +180,7 @@
   * model().createStore().provide(), 
   * model().createStore().provideTo(), 
   * model().createStore().Provider()
+
+## v18.6.2
+
+* fix some problem about typescript support

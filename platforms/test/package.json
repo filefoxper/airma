@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "test",
   "version": "18.6.0",
   "description": "this is a test for airma",

@@ -1,4 +1,4 @@
-import { createKey, provide, useSignal } from '@airma/react-state';
+import { createKey, model, provide, useSignal } from '@airma/react-state';
 import { act, renderHook } from '@testing-library/react-hooks';
 import React, { memo, useRef } from 'react';
 import { render, act as reactAct } from '@testing-library/react';
@@ -24,6 +24,15 @@ const counter = function counter(count: number) {
 describe('useSignal 的用法', () => {
   test('通过 useSignal 产生的 signal 回调，可获取最新的实例', () => {
     const { result } = renderHook(() => useSignal(counter, 0));
+    const signal = result.current;
+    act(() => {
+      signal().increase();
+    });
+    expect(signal().count).toBe(1);
+  });
+
+  test('useSignal 可使用 model 化模型', () => {
+    const { result } = renderHook(() => useSignal(model(counter), 0));
     const signal = result.current;
     act(() => {
       signal().increase();

@@ -139,3 +139,7 @@
   * model().createStore().provide(), 
   * model().createStore().provideTo(), 
   * model().createStore().Provider()
+
+## v18.6.2
+
+* 修复部分接口的 typescript 类型问题

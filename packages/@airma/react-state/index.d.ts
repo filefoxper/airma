@@ -23,7 +23,7 @@ declare type PickModelUsageWrapper<M extends StoreIndex> =
 declare type InstanceOf<
   T extends ModelInstance,
   R extends undefined | ((instance: () => T) => any)
-> = R extends undefined ? T : ReturnType<R>;
+> = R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
 
 export declare type ModelKey<
   S = any,
@@ -212,9 +212,15 @@ export declare function useSelector<
   S,
   T extends ModelInstance,
   R extends undefined | ((instance: () => T) => any) = undefined,
-  C extends (instance: R extends undefined ? T : ReturnType<R>) => any = (
-    instance: R extends undefined ? T : ReturnType<R>
-  ) => R extends undefined ? T : ReturnType<R>
+  C extends (
+    instance: R extends undefined
+      ? T
+      : ReturnType<R extends undefined ? never : R>
+  ) => any = (
+    instance: R extends undefined
+      ? T
+      : ReturnType<R extends undefined ? never : R>
+  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>
 >(
   modelLike: ModelKey<S, T, R> | Store<S, T, R>,
   selector: C,
@@ -240,9 +246,15 @@ declare interface ApiSelector<
   R extends undefined | ((getInstance: () => T) => any) = undefined
 > {
   <
-    C extends (instance: R extends undefined ? T : ReturnType<R>) => any = (
-      instance: R extends undefined ? T : ReturnType<R>
-    ) => R extends undefined ? T : ReturnType<R>
+    C extends (
+      instance: R extends undefined
+        ? T
+        : ReturnType<R extends undefined ? never : R>
+    ) => any = (
+      instance: R extends undefined
+        ? T
+        : ReturnType<R extends undefined ? never : R>
+    ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>
   >(
     callback: C,
     equality?: (a: ReturnType<C>, b: ReturnType<C>) => boolean
@@ -256,7 +268,7 @@ declare interface ModelKeyApi<
 > extends ModelKey<S, T, R> {
   useModel: <D extends S>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R>;
+  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
   useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
   useSelector: ApiSelector<S, T, R>;
 }
@@ -268,12 +280,12 @@ declare interface StoreApi<
 > extends Store<S, T, R> {
   useModel: <D extends S>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R>;
+  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
   useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
   useSelector: ApiSelector<S, T, R>;
   instance: <D extends S>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R>;
+  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
 }
 
 declare interface ModelUsageApi<
@@ -296,10 +308,14 @@ declare interface ModelUsageApi<
   useControlledModel: <D extends PickState<M>>(
     state: D,
     onChange: (s: PickState<M>) => any
-  ) => R extends undefined ? Instance<M> : ReturnType<R>;
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
   useModel: <D extends PickState<M>>(
     defaultState?: D
-  ) => R extends undefined ? Instance<M> : ReturnType<R>;
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
   useSignal: <D extends PickState<M>>(
     defaultState?: D
   ) => Signal<PickState<M>, Instance<M>, R>;
