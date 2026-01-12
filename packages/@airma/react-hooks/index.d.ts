@@ -10,7 +10,9 @@ export declare type GlobalConfig = StateGlobalConfig & EffectGlobalConfig;
 
 export * from '@airma/react-hooks-core';
 
-export declare type ModelKeys = StoreIndex | ModelKey;
+export declare type ModelKeys =
+  | StoreIndex<any, any, any>
+  | ModelKey<any, any, any>;
 
 export {
   createKey,
@@ -38,12 +40,12 @@ export {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex
-    | ModelKey
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>
-    | Record<number, StoreIndex>
-    | Record<number, ModelKey>
+    | StoreIndex<any, any, any>
+    | ModelKey<any, any, any>
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>
+    | Record<number, StoreIndex<any, any, any>>
+    | Record<number, ModelKey<any, any, any>>
   )[]
 ): {
   <P extends Record<string, any>>(
@@ -57,13 +59,13 @@ export declare function provide(
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex
-        | ModelKey
-        | Record<string, StoreIndex>
-        | Record<string, ModelKey>
+        | StoreIndex<any, any, any>
+        | ModelKey<any, any, any>
+        | Record<string, StoreIndex<any, any, any>>
+        | Record<string, ModelKey<any, any, any>>
       >
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>;
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>;
   children?: ReactNode;
 }>;
 
