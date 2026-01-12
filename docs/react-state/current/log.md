@@ -184,3 +184,7 @@
 ## v18.6.2
 
 * fix some problem about typescript support
+
+## v18.6.3
+
+* complement some typescript support

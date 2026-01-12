@@ -7,7 +7,9 @@ import type {
 } from 'react';
 import type { SessionRequest } from './src/libs/type';
 
-export declare type ModelKeys = ModelKey | StoreIndex;
+export declare type ModelKeys =
+  | ModelKey<any, any, any>
+  | StoreIndex<any, any, any>;
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -465,13 +467,13 @@ export declare const useResponse: {
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex
-        | ModelKey
-        | Record<string, StoreIndex>
-        | Record<string, ModelKey>
+        | StoreIndex<any, any, any>
+        | ModelKey<any, any, any>
+        | Record<string, StoreIndex<any, any, any>>
+        | Record<string, ModelKey<any, any, any>>
       >
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>;
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>;
   children?: ReactNode;
 }>;
 
@@ -569,12 +571,12 @@ export declare const Strategy: {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex
-    | ModelKey
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>
-    | Record<number, StoreIndex>
-    | Record<number, ModelKey>
+    | StoreIndex<any, any, any>
+    | ModelKey<any, any, any>
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>
+    | Record<number, StoreIndex<any, any, any>>
+    | Record<number, ModelKey<any, any, any>>
   )[]
 ): {
   <P extends Record<string, any>>(

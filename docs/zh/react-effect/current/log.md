@@ -206,3 +206,7 @@
 * Strategy.validate 的异步判断完成前，会话状态 isFetching 为 true。
 * Strategy.debounce 非 lead 设置下，进入 debounce 状态时，会话状态 isFetching 为 true。
 * package 依赖项 @airma/react-state 升级至 18.6.0 
+
+## v18.6.1
+
+* 完善部分接口的 typescript 类型

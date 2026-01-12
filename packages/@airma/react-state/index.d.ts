@@ -168,13 +168,13 @@ export declare function useControlledModel<
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex
-        | ModelKey
-        | Record<string, StoreIndex>
-        | Record<string, ModelKey>
+        | StoreIndex<any, any, any>
+        | ModelKey<any, any, any>
+        | Record<string, StoreIndex<any, any, any>>
+        | Record<string, ModelKey<any, any, any>>
       >
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>;
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>;
   children?: ReactNode;
 }>;
 
@@ -192,12 +192,12 @@ export declare const ConfigProvider: FC<{
 
 export declare function provide(
   ...value: (
-    | StoreIndex
-    | ModelKey
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey>
-    | Record<number, StoreIndex>
-    | Record<number, ModelKey>
+    | StoreIndex<any, any, any>
+    | ModelKey<any, any, any>
+    | Record<string, StoreIndex<any, any, any>>
+    | Record<string, ModelKey<any, any, any>>
+    | Record<number, StoreIndex<any, any, any>>
+    | Record<number, ModelKey<any, any, any>>
   )[]
 ): {
   <P extends Record<string, any>>(
