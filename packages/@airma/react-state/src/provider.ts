@@ -43,6 +43,9 @@ function parseKeySetToKeys(
       if (ifModelKeyOrStoreIndex(cur)) {
         return [...re, cur];
       }
+      if (!cur) {
+        return re;
+      }
       const data = Object.values(cur).filter(ifModelKeyOrStoreIndex);
       return [...re, ...data];
     },
