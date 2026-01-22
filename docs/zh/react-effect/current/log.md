@@ -210,3 +210,7 @@
 ## v18.6.1
 
 * 完善部分接口的 typescript 类型
+
+## v18.6.2
+
+* 跟随 @airma/react-state 调整 typescript 类型
