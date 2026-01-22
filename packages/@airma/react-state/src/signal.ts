@@ -6,26 +6,26 @@ import type { SignalGenerator } from './type';
 import type {
   Action,
   Model,
-  ModelInstance,
   ModelKey,
   Store,
-  ModelUsage
+  ModelUsage,
+  Instance,
+  PickState
 } from 'as-model';
 
 function useSignalSubscribeConnection<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends Model,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  signal: SignalGenerator<S, T, R>,
-  subscription: (ins: T, act: Action | null) => void | (() => void)
+  signal: SignalGenerator<M, R>,
+  subscription: (ins: Instance<M>, act: Action | null) => void | (() => void)
 ) {
   const actionsCollectionRef = useRef<
-    null | ((i: T) => ((...args: any[]) => any)[])
+    null | ((i: Instance<M>) => ((...args: any[]) => any)[])
   >(null);
   const changesCollectionRef = useRef<{
     collections: any[] | null;
-    collector: null | ((i: T) => any[]);
+    collector: null | ((i: Instance<M>) => any[]);
   }>({ collector: null, collections: null });
   const destroyRef = useRef<(() => void) | null>(null);
   const protectedDispatch = useRenderProtectDispatch(action => {
@@ -73,21 +73,21 @@ function useSignalSubscribeConnection<
     };
   }, []);
   const res = {
-    onActions(collector: (i: T) => ((...args: any[]) => any)[]) {
+    onActions(collector: (i: Instance<M>) => ((...args: any[]) => any)[]) {
       actionsCollectionRef.current = collector;
     },
-    onChanges(collector: (i: T) => any[]) {
+    onChanges(collector: (i: Instance<M>) => any[]) {
       changesCollectionRef.current.collector = collector;
     }
   };
   return {
-    onActions(collector: (i: T) => ((...args: any[]) => any)[]) {
+    onActions(collector: (i: Instance<M>) => ((...args: any[]) => any)[]) {
       res.onActions(collector);
       return {
         onChanges: res.onChanges
       };
     },
-    onChanges(collector: (i: T) => any[]) {
+    onChanges(collector: (i: Instance<M>) => any[]) {
       res.onChanges(collector);
       return {
         onActions: res.onActions
@@ -97,12 +97,11 @@ function useSignalSubscribeConnection<
 }
 
 function getSignalSubscribe<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(signal: SignalGenerator<S, T, R>) {
+  M extends Model,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(signal: SignalGenerator<M, R>) {
   const useWatch = function useWatch(
-    subscription: (ins: T, act: Action | null) => void | (() => void)
+    subscription: (ins: Instance<M>, act: Action | null) => void | (() => void)
   ) {
     return useSignalSubscribeConnection(signal, (ins, act) => {
       if (act?.method == null) {
@@ -112,11 +111,11 @@ function getSignalSubscribe<
     });
   };
   const useEffective = function useEffective(
-    subscription: (ins: T, act: Action | null) => void | (() => void)
+    subscription: (ins: Instance<M>, act: Action | null) => void | (() => void)
   ) {
     const [wrap, setWrap] = useState<{
       action: Action | null;
-      instance: T;
+      instance: Instance<M>;
     }>({ action: null, instance: signal.store.getStoreInstance() });
     const filter = useSignalSubscribeConnection(signal, (ins, act) => {
       if (act?.method == null) {
@@ -137,20 +136,12 @@ function getSignalSubscribe<
 }
 
 export function useSignal<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(
-  modelLike:
-    | Model<S, T>
-    | ModelKey<S, T>
-    | Store<S, T, R>
-    | ModelUsage<Model<S, T>, R>,
-  state?: D
-) {
+  M extends Model,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: M | ModelKey<M, R> | Store<M, R> | ModelUsage<M, R>, state?: D) {
   const hasDefaultState = arguments.length > 1;
-  const store = useModelInitialize<S, T, D, R>(modelLike, {
+  const store = useModelInitialize<M, D, R>(modelLike, {
     hasDefaultState,
     state
   });

@@ -17,7 +17,9 @@ export const ModelStoresContext = createContext<ModelStores | undefined>(
 
 export const ConfigContext = createContext<GlobalConfig | undefined>(undefined);
 
-function ifModelKeyOrStoreIndex(data: unknown): data is ModelKey | StoreIndex {
+function ifModelKeyOrStoreIndex(
+  data: unknown
+): data is ModelKey | StoreIndex<any> {
   return (
     validations.isModelKey(data) ||
     (!!data && validations.isModelKey((data as { key: unknown }).key))
@@ -27,12 +29,12 @@ function ifModelKeyOrStoreIndex(data: unknown): data is ModelKey | StoreIndex {
 function parseKeySetToKeys(
   keySets:
     | Array<
-        | StoreIndex
+        | StoreIndex<any>
         | ModelKey
-        | Record<string, StoreIndex>
+        | Record<string, StoreIndex<any>>
         | Record<string, ModelKey>
       >
-    | Record<string, StoreIndex>
+    | Record<string, StoreIndex<any>>
     | Record<string, ModelKey>
 ) {
   const keySetArray = Array.isArray(keySets) ? keySets : [keySets];
@@ -44,19 +46,19 @@ function parseKeySetToKeys(
       const data = Object.values(cur).filter(ifModelKeyOrStoreIndex);
       return [...re, ...data];
     },
-    [] as Array<ModelKey | StoreIndex>
+    [] as Array<ModelKey | StoreIndex<any>>
   );
 }
 
 export const Provider: FC<{
   value:
     | Array<
-        | StoreIndex
+        | StoreIndex<any>
         | ModelKey
-        | Record<string, StoreIndex>
+        | Record<string, StoreIndex<any>>
         | Record<string, ModelKey>
       >
-    | Record<string, StoreIndex>
+    | Record<string, StoreIndex<any>>
     | Record<string, ModelKey>;
   children?: ReactNode;
 }> = function RequiredModelProvider({ value, children }) {
@@ -102,9 +104,9 @@ export const Provider: FC<{
 
 export function provide(
   ...keys: (
-    | StoreIndex
+    | StoreIndex<any>
     | ModelKey
-    | Record<string, StoreIndex>
+    | Record<string, StoreIndex<any>>
     | Record<string, ModelKey>
   )[]
 ) {

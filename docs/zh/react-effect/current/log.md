@@ -214,3 +214,7 @@
 ## v18.6.2
 
 * 跟随 @airma/react-state 调整 typescript 类型
+
+## v18.6.3
+
+* 再次调整 typescript 接口类型

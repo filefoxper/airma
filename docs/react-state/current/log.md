@@ -192,3 +192,7 @@
 ## v18.6.4
 
 * adjust typescript types.
+
+## v18.6.5
+
+* adjust typescript types.

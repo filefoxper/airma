@@ -3,25 +3,26 @@ import { usePersistFn } from '@airma/react-hooks-core';
 import { useEffect, useState } from 'react';
 import { useInitialize, useModelInitialize } from './initialize';
 import { useRenderProtectDispatch } from './enhance';
-import type { ModelInstance, ModelKey, Store } from 'as-model';
+import type { ModelKey, Store, Instance, Model } from 'as-model';
 
 export function useSelector<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((getInstance: () => T) => any) = undefined,
+  M extends Model,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined,
   C extends (
     instance: R extends undefined
-      ? T
+      ? Instance<M>
       : ReturnType<R extends undefined ? never : R>
   ) => any = (
     instance: R extends undefined
-      ? T
+      ? Instance<M>
       : ReturnType<R extends undefined ? never : R>
   ) => ReturnType<
-    R extends undefined ? T : ReturnType<R extends undefined ? never : R>
+    R extends undefined
+      ? Instance<M>
+      : ReturnType<R extends undefined ? never : R>
   >
 >(
-  modelLike: ModelKey<S, T, R> | Store<S, T, R>,
+  modelLike: ModelKey<M, R> | Store<M, R>,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C> {

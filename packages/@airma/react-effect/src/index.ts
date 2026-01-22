@@ -111,7 +111,7 @@ function toNoRejectionPromiseCallback<
 }
 
 function useController<T, C extends PromiseCallback<T>>(
-  signal: Signal<SessionState<T>, SessionInstance<T>>
+  signal: Signal<(s: SessionState<T>) => SessionInstance<T>>
 ): Controller {
   function getController() {
     const payload = signal.store.payload();
@@ -717,7 +717,7 @@ export function useSession<T, C extends PromiseCallback<T>>(
   () => Promise<SessionState>,
   (...variables: Parameters<C>) => Promise<SessionState>
 ] {
-  const sessionKey = parseStoreMeta(sessionKeyLike);
+  const sessionKey = parseStoreMeta<C>(sessionKeyLike);
   const [, padding] = sessionKey.sessionPayload;
   const { sessionType: sessionKeyType } = padding;
   const signal = useSignal(sessionKey);

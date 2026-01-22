@@ -156,7 +156,7 @@ function useSessionToken() {
 }
 
 export function useStrategyExecution<T>(
-  signal: Signal<SessionState, SessionInstance>,
+  signal: Signal<(state: SessionState) => SessionInstance>,
   sessionRunner: (
     triggerType: TriggerType,
     payload: unknown | undefined,

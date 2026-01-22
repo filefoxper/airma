@@ -40,12 +40,12 @@ export {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex<any, any, any>
-    | ModelKey<any, any, any>
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>
-    | Record<number, StoreIndex<any, any, any>>
-    | Record<number, ModelKey<any, any, any>>
+    | StoreIndex<any, any>
+    | ModelKey<any, any>
+    | Record<string, StoreIndex<any, any>>
+    | Record<string, ModelKey<any, any>>
+    | Record<number, StoreIndex<any, any>>
+    | Record<number, ModelKey<any, any>>
   )[]
 ): {
   <P extends Record<string, any>>(
@@ -59,13 +59,13 @@ export declare function provide(
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex<any, any, any>
-        | ModelKey<any, any, any>
-        | Record<string, StoreIndex<any, any, any>>
-        | Record<string, ModelKey<any, any, any>>
+        | StoreIndex<any, any>
+        | ModelKey<any, any>
+        | Record<string, StoreIndex<any, any>>
+        | Record<string, ModelKey<any, any>>
       >
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>;
+    | Record<string, StoreIndex<any, any>>
+    | Record<string, ModelKey<any, any>>;
   children?: ReactNode;
 }>;
 

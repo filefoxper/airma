@@ -227,7 +227,7 @@ export function useSessionBuildModel<T, C extends PromiseCallback<T>>(
   config?: QueryConfig<T, C> | Parameters<C>
 ): [
   ReturnType<typeof effectModel>,
-  Signal<SessionState, SessionInstance>,
+  Signal<(state: SessionState) => SessionInstance>,
   QueryConfig<T, C>,
   C
 ] {

@@ -4,11 +4,12 @@ import { useConfiguration, useStores } from './provider';
 import type {
   Key,
   Model,
-  ModelInstance,
   ModelKey,
   ModelUsage,
   Store,
-  StoreIndex
+  StoreIndex,
+  PickState,
+  Instance
 } from 'as-model';
 import type { ModelStores } from './type';
 
@@ -22,13 +23,12 @@ export function useInitialize<T extends () => any>(callback: T): ReturnType<T> {
 }
 
 function findStore<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((getInstance: () => T) => any) = undefined
+  M extends Model,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
 >(
   stores: ModelStores | null | undefined,
-  storeIndex: Key<S, T, R> | StoreIndex<S, T, R>
-): Store<S, T, R> | undefined {
+  storeIndex: Key<M, R> | StoreIndex<M, R>
+): Store<M, R> | undefined {
   if (stores == null) {
     return undefined;
   }
@@ -40,16 +40,11 @@ function findStore<
 }
 
 export function useModelInitialize<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((getInstance: () => T) => any) = undefined
+  M extends Model,
+  D extends PickState<M>,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
 >(
-  model:
-    | Model<S, T>
-    | ModelUsage<Model<S, T>, R>
-    | ModelKey<S, T, R>
-    | Store<S, T, R>,
+  model: M | ModelUsage<M, R> | ModelKey<M, R> | Store<M, R>,
   opt?: {
     controlled?: boolean;
     hasDefaultState?: boolean;
@@ -61,32 +56,30 @@ export function useModelInitialize<
   const controlled = opt?.controlled;
 
   const ifModelIsModelOrModelUsage =
-    !validations.isModelStore<S, T, R>(model) &&
-    !validations.isModelKey<S, T, R>(model);
+    !validations.isModelStore<M, R>(model) &&
+    !validations.isModelKey<M, R>(model);
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const stores = ifModelIsModelOrModelUsage ? undefined : useStores();
   const optimize = useConfiguration();
 
-  const initializedStore: Store<S, T, R> = useInitialize(() => {
+  const initializedStore: Store<M, R> = useInitialize(() => {
     const store = (function findOrCreateStore() {
-      if (validations.isModelStore<S, T, R>(model)) {
-        const foundStore = findStore<S, T, R>(stores, model);
+      if (validations.isModelStore<M, R>(model)) {
+        const foundStore = findStore<M, R>(stores, model);
         return foundStore ?? model;
       }
-      if (validations.isModelKey<S, T, R>(model)) {
-        const foundStore = findStore<S, T, R>(stores, model);
+      if (validations.isModelKey<M, R>(model)) {
+        const foundStore = findStore<M, R>(stores, model);
         if (foundStore == null) {
           throw new Error('Can not find the store of template model key.');
         }
         return foundStore;
       }
       if (controlled) {
-        return config({ controlled })
-          .model<Model<S, T>, R>(model)
-          .createStore();
+        return config({ controlled }).model<M, R>(model).createStore();
       }
-      if (validations.isModelUsage<Model<S, T>, R>(model)) {
+      if (validations.isModelUsage<M, R>(model)) {
         return model.createStore();
       }
       const { createStore } = config(
@@ -105,7 +98,7 @@ export function useModelInitialize<
               }
             }
           : {}
-      ).model<Model<S, T>, R>(model);
+      ).model<M, R>(model);
       return createStore();
     })();
     if (hasDefaultState) {

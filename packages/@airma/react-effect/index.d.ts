@@ -1,4 +1,4 @@
-import type { ModelKey, ModelStore, StoreIndex } from '@airma/react-state';
+import type { ModelKey, Store, StoreIndex } from '@airma/react-state';
 import type {
   ReactNode,
   ComponentType,
@@ -108,15 +108,19 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
 
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
-export declare interface SessionKey<E extends PromiseCallback<any>>
-  extends ModelKey<(state: SessionState) => SessionInstance> {
+export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
+  any,
+  undefined
+> & {
   sessionPayload: [E, { sessionType?: SessionType }];
-}
+};
 
-export declare interface SessionStore<E extends PromiseCallback<any>>
-  extends ModelStore<(state: SessionState) => SessionInstance> {
+export declare type SessionStore<E extends PromiseCallback<any>> = Store<
+  any,
+  undefined
+> & {
   sessionPayload: [E, { sessionType?: SessionType }];
-}
+};
 
 export declare interface QuerySessionKey<E extends PromiseCallback<any>>
   extends SessionKey<E> {
@@ -199,7 +203,7 @@ declare type DefaultMutationConfig<
   );
 
 declare interface SessionCreation<E extends PromiseCallback<any>>
-  extends StoreIndex {
+  extends StoreIndex<(state: SessionState) => SessionInstance, undefined> {
   key: SessionKey<E>;
 }
 
@@ -465,13 +469,13 @@ export declare const useResponse: {
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex
-        | ModelKey<any>
-        | Record<string, StoreIndex>
-        | Record<string, ModelKey<any>>
+        | StoreIndex<any, any>
+        | ModelKey<any, any>
+        | Record<string, StoreIndex<any, any>>
+        | Record<string, ModelKey<any, any>>
       >
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey<any>>;
+    | Record<string, StoreIndex<any, any>>
+    | Record<string, ModelKey<any, any>>;
   children?: ReactNode;
 }>;
 
@@ -569,12 +573,12 @@ export declare const Strategy: {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex
-    | ModelKey<any>
-    | Record<string, StoreIndex>
-    | Record<string, ModelKey<any>>
-    | Record<number, StoreIndex>
-    | Record<number, ModelKey<any>>
+    | StoreIndex<any, any>
+    | ModelKey<any, any>
+    | Record<string, StoreIndex<any, any>>
+    | Record<string, ModelKey<any, any>>
+    | Record<number, StoreIndex<any, any>>
+    | Record<number, ModelKey<any, any>>
   )[]
 ): {
   <P extends Record<string, any>>(

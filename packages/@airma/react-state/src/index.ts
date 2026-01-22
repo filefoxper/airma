@@ -1,5 +1,5 @@
 import { config, shallowEqual as shallowEq } from 'as-model';
-import type { Model, ModelInstance, ModelKey, Store } from 'as-model';
+import type { Model, ModelKey, Store, PickState } from 'as-model';
 
 export { useModel, useControlledModel } from './model';
 
@@ -12,20 +12,19 @@ export { provide, Provider, ConfigProvider } from './provider';
 export const shallowEqual = shallowEq;
 
 export const createKey = function createKey<
-  S,
-  T extends ModelInstance,
-  D extends S
->(modelFn: Model<S, T>, defaultState?: D): ModelKey<S, T> {
+  M extends Model,
+  D extends PickState<M>
+>(modelFn: M, defaultState?: D): ModelKey<M> {
   const hasDefaultState = arguments.length > 1;
   return hasDefaultState
-    ? config({}).createKey<S, T, D>(modelFn, defaultState)
-    : config({}).createKey<S, T, D>(modelFn);
+    ? config({}).createKey<M, D>(modelFn, defaultState)
+    : config({}).createKey<M, D>(modelFn);
 };
 
-export const createStore = function createStore<S, T extends ModelInstance>(
-  modelFn: Model<S, T>,
-  defaultState?: S
-): Store<S, T> {
+export const createStore = function createStore<
+  M extends Model,
+  D extends PickState<M>
+>(modelFn: M, defaultState?: D): Store<M> {
   const hasDefaultState = arguments.length > 1;
   return hasDefaultState
     ? config({}).createStore(modelFn, defaultState)

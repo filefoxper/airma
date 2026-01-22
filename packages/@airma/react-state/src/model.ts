@@ -2,25 +2,29 @@ import { usePersistFn } from '@airma/react-hooks-core';
 import { useEffect, useState } from 'react';
 import { useModelInitialize } from './initialize';
 import { useRenderProtectDispatch } from './enhance';
+import type { ResultOf } from './type';
+import type { InstanceOf, ModelLike } from '../index';
 import type {
   Action,
+  Instance,
   Model,
-  ModelInstance,
   ModelKey,
   ModelUsage,
+  PickState,
   Store
 } from 'as-model';
 
 export function useControlledModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends Model,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  modelLike: Model<S, T> | ModelUsage<Model<S, T>, R>,
+  modelLike: M | ModelUsage<M, R>,
   state: D,
-  onChange: (s: S) => any
-): T {
+  onChange: (s: PickState<M>) => any
+): R extends undefined
+  ? Instance<M>
+  : ReturnType<R extends undefined ? never : R> {
   const store = useModelInitialize(modelLike, {
     hasDefaultState: true,
     state,
@@ -46,20 +50,34 @@ export function useControlledModel<
 }
 
 export function useModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(
-  modelLike:
-    | Model<S, T>
-    | ModelKey<S, T>
-    | Store<S, T, R>
-    | ModelUsage<Model<S, T>, R>,
+  M extends Model,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelUsage<M, R>, state?: D): ResultOf<Instance<M>, R>;
+export function useModel<M extends Model, D extends PickState<M>>(
+  modelLike: M,
   state?: D
-): T {
+): Instance<M>;
+export function useModel<
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelKey<M, R>, state?: D): InstanceOf<Instance<M>, R>;
+export function useModel<
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: Store<M, R>, state?: D): InstanceOf<Instance<M>, R>;
+export function useModel<
+  M extends Model,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(
+  modelLike: M | ModelKey<M, R> | Store<M, R> | ModelUsage<M, R>,
+  state?: D
+): ResultOf<Instance<M>, R> {
   const hasDefaultState = arguments.length > 1;
-  const store = useModelInitialize<S, T, D, R>(modelLike, {
+  const store = useModelInitialize<M, D, R>(modelLike, {
     hasDefaultState,
     state
   });
