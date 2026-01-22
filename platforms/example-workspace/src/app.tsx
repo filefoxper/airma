@@ -181,10 +181,25 @@ const creatingStore = model((userData: Omit<User, 'id'>) => {
   };
 });
 
+const testModel = function testModel<T>(s: T) {
+  return {
+    state: s,
+    updateState(state: T) {
+      return state;
+    }
+  };
+};
+
+function useDataTest<T>(defaultState: T) {
+  const signal = useSignal(testModel<T>, defaultState);
+}
+
 const Creating = memo(
   ({ onClose, error }: { error?: ErrorSessionState; onClose: () => any }) => {
     const creating = store.useSelector(s => s.creating);
     const signal = creatingStore.useSignal({ name: '', username: '', age: 10 });
+
+    useSignal(testModel);
 
     const { user, changeUsername, changeName, fetchDefault } = signal();
 

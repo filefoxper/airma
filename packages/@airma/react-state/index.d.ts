@@ -1,6 +1,5 @@
 import type { ReactNode, ComponentType, ExoticComponent } from 'react';
 import type {
-  StoreIndex as AsStoreIndex,
   ModelKey as AsModelKey,
   ModelInstance,
   ModelUsage,
@@ -11,14 +10,7 @@ import type {
   PickState
 } from 'as-model';
 
-declare type PickKeyWrapper<M extends ModelKey> =
-  M extends ModelKey<any, any, infer R> ? R : never;
-
-declare type PickStoreWrapper<M extends StoreIndex> =
-  M extends Store<any, any, infer R> ? R : never;
-
-declare type PickModelUsageWrapper<M extends StoreIndex> =
-  M extends ModelUsage<any, infer R> ? R : never;
+export declare type ModelLike = (state: any) => any;
 
 declare type InstanceOf<
   T extends ModelInstance,
@@ -26,60 +18,47 @@ declare type InstanceOf<
 > = R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
 
 export declare type ModelKey<
-  S = any,
-  T extends ModelInstance = any,
+  M extends ModelLike,
   R extends undefined | ((instance: () => T) => any) = undefined
-> = AsModelKey<S, T, R>;
+> = AsModelKey<PickState<M>, Instance<M>, R>;
 
 export declare type ModelStore<
-  S = any,
-  T extends ModelInstance = any,
+  M extends ModelLike,
   R extends undefined | ((instance: () => T) => any) = undefined
-> = Store<S, T, R>;
+> = Store<PickState<M>, Instance<M>, R>;
 
 export declare type StoreIndex<
-  S = any,
-  T extends ModelInstance = any,
+  M extends ModelLike = any,
   R extends undefined | ((instance: () => T) => any) = undefined
-> = AsStoreIndex<S, T, R>;
-
-export declare type ModelLike = (state: any) => any;
+> = ModelStore<M, R>;
 
 export declare function useModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: ModelUsage<Model<S, T>, R>, state?: D): InstanceOf<T, R>;
-export declare function useModel<S, T extends ModelInstance, D extends S>(
-  modelLike: Model<S, T>,
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelUsage<M, R>, state?: D): InstanceOf<Instance<M>, R>;
+export declare function useModel<M extends ModelLike, D extends PickState<M>>(
+  modelLike: M,
   state?: D
-): T;
+): Instance<M>;
 export declare function useModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: ModelKey<S, T, R>, state?: D): InstanceOf<T, R>;
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelKey<M, R>, state?: D): InstanceOf<Instance<M>, R>;
 export declare function useModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: Store<S, T, R>, state?: D): InstanceOf<T, R>;
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelStore<M, R>, state?: D): InstanceOf<Instance<M>, R>;
 export declare function useModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  modelLike:
-    | Model<S, T>
-    | ModelKey<S, T, R>
-    | Store<S, T, R>
-    | ModelUsage<Model<S, T>, R>,
+  modelLike: M | ModelKey<M, R> | ModelStore<M, R> | ModelUsage<M, R>,
   state?: D
-): InstanceOf<T, R>;
+): InstanceOf<Instance<M>, R>;
 
 declare interface EffectDeps<T extends ModelInstance> {
   onActions: (
@@ -104,77 +83,66 @@ declare interface Signal<
 }
 
 export declare function useSignal<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: ModelUsage<Model<S, T>, R>, state?: D): Signal<S, T, R>;
-export declare function useSignal<S, T extends ModelInstance, D extends S>(
-  modelLike: Model<S, T>,
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelUsage<M, R>, state?: D): Signal<PickState<M>, Instance<M>, R>;
+export declare function useSignal<M extends ModelLike, D extends PickState<M>>(
+  modelLike: M,
   state?: D
-): Signal<S, T>;
+): Signal<PickState<M>, Instance<M>>;
 export declare function useSignal<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: ModelKey<S, T, R>, state?: D): Signal<S, T, R>;
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelKey<M, R>, state?: D): Signal<PickState<M>, Instance<M>, R>;
 export declare function useSignal<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
->(modelLike: Store<S, T, R>, state?: D): Signal<S, T, R>;
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
+>(modelLike: ModelStore<M, R>, state?: D): Signal<PickState<M>, Instance<M>, R>;
 export declare function useSignal<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  modelLike:
-    | Model<S, T>
-    | ModelKey<S, T, R>
-    | Store<S, T, R>
-    | ModelUsage<Model<S, T>, R>,
+  modelLike: M | ModelKey<M, R> | ModelStore<M, R> | ModelUsage<M, R>,
   state?: D
-): Signal<S, T, R>;
+): Signal<PickState<M>, Instance<M>, R>;
 
 export declare function useControlledModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  modelLike: ModelUsage<Model<S, T>, R>,
+  modelLike: ModelUsage<M, R>,
   state: D,
-  onChange: (s: S) => any
-): InstanceOf<T, R>;
+  onChange: (s: PickState<M>) => any
+): InstanceOf<Instance<M>, R>;
 export declare function useControlledModel<
-  S,
-  T extends ModelInstance,
-  D extends S
->(modelLike: Model<S, T>, state: D, onChange: (s: S) => any): T;
+  M extends ModelLike,
+  D extends PickState<M>
+>(modelLike: M, state: D, onChange: (s: PickState<M>) => any): Instance<M>;
 export declare function useControlledModel<
-  S,
-  T extends ModelInstance,
-  D extends S,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends ModelLike,
+  D extends PickState<M>,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(
-  modelLike: Model<S, T> | ModelUsage<Model<S, T>, R>,
+  modelLike: M | ModelUsage<M, R>,
   state: D,
-  onChange: (s: S) => any
-): InstanceOf<T, R>;
+  onChange: (s: PickState<M>) => any
+): InstanceOf<Instance<M>, R>;
 
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex<any, any, any>
-        | ModelKey<any, any, any>
-        | Record<string, StoreIndex<any, any, any>>
-        | Record<string, ModelKey<any, any, any>>
+        | StoreIndex
+        | ModelKey<any>
+        | Record<string, StoreIndex>
+        | Record<string, ModelKey<any>>
       >
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>;
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey<any>>;
   children?: ReactNode;
 }>;
 
@@ -192,12 +160,12 @@ export declare const ConfigProvider: FC<{
 
 export declare function provide(
   ...value: (
-    | StoreIndex<any, any, any>
-    | ModelKey<any, any, any>
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>
-    | Record<number, StoreIndex<any, any, any>>
-    | Record<number, ModelKey<any, any, any>>
+    | StoreIndex
+    | ModelKey<any>
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey<any>>
+    | Record<number, StoreIndex>
+    | Record<number, ModelKey<any>>
   )[]
 ): {
   <P extends Record<string, any>>(
@@ -209,33 +177,72 @@ export declare function provide(
 };
 
 export declare function useSelector<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((instance: () => T) => any) = undefined,
+  M extends ModelLike,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined,
   C extends (
     instance: R extends undefined
-      ? T
+      ? Instance<M>
       : ReturnType<R extends undefined ? never : R>
   ) => any = (
     instance: R extends undefined
-      ? T
+      ? Instance<M>
       : ReturnType<R extends undefined ? never : R>
-  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>
 >(
-  modelLike: ModelKey<S, T, R> | Store<S, T, R>,
+  modelLike: ModelKey<M, R>,
+  selector: C,
+  equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+): ReturnType<C>;
+export declare function useSelector<
+  M extends ModelLike,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined,
+  C extends (
+    instance: R extends undefined
+      ? Instance<M>
+      : ReturnType<R extends undefined ? never : R>
+  ) => any = (
+    instance: R extends undefined
+      ? Instance<M>
+      : ReturnType<R extends undefined ? never : R>
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>
+>(
+  modelLike: ModelStore<M, R>,
+  selector: C,
+  equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
+): ReturnType<C>;
+export declare function useSelector<
+  M extends ModelLike,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined,
+  C extends (
+    instance: R extends undefined
+      ? Instance<M>
+      : ReturnType<R extends undefined ? never : R>
+  ) => any = (
+    instance: R extends undefined
+      ? Instance<M>
+      : ReturnType<R extends undefined ? never : R>
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>
+>(
+  modelLike: ModelKey<M, R> | ModelStore<M, R>,
   selector: C,
   equalFn?: (c: ReturnType<C>, n: ReturnType<C>) => boolean
 ): ReturnType<C>;
 
-export declare function createKey<S, T extends ModelInstance, D extends S>(
-  modelFn: Model<S, T>,
+export declare function createKey<M extends ModelLike, D extends S>(
+  modelFn: M,
   defaultState?: D
-): ModelKey<S, T>;
+): ModelKey<M>;
 
-export declare function createStore<S, T extends ModelInstance, D extends S>(
-  modelFn: Model<S, T>,
+export declare function createStore<M extends ModelLike, D extends S>(
+  modelFn: M,
   defaultState?: D
-): ModelStore<S, T>;
+): ModelStore<M>;
 
 export declare function shallowEqual(prev: unknown, current: unknown): boolean;
 
@@ -262,42 +269,46 @@ declare interface ApiSelector<
 }
 
 declare interface ModelKeyApi<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((getInstance: () => T) => any) = undefined
-> extends ModelKey<S, T, R> {
-  useModel: <D extends S>(
+  M extends ModelLike,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
+> extends ModelKey<M, R> {
+  useModel: <D extends PickState<M>>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
-  useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
-  useSelector: ApiSelector<S, T, R>;
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
+  useSignal: <D extends PickState<M>>(
+    defaultState?: D
+  ) => Signal<PickState<M>, Instance<M>, R>;
+  useSelector: ApiSelector<PickState<M>, Instance<M>, R>;
 }
 
 declare interface StoreApi<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((getInstance: () => T) => any) = undefined
-> extends Store<S, T, R> {
-  useModel: <D extends S>(
+  M extends ModelLike,
+  R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
+> extends ModelStore<M, R> {
+  useModel: <D extends PickState<M>>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
-  useSignal: <D extends S>(defaultState?: D) => Signal<S, T, R>;
-  useSelector: ApiSelector<S, T, R>;
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
+  useSignal: <D extends PickState<M>>(
+    defaultState?: D
+  ) => Signal<PickState<M>, Instance<M>, R>;
+  useSelector: ApiSelector<PickState<M>, Instance<M>, R>;
   instance: <D extends S>(
     defaultState?: D
-  ) => R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
+  ) => R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
 }
 
 declare interface ModelUsageApi<
   M extends Model,
   R extends undefined | ((getInstance: () => Instance<M>) => any) = undefined
 > extends ModelUsage<M, R> {
-  createKey: <D extends PickState<M>>(
-    state?: D
-  ) => ModelKeyApi<PickState<M>, Instance<M>, R>;
-  createStore: <D extends S>(
-    state?: D
-  ) => StoreApi<PickState<M>, Instance<M>, R>;
+  createKey: <D extends PickState<M>>(state?: D) => ModelKeyApi<M, R>;
+  createStore: <D extends S>(state?: D) => StoreApi<M, R>;
   produce: <
     C extends (instance: () => Instance<M>) => any = (
       instance: () => Instance<M>
@@ -342,26 +353,23 @@ export declare const model: {
 export declare const validations: {
   isInstanceFromNoStateModel: (instance: any) => boolean;
   isModelKey: <
-    S,
-    T extends ModelInstance,
-    R extends undefined | ((ins: () => T) => any) = undefined
+    M extends ModelLike,
+    R extends undefined | ((ins: () => Instance<M>) => any) = undefined
   >(
     data: any
-  ) => data is ModelKey<S, T, R>;
+  ) => data is ModelKey<M, R>;
   isModelStore: <
-    S,
-    T extends ModelInstance,
-    R extends undefined | ((ins: () => T) => any) = undefined
+    M extends ModelLike,
+    R extends undefined | ((ins: () => Instance<M>) => any) = undefined
   >(
     data: any
-  ) => data is Store<S, T, R>;
+  ) => data is ModelStore<M, R>;
   isModelUsage: <
-    S,
-    T extends ModelInstance,
-    R extends undefined | ((ins: () => T) => any) = undefined
+    M extends ModelLike,
+    R extends undefined | ((ins: () => Instance<M>) => any) = undefined
   >(
     data: any
-  ) => data is ModelUsage<S, T, R>;
+  ) => data is ModelUsage<M, R>;
 };
 
 export declare function useActProcess(): {

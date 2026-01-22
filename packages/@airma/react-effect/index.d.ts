@@ -7,9 +7,7 @@ import type {
 } from 'react';
 import type { SessionRequest } from './src/libs/type';
 
-export declare type ModelKeys =
-  | ModelKey<any, any, any>
-  | StoreIndex<any, any, any>;
+export declare type ModelKeys = ModelKey<any> | StoreIndex;
 
 declare type TriggerType = 'mount' | 'update' | 'manual';
 
@@ -111,12 +109,12 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export declare interface SessionKey<E extends PromiseCallback<any>>
-  extends ModelKey<SessionState, SessionInstance> {
+  extends ModelKey<(state: SessionState) => SessionInstance> {
   sessionPayload: [E, { sessionType?: SessionType }];
 }
 
 export declare interface SessionStore<E extends PromiseCallback<any>>
-  extends ModelStore<SessionState, SessionInstance> {
+  extends ModelStore<(state: SessionState) => SessionInstance> {
   sessionPayload: [E, { sessionType?: SessionType }];
 }
 
@@ -467,13 +465,13 @@ export declare const useResponse: {
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex<any, any, any>
-        | ModelKey<any, any, any>
-        | Record<string, StoreIndex<any, any, any>>
-        | Record<string, ModelKey<any, any, any>>
+        | StoreIndex
+        | ModelKey<any>
+        | Record<string, StoreIndex>
+        | Record<string, ModelKey<any>>
       >
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>;
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey<any>>;
   children?: ReactNode;
 }>;
 
@@ -571,12 +569,12 @@ export declare const Strategy: {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex<any, any, any>
-    | ModelKey<any, any, any>
-    | Record<string, StoreIndex<any, any, any>>
-    | Record<string, ModelKey<any, any, any>>
-    | Record<number, StoreIndex<any, any, any>>
-    | Record<number, ModelKey<any, any, any>>
+    | StoreIndex
+    | ModelKey<any>
+    | Record<string, StoreIndex>
+    | Record<string, ModelKey<any>>
+    | Record<number, StoreIndex>
+    | Record<number, ModelKey<any>>
   )[]
 ): {
   <P extends Record<string, any>>(

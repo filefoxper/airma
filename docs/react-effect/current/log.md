@@ -206,3 +206,7 @@
 # v18.6.1
 
 * complement some typescript support
+
+# v18.6.2
+
+* adjust typescript types.
