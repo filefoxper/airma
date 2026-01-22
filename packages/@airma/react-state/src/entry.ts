@@ -50,8 +50,8 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [key, defaultModelState] : [key]
-      ) as [ModelKey<PickState<M>, Instance<M>, R>, KD?];
-      return useModel<PickState<M>, Instance<M>, KD>(...parameters);
+      ) as [ModelKey<M, R>, KD?];
+      return useModel<M, KD, R>(...parameters);
     };
 
     const useKeySignal = function useKeySignal<KD extends PickState<M>>(
@@ -59,8 +59,8 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [key, defaultModelState] : [key]
-      ) as [ModelKey<PickState<M>, Instance<M>, R>, KD?];
-      return useSignal<PickState<M>, Instance<M>, KD>(...parameters);
+      ) as [ModelKey<M, R>, KD?];
+      return useSignal<M, KD, R>(...parameters);
     };
 
     function useKeySelector<
@@ -100,8 +100,8 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<PickState<M>, Instance<M>>, KD];
-      return useModel<PickState<M>, Instance<M>, KD>(...parameters);
+      ) as [Store<M, R>, KD];
+      return useModel<M, KD, R>(...parameters);
     };
 
     const useStoreSignal = function useStoreSignal<KD extends PickState<M>>(
@@ -109,8 +109,8 @@ export const model = function model<
     ) {
       const parameters = (
         arguments.length > 0 ? [store, defaultModelState] : [store]
-      ) as [Store<PickState<M>, Instance<M>>, KD?];
-      return useSignal<PickState<M>, Instance<M>, KD>(...parameters);
+      ) as [Store<M, R>, KD?];
+      return useSignal<M, KD, R>(...parameters);
     };
 
     function useStoreSelector<

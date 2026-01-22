@@ -177,13 +177,13 @@ describe('实例的加工', () => {
     const { info } = instance;
     const fullInfo = model.createField(() => ({ ...info.get(), base: countBase }), [info, countBase]);
     return {
-      ...instance,
-      fullInfo,
       async increaseBySetting() {
         const setting = await Promise.resolve(2);
         const { count, setCount } = getInstance();
         setCount(count + setting);
       },
+      ...instance,
+      fullInfo,
     };
   });
 

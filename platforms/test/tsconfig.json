@@ -10,8 +10,6 @@
   "include": [
     "./src/**/*.ts",
     "./src/**/*.tsx",
-    "../../packages/@airma/**/*.ts",
-    "../../packages/@airma/**/*.tsx"
   ],
   "exclude": ["../../node_modules/**/*"]
 }

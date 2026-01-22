@@ -1,4 +1,4 @@
-import type { ModelKey, ModelStore } from '@airma/react-state';
+import type { ModelKey, Store } from '@airma/react-state';
 import type {
   ComponentType,
   ExoticComponent,
@@ -52,15 +52,13 @@ export interface SessionInstance<T = any> {
 }
 
 export type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  SessionState,
-  SessionInstance
+  (state: SessionState) => SessionInstance
 > & {
   sessionPayload: [E, { sessionType?: SessionType }];
 };
 
-export type SessionStore<E extends PromiseCallback<any>> = ModelStore<
-  SessionState,
-  SessionInstance
+export type SessionStore<E extends PromiseCallback<any>> = Store<
+  (state: SessionState) => SessionInstance
 > & {
   key: SessionKey<E>;
   sessionPayload: [E, { sessionType?: SessionType }];

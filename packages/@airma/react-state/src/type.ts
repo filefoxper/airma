@@ -1,9 +1,11 @@
 import type {
   StoreCollection,
   Action,
-  ModelInstance,
   Dispatch,
-  Store
+  Store,
+  Model,
+  Instance,
+  ModelInstance
 } from 'as-model';
 
 export type GlobalConfig = {
@@ -30,13 +32,19 @@ export type ModelStores = {
 };
 
 export interface SignalGenerator<
-  S,
-  T extends ModelInstance,
-  R extends undefined | ((instance: () => T) => any) = undefined
+  M extends Model,
+  R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 > {
-  (): T;
+  (): R extends undefined
+    ? Instance<M>
+    : ReturnType<R extends undefined ? never : R>;
   startStatistics: () => void;
   stopStatistics: () => void;
   subscribe: (dispatcher: Dispatch) => () => void;
-  store: Store<S, T, R>;
+  store: Store<M, R>;
 }
+
+export type ResultOf<
+  T extends ModelInstance,
+  R extends undefined | ((instance: () => T) => any)
+> = R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
