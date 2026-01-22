@@ -1,4 +1,4 @@
-import type { ModelKey, Store, StoreIndex } from '@airma/react-state';
+import type { Model, ModelKey, Store, StoreIndex } from '@airma/react-state';
 import type {
   ReactNode,
   ComponentType,
@@ -109,14 +109,14 @@ export declare interface StrategyType<T = any, V extends any[] = any[]> {
 declare type PromiseCallback<T> = (...params: any[]) => Promise<T>;
 
 export declare type SessionKey<E extends PromiseCallback<any>> = ModelKey<
-  any,
+  Model,
   undefined
 > & {
   sessionPayload: [E, { sessionType?: SessionType }];
 };
 
 export declare type SessionStore<E extends PromiseCallback<any>> = Store<
-  any,
+  Model,
   undefined
 > & {
   sessionPayload: [E, { sessionType?: SessionType }];
@@ -469,13 +469,13 @@ export declare const useResponse: {
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex<any, any>
-        | ModelKey<any, any>
-        | Record<string, StoreIndex<any, any>>
-        | Record<string, ModelKey<any, any>>
+        | StoreIndex<Model, any>
+        | ModelKey<Model, any>
+        | Record<string, StoreIndex<Model, any>>
+        | Record<string, ModelKey<Model, any>>
       >
-    | Record<string, StoreIndex<any, any>>
-    | Record<string, ModelKey<any, any>>;
+    | Record<string, StoreIndex<Model, any>>
+    | Record<string, ModelKey<Model, any>>;
   children?: ReactNode;
 }>;
 
@@ -573,12 +573,12 @@ export declare const Strategy: {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex<any, any>
-    | ModelKey<any, any>
-    | Record<string, StoreIndex<any, any>>
-    | Record<string, ModelKey<any, any>>
-    | Record<number, StoreIndex<any, any>>
-    | Record<number, ModelKey<any, any>>
+    | StoreIndex<Model, any>
+    | ModelKey<Model, any>
+    | Record<string, StoreIndex<Model, any>>
+    | Record<string, ModelKey<Model, any>>
+    | Record<number, StoreIndex<Model, any>>
+    | Record<number, ModelKey<Model, any>>
   )[]
 ): {
   <P extends Record<string, any>>(

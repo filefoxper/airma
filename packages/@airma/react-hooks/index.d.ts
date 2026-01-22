@@ -1,6 +1,7 @@
 import type { ComponentType, ExoticComponent, ReactNode } from 'react';
 import type {
   GlobalConfig as StateGlobalConfig,
+  Model,
   ModelKey,
   StoreIndex
 } from '@airma/react-state';
@@ -9,10 +10,6 @@ import type { GlobalConfig as EffectGlobalConfig } from '@airma/react-effect';
 export declare type GlobalConfig = StateGlobalConfig & EffectGlobalConfig;
 
 export * from '@airma/react-hooks-core';
-
-export declare type ModelKeys =
-  | StoreIndex<any, any, any>
-  | ModelKey<any, any, any>;
 
 export {
   createKey,
@@ -40,12 +37,12 @@ export {
 
 export declare function provide(
   ...storeCreators: (
-    | StoreIndex<any, any>
-    | ModelKey<any, any>
-    | Record<string, StoreIndex<any, any>>
-    | Record<string, ModelKey<any, any>>
-    | Record<number, StoreIndex<any, any>>
-    | Record<number, ModelKey<any, any>>
+    | StoreIndex<Model, any>
+    | ModelKey<Model, any>
+    | Record<string, StoreIndex<Model, any>>
+    | Record<string, ModelKey<Model, any>>
+    | Record<number, StoreIndex<Model, any>>
+    | Record<number, ModelKey<Model, any>>
   )[]
 ): {
   <P extends Record<string, any>>(
@@ -59,13 +56,13 @@ export declare function provide(
 export declare const Provider: FC<{
   value:
     | Array<
-        | StoreIndex<any, any>
-        | ModelKey<any, any>
-        | Record<string, StoreIndex<any, any>>
-        | Record<string, ModelKey<any, any>>
+        | StoreIndex<Model, any>
+        | ModelKey<Model, any>
+        | Record<string, StoreIndex<Model, any>>
+        | Record<string, ModelKey<Model, any>>
       >
-    | Record<string, StoreIndex<any, any>>
-    | Record<string, ModelKey<any, any>>;
+    | Record<string, StoreIndex<Model, any>>
+    | Record<string, ModelKey<Model, any>>;
   children?: ReactNode;
 }>;
 
