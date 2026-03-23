@@ -48,3 +48,8 @@ export type ResultOf<
   T extends ModelInstance,
   R extends undefined | ((instance: () => T) => any)
 > = R extends undefined ? T : ReturnType<R extends undefined ? never : R>;
+
+export type InstanceOf<
+  T extends ModelInstance,
+  R extends undefined | ((instance: () => T) => any)
+> = R extends undefined ? T : ReturnType<R extends undefined ? never : R>;

@@ -2,8 +2,6 @@ import { usePersistFn } from '@airma/react-hooks-core';
 import { useEffect, useState } from 'react';
 import { useModelInitialize } from './initialize';
 import { useRenderProtectDispatch } from './enhance';
-import type { ResultOf } from './type';
-import type { InstanceOf, ModelLike } from '../index';
 import type {
   Action,
   Instance,
@@ -13,6 +11,7 @@ import type {
   PickState,
   Store
 } from 'as-model';
+import type { ResultOf, InstanceOf } from './type';
 
 export function useControlledModel<
   M extends Model,
@@ -59,12 +58,12 @@ export function useModel<M extends Model, D extends PickState<M>>(
   state?: D
 ): Instance<M>;
 export function useModel<
-  M extends ModelLike,
+  M extends Model,
   D extends PickState<M>,
   R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(modelLike: ModelKey<M, R>, state?: D): InstanceOf<Instance<M>, R>;
 export function useModel<
-  M extends ModelLike,
+  M extends Model,
   D extends PickState<M>,
   R extends undefined | ((instance: () => Instance<M>) => any) = undefined
 >(modelLike: Store<M, R>, state?: D): InstanceOf<Instance<M>, R>;
