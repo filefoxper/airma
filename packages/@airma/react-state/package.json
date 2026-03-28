@@ -12,7 +12,9 @@
   "main": "dist/index.js",
   "files": [
     "dist",
-    "index.d.ts"
+    "index.d.ts",
+    "llms.txt",
+    "llms-zh.txt"
   ],
   "scripts": {
     "build": "node ./build.js",

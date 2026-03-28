@@ -1,0 +1,413 @@
+# @airma/react-state
+
+> @airma/react-state is a React state management library that blends object-oriented and functional programming styles. It works similarly to Redux but uses a more natural method-call approach to dispatch actions.
+
+- Version: 18.6.9
+- License: MIT
+- Repository: https://github.com/filefoxper/airma
+- Homepage: https://filefoxper.github.io/airma/#/react-state/index
+- npm: https://www.npmjs.com/package/@airma/react-state
+
+## Installation
+
+```
+npm i @airma/react-state
+```
+
+Dependency: React >=16.8.0
+
+Browser support: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## Core Concepts
+
+### Model
+
+A model is a function that takes state as its parameter and returns an instance object. The instance contains render data (non-function properties) and action methods (function properties). Calling an action method produces a new state, which is fed back into the model to refresh the instance and trigger re-rendering.
+
+```ts
+const counting = (count: number) => ({
+  count,
+  isNegative: count < 0,
+  increase: () => count + 1,
+  decrease: () => count - 1,
+  add(...additions: number[]) {
+    return additions.reduce((r, c) => r + c, count);
+  }
+});
+```
+
+Action method return types must match the model's state parameter type.
+
+### Instance
+
+The object returned by a model function is an instance. Function properties are treated as action methods; all others are render data. Action methods produce new state, submit it to the store, and the store refreshes the instance and notifies subscribers to re-render.
+
+Regardless of whether a model function, key, or store is passed to useModel/useSignal/useSelector, if the model has been processed with `model(fn).produce`, these APIs will return the simulated instance produced by the `produce` callback — not the original model instance. Simulated instance methods cannot directly modify state — they must call action methods from the real store instance.
+
+### Store
+
+Every model creates a store to manage state and instances. There are three types:
+
+1. **Local Store** — Created via `useModel(modelFn, defaultState)` inside a component, similar to `useReducer`.
+2. **Dynamic Store** — Created via `Provider`/`provide` + model key during component element creation. Each element holds an independent store that is created/destroyed with the element.
+3. **Static Store** — Created via `createStore` or `model(fn).createStore()` outside components as a constant. All components share the same store instance. No Provider needed.
+
+### Key
+
+A key is a template for generating dynamic stores and a handle for accessing them. Created via `createKey` or `model(fn).createKey()`. Used with `provide`/`Provider` to create dynamic stores, and with `useModel`/`useSelector`/`useSignal` to subscribe to them.
+
+## API Reference
+
+### useModel
+
+```ts
+function useModel(modelFn, initialState): Instance;
+function useModel(modelKey): Instance;
+function useModel(modelKey, initialState?): Instance;
+function useModel(modelStore): Instance;
+function useModel(modelStore, initialState?): Instance;
+```
+
+- With model function + initial state → creates a local store and returns the instance
+- With key or store → subscribes to existing store and returns the instance
+- Regardless of whether a model function, key, or store is passed in, if the model uses `produce`, the returned value is always the simulated instance from the `produce` callback
+- If the key/store has a preset default state, initial state is optional
+- Instance changes always trigger re-rendering of the current component
+
+### useControlledModel
+
+```ts
+function useControlledModel(modelFn, state, onChange): Instance;
+```
+
+Controlled mode — maintains no internal state. Fully controlled by the external `state` parameter. State changes are reported via the `onChange` callback. Useful for reusing models in controlled components.
+
+### useSelector
+
+```ts
+function useSelector(modelKey | modelStore, selector, equality?): SelectedValue;
+```
+
+- Selects and reshapes instance data; only triggers re-render when the selected value changes
+- `equality` is an optional comparator (defaults to `===`); `shallowEqual` is recommended
+- Primary purpose: reduce render frequency and improve performance
+
+### useSignal
+
+```ts
+function useSignal(modelLike, defaultState?): Signal;
+```
+
+Returns a signal callback function. Call `signal()` to get the latest instance. useSignal tracks which instance properties are accessed during render and only triggers re-render when those specific properties change.
+
+Signal function optional config parameter:
+- `cutOff: boolean` — when true, disables render tracking for this particular signal call
+
+Signal side-effect APIs:
+- `signal.useEffect(callback)` — fires after an action method causes a component render
+- `signal.useWatch(callback)` — fires on any action-triggered change (independent of rendering)
+- `.onChanges(filter)` — restrict response to specific field changes
+- `.onActions(filter)` — restrict response to specific action methods
+
+Note: `signal.useEffect` and `signal.useWatch` can only subscribe to properties and action methods of the real store instance, not the simulated instance from `produce`. The `onActions`/`onChanges` filter callbacks also receive the real store instance.
+
+Important notes:
+- Avoid using parent component's signal callback in child component's useLayoutEffect
+- Do not add effects/watchers inside effect/watcher callbacks
+- Only add effects/watchers during the render phase
+
+### Provider
+
+```ts
+const Provider: FC<{
+  value?: ModelKey | ModelKey[] | Record<string, ModelKey>;
+  children?: ReactNode;
+}>;
+```
+
+Creates dynamic stores from keys and provides React.Context access. Multiple Provider levels form a bottom-up lookup tree (nearest first), avoiding the blocking behavior of standard React.Context.Provider.
+
+### provide
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+Higher-order component form of Provider. Wraps a component with a Provider parent to create dynamic stores. Supports both `provide(keys).to(Component)` and `provide(keys)(Component)` call styles.
+
+### createKey
+
+```ts
+function createKey(modelFn, initialState?): ModelKey;
+```
+
+Creates a key for a model function, used to generate and access dynamic stores.
+
+### createStore
+
+```ts
+function createStore(modelFn, initialState?): ModelStore;
+```
+
+Creates a static store for a model function.
+
+### shallowEqual
+
+```ts
+function shallowEqual<R>(prev: R, current: R): boolean;
+```
+
+Shallow comparison function, typically used as the `equality` parameter in `useSelector`.
+
+### model
+
+```ts
+function model(modelFn): ModelFn & Api;
+```
+
+Simplified entry-point API that returns the model function augmented with convenience methods:
+- `model(fn).useModel(initialState)` — local state management
+- `model(fn).useSignal(initialState)` — local signal management
+- `model(fn).useControlledModel(state, onChange)` — controlled state management
+- `model(fn).createKey(initialState?)` — create a key (returns key with useModel/useSignal/useSelector APIs)
+- `model(fn).createStore(initialState?)` — create a static store (returns store with useModel/useSignal/useSelector/instance APIs)
+- `model(fn).produce(factory)` — create a simulated instance factory
+
+Static methods:
+- `model.createField(callback, deps?)` — Create an instance field with optional caching. Use `.get()` to retrieve the field value. With deps, caches based on dependency changes; without deps, always returns the latest value.
+- `model.createMethod(callback)` — Create an instance method (not an action method; does not modify state).
+
+### ConfigProvider
+
+```ts
+const ConfigProvider: FC<{
+  value: { batchUpdate?: (callback: () => void) => void };
+  children?: ReactNode;
+}>;
+```
+
+Global configuration. For React <18.0.0, configure `batchUpdate: unstable_batchedUpdates` to optimize multi-component synchronous rendering. Can be ignored for React >=18.
+
+## Usage Patterns
+
+### Local State Management (similar to useReducer)
+
+```ts
+import { useModel } from '@airma/react-state';
+
+const { count, increase, decrease } = useModel(
+  (state: number) => ({
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  }),
+  0
+);
+```
+
+### Dynamic Store (React.Context-based)
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createKey();
+
+const Increase = memo(() => {
+  const increase = countingKey.useSelector(i => i.increase);
+  return <button onClick={increase}>+</button>;
+});
+
+const Count = memo(() => {
+  const { count } = countingKey.useModel();
+  return <span>{count}</span>;
+});
+
+const Decrease = memo(() => {
+  const decrease = countingKey.useSelector(i => i.decrease);
+  return <button onClick={decrease}>-</button>;
+});
+
+// Each Counter element holds its own independent dynamic store
+const Counter = provide(countingKey).to(
+  ({ defaultCount }: { defaultCount: number }) => {
+    countingKey.useSignal(defaultCount);
+    return (
+      <div>
+        <Decrease />
+        <Count />
+        <Increase />
+      </div>
+    );
+  }
+);
+
+// Multiple Counter elements in a list each maintain independent state
+const App = () => (
+  <div>
+    {[0, 10, 20].map(n => <Counter key={n} defaultCount={n} />)}
+  </div>
+);
+```
+
+Dynamic store advantages: Different elements of the same component hold independent stores; stores are created/destroyed with elements.
+
+### Static Store (Global Shared State)
+
+```ts
+import { model } from '@airma/react-state';
+
+const countingStore = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createStore(0);
+
+const Increase = memo(() => {
+  const increase = countingStore.useSelector(i => i.increase);
+  return <button onClick={increase}>+</button>;
+});
+
+const Count = () => {
+  const { count } = countingStore.useModel();
+  return <span>{count}</span>;
+};
+
+const Decrease = memo(() => {
+  const decrease = countingStore.useSelector(i => i.decrease);
+  return <button onClick={decrease}>-</button>;
+});
+
+const App = () => (
+  <div>
+    <Decrease />
+    <Count />
+    <Increase />
+  </div>
+);
+```
+
+Static stores can be accessed outside components via `store.instance()` to get the instance and call action methods.
+
+### High-Performance Rendering (useSignal)
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createKey();
+
+// increase is a stable action method, so this component never re-renders on state change
+const Increase = memo(() => {
+  const { increase } = countingKey.useSignal()();
+  return <button onClick={increase}>+</button>;
+});
+
+// only tracks the count property, re-renders only when count changes
+const Count = memo(() => {
+  const { count } = countingKey.useSignal()();
+  return <span>{count}</span>;
+});
+
+const Decrease = memo(() => {
+  const { decrease } = countingKey.useSignal()();
+  return <button onClick={decrease}>-</button>;
+});
+
+const App = provide(countingKey).to(
+  ({ defaultCount }: { defaultCount: number }) => {
+    // only initializes, does not call signal(), so never re-renders on state change
+    countingKey.useSignal(defaultCount);
+    return (
+      <div>
+        <Decrease />
+        <Count />
+        <Increase />
+      </div>
+    );
+  }
+);
+```
+
+useSignal automatically tracks properties accessed during render and only triggers re-render when those properties change. Components that don't call `signal()` won't re-render on store state changes.
+
+### Simulating Async Behavior (produce)
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model((count: number) => ({
+  count,
+  increase: () => count + 1,
+  add: (n: number) => count + n
+})).produce((getInstance) => ({
+  ...getInstance(),
+  async increaseBySetting() {
+    const step = await fetchSetting();
+    return getInstance().add(step);
+  }
+})).createKey(0);
+
+// useModel/useSignal/useSelector all return the simulated instance from produce
+const Increase = memo(() => {
+  const { increaseBySetting } = countingKey.useModel();
+  return <button onClick={increaseBySetting}>+</button>;
+});
+
+const Count = memo(() => {
+  const { count } = countingKey.useModel();
+  return <span>{count}</span>;
+});
+
+const App = provide(countingKey).to(() => (
+  <div>
+    <Count />
+    <Increase />
+  </div>
+));
+```
+
+`produce` receives a `getInstance` function to access the latest store instance, and returns a simulated instance. Once `produce` is used, useModel/useSignal/useSelector will always return this simulated instance regardless of whether a model function, key, or store is passed in. Simulated methods modify state indirectly by calling real action methods.
+
+Note: For async operations, it is recommended to use `@airma/react-effect` in conjunction with `@airma/react-state`, rather than using `produce` to simulate async behavior. `produce` is better suited for synchronous instance transformation and extension.
+
+### Instance Field Caching (model.createField)
+
+```ts
+const queryModel = model((condition: QueryCondition) => ({
+  ...condition,
+  query: model.createField(() => {
+    const { name, page, pageSize } = condition;
+    return { name, page, pageSize };
+  }, [condition.fetchVersion]),
+  setName(name: string) { return { ...condition, name }; },
+  startFetch() { return { ...condition, fetchVersion: condition.fetchVersion + 1 }; }
+}));
+
+// Usage
+const { query } = queryModel.useModel(initialCondition);
+useEffect(() => { fetch(query.get()); }, [query.get()]);
+```
+
+## Key Features
+
+- **Stable Action Methods**: Instance action methods maintain stable references across renders. They always use the latest state from the store, avoiding stale closure issues.
+- **No Post-Unmount State Leaks**: Subscriptions are automatically cancelled on component unmount — no risk of setState-after-unmount warnings.
+- **No Built-in Async State Management**: Use `@airma/react-effect` in conjunction with `@airma/react-state` to handle async operations, rather than using `produce` to simulate async behavior.
+- **Provider Lookup Tree**: Multiple Provider levels form a nearest-first, bottom-up lookup chain — no blocking by same-type Context.Provider.
+- **Subscription-Based Updates**: Store state changes only notify subscribed components, not the entire Provider component tree.

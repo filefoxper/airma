@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "@airma/react-effect",
-  "version": "18.6.4",
+  "version": "18.6.5",
   "description": "This is a react async state management tool",
   "license": "MIT",
   "author": "Jimmy.Harding",
@@ -13,7 +13,9 @@
   "main": "dist/index.js",
   "files": [
     "dist",
-    "index.d.ts"
+    "index.d.ts",
+    "llms.txt",
+    "llms-zh.txt"
   ],
   "scripts": {
     "build": "node ./build.js",
