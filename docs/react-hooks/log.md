@@ -14,3 +14,7 @@
 ## v 18.4.0
 
 * add `useSignal` API from `react-state@18.4.0`.
+
+## v18.6.4
+
+* add llms files to provide prompts for AI

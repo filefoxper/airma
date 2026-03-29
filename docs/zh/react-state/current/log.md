@@ -155,3 +155,8 @@
 ## v18.6.5
 
 * 再次调整 typescript 接口类型
+
+## v8.6.9
+
+* 新增 llms AI 提示文件
+* 使用 as-model@0.4.0，减少 `model, createStore, createKey` 的 typescript 干扰

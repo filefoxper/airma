@@ -12,3 +12,7 @@
 ## v 18.4.0
 
 * 添加来自 `@airma/react-state@18.4.0` 的 `useSignal` API。
+
+## v18.6.4
+
+* 新增 llms AI 提示文件

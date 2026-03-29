@@ -196,3 +196,8 @@
 ## v18.6.5
 
 * adjust typescript types.
+
+## v18.6.9
+
+* use as-model@0.4.0, resolve problem about multi `model, createStore, createKy` typescript infos.
+* add llms files to provide prompts for AI
