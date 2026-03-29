@@ -1,0 +1,422 @@
+# @airma/react-effect
+
+> @airma/react-effect is a React async state management tool. It depends on @airma/react-state and reuses its key, store, and Provider systems.
+
+- Version: 18.6.4
+- License: MIT
+- Repository: https://github.com/filefoxper/airma
+- Homepage: https://filefoxper.github.io/airma/#/react-effect/index
+- npm: https://www.npmjs.com/package/@airma/react-effect
+
+## Installation
+
+```
+npm i @airma/react-effect
+```
+
+Dependency: React >=16.8.0, @airma/react-state >=18.6.4
+
+Browser support: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## Core Concepts
+
+### Session
+
+A session is a continuously updatable async state management unit. Its core is an async function, and its goal is to describe the execution process as state changes.
+
+- `useQuery` creates a query session — supports mount, dependency update, and manual trigger by default; always adopts the latest execution result
+- `useMutation` creates a mutation session — only supports manual trigger by default; runs in blocking mode when manually triggered
+
+```ts
+const [sessionState, trigger, execute] = useQuery(asyncFn, [params]);
+const [sessionState, trigger, execute] = useMutation(asyncFn, [params]);
+```
+
+- `sessionState` — session state object
+- `trigger()` — manual trigger, uses configured variables as arguments
+- `execute(params)` — manual execute, requires passing arguments
+
+### Session State
+
+Session state is continuously updated during async function execution. Key fields:
+
+- `data` — Session data, the result of the last successful execution. Initially undefined (can be set via defaultData)
+- `isFetching` — Whether the session is currently executing
+- `isError` — Whether the latest execution resulted in an error
+- `error` — Error information
+- `loaded` — Whether data is available (successfully executed or has defaultData)
+- `sessionLoaded` — Whether the session has been successfully executed
+- `variables` — Arguments used in the latest execution
+- `triggerType` — Trigger type: `'mount' | 'update' | 'manual'`
+- `round` — Execution round count
+- `abandon` — Whether the execution result was abandoned by a strategy
+- `online` — Whether the session is online (component not unmounted)
+
+### Session Config
+
+The second argument to useQuery/useMutation can be a variables tuple or a config object:
+
+```ts
+// Variables tuple form
+useQuery(asyncFn, [param1, param2]);
+
+// Config object form
+useQuery(asyncFn, {
+  variables: [param1, param2],
+  defaultData: [],
+  triggerOn: ['mount', 'update', 'manual'],
+  deps: [dep1],
+  strategy: Strategy.debounce(300),
+  manual: false,
+  payload: any,
+});
+```
+
+Config fields:
+- `variables` — Execution argument tuple. When update trigger is enabled and deps is not set, variables is used as the dependency
+- `defaultData` — Default session data; when set, loaded is always true
+- `triggerOn` — Array of trigger modes; useQuery defaults to all, useMutation defaults to `['manual']` only
+- `deps` — Custom dependency array, replaces variables as the update trigger dependency
+- `strategy` — Strategy or strategy array
+- `manual` — When true, forces manual-only triggering
+- `payload` — Additional data that appears in session state after execution
+
+### Store & Key
+
+Fully interoperable with @airma/react-state's system:
+
+- **Local Store** — Created directly via `useQuery(asyncFn, config)`, similar to useState
+- **Dynamic Store** — Created via key + `provide`/`Provider`, each Provider element holds an independent store
+- **Static Store** — Created via `createSessionStore` or `session(fn, type).createStore()`, globally shared
+
+Session keys are a special type of model key. The provide/Provider systems are fully interoperable. Model keys and session keys can be mixed in the same `provide()`.
+
+### Strategy
+
+Strategies are plugin functions that modify session execution process and results. Strategy functions form a chain — entered in order, returned in reverse.
+
+Default strategies:
+- useQuery — `latest` strategy (always adopts the latest request result)
+- useMutation — `blocking` strategy (blocks during manual trigger)
+
+Strategy positions are fixed at session creation. They cannot be dynamically added, removed, or reordered, but each strategy can be dynamically toggled with null.
+
+## API Reference
+
+### useQuery
+
+```ts
+function useQuery(
+  asyncFn | sessionKey | sessionStore,
+  variablesOrConfig?
+): [sessionState, trigger, execute];
+```
+
+Creates a query session. Supports mount/update/manual trigger modes by default; always adopts the latest execution result.
+
+By default, useQuery behaves like `React.useEffect`: it uses variables as the effect dependency and automatically triggers on mount and when the dependency changes. If deps is configured, deps is used as the effect dependency instead. Use triggerOn to customize supported trigger modes, e.g. `triggerOn: ['update']` to only trigger on dependency updates.
+
+A useQuery without config works like useSession: when manually triggered, it looks for another useQuery with the same key that has config and drives it.
+
+### useMutation
+
+```ts
+function useMutation(
+  asyncFn | sessionKey | sessionStore,
+  variablesOrConfig?
+): [sessionState, trigger, execute];
+```
+
+Creates a mutation session. Only supports manual trigger by default with blocking execution. Use triggerOn to add more trigger modes; non-manual triggers do not follow blocking behavior.
+
+### useSession
+
+```ts
+function useSession(
+  sessionKey | sessionStore
+): [sessionState, trigger, execute];
+```
+
+Subscribes to store session state changes. Can also manually trigger useQuery/useMutation with the same key/store.
+
+### useLoadedSession
+
+```ts
+function useLoadedSession(
+  sessionKey | sessionStore
+): [sessionState, trigger, execute];
+```
+
+Same as useSession, but for confirmed loaded sessions. Unlike useSession where data is typed as `T | undefined`, useLoadedSession types data as `T` (matching the async function's Promise resolve type), and loaded is always true.
+
+### createSessionKey
+
+```ts
+function createSessionKey(asyncFn, sessionType?: 'query' | 'mutation'): SessionKey;
+```
+
+Wraps an async function as a session key for creating and subscribing to dynamic stores.
+
+### createSessionStore
+
+```ts
+function createSessionStore(asyncFn, sessionType?: 'query' | 'mutation'): SessionStore;
+```
+
+Wraps an async function as a static session store.
+
+### session
+
+```ts
+function session(asyncFn, sessionType: 'query' | 'mutation'): SessionApi;
+```
+
+Session declaration API that returns an object with fluent methods:
+- `session(fn, type).useQuery(config)` — local query session
+- `session(fn, type).useMutation(config)` — local mutation session
+- `session(fn, type).createKey()` — create session key (returns key with useQuery/useMutation/useSession/useLoadedSession APIs)
+- `session(fn, type).createStore()` — create static session store (returns store with useQuery/useMutation/useSession/useLoadedSession APIs)
+
+### Provider / provide
+
+Fully interoperable with @airma/react-state's Provider/provide.
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+Supports mixing model keys and session keys.
+
+### useResponse
+
+```ts
+function useResponse(
+  process: (sessionState) => void | (() => void),
+  sessionState: SessionState | [SessionState, { watchOnly?: boolean }]
+): void;
+```
+
+Listens for session completion and calls the callback. By default, it responds to existing results on mount; set `watchOnly: true` to only listen for new responses.
+
+Sub-APIs:
+- `useResponse.useSuccess(process, sessionState)` — called on success only, process receives `(data, sessionState)`
+- `useResponse.useFailure(process, sessionState)` — called on failure only, process receives `(error, sessionState)`
+
+### Strategy
+
+Built-in strategy collection.
+
+Important distinction between two groups of callback strategies:
+- `Strategy.success` / `Strategy.failure` — execute **immediately** on promise resolve/reject, unaffected by component unmount
+- `Strategy.response.success` / `Strategy.response.failure` — execute in **useEffect after session state update**, do not fire if component is unmounted
+
+Strategy list:
+
+- `Strategy.debounce(duration | {duration, lead?})` — Debounce strategy
+- `Strategy.cache({key?, staleTime?, capacity?, static?})` — SWR cache strategy
+- `Strategy.memo(equalFn?)` — Data memoization strategy; reuses old data when results are equivalent to improve render performance
+- `Strategy.validate(process)` — Validation strategy; skips execution if validation fails. process receives `(variables, sessionState)`, returns boolean or Promise<boolean>
+- `Strategy.once()` — One-time execution strategy; once successfully executed, all subsequent triggers are blocked (also blocks re-triggering while executing)
+- `Strategy.atomic({throttle?, stopWhenError?})` — Atomic strategy; runs one async operation at a time, queues others
+- `Strategy.reduce(process)` — Data accumulation strategy; useful for infinite scroll / pagination
+- `Strategy.success(process, {withAbandoned?})` — Success callback (runs immediately on promise resolve, unaffected by component unmount)
+- `Strategy.failure(process, {withAbandoned?})` — Failure callback (runs immediately on promise reject, unaffected by component unmount). Immediately starts executing the preceding exception strategy chain from its position, but **skips** any Strategy.response.failure in the chain. If process handles the error normally, preceding exception strategies are blocked; if process throws, the thrown exception is passed to the higher-level (earlier in chain) Strategy.failure for handling
+- `Strategy.response(process)` — Response side-effect (runs in useEffect after session state update; does not fire if component is unmounted)
+- `Strategy.response.success(process)` — Success response side-effect
+- `Strategy.response.failure(process)` — Failure response side-effect. On session error, suspends all preceding Strategy.failure and Strategy.response.failure execution, then runs the **complete** exception strategy chain (including both types) in useEffect after session state update; does not fire if component is unmounted. If process handles the error normally, preceding exception strategies are blocked; if process throws, the thrown exception is passed to the higher-level Strategy.failure or Strategy.response.failure for handling
+
+### useIsFetching
+
+```ts
+function useIsFetching(...sessionStates?: SessionState[]): boolean;
+```
+
+Checks whether any sessions are currently executing. Without arguments, checks all sessions globally.
+
+### useLazyComponent
+
+```ts
+function useLazyComponent(componentLoader, ...sessionStates): LazyComponent;
+```
+
+Monitors multiple sessions for loaded state and lazily loads a component. Use with `Suspense`.
+
+### ConfigProvider
+
+```ts
+const ConfigProvider: FC<{
+  value: {
+    batchUpdate?: (callback: () => void) => void;
+    strategy?: (strategies: StrategyType[], type: 'query' | 'mutation') => StrategyType[];
+  };
+  children?: ReactNode;
+}>;
+```
+
+Global configuration:
+- `batchUpdate` — For React <18, configure `unstable_batchedUpdates` to optimize rendering
+- `strategy` — Global strategy chain composition function; inject shared strategies for all sessions (e.g., global error handling)
+
+## Usage Patterns
+
+### Local Query Session
+
+```ts
+import { useQuery } from '@airma/react-effect';
+
+const [{ data, isFetching }, trigger] = useQuery(fetchUsers, [query]);
+```
+
+Automatically re-queries when query changes; call trigger() for manual re-fetch.
+
+### Local Mutation Session
+
+```ts
+import { useMutation } from '@airma/react-effect';
+
+const [{ data, isFetching }, trigger, execute] = useMutation(saveUser, [user]);
+// Manual trigger
+trigger();
+// Or execute with params
+execute(user);
+```
+
+### Dynamic Store (Cross-component Shared Session State)
+
+```ts
+import { session, provide } from '@airma/react-effect';
+
+const userQueryKey = session(fetchUsers, 'query').createKey();
+
+const SearchButton = () => {
+  const [{ isFetching }, triggerQuery] = userQueryKey.useSession();
+  return <button disabled={isFetching} onClick={triggerQuery}>Search</button>;
+};
+
+const App = provide(userQueryKey).to(({ query }) => {
+  userQueryKey.useQuery([query]);
+  return <SearchButton />;
+});
+```
+
+Each provide element holds an independent dynamic store that is created/destroyed with the element.
+
+### Static Store (Globally Shared)
+
+```ts
+import { session } from '@airma/react-effect';
+
+const userQueryStore = session(fetchUsers, 'query').createStore();
+
+const SearchButton = () => {
+  const [{ isFetching }, triggerQuery] = userQueryStore.useSession();
+  return <button disabled={isFetching} onClick={triggerQuery}>Search</button>;
+};
+
+const App = ({ query }) => {
+  userQueryStore.useQuery([query]);
+  return <SearchButton />;
+};
+```
+
+Static stores don't need a Provider and can be subscribed to directly.
+
+### Common Strategy Combinations
+
+```ts
+import { useQuery, Strategy } from '@airma/react-effect';
+
+// query comes from useState — a stable reference, safe to use directly in variables
+const [query, setQuery] = useState({ name: '', role: '' });
+
+useQuery(fetchUsers, {
+  variables: [query],
+  strategy: [
+    Strategy.validate(() => !!query.name),
+    Strategy.debounce(300),
+    Strategy.memo(),
+    Strategy.cache({ capacity: 10, staleTime: 5 * 60 * 1000 }),
+    Strategy.response.success((data) => { doSomething(data); })
+  ]
+});
+```
+
+### Global Error Handling
+
+The ConfigProvider's strategy config function injects shared strategies into every useQuery/useMutation's runtime strategy chain. The parameter `s` is the session's own strategy array; the return value is the final strategy chain.
+
+```ts
+import { ConfigProvider, Strategy } from '@airma/react-effect';
+
+const globalConfig = {
+  // Strategy.failure placed first (chain head) acts as a catch-all:
+  // when no subsequent strategy handles the error, it propagates here
+  strategy: (s, type) => [
+    Strategy.failure((e) => { message.error(e); }),
+    ...s,
+    type === 'query' ? Strategy.memo() : null
+  ]
+};
+
+<ConfigProvider value={globalConfig}>
+  <App />
+</ConfigProvider>
+```
+
+### Using with @airma/react-state
+
+```ts
+import { provide, createKey } from '@airma/react-state';
+import { createSessionKey } from '@airma/react-effect';
+
+const countKey = createKey(countingModel, 0);
+const queryKey = createSessionKey(fetchUsers, 'query');
+
+// Model keys and session keys can be mixed in the same provide
+const App = provide(countKey, queryKey).to(() => { ... });
+```
+
+When using both packages together, consider using @airma/react-hooks for consolidated API imports to avoid reference conflicts.
+
+## Common Pitfalls
+
+### Use deps when variables contain objects
+
+useQuery behaves like `React.useEffect` by default, using variables as the effect dependency with shallow comparison. If variables contain new objects created on every render, useQuery will execute infinitely.
+
+Wrong:
+
+```ts
+const [query, setQuery] = useState({ name: '', role: '' });
+// Suppose fetchUsers accepts an object parameter.
+// A new object is created in variables on every render;
+// shallow comparison always detects a change, causing infinite execution.
+useQuery(fetchUsers, [{ name: query.name, role: query.role }]);
+```
+
+Correct approach 1: have the async function accept primitive parameters, so variables are naturally stable
+
+```ts
+// fetchUsers(name: string, role: string)
+useQuery(fetchUsers, [query.name, query.role]);
+```
+
+Correct approach 2: if the async function must accept an object parameter, use deps with stable primitive values
+
+```ts
+// fetchUsers(query: { name: string, role: string })
+useQuery(fetchUsers, {
+  variables: [{ name: query.name, role: query.role }],
+  deps: [query.name, query.role]
+});
+```
+
+## Key Features
+
+- **No Zombie-Child Problem**: No state updates after component unmount, preventing memory leaks
+- **Same-Key Session Mutual Exclusion**: When multiple sessions with the same key/store are triggered simultaneously, only one executes while others subscribe to state updates
+- **Provider System Interoperable with @airma/react-state**: Session keys are special model keys; provide/Provider are fully interoperable
+- **Flexible Strategy System**: Plugin-based strategy functions to modify execution flow; supports debounce, caching, validation, atomic operations, and custom strategies

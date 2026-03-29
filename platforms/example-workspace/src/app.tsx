@@ -356,9 +356,13 @@ const modelFn = model(function mf(s: number) {
 });
 
 const App = provide({ fetchSession }).to(function App() {
-  const i = modelFn.useModel(0);
+  const i = modelFn.useModel(-2);
   const { state: val, setState } = i;
-  setState(0);
+
+  if (val < 0) {
+    setState(0);
+  }
+
   useSignal(store, {
     valid: defaultCondition,
     display: defaultCondition,

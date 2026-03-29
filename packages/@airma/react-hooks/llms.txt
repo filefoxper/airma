@@ -1,0 +1,325 @@
+# @airma/react-hooks
+
+> @airma/react-hooks is an integration package for @airma/react-state (sync state management) and @airma/react-effect (async state management). It unifies their provide, Provider, and ConfigProvider APIs, and provides additional utility hooks. When using both packages together, import from this package to avoid API reference conflicts.
+
+- Version: 18.6.3
+- License: MIT
+- Repository: https://github.com/filefoxper/airma
+- Homepage: https://filefoxper.github.io/airma/#/react-hooks/index
+- npm: https://www.npmjs.com/package/@airma/react-hooks
+
+## Installation
+
+```
+npm i @airma/react-hooks
+```
+
+Dependency: React >=16.8.0, @airma/react-state >=18.6.3, @airma/react-effect >=18.6.1
+
+Browser support: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## Why Use This Package
+
+@airma/react-state and @airma/react-effect share the same Provider/provide system (session keys are special model keys), but importing from both separately gives you two sets of provide/Provider/ConfigProvider. This package unifies them:
+
+```ts
+// Recommended: import from the integration package
+import { provide, useModel, useQuery, Strategy, ConfigProvider } from '@airma/react-hooks';
+
+// Not recommended: importing from sub-packages separately (confusing duplicate provide/Provider/ConfigProvider)
+import { provide, useModel } from '@airma/react-state';
+import { provide as sessionProvide, useQuery, Strategy } from '@airma/react-effect';
+```
+
+## Unified APIs
+
+### provide
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+Unified HOC API that accepts both model keys and session keys to create a Provider wrapper for child components. Supports both `provide(keys).to(Component)` and `provide(keys)(Component)` invocation styles.
+
+```ts
+import { model, provide, session } from '@airma/react-hooks';
+
+const countKey = model(counting).createKey(0);
+const queryKey = session(fetchUsers, 'query').createKey();
+
+// Mix model keys and session keys
+const App = provide(countKey, queryKey).to(() => {
+  // Child components can access respective stores via their keys
+  return <div>...</div>;
+});
+```
+
+### Provider
+
+```ts
+const Provider: FC<{
+  value: Array<ModelKey | SessionKey | Record<string, ModelKey | SessionKey>>
+    | Record<string, ModelKey | SessionKey>;
+  children?: ReactNode;
+}>;
+```
+
+Unified Provider component. Same functionality as provide, for direct use in JSX.
+
+```ts
+import { Provider } from '@airma/react-hooks';
+
+<Provider value={[countKey, queryKey]}>
+  <App />
+</Provider>
+```
+
+### ConfigProvider
+
+```ts
+type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
+  strategy?: (
+    strategies: (StrategyType | null | undefined)[],
+    type: 'query' | 'mutation'
+  ) => (StrategyType | null | undefined)[];
+};
+
+const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;
+```
+
+Unified global config component merging @airma/react-state and @airma/react-effect configuration:
+- `batchUpdate` — For React <18, configure `unstable_batchedUpdates` to optimize rendering (applies to both sync and async state management)
+- `strategy` — Global strategy chain composition function; inject shared strategies for all sessions (e.g., global error handling)
+
+## APIs from @airma/react-state
+
+The following APIs are re-exported from @airma/react-state. See @airma/react-state documentation for details:
+
+- `model` — Model declaration API with fluent methods: createKey/createStore/createField/createMethod/produce
+- `createKey` — Create model key
+- `createStore` — Create static model store
+- `useModel` — Create or connect to a model instance
+- `useSignal` — Create signal function for high-performance selective rendering
+- `useControlledModel` — Controlled model, state fully controlled by external source
+- `useSelector` — Select/reshape instance fields from store; only re-renders when selection changes
+- `shallowEqual` — Shallow comparison function, commonly used as useSelector's equality parameter
+
+## APIs from @airma/react-effect
+
+The following APIs are re-exported from @airma/react-effect. See @airma/react-effect documentation for details:
+
+- `session` — Session declaration API with fluent methods: createKey/createStore/useQuery/useMutation
+- `createSessionKey` — Create session key
+- `createSessionStore` — Create static session store
+- `useQuery` — Create query session; supports mount/update/manual trigger by default
+- `useMutation` — Create mutation session; supports manual trigger only by default
+- `useSession` — Subscribe to store session state changes
+- `useLoadedSession` — Same as useSession but data is typed as T (use when session is confirmed loaded)
+- `useResponse` — Listen for session completion callbacks (includes useSuccess/useFailure sub-APIs)
+- `useIsFetching` — Check if any sessions are currently executing
+- `useLazyComponent` — Monitor session loaded state and lazily load components
+- `Strategy` — Built-in strategy collection (debounce/cache/memo/validate/once/atomic/reduce/success/failure/response, etc.)
+
+## Utility APIs from @airma/react-hooks-core
+
+### usePersistFn
+
+```ts
+function usePersistFn<T extends (...args: any[]) => any>(callback: T): T;
+```
+
+Persist function reference. Content updates on each render, but the reference stays the same. Replaces `useCallback` without needing to declare dependencies.
+
+```ts
+import { usePersistFn } from '@airma/react-hooks';
+
+const call = usePersistFn((v: string) => { /* latest logic */ });
+// call reference never changes, safe to pass to memo components
+```
+
+### useMount
+
+```ts
+function useMount(callback: () => (() => void) | void): void;
+```
+
+Equivalent to `useEffect(callback, [])`. Runs only on component mount.
+
+### useUnmount
+
+```ts
+function useUnmount(destroy: () => void): void;
+```
+
+Equivalent to `useEffect(() => destroy, [])`. Runs only on component unmount.
+
+### useUpdate
+
+```ts
+function useUpdate<T extends any[]>(
+  callback: (prevDeps: [...T]) => (() => void) | void,
+  deps?: [...T]
+): void;
+```
+
+Listens for dependency changes (skips initial mount). Callback receives the previous dependency values.
+
+```ts
+import { useUpdate } from '@airma/react-hooks';
+
+useUpdate((prevDeps) => {
+  const [prevValue] = prevDeps;
+  console.log('changed from', prevValue, 'to', value);
+}, [value]);
+```
+
+### useRefresh
+
+```ts
+function useRefresh<T extends (...args: any[]) => any>(
+  method: T,
+  variables: Parameters<T> | { refreshDeps?: any[]; variables: Parameters<T> }
+): void;
+```
+
+Calls method as a side-effect when variables change. If refreshDeps is set, it replaces variables as the effect dependency.
+
+### useDebounceFn
+
+```ts
+function useDebounceFn<F extends (...args: any[]) => any>(
+  fn: F,
+  option: number | { lead?: boolean; ms: number }
+): (...args: Parameters<F>) => Promise<ReturnType<F>>;
+```
+
+Wraps a function into a debounced async function. When option.lead is true, executes first then debounces; otherwise debounces first then executes.
+
+### shallowEqual
+
+```ts
+function shallowEqual<R>(prev: R, current: R): boolean;
+```
+
+Shallow comparison of two objects for equivalence.
+
+## Usage Patterns
+
+### Mixed Sync + Async Usage
+
+Model manages query form state; model instance data serves as useQuery's variables dependency, automatically triggering queries when conditions change:
+
+```ts
+import { model, session, provide } from '@airma/react-hooks';
+
+const queryFormKey = model(function queryForm(state: { name: string; role: string }) {
+  return {
+    ...state,
+    changeName: (name: string) => ({ ...state, name }),
+    changeRole: (role: string) => ({ ...state, role })
+  };
+}).createKey({ name: '', role: '' });
+
+// fetchUsers accepts primitive parameters, so variables are all primitives — no deps needed
+const userQueryKey = session(fetchUsers, 'query').createKey();
+
+const QueryForm = () => {
+  const { name, role, changeName, changeRole } = queryFormKey.useModel();
+  return (
+    <div>
+      <input value={name} onChange={e => changeName(e.target.value)} />
+      <select value={role} onChange={e => changeRole(e.target.value)}>
+        <option value="">all</option>
+        <option value="admin">admin</option>
+        <option value="user">user</option>
+      </select>
+    </div>
+  );
+};
+
+const UserList = () => {
+  const [{ data, isFetching }] = userQueryKey.useSession();
+  if (isFetching) return <div>Loading...</div>;
+  return <ul>{data?.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+};
+
+const App = provide(queryFormKey, userQueryKey).to(() => {
+  const { name, role } = queryFormKey.useModel();
+  // Model state as query dependency — auto-triggers when conditions change
+  userQueryKey.useQuery([name, role]);
+  return (
+    <div>
+      <QueryForm />
+      <UserList />
+    </div>
+  );
+});
+```
+
+### Global Configuration Example
+
+The ConfigProvider's strategy config function injects shared strategies into every useQuery/useMutation's runtime strategy chain. The parameter `s` is the session's own strategy array; the return value is the final strategy chain.
+
+```ts
+import { ConfigProvider, Strategy } from '@airma/react-hooks';
+
+const globalConfig = {
+  // Strategy.failure placed first (chain head) acts as a catch-all:
+  // when no subsequent strategy handles the error, it propagates here
+  strategy: (s, type) => [
+    Strategy.failure((e) => { message.error(e.message); }),
+    ...s,
+    type === 'query' ? Strategy.memo() : null
+  ]
+};
+
+const Root = () => (
+  <ConfigProvider value={globalConfig}>
+    <App />
+  </ConfigProvider>
+);
+```
+
+## Common Pitfalls
+
+### Use deps when variables contain objects
+
+useQuery behaves like `React.useEffect` by default, using variables as the effect dependency with shallow comparison. If variables contain new objects created on every render, useQuery will execute infinitely.
+
+Wrong:
+
+```ts
+const { name, role } = queryFormKey.useModel();
+// A new { name, role } object reference is created on every render.
+// Shallow comparison always detects a change, causing infinite execution.
+userQueryKey.useQuery([{ name, role }]);
+```
+
+Correct approach 1: have the async function accept primitive parameters, so variables are naturally stable
+
+```ts
+// fetchUsers(name: string, role: string)
+userQueryKey.useQuery([name, role]);
+```
+
+Correct approach 2: if the async function must accept an object parameter, use deps with stable primitive values
+
+```ts
+// fetchUsers(query: { name: string, role: string })
+userQueryKey.useQuery({ variables: [{ name, role }], deps: [name, role] });
+```
+
+## Best Practices
+
+- When using both @airma/react-state and @airma/react-effect, import everything from @airma/react-hooks
+- For session stores, use only one worker (useQuery/useMutation) and let other components subscribe and trigger via useSession
+- Session state (sessionState) is already a state object — avoid unnecessary setState on sessionState.data
+- When using trigger(), ensure useQuery/useMutation has variables configured
+- For async operations, use @airma/react-effect rather than @airma/react-state's produce

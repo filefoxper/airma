@@ -6,10 +6,12 @@ import {
   useMemo,
   useState
 } from 'react';
-import { createStores, shallowEqual as shallowEq, validations } from 'as-model';
+import { config, shallowEqual as shallowEq, validations } from 'as-model';
 import type { ComponentType, FC, FunctionComponent, ReactNode } from 'react';
 import type { ModelKey, StoreIndex } from 'as-model';
 import type { GlobalConfig, ModelStores } from './type';
+
+const { createStores } = config({});
 
 export const ModelStoresContext = createContext<ModelStores | undefined>(
   undefined

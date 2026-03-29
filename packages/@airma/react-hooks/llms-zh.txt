@@ -1,0 +1,325 @@
+# @airma/react-hooks
+
+> @airma/react-hooks 是 @airma/react-state（同步状态管理）和 @airma/react-effect（异步状态管理）的整合包。它统一了两者的 provide、Provider 和 ConfigProvider，并额外提供一组实用 hooks。同时使用两个包时，推荐通过本包引入 API，以避免引用冲突。
+
+- 版本: 18.6.3
+- 许可证: MIT
+- 仓库: https://github.com/filefoxper/airma
+- 主页: https://filefoxper.github.io/airma/#/react-hooks/index
+- npm: https://www.npmjs.com/package/@airma/react-hooks
+
+## 安装
+
+```
+npm i @airma/react-hooks
+```
+
+依赖: React >=16.8.0, @airma/react-state >=18.6.3, @airma/react-effect >=18.6.1
+
+浏览器支持: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## 为什么使用本包
+
+@airma/react-state 和 @airma/react-effect 的 Provider/provide 系统本就互通（会话键是特殊的模型键），但分别导入时会出现两套 provide/Provider/ConfigProvider。本包将它们统一为一个，用法更简洁：
+
+```ts
+// 推荐：从整合包导入
+import { provide, useModel, useQuery, Strategy, ConfigProvider } from '@airma/react-hooks';
+
+// 不推荐：分别从子包导入（容易混淆两套 provide/Provider/ConfigProvider）
+import { provide, useModel } from '@airma/react-state';
+import { provide as sessionProvide, useQuery, Strategy } from '@airma/react-effect';
+```
+
+## 统一 API
+
+### provide
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+统一的高阶组件 API，支持同时传入模型键和会话键，为子组件创建 Provider 包装。支持 `provide(keys).to(Component)` 和 `provide(keys)(Component)` 两种调用方式。
+
+```ts
+import { model, provide, session } from '@airma/react-hooks';
+
+const countKey = model(counting).createKey(0);
+const queryKey = session(fetchUsers, 'query').createKey();
+
+// 模型键和会话键混合使用
+const App = provide(countKey, queryKey).to(() => {
+  // 子组件可通过各自的键访问对应的库
+  return <div>...</div>;
+});
+```
+
+### Provider
+
+```ts
+const Provider: FC<{
+  value: Array<ModelKey | SessionKey | Record<string, ModelKey | SessionKey>>
+    | Record<string, ModelKey | SessionKey>;
+  children?: ReactNode;
+}>;
+```
+
+统一的 Provider 组件，与 provide 功能相同，适用于 JSX 中直接使用。
+
+```ts
+import { Provider } from '@airma/react-hooks';
+
+<Provider value={[countKey, queryKey]}>
+  <App />
+</Provider>
+```
+
+### ConfigProvider
+
+```ts
+type GlobalConfig = {
+  batchUpdate?: (callback: () => void) => void;
+  strategy?: (
+    strategies: (StrategyType | null | undefined)[],
+    type: 'query' | 'mutation'
+  ) => (StrategyType | null | undefined)[];
+};
+
+const ConfigProvider: FC<{
+  value: GlobalConfig;
+  children?: ReactNode;
+}>;
+```
+
+统一的全局配置组件，合并了 @airma/react-state 和 @airma/react-effect 的配置：
+- `batchUpdate` — React <18 时配置 `unstable_batchedUpdates` 优化渲染（同时作用于同步和异步状态管理）
+- `strategy` — 公共策略链组合函数，为所有会话注入公共策略（如全局错误处理）
+
+## 来自 @airma/react-state 的 API
+
+以下 API 从 @airma/react-state 原样导出，详细用法请参考 @airma/react-state 文档：
+
+- `model` — 模型声明 API，支持 createKey/createStore/createField/createMethod/produce 等流式调用
+- `createKey` — 创建模型键
+- `createStore` — 创建模型静态库
+- `useModel` — 创建或连接模型实例
+- `useSignal` — 创建信号函数，支持高性能选择性渲染
+- `useControlledModel` — 受控模型，状态完全受外部控制
+- `useSelector` — 从库中选取/重组实例字段，仅在选取结果变化时重渲染
+- `shallowEqual` — 浅对比函数，常用于 useSelector 的 equality 参数
+
+## 来自 @airma/react-effect 的 API
+
+以下 API 从 @airma/react-effect 原样导出，详细用法请参考 @airma/react-effect 文档：
+
+- `session` — 会话声明 API，支持 createKey/createStore/useQuery/useMutation 等流式调用
+- `createSessionKey` — 创建会话键
+- `createSessionStore` — 创建会话静态库
+- `useQuery` — 创建查询会话，默认支持加载、依赖更新、人工触发
+- `useMutation` — 创建修改会话，默认仅支持人工触发
+- `useSession` — 订阅库的会话状态变更
+- `useLoadedSession` — 同 useSession，但 data 类型为 T（确认已加载时使用）
+- `useResponse` — 监听会话执行完毕后的回调（含 useSuccess/useFailure 子 API）
+- `useIsFetching` — 检测是否有会话正在执行
+- `useLazyComponent` — 监听会话加载状态，异步加载组件
+- `Strategy` — 内置策略集合（debounce/cache/memo/validate/once/atomic/reduce/success/failure/response 等）
+
+## 来自 @airma/react-hooks-core 的实用 API
+
+### usePersistFn
+
+```ts
+function usePersistFn<T extends (...args: any[]) => any>(callback: T): T;
+```
+
+持久化函数引用。内容随渲染更新，但引用始终不变。可替代 `useCallback`，无需声明依赖。
+
+```ts
+import { usePersistFn } from '@airma/react-hooks';
+
+const call = usePersistFn((v: string) => { /* 最新逻辑 */ });
+// call 引用不变，可安全传给 memo 组件
+```
+
+### useMount
+
+```ts
+function useMount(callback: () => (() => void) | void): void;
+```
+
+相当于 `useEffect(callback, [])`，仅在组件挂载时执行。
+
+### useUnmount
+
+```ts
+function useUnmount(destroy: () => void): void;
+```
+
+相当于 `useEffect(() => destroy, [])`，仅在组件卸载时执行。
+
+### useUpdate
+
+```ts
+function useUpdate<T extends any[]>(
+  callback: (prevDeps: [...T]) => (() => void) | void,
+  deps?: [...T]
+): void;
+```
+
+监听依赖变化（跳过首次挂载），回调接收变化前的依赖值数组。
+
+```ts
+import { useUpdate } from '@airma/react-hooks';
+
+useUpdate((prevDeps) => {
+  const [prevValue] = prevDeps;
+  console.log('changed from', prevValue, 'to', value);
+}, [value]);
+```
+
+### useRefresh
+
+```ts
+function useRefresh<T extends (...args: any[]) => any>(
+  method: T,
+  variables: Parameters<T> | { refreshDeps?: any[]; variables: Parameters<T> }
+): void;
+```
+
+通过依赖 variables 产生的副作用调用 method。设置 refreshDeps 后，以 refreshDeps 替代 variables 作副作用依赖。
+
+### useDebounceFn
+
+```ts
+function useDebounceFn<F extends (...args: any[]) => any>(
+  fn: F,
+  option: number | { lead?: boolean; ms: number }
+): (...args: Parameters<F>) => Promise<ReturnType<F>>;
+```
+
+将函数包装为防抖异步函数。option.lead 为 true 时先执行后防抖，否则先防抖后执行。
+
+### shallowEqual
+
+```ts
+function shallowEqual<R>(prev: R, current: R): boolean;
+```
+
+浅对比两个对象是否等价。
+
+## 使用模式
+
+### 同步 + 异步混合使用
+
+模型管理查询条件状态，模型实例中的数据作为 useQuery 的 variables 依赖，条件变化时自动触发查询：
+
+```ts
+import { model, session, provide } from '@airma/react-hooks';
+
+const queryFormKey = model(function queryForm(state: { name: string; role: string }) {
+  return {
+    ...state,
+    changeName: (name: string) => ({ ...state, name }),
+    changeRole: (role: string) => ({ ...state, role })
+  };
+}).createKey({ name: '', role: '' });
+
+// fetchUsers 接收原始值参数，variables 中均为原始值，无需额外设置 deps
+const userQueryKey = session(fetchUsers, 'query').createKey();
+
+const QueryForm = () => {
+  const { name, role, changeName, changeRole } = queryFormKey.useModel();
+  return (
+    <div>
+      <input value={name} onChange={e => changeName(e.target.value)} />
+      <select value={role} onChange={e => changeRole(e.target.value)}>
+        <option value="">all</option>
+        <option value="admin">admin</option>
+        <option value="user">user</option>
+      </select>
+    </div>
+  );
+};
+
+const UserList = () => {
+  const [{ data, isFetching }] = userQueryKey.useSession();
+  if (isFetching) return <div>Loading...</div>;
+  return <ul>{data?.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+};
+
+const App = provide(queryFormKey, userQueryKey).to(() => {
+  const { name, role } = queryFormKey.useModel();
+  // 模型状态作为查询依赖，条件变化时自动触发查询
+  userQueryKey.useQuery([name, role]);
+  return (
+    <div>
+      <QueryForm />
+      <UserList />
+    </div>
+  );
+});
+```
+
+### 全局配置示例
+
+通过 ConfigProvider 的 strategy 配置函数，可以在所有 useQuery/useMutation 的运行时策略链中注入公共策略。参数 `s` 是当前会话自身的策略数组，返回值是最终的策略链。
+
+```ts
+import { ConfigProvider, Strategy } from '@airma/react-hooks';
+
+const globalConfig = {
+  // Strategy.failure 放在第一条（链首），起到异常兜底作用：
+  // 当所有后续策略都未处理异常时，异常最终会传递到这里被捕获
+  strategy: (s, type) => [
+    Strategy.failure((e) => { message.error(e.message); }),
+    ...s,
+    type === 'query' ? Strategy.memo() : null
+  ]
+};
+
+const Root = () => (
+  <ConfigProvider value={globalConfig}>
+    <App />
+  </ConfigProvider>
+);
+```
+
+## 常见陷阱
+
+### variables 中包含对象时需使用 deps
+
+useQuery 默认行为类似 `React.useEffect`，以 variables 作为副作用依赖项做浅比较。如果 variables 中包含每次渲染都会创建的新对象，会导致 useQuery 不断执行。
+
+错误示范：
+
+```ts
+const { name, role } = queryFormKey.useModel();
+// 每次渲染都会创建新的 { name, role } 对象引用，
+// 浅比较始终认为依赖发生变化，导致无限执行
+userQueryKey.useQuery([{ name, role }]);
+```
+
+正确做法一：让异步函数接收原始值参数，variables 中自然都是原始值
+
+```ts
+// fetchUsers(name: string, role: string)
+userQueryKey.useQuery([name, role]);
+```
+
+正确做法二：如果异步函数必须接收对象参数，使用 deps 指定稳定的原始值作为依赖
+
+```ts
+// fetchUsers(query: { name: string, role: string })
+userQueryKey.useQuery({ variables: [{ name, role }], deps: [name, role] });
+```
+
+## 最佳实践
+
+- 同时使用 @airma/react-state 和 @airma/react-effect 时，统一从 @airma/react-hooks 导入
+- 对会话库推荐只设一个工作者（useQuery/useMutation），其他组件通过 useSession 订阅和触发
+- 会话状态 sessionState 本身就是 state，避免对 sessionState.data 做不必要的 setState
+- 使用 trigger() 触发时，确保 useQuery/useMutation 已配置 variables
+- 处理异步操作推荐使用 @airma/react-effect，而非 @airma/react-state 的 produce

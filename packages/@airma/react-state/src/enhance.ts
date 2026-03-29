@@ -23,7 +23,7 @@ export function useRenderProtectDispatch(dispatch: Dispatch) {
       return;
     }
     renderingPhaseActions.forEach(action => {
-      dispatcher(action);
+      dispatch(action);
     });
   });
   useEffect(() => {

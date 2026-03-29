@@ -1,0 +1,422 @@
+# @airma/react-effect
+
+> @airma/react-effect 是一款用于管理 React 异步状态的工具。它依赖 @airma/react-state，并复用了其键、库、Provider 等体系。
+
+- 版本: 18.6.4
+- 许可证: MIT
+- 仓库: https://github.com/filefoxper/airma
+- 主页: https://filefoxper.github.io/airma/#/react-effect/index
+- npm: https://www.npmjs.com/package/@airma/react-effect
+
+## 安装
+
+```
+npm i @airma/react-effect
+```
+
+依赖: React >=16.8.0, @airma/react-state >=18.6.4
+
+浏览器支持: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## 核心概念
+
+### 会话 (Session)
+
+会话是一个可持续更新的异步状态管理单元。会话的核心为异步函数，会话的目标是将异步函数的执行过程以状态变更的形式描述出来。
+
+- `useQuery` 创建查询会话 — 默认支持加载、依赖更新、人工触发三种触发方式，始终采纳最新一次执行结果
+- `useMutation` 创建修改会话 — 默认只支持人工触发，人工触发时阻塞运行
+
+```ts
+const [sessionState, trigger, execute] = useQuery(asyncFn, [params]);
+const [sessionState, trigger, execute] = useMutation(asyncFn, [params]);
+```
+
+- `sessionState` — 会话状态对象
+- `trigger()` — 人工触发，使用配置中的 variables 作参数
+- `execute(params)` — 人工执行，需要传入参数
+
+### 会话状态 (SessionState)
+
+会话状态随异步函数执行过程不断更新，核心字段：
+
+- `data` — 会话数据，最后一次成功执行的结果。初始值为 undefined（可通过 defaultData 设置）
+- `isFetching` — 是否正在执行
+- `isError` — 最新执行是否出错
+- `error` — 错误信息
+- `loaded` — 是否已加载（成功执行过或有 defaultData）
+- `sessionLoaded` — 是否成功执行过
+- `variables` — 最新一次执行使用的参数
+- `triggerType` — 触发类型：`'mount' | 'update' | 'manual'`
+- `round` — 执行回合数
+- `abandon` — 执行结果是否被策略放弃
+- `online` — 会话是否在线（组件未卸载）
+
+### 会话配置
+
+useQuery/useMutation 的第二个参数可以是参数元组或配置对象：
+
+```ts
+// 参数元组形式
+useQuery(asyncFn, [param1, param2]);
+
+// 配置对象形式
+useQuery(asyncFn, {
+  variables: [param1, param2],
+  defaultData: [],
+  triggerOn: ['mount', 'update', 'manual'],
+  deps: [dep1],
+  strategy: Strategy.debounce(300),
+  manual: false,
+  payload: any,
+});
+```
+
+配置字段：
+- `variables` — 执行参数元组。在 update 触发方式下若未设置 deps，以 variables 作为依赖项
+- `defaultData` — 默认会话数据，设置后 loaded 恒为 true
+- `triggerOn` — 触发方式数组，useQuery 默认全量，useMutation 默认仅 `['manual']`
+- `deps` — 自定义依赖项，替代 variables 作为 update 触发方式的依赖
+- `strategy` — 策略或策略数组
+- `manual` — 为 true 时强制仅人工触发
+- `payload` — 附加数据，执行完毕后出现在会话状态中
+
+### 库 (Store) 与 键 (Key)
+
+与 @airma/react-state 的体系完全互通：
+
+- **本地库** — 直接通过 `useQuery(asyncFn, config)` 创建，类似 useState
+- **动态库** — 通过键 + `provide`/`Provider` 创建，每个 Provider 元素持有独立库
+- **静态库** — 通过 `createSessionStore` 或 `session(fn, type).createStore()` 创建，全局共享
+
+会话键就是一种特殊的模型键，两者的 provide/Provider 系统完全通用。可以将模型键和会话键混合在同一个 `provide()` 中使用。
+
+### 策略 (Strategy)
+
+策略是用于干预会话执行过程和结果的插件函数。策略函数形成链式调用，按顺序进入，按逆序返回。
+
+默认策略：
+- useQuery — `latest` 策略（始终选取最新一次请求结果）
+- useMutation — `blocking` 策略（人工触发时阻塞运行）
+
+策略位置在会话创建时固定，不可动态增删或排序，但每个策略可以与 null 动态切换。
+
+## API 参考
+
+### useQuery
+
+```ts
+function useQuery(
+  asyncFn | sessionKey | sessionStore,
+  variablesOrConfig?
+): [sessionState, trigger, execute];
+```
+
+创建查询会话。默认支持 mount/update/manual 三种触发方式，始终采纳最新一次执行结果。
+
+useQuery 默认行为类似 `React.useEffect`：以 variables 作为副作用依赖项，加载时和依赖项变化时自动触发执行；若配置了 deps，则以 deps 作为副作用依赖项。可通过 triggerOn 重新设置支持的触发方式，如 `triggerOn: ['update']` 则仅在依赖更新时触发。
+
+无 config 入参的 useQuery 功能类似 useSession：被人工触发时会先查找同键且有 config 的其他 useQuery 来驱动。
+
+### useMutation
+
+```ts
+function useMutation(
+  asyncFn | sessionKey | sessionStore,
+  variablesOrConfig?
+): [sessionState, trigger, execute];
+```
+
+创建修改会话。默认只支持人工触发，人工触发时阻塞运行。可通过 triggerOn 扩充触发方式，非人工触发时不再遵循阻塞原则。
+
+### useSession
+
+```ts
+function useSession(
+  sessionKey | sessionStore
+): [sessionState, trigger, execute];
+```
+
+订阅库的会话状态变更，也可人工触发同键/同库的 useQuery/useMutation 执行。
+
+### useLoadedSession
+
+```ts
+function useLoadedSession(
+  sessionKey | sessionStore
+): [sessionState, trigger, execute];
+```
+
+功能与 useSession 相同，但确认会话已加载时使用。与 useSession 返回的 `data` 类型为 `T | undefined` 不同，useLoadedSession 返回的 `data` 类型为 `T`（与异步函数 Promise resolve 类型一致），loaded 恒为 true。
+
+### createSessionKey
+
+```ts
+function createSessionKey(asyncFn, sessionType?: 'query' | 'mutation'): SessionKey;
+```
+
+将异步函数包装成会话键，用于创建和订阅动态库。
+
+### createSessionStore
+
+```ts
+function createSessionStore(asyncFn, sessionType?: 'query' | 'mutation'): SessionStore;
+```
+
+将异步函数包装成会话静态库。
+
+### session
+
+```ts
+function session(asyncFn, sessionType: 'query' | 'mutation'): SessionApi;
+```
+
+会话声明 API，返回带有流式调用方法的会话对象：
+- `session(fn, type).useQuery(config)` — 本地查询会话
+- `session(fn, type).useMutation(config)` — 本地修改会话
+- `session(fn, type).createKey()` — 创建会话键（返回带 useQuery/useMutation/useSession/useLoadedSession API 的键）
+- `session(fn, type).createStore()` — 创建会话静态库（返回带 useQuery/useMutation/useSession/useLoadedSession API 的库）
+
+### Provider / provide
+
+与 @airma/react-state 的 Provider/provide 完全互通。
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+支持将模型键和会话键混合使用。
+
+### useResponse
+
+```ts
+function useResponse(
+  process: (sessionState) => void | (() => void),
+  sessionState: SessionState | [SessionState, { watchOnly?: boolean }]
+): void;
+```
+
+监听会话执行完毕后调用回调。默认关注会话响应结果（已完成的结果在加载时也会被处理），设置 `watchOnly: true` 可强制只做监听。
+
+子 API：
+- `useResponse.useSuccess(process, sessionState)` — 仅在成功时调用，process 接收 `(data, sessionState)`
+- `useResponse.useFailure(process, sessionState)` — 仅在失败时调用，process 接收 `(error, sessionState)`
+
+### Strategy
+
+内置策略集合。
+
+注意区分两组回调策略的执行时机：
+- `Strategy.success` / `Strategy.failure` — 在 promise resolve/reject 时**立即执行**，不受组件是否卸载影响
+- `Strategy.response.success` / `Strategy.response.failure` — 在会话状态更新后的 **useEffect 副作用中执行**，组件卸载后不响应
+
+策略列表：
+
+- `Strategy.debounce(duration | {duration, lead?})` — 防抖策略
+- `Strategy.cache({key?, staleTime?, capacity?, static?})` — SWR 缓存策略
+- `Strategy.memo(equalFn?)` — 会话数据缓存策略，结果等价时复用旧数据以提升渲染性能
+- `Strategy.validate(process)` — 校验策略，校验失败则跳过执行。process 接收 `(variables, sessionState)`，返回 boolean 或 Promise<boolean>
+- `Strategy.once()` — 一次性执行策略，成功执行一次后，后续触发均不再执行（执行过程中也会阻止重复触发）
+- `Strategy.atomic({throttle?, stopWhenError?})` — 原子策略，一次只执行一个异步操作，其他排队等待
+- `Strategy.reduce(process)` — 数据累积策略，适合滚动翻页等场景
+- `Strategy.success(process, {withAbandoned?})` — 成功回调（在 promise resolve 时立即执行，不受组件卸载影响）
+- `Strategy.failure(process, {withAbandoned?})` — 失败回调（在 promise reject 时立即执行，不受组件卸载影响）。会立即从当前位置开始执行前置异常策略链，但跳过链中的 Strategy.response.failure。若 process 正常处理异常则阻止前置异常策略继续运行；若 process 抛出异常，则将该异常传递给更高层（更靠前）的 Strategy.failure 处理
+- `Strategy.response(process)` — 响应副作用（在会话状态更新后的 useEffect 中执行，组件卸载后不响应）
+- `Strategy.response.success(process)` — 成功响应副作用
+- `Strategy.response.failure(process)` — 失败响应副作用。会在会话异常时暂停前置的所有 Strategy.failure 和 Strategy.response.failure 执行，然后在会话状态变更的副作用（useEffect）中执行完整的异常策略链条（包含两种类型），组件卸载后不响应。若 process 正常处理异常则阻止前置异常策略继续运行；若 process 抛出异常，则将该异常传递给更高层的 Strategy.failure 或 Strategy.response.failure 处理
+
+### useIsFetching
+
+```ts
+function useIsFetching(...sessionStates?: SessionState[]): boolean;
+```
+
+检测是否有会话正在执行。不提供参数时检测全局所有会话。
+
+### useLazyComponent
+
+```ts
+function useLazyComponent(componentLoader, ...sessionStates): LazyComponent;
+```
+
+监听多个会话是否已加载，异步加载组件。需配合 `Suspense` 使用。
+
+### ConfigProvider
+
+```ts
+const ConfigProvider: FC<{
+  value: {
+    batchUpdate?: (callback: () => void) => void;
+    strategy?: (strategies: StrategyType[], type: 'query' | 'mutation') => StrategyType[];
+  };
+  children?: ReactNode;
+}>;
+```
+
+全局配置：
+- `batchUpdate` — React <18 时配置 `unstable_batchedUpdates` 优化渲染
+- `strategy` — 公共策略链组合函数，可为所有会话注入公共策略（如全局错误处理）
+
+## 使用模式
+
+### 本地查询会话
+
+```ts
+import { useQuery } from '@airma/react-effect';
+
+const [{ data, isFetching }, trigger] = useQuery(fetchUsers, [query]);
+```
+
+query 变化时自动重新查询，也可手动调用 trigger() 触发。
+
+### 本地修改会话
+
+```ts
+import { useMutation } from '@airma/react-effect';
+
+const [{ data, isFetching }, trigger, execute] = useMutation(saveUser, [user]);
+// 手动触发
+trigger();
+// 或传参执行
+execute(user);
+```
+
+### 动态库（跨组件共享会话状态）
+
+```ts
+import { session, provide } from '@airma/react-effect';
+
+const userQueryKey = session(fetchUsers, 'query').createKey();
+
+const SearchButton = () => {
+  const [{ isFetching }, triggerQuery] = userQueryKey.useSession();
+  return <button disabled={isFetching} onClick={triggerQuery}>查询</button>;
+};
+
+const App = provide(userQueryKey).to(({ query }) => {
+  userQueryKey.useQuery([query]);
+  return <SearchButton />;
+});
+```
+
+每个 provide 元素持有独立的动态库，库随元素创建或销毁。
+
+### 静态库（全局共享）
+
+```ts
+import { session } from '@airma/react-effect';
+
+const userQueryStore = session(fetchUsers, 'query').createStore();
+
+const SearchButton = () => {
+  const [{ isFetching }, triggerQuery] = userQueryStore.useSession();
+  return <button disabled={isFetching} onClick={triggerQuery}>查询</button>;
+};
+
+const App = ({ query }) => {
+  userQueryStore.useQuery([query]);
+  return <SearchButton />;
+};
+```
+
+静态库不需要 Provider，可直接订阅使用。
+
+### 常用策略组合
+
+```ts
+import { useQuery, Strategy } from '@airma/react-effect';
+
+// query 来自 useState，是稳定引用，可直接用于 variables
+const [query, setQuery] = useState({ name: '', role: '' });
+
+useQuery(fetchUsers, {
+  variables: [query],
+  strategy: [
+    Strategy.validate(() => !!query.name),
+    Strategy.debounce(300),
+    Strategy.memo(),
+    Strategy.cache({ capacity: 10, staleTime: 5 * 60 * 1000 }),
+    Strategy.response.success((data) => { doSomething(data); })
+  ]
+});
+```
+
+### 全局错误处理
+
+通过 ConfigProvider 的 strategy 配置函数，可以在所有 useQuery/useMutation 的运行时策略链中注入公共策略。参数 `s` 是当前会话自身的策略数组，返回值是最终的策略链。
+
+```ts
+import { ConfigProvider, Strategy } from '@airma/react-effect';
+
+const globalConfig = {
+  // Strategy.failure 放在第一条（链首），起到异常兜底作用：
+  // 当所有后续策略都未处理异常时，异常最终会传递到这里被捕获
+  strategy: (s, type) => [
+    Strategy.failure((e) => { message.error(e); }),
+    ...s,
+    type === 'query' ? Strategy.memo() : null
+  ]
+};
+
+<ConfigProvider value={globalConfig}>
+  <App />
+</ConfigProvider>
+```
+
+### 与 @airma/react-state 配合使用
+
+```ts
+import { provide, createKey } from '@airma/react-state';
+import { createSessionKey } from '@airma/react-effect';
+
+const countKey = createKey(countingModel, 0);
+const queryKey = createSessionKey(fetchUsers, 'query');
+
+// 模型键和会话键可混合在同一个 provide 中
+const App = provide(countKey, queryKey).to(() => { ... });
+```
+
+如果同时使用两个包，推荐使用 @airma/react-hooks 整合包来避免 API 引用冲突。
+
+## 常见陷阱
+
+### variables 中包含对象时需使用 deps
+
+useQuery 默认行为类似 `React.useEffect`，以 variables 作为副作用依赖项做浅比较。如果 variables 中包含每次渲染都会创建的新对象，会导致 useQuery 不断执行。
+
+错误示范：
+
+```ts
+const [query, setQuery] = useState({ name: '', role: '' });
+// 假设 fetchUsers 接收一个对象参数
+// 每次渲染都会创建新的 [query] 数组元素（若 query 本身是新对象引用），
+// 浅比较始终认为依赖发生变化，导致无限执行
+useQuery(fetchUsers, [{ name: query.name, role: query.role }]);
+```
+
+正确做法一：让异步函数接收原始值参数，variables 中自然都是原始值
+
+```ts
+// fetchUsers(name: string, role: string)
+useQuery(fetchUsers, [query.name, query.role]);
+```
+
+正确做法二：如果异步函数必须接收对象参数，使用 deps 指定稳定的原始值作为依赖
+
+```ts
+// fetchUsers(query: { name: string, role: string })
+useQuery(fetchUsers, {
+  variables: [{ name: query.name, role: query.role }],
+  deps: [query.name, query.role]
+});
+```
+
+## 特性
+
+- **无 zombie-child 问题**: 组件卸载后不会进行状态更新，避免内存泄漏
+- **同键会话互斥执行**: 多个使用相同键/库的会话同时触发时，只有一个执行，其他订阅状态更新
+- **Provider 系统与 @airma/react-state 互通**: 会话键就是特殊的模型键，provide/Provider 完全通用
+- **灵活的策略系统**: 通过插件式策略函数干预执行过程，支持防抖、缓存、校验、原子操作等，可自定义策略

@@ -1,0 +1,413 @@
+# @airma/react-state
+
+> @airma/react-state 是一款融合了面向对象与函数式编程风格的 React 状态管理工具。其工作原理接近 redux，但采用更自然的方法调用方式来分发行为事件（dispatch action）。
+
+- 版本: 18.6.9
+- 许可证: MIT
+- 仓库: https://github.com/filefoxper/airma
+- 主页: https://filefoxper.github.io/airma/#/react-state/index
+- npm: https://www.npmjs.com/package/@airma/react-state
+
+## 安装
+
+```
+npm i @airma/react-state
+```
+
+依赖: React >=16.8.0
+
+浏览器支持: Chrome >=91, Edge >=91, Firefox >=90, Safari >=15
+
+## 核心概念
+
+### 模型 (Model)
+
+模型是一个以状态为参数、以返回对象为实例的函数。函数入参为**状态**，返回值为**实例**。实例包含渲染数据和行为方法。调用行为方法会产生新状态，新状态再次被模型函数调用，刷新实例并触发渲染。
+
+```ts
+const counting = (count: number) => ({
+  count,
+  isNegative: count < 0,
+  increase: () => count + 1,
+  decrease: () => count - 1,
+  add(...additions: number[]) {
+    return additions.reduce((r, c) => r + c, count);
+  }
+});
+```
+
+行为方法的返回值类型必须与模型入参状态类型保持一致。
+
+### 实例 (Instance)
+
+模型函数返回的对象即实例。实例中的函数属性被视为行为方法，非函数属性被视为渲染数据。行为方法产生新状态并提交给库，库使用新状态刷新实例并通知订阅者渲染。
+
+无论传入 useModel/useSignal/useSelector 的是模型函数、键还是库，只要该模型使用了 `model(fn).produce`，这些 API 返回的就是 `produce` 回调函数产生的模拟实例，而非原始模型实例。模拟实例中的方法不具备直接修改状态的能力，只能通过调用库存实例的行为方法去改变状态。
+
+### 库 (Store)
+
+所有模型在使用过程中都会建立库来存储状态和实例。库有三种类型：
+
+1. **本地库** — 通过 `useModel(modelFn, defaultState)` 在组件内创建，类似 `useReducer`。
+2. **动态库** — 通过 `Provider` / `provide` + 模型键在组件元素化过程中创建，每个元素持有独立的库。动态库随元素创建或销毁。
+3. **静态库** — 通过 `createStore` 或 `model(fn).createStore()` 在组件外部创建的常量，所有组件共享同一库实例。不需要 Provider。
+
+### 键 (Key)
+
+键是生成动态库的模板，也是访问动态库的钥匙。通过 `createKey` 或 `model(fn).createKey()` 创建。键用于 `provide` / `Provider` 创建动态库，以及 `useModel` / `useSelector` / `useSignal` 订阅动态库。
+
+## API 参考
+
+### useModel
+
+```ts
+function useModel(modelFn, initialState): Instance;
+function useModel(modelKey): Instance;
+function useModel(modelKey, initialState?): Instance;
+function useModel(modelStore): Instance;
+function useModel(modelStore, initialState?): Instance;
+```
+
+- 传入模型函数 + 初始状态 → 创建本地库并返回实例
+- 传入键或库 → 订阅已有库并返回实例
+- 无论传入的是模型函数、键还是库，只要该模型使用了 `produce`，返回的就是 `produce` 回调函数产生的模拟实例
+- 键/库若已预设默认状态则无需再提供初始状态
+- 实例变更必然触发当前组件重渲染
+
+### useControlledModel
+
+```ts
+function useControlledModel(modelFn, state, onChange): Instance;
+```
+
+受控模式，不维护内部状态，完全受控于传入的外部 `state`，状态变更通过 `onChange` 回调传出。适用于受控组件复用模型。
+
+### useSelector
+
+```ts
+function useSelector(modelKey | modelStore, selector, equality?): SelectedValue;
+```
+
+- 选取并重组实例数据，仅在选取值发生变化时触发组件渲染
+- `equality` 可选等价对比函数，默认 `===`，推荐使用 `shallowEqual`
+- 作用是降低渲染频率，提升性能
+
+### useSignal
+
+```ts
+function useSignal(modelLike, defaultState?): Signal;
+```
+
+返回一个 signal 回调函数。调用 `signal()` 获取最新实例，useSignal 会追踪 render 阶段使用的实例属性，仅在这些属性变更时触发重渲染。
+
+signal 函数可选配置参数:
+- `cutOff: boolean` — 为 true 时切断当前信号的渲染收集功能
+
+signal 还提供副作用 API:
+- `signal.useEffect(callback)` — 行为方法被调用并造成组件渲染后触发
+- `signal.useWatch(callback)` — 行为方法引起任何变化时都触发（与渲染无关）
+- `.onChanges(filter)` — 限定响应特定字段变化
+- `.onActions(filter)` — 限定响应特定行为方法
+
+注意：`signal.useEffect` 和 `signal.useWatch` 只能订阅真实库存实例的属性变更和行为方法，不能对 produce 产生的模拟实例生效。`onActions`/`onChanges` 的 filter 回调接收的也是库存实例。
+
+注意事项:
+- 不要在子组件的 useLayoutEffect 中使用父组件的 signal 回调函数
+- 不要在副作用/监听器回调中添加副作用与监听器
+- 不要在非 render 阶段添加副作用与监听器
+
+### Provider
+
+```ts
+const Provider: FC<{
+  value?: ModelKey | ModelKey[] | Record<string, ModelKey>;
+  children?: ReactNode;
+}>;
+```
+
+根据键创建动态库并提供 React.Context 环境。不同层级的 Provider 可形成至近及远、至下及上的库查找树。
+
+### provide
+
+```ts
+function provide(...keys): {
+  (component: ComponentType): typeof component;
+  to: (component: ComponentType) => typeof component;
+};
+```
+
+Provider 的高阶组件形态。为组件包装一层 Provider 父节点来创建动态库。支持 `provide(keys).to(Component)` 和 `provide(keys)(Component)` 两种调用方式。
+
+### createKey
+
+```ts
+function createKey(modelFn, initialState?): ModelKey;
+```
+
+为模型函数创建键，用于生成和访问动态库。
+
+### createStore
+
+```ts
+function createStore(modelFn, initialState?): ModelStore;
+```
+
+为模型函数创建静态库。
+
+### shallowEqual
+
+```ts
+function shallowEqual<R>(prev: R, current: R): boolean;
+```
+
+浅对比函数，通常用于 `useSelector` 的 `equality` 参数。
+
+### model
+
+```ts
+function model(modelFn): ModelFn & Api;
+```
+
+简化入口 API，返回带有以下常用方法的模型函数:
+- `model(fn).useModel(initialState)` — 本地状态管理
+- `model(fn).useSignal(initialState)` — 本地信号管理
+- `model(fn).useControlledModel(state, onChange)` — 受控状态管理
+- `model(fn).createKey(initialState?)` — 创建键（返回带 useModel/useSignal/useSelector API 的键）
+- `model(fn).createStore(initialState?)` — 创建静态库（返回带 useModel/useSignal/useSelector/instance API 的库）
+- `model(fn).produce(factory)` — 创建模拟实例工厂
+
+静态方法:
+- `model.createField(callback, deps?)` — 创建实例字段，支持缓存。通过 `.get()` 获取字段值。有 deps 时按依赖变化缓存，无 deps 时始终返回最新值。
+- `model.createMethod(callback)` — 创建实例方法（非行为方法，不修改状态）
+
+### ConfigProvider
+
+```ts
+const ConfigProvider: FC<{
+  value: { batchUpdate?: (callback: () => void) => void };
+  children?: ReactNode;
+}>;
+```
+
+全局配置。React <18.0.0 时可配置 `batchUpdate: unstable_batchedUpdates` 来提升多组件同步渲染性能。React >=18 可忽略。
+
+## 使用模式
+
+### 本地状态管理（类似 useReducer）
+
+```ts
+import { useModel } from '@airma/react-state';
+
+const { count, increase, decrease } = useModel(
+  (state: number) => ({
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  }),
+  0
+);
+```
+
+### 动态库（基于 React.Context）
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createKey();
+
+const Increase = memo(() => {
+  const increase = countingKey.useSelector(i => i.increase);
+  return <button onClick={increase}>+</button>;
+});
+
+const Count = memo(() => {
+  const { count } = countingKey.useModel();
+  return <span>{count}</span>;
+});
+
+const Decrease = memo(() => {
+  const decrease = countingKey.useSelector(i => i.decrease);
+  return <button onClick={decrease}>-</button>;
+});
+
+// 每个 Counter 元素持有独立的动态库，互不干扰
+const Counter = provide(countingKey).to(
+  ({ defaultCount }: { defaultCount: number }) => {
+    countingKey.useSignal(defaultCount);
+    return (
+      <div>
+        <Decrease />
+        <Count />
+        <Increase />
+      </div>
+    );
+  }
+);
+
+// 列表中的多个 Counter 元素各自维护独立状态
+const App = () => (
+  <div>
+    {[0, 10, 20].map(n => <Counter key={n} defaultCount={n} />)}
+  </div>
+);
+```
+
+动态库优势: 同一组件生成的不同元素持有独立的库，互不干扰；库随元素创建或销毁。
+
+### 静态库（全局共享状态）
+
+```ts
+import { model } from '@airma/react-state';
+
+const countingStore = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createStore(0);
+
+const Increase = memo(() => {
+  const increase = countingStore.useSelector(i => i.increase);
+  return <button onClick={increase}>+</button>;
+});
+
+const Count = () => {
+  const { count } = countingStore.useModel();
+  return <span>{count}</span>;
+};
+
+const Decrease = memo(() => {
+  const decrease = countingStore.useSelector(i => i.decrease);
+  return <button onClick={decrease}>-</button>;
+});
+
+const App = () => (
+  <div>
+    <Decrease />
+    <Count />
+    <Increase />
+  </div>
+);
+```
+
+静态库可通过 `store.instance()` 在组件外部获取实例并调用行为方法。
+
+### 高性能渲染（useSignal）
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model(function counting(state: number) {
+  return {
+    count: state,
+    increase: () => state + 1,
+    decrease: () => state - 1
+  };
+}).createKey();
+
+// increase 是行为方法，恒定不变，因此该组件不会因库状态变更而重渲染
+const Increase = memo(() => {
+  const { increase } = countingKey.useSignal()();
+  return <button onClick={increase}>+</button>;
+});
+
+// 仅追踪 count 属性，只在 count 变化时重渲染
+const Count = memo(() => {
+  const { count } = countingKey.useSignal()();
+  return <span>{count}</span>;
+});
+
+const Decrease = memo(() => {
+  const { decrease } = countingKey.useSignal()();
+  return <button onClick={decrease}>-</button>;
+});
+
+const App = provide(countingKey).to(
+  ({ defaultCount }: { defaultCount: number }) => {
+    // 仅初始化，不调用 signal()，不会因库状态变更而重渲染
+    countingKey.useSignal(defaultCount);
+    return (
+      <div>
+        <Decrease />
+        <Count />
+        <Increase />
+      </div>
+    );
+  }
+);
+```
+
+useSignal 自动追踪 render 阶段使用的属性，仅在这些属性变更时触发重渲染。未调用 signal() 的组件不会因库状态变更而重渲染。
+
+### 模拟异步行为（produce）
+
+```ts
+import { model, provide } from '@airma/react-state';
+
+const countingKey = model((count: number) => ({
+  count,
+  increase: () => count + 1,
+  add: (n: number) => count + n
+})).produce((getInstance) => ({
+  ...getInstance(),
+  async increaseBySetting() {
+    const step = await fetchSetting();
+    return getInstance().add(step);
+  }
+})).createKey(0);
+
+// useModel/useSignal/useSelector 返回的都是 produce 产生的模拟实例
+const Increase = memo(() => {
+  const { increaseBySetting } = countingKey.useModel();
+  return <button onClick={increaseBySetting}>+</button>;
+});
+
+const Count = memo(() => {
+  const { count } = countingKey.useModel();
+  return <span>{count}</span>;
+});
+
+const App = provide(countingKey).to(() => (
+  <div>
+    <Count />
+    <Increase />
+  </div>
+));
+```
+
+`produce` 接收 `getInstance` 函数可获取最新库存实例，返回模拟实例对象。一旦使用了 `produce`，无论通过模型函数、键还是库访问，useModel/useSignal/useSelector 返回的都是该模拟实例。模拟实例的方法通过调用真实行为方法间接修改状态。
+
+注意：处理异步操作推荐使用 `@airma/react-effect` 库与 `@airma/react-state` 配合，而非使用 `produce` 模拟异步行为。`produce` 更适合用于对实例进行同步加工和扩展。
+
+### 实例字段缓存（model.createField）
+
+```ts
+const queryModel = model((condition: QueryCondition) => ({
+  ...condition,
+  query: model.createField(() => {
+    const { name, page, pageSize } = condition;
+    return { name, page, pageSize };
+  }, [condition.fetchVersion]),
+  setName(name: string) { return { ...condition, name }; },
+  startFetch() { return { ...condition, fetchVersion: condition.fetchVersion + 1 }; }
+}));
+
+// 使用
+const { query } = queryModel.useModel(initialCondition);
+useEffect(() => { fetch(query.get()); }, [query.get()]);
+```
+
+## 特性
+
+- **恒定的行为方法**: 实例行为方法是稳定引用，不会因状态更新而改变。方法运行时使用库中最新的状态，避免闭包旧数据问题。
+- **无卸载后状态泄漏**: 组件卸载时订阅自动取消，不存在 setState 泄漏风险。
+- **不支持原生异步状态管理**: 推荐使用 `@airma/react-effect` 库与 `@airma/react-state` 配合处理异步操作，而非使用 `produce` 模拟异步行为。
+- **Provider 库查找树**: 不同层级的 Provider 形成至近及远的查找链，不存在同类型 Context.Provider 阻拦问题。
+- **订阅更新模式**: 库状态变更仅通知订阅组件，不会引起整个 Provider 组件树重渲染。
