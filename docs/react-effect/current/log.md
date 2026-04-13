@@ -218,3 +218,7 @@
 # v18.6.5
 
 * add llms files to provide prompts for AI
+
+# v18.6.6
+
+* fix type problem about useQuery/useMutation for sessionKey.

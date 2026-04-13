@@ -214,10 +214,10 @@ declare type PCR<
     | SessionStore<any>
     | SessionCreation<any>
 > =
-  T extends PromiseCallback<infer R>
-    ? R
-    : T extends SessionKey<infer C>
-      ? PCR<C>
+  T extends SessionKey<infer C>
+    ? PCR<C>
+    : T extends PromiseCallback<infer R>
+      ? R
       : T extends SessionStore<infer S>
         ? PCR<S>
         : T extends SessionCreation<infer L>
@@ -231,10 +231,10 @@ declare type MCC<
     | SessionStore<any>
     | SessionCreation<any>
 > =
-  T extends PromiseCallback<any>
-    ? T
-    : T extends SessionKey<infer C>
-      ? C
+  T extends SessionKey<infer C>
+    ? C
+    : T extends PromiseCallback<any>
+      ? T
       : T extends SessionStore<infer S>
         ? S
         : T extends SessionCreation<infer L>

@@ -222,3 +222,7 @@
 ## v18.6.5
 
 * 新增 llms AI 提示文件
+
+## v18.6.6
+
+* 修复 useQuery/useMutation 使用 sessionKey 时的类型异常问题。
