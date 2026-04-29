@@ -107,8 +107,22 @@ describe('useSignal 的用法', () => {
     const { renderTimes, actionCalledTimesRef } = result.current;
     expect({ renderTimes, actionCalledTimes: actionCalledTimesRef.current }).toEqual({
       renderTimes: 3,
-      actionCalledTimes: 3,
+      actionCalledTimes: 2,
     });
+  });
+
+  test('signal.useEffect 一旦被用来监听行为方法，则首次加载的副作用必然会被忽略', () => {
+    const actionEffectCallback = jest.fn();
+    const { result } = renderHook(() => {
+      const signal = useSignal(counter, 0);
+      signal.useEffect(actionEffectCallback).onActions((i) => [i.increase]);
+      const { decrease } = signal();
+      return { decrease };
+    });
+    act(() => {
+      result.current.decrease();
+    });
+    expect(actionEffectCallback).not.toBeCalled();
   });
 });
 

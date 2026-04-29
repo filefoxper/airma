@@ -201,3 +201,8 @@
 
 * use as-model@0.4.0, resolve problem about multi `model, createStore, createKy` typescript infos.
 * add llms files to provide prompts for AI
+
+## v18.6.10
+
+* fix problem about signal.useEffect callback run in the mounting time, when it has 'action' filters added by 'onActions'.
+

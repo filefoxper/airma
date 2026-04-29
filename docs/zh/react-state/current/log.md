@@ -156,7 +156,11 @@
 
 * 再次调整 typescript 接口类型
 
-## v8.6.9
+## v18.6.9
 
 * 新增 llms AI 提示文件
 * 使用 as-model@0.4.0，减少 `model, createStore, createKey` 的 typescript 干扰
+
+## v18.6.10
+
+* 修复 signal.useEffect(callback).onActions(xxx) 行为方法副作用在首次加载时调用副作用回调函数的问题。

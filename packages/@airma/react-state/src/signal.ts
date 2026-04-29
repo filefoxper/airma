@@ -81,6 +81,9 @@ function useSignalSubscribeConnection<
     }
   };
   return {
+    getActionCollector() {
+      return actionsCollectionRef.current;
+    },
     onActions(collector: (i: Instance<M>) => ((...args: any[]) => any)[]) {
       res.onActions(collector);
       return {
@@ -124,6 +127,9 @@ function getSignalSubscribe<
       setWrap({ action: act, instance: ins });
     });
     useEffect(() => {
+      if (filter.getActionCollector() != null && wrap.action == null) {
+        return () => {};
+      }
       return subscription(wrap.instance, wrap.action);
     }, [wrap]);
     return filter;
