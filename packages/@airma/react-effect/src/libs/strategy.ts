@@ -269,9 +269,9 @@ export function useStrategyExecution<T>(
         const currentState = signal().state;
         const isFetching = ifFetching();
         if (data.abandon) {
-          if (!isFetching) {
+          if (!isFetching && currentState.isFetching) {
             processor.act(() => {
-              signal().setState({ ...currentState, isFetching: false });
+              signal().onlyEndIsFetching();
             });
           }
           return { ...currentState, abandon: true };

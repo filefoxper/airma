@@ -226,3 +226,11 @@
 ## v18.6.6
 
 * 修复 useQuery/useMutation 使用 sessionKey 时的类型异常问题。
+
+## v18.6.7
+
+* 修复 useResponse.useSuccess 不响应初次请求问题。
+
+## v18.6.8
+
+* 修复 useResponse.useSuccess 不响应初次请求问题。

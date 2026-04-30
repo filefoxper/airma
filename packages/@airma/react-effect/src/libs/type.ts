@@ -44,6 +44,7 @@ export type SessionRequest = {
 export interface SessionInstance<T = any> {
   state: SessionState<T>;
   request: SessionRequest | undefined;
+  onlyEndIsFetching: () => SessionState<T> & { request?: SessionRequest };
   setState: (
     s: SessionState<T> & { roundStatus?: 'start' | 'end' }
   ) => SessionState<T> & { request?: SessionRequest };
