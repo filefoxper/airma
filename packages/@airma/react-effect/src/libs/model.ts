@@ -60,6 +60,12 @@ export function effectModel(
   return {
     state: rest,
     request,
+    onlyEndIsFetching() {
+      return {
+        ...state,
+        isFetching: false
+      };
+    },
     setState(
       s:
         | (SessionState & { roundStatus?: 'start' | 'end' })

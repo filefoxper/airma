@@ -222,3 +222,11 @@
 # v18.6.6
 
 * fix type problem about useQuery/useMutation for sessionKey.
+
+# v18.6.7
+
+* fix the problem about sometimes, `useResponse.useSuccess` not response the initial request.
+
+# v18.6.8
+
+* fix the problem about sometimes, `useResponse.useSuccess` not response the initial request.
