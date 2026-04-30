@@ -942,11 +942,9 @@ export function useResponse<T>(
     if (watchOnly && initialRound === sessionState.round) {
       return noop;
     }
-    const isErrorResponse = !sessionState.isFetching && sessionState.isError;
+    const isErrorResponse = sessionState.isError;
     const isSuccessResponse =
-      !sessionState.isFetching &&
-      sessionState.sessionLoaded &&
-      !sessionState.isError;
+      sessionState.sessionLoaded && !sessionState.isError;
     if (isErrorResponse || isSuccessResponse) {
       const res = processor.act(() => process(sessionState));
       return typeof res === 'function' ? res : noop;
@@ -971,9 +969,7 @@ useResponse.useSuccess = function useResponseSuccess<T>(
       return noop;
     }
     const isSuccessResponse =
-      !sessionState.isFetching &&
-      sessionState.sessionLoaded &&
-      !sessionState.isError;
+      sessionState.sessionLoaded && !sessionState.isError;
     if (isSuccessResponse) {
       const res = processor.act(() =>
         process(sessionState.data as T, sessionState)
@@ -999,7 +995,7 @@ useResponse.useFailure = function useResponseFailure(
     if (watchOnly && initialRound === sessionState.lastFailedRound) {
       return noop;
     }
-    const isErrorResponse = !sessionState.isFetching && sessionState.isError;
+    const isErrorResponse = sessionState.isError;
     if (isErrorResponse) {
       const res = processor.act(() =>
         process(sessionState.error, sessionState)
