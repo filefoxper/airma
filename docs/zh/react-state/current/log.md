@@ -164,3 +164,7 @@
 ## v18.6.10
 
 * 修复 signal.useEffect(callback).onActions(xxx) 行为方法副作用在首次加载时调用副作用回调函数的问题。
+
+## v18.6.11
+
+* 修复 signal.useEffect(callback).onChanges(xxx) 副作用方法不能监听正确数据变化的问题

@@ -206,3 +206,6 @@
 
 * fix problem about signal.useEffect callback run in the mounting time, when it has 'action' filters added by 'onActions'.
 
+## v18.6.11
+
+* fix problem about signal.useEffect(callback).onChanges(xxx) effect method can not listen to the correct data changes.

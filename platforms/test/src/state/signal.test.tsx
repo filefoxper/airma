@@ -124,6 +124,23 @@ describe('useSignal 的用法', () => {
     });
     expect(actionEffectCallback).not.toBeCalled();
   });
+
+  test('signal.useEffect 只用于监听数据变更，则效果类似 useEffect', () => {
+    const actionEffectCallback = jest.fn();
+    const { result } = renderHook(() => {
+      const signal = useSignal(counter, 0);
+      signal.useEffect(actionEffectCallback).onChanges((i) => [i.count]);
+      const { increase } = signal();
+      return { increase };
+    });
+    act(() => {
+      result.current.increase();
+    });
+    act(() => {
+      result.current.increase();
+    });
+    expect(actionEffectCallback).toBeCalledTimes(3);
+  });
 });
 
 describe('useSignal 在状态同步中的应用', () => {
