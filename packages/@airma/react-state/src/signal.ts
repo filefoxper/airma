@@ -23,11 +23,14 @@ function useSignalSubscribeConnection<
   const actionsCollectionRef = useRef<
     null | ((i: Instance<M>) => ((...args: any[]) => any)[])
   >(null);
+
   const changesCollectionRef = useRef<{
     collections: any[] | null;
     collector: null | ((i: Instance<M>) => any[]);
   }>({ collector: null, collections: null });
+
   const destroyRef = useRef<(() => void) | null>(null);
+
   const protectedDispatch = useRenderProtectDispatch(action => {
     const actionsCollector = actionsCollectionRef.current;
     const { collector: changesCollector, collections: changesCollections } =
@@ -50,7 +53,7 @@ function useSignalSubscribeConnection<
       }
       const currentChanges = changesCollector(instance);
       changesCollectionRef.current.collections = currentChanges;
-      return shallowEqual(changesCollections, currentChanges);
+      return !shallowEqual(changesCollections, currentChanges);
     })();
     if (method != null && (!isActionMethodMatched || !isChangesMatched)) {
       return;
