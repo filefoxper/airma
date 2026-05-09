@@ -199,8 +199,6 @@ const Creating = memo(
     const creating = store.useSelector(s => s.creating);
     const signal = creatingStore.useSignal({ name: '', username: '', age: 10 });
 
-    useSignal(testModel);
-
     const { user, changeUsername, changeName, fetchDefault } = signal();
 
     const [fs, query] = fetchSession.useSession();
@@ -357,7 +355,7 @@ const modelFn = model(function mf(s: number) {
 
 const App = provide({ fetchSession }).to(function App() {
   const i = modelFn.useModel(-2);
-  const { state: val, setState } = i;
+  const [val, setState] = useState(-2);
 
   if (val < 0) {
     setState(0);
@@ -417,6 +415,7 @@ const App = provide({ fetchSession }).to(function App() {
           -
         </button>
       </div>
+      <div>{val}</div>
       <Condition parentTrigger={t} />
       <div style={{ marginTop: 8, marginBottom: 8, minHeight: 36 }}>
         {creating ? <Creating onClose={cancel} /> : <Info />}

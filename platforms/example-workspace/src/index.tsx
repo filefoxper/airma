@@ -11,7 +11,6 @@ const root = document.getElementById('root');
 
 const config: GlobalConfig = {
   batchUpdate: unstable_batchedUpdates,
-  experience: 'next',
   strategy: s => [Strategy.failure(e => console.log('final...', e)), ...s]
 };
 
