@@ -168,3 +168,7 @@
 ## v18.6.11
 
 * 修复 signal.useEffect(callback).onChanges(xxx) 副作用方法不能监听正确数据变化的问题
+
+## v18.6.12
+
+* 不在单方面支持在 render 过程中使用行为方法。

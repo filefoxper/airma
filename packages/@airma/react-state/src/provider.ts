@@ -156,8 +156,8 @@ export function useStores() {
 
 export function useConfiguration() {
   const optimizeConfig = useContext(ConfigContext);
-  const { batchUpdate } = optimizeConfig || {};
-  return useMemo(() => ({ batchUpdate }), [batchUpdate]);
+  const { batchUpdate, supports } = optimizeConfig || {};
+  return useMemo(() => ({ batchUpdate, supports }), [batchUpdate, supports]);
 }
 
 export function useActProcess() {

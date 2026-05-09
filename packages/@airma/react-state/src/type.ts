@@ -10,6 +10,7 @@ import type {
 
 export type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  supports?: { renderAction?: boolean };
   test?: {
     act: (callback: () => any) => any;
   };

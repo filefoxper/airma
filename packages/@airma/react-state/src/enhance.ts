@@ -1,10 +1,14 @@
 import { usePersistFn } from '@airma/react-hooks-core';
 import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useConfiguration } from './provider';
 import type { Action, Dispatch } from 'as-model';
 
 export function useRenderProtectDispatch(dispatch: Dispatch) {
-  const renderingRef = useRef<Action[] | null>([]);
-  renderingRef.current = [];
+  const configuration = useConfiguration();
+  const { supports } = configuration ?? {};
+  const { renderAction } = supports ?? {};
+  const renderingRef = useRef<Action[] | null>(renderAction ? [] : null);
+  renderingRef.current = renderAction ? [] : null;
   const unmountedRef = useRef(false);
   const dispatcher = usePersistFn((action: Action) => {
     if (unmountedRef.current) {

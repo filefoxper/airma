@@ -209,3 +209,7 @@
 ## v18.6.11
 
 * fix problem about signal.useEffect(callback).onChanges(xxx) effect method can not listen to the correct data changes.
+
+## v18.6.12
+
+* stop support call action method while react is in rendering stage. 
