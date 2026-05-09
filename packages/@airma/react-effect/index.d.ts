@@ -481,6 +481,9 @@ export declare const Provider: FC<{
 
 export declare type GlobalConfig = {
   batchUpdate?: (callback: () => void) => void;
+  supports?: {
+    renderAction?: boolean;
+  };
   experience?: 'next';
   test?: {
     act: (callback: () => any) => any;
