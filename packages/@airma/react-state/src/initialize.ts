@@ -116,7 +116,9 @@ export function useModelInitialize<
   }, []);
 
   if (ifModelIsModelOrModelUsage) {
-    initializedStore.update(controlled ? { model, state } : { model });
+    initializedStore.update(
+      controlled ? { model, state } : { model, silence: true }
+    );
   }
 
   if (

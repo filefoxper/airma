@@ -16,7 +16,7 @@
     "@airma/react-state": "^18.6.0",
     "@types/react": "16.14.68",
     "@types/react-dom": "16.9.25",
-    "as-model": "^0.4.0",
+    "as-model": "^0.4.1",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   },
