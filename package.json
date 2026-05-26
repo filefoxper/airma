@@ -16,7 +16,6 @@
     "lint-init": "eslint --init"
   },
   "workspaces": [
-    "platforms/test",
     "platforms/example-workspace",
     "platforms/example-server",
     "packages/@airma/*",

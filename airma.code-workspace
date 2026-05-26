@@ -25,10 +25,6 @@
       "path": "packages/@airma/react-effect"
     },
     {
-      "name": "test",
-      "path": "platforms/test"
-    },
-    {
       "name": "example-workspace",
       "path": "platforms/example-workspace"
     },

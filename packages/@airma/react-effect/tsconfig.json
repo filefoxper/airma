@@ -4,5 +4,11 @@
     "./**/*.ts",
     "./**/*.tsx",
     "./**/*.d.ts"
-  ]
+  ],
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@test/*": ["test/*"]
+    }
+  }
 }

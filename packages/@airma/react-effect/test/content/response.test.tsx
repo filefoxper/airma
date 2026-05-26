@@ -1,7 +1,7 @@
 import { createSessionStore, provide, Strategy, useQuery, useResponse, useSession } from '@airma/react-effect';
 import { render, waitFor } from '@testing-library/react';
 import React, { memo, useState } from 'react';
-import { delay, renderEffectHook } from '@/util';
+import { delay, renderEffectHook } from '@test/util';
 
 describe('useResponse 的基本用法', () => {
   const sessionCallback = (data: string) => {

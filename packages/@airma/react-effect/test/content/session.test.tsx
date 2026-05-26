@@ -2,7 +2,7 @@ import React from 'react';
 import { provide, session, useMutation, useQuery, useSession } from '@airma/react-effect';
 import { waitFor } from '@testing-library/react';
 import { act } from '@testing-library/react-hooks';
-import { renderEffectHook } from '@/util';
+import { renderEffectHook } from '@test/util';
 import type { ReactNode } from 'react';
 
 describe('session 的基本用法', () => {
