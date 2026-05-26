@@ -1,7 +1,7 @@
 import { Strategy, useQuery } from '@airma/react-effect';
 import { act } from '@testing-library/react-hooks';
 import { waitFor } from '@testing-library/react';
-import { delay, renderEffectHook } from '@/util';
+import { delay, renderEffectHook } from '@test/util';
 
 describe('Strategy 的基本用法', () => {
   const sessionCallback = (data: string) => {

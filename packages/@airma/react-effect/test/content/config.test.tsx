@@ -2,7 +2,7 @@ import { Strategy, useMutation, useQuery } from '@airma/react-effect';
 import { waitFor } from '@testing-library/react';
 import { act } from '@testing-library/react-hooks';
 import { useEffect, useState } from 'react';
-import { delay, renderEffectHook } from '@/util';
+import { delay, renderEffectHook } from '@test/util';
 
 describe('会话配置用法', () => {
   const sessionCallback = (data: string) => {

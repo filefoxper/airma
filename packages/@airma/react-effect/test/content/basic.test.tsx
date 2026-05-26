@@ -2,7 +2,7 @@ import { Strategy, useIsFetching, useMutation, useQuery } from '@airma/react-eff
 import { waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { act } from '@testing-library/react-hooks';
-import { delay, renderEffectHook } from '@/util';
+import { delay, renderEffectHook } from '@test/util';
 
 describe('useQuery 的基本用法', () => {
   const queryCallback = (data: string) => {

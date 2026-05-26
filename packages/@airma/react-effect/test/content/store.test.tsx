@@ -3,7 +3,7 @@ import { createSessionKey, createSessionStore, provide, useQuery, useSession } f
 import { waitFor } from '@testing-library/react';
 import { createKey, useModel } from '@airma/react-state';
 import { act } from '@testing-library/react-hooks';
-import { renderEffectHook } from '@/util';
+import { renderEffectHook } from '@test/util';
 import type { ReactNode } from 'react';
 
 describe('静态会话库的用法', () => {
