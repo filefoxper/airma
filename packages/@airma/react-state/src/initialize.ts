@@ -101,6 +101,25 @@ export function useModelInitialize<
       ).model<M, R>(model);
       return createStore();
     })();
+    if (!controlled && !store.getConfiguration()?.notify) {
+      store.config(
+        optimize?.batchUpdate
+          ? {
+              notify(notifier, action) {
+                optimize?.batchUpdate?.(() => {
+                  const { errors } = notifier(action);
+                  if (!errors || !errors.length) {
+                    return;
+                  }
+                  errors.forEach(err => {
+                    Promise.reject(err);
+                  });
+                });
+              }
+            }
+          : {}
+      );
+    }
     if (hasDefaultState) {
       store.update({ initialState: state });
     }

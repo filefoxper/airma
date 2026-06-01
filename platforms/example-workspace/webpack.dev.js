@@ -3,7 +3,7 @@ const EslintWebpackPlugin = require('eslint-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ReactRefreshPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
-const WebpackBar = require('webpackbar');
+// const WebpackBar = require('webpackbar');
 const path = require('path');
 
 module.exports = function config() {
@@ -48,11 +48,11 @@ module.exports = function config() {
         template: path.join(__dirname, 'res', 'template.dev.index.html'),
         inject: true
       }),
-      new WebpackBar({
-        color: 'green', // 默认green，进度条颜色支持HEX
-        basic: false, // 默认true，启用一个简单的日志报告器
-        profile: false // 默认false，启用探查器。
-      })
+      // new WebpackBar({
+      //   color: 'green', // 默认green，进度条颜色支持HEX
+      //   basic: false, // 默认true，启用一个简单的日志报告器
+      //   profile: false // 默认false，启用探查器。
+      // })
     ],
     mode: "development",
     devServer: {
