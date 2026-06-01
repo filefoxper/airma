@@ -141,7 +141,10 @@ const store = model((query: Query) => {
 }).createStore();
 
 const Info = memo(() => {
-  const [{ isFetching, isError, error, visited }] = fetchSession.useSession();
+  const [
+    { isFetching, isError, error, visited, lastSuccessfulRoundVariables }
+  ] = fetchSession.useSession();
+  console.log('info', lastSuccessfulRoundVariables);
   if (isFetching) {
     return <span>fetching...</span>;
   }
@@ -392,7 +395,9 @@ const App = provide({ fetchSession }).to(function App() {
     ]
   });
 
-  const [{ data, variables, lastSuccessfulRound }, t] = querySession;
+  const [{ data, variables, lastSuccessfulRoundVariables }, t] = querySession;
+
+  console.log('app lastSuccessfulRoundVariables', lastSuccessfulRoundVariables);
 
   const [q] = variables ?? [];
 

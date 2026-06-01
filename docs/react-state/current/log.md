@@ -213,3 +213,7 @@
 ## v18.6.12
 
 * stop support call action method while react is in rendering stage. 
+
+## v18.6.14
+
+* fix problem about 'GlobalConfig.batchUpdate' not work.

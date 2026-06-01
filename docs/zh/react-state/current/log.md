@@ -172,3 +172,7 @@
 ## v18.6.12
 
 * 不在单方面支持在 render 过程中使用行为方法。
+
+## v18.6.14
+
+* 解决 GlobalConfig.batchUpdate 不起作用的问题

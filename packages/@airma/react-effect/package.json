@@ -14,15 +14,15 @@
   "files": [
     "dist",
     "index.d.ts",
-    "llms.txt",
-    "llms-zh.txt"
+    "llms-zh.txt",
+    "llms.txt"
   ],
   "scripts": {
     "build": "node ./build.js",
     "docs": "docsify serve ./docs",
-    "test": "jest --coverage",
     "lint": "eslint src --fix --ext .ts,.tsx ",
-    "lint-init": "eslint --init"
+    "lint-init": "eslint --init",
+    "test": "jest --coverage"
   },
   "typings": "index.d.ts",
   "dependencies": {
@@ -31,9 +31,9 @@
     "react": ">=16.8.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
+    "esbuild": "0.25.0",
     "esbuild-plugin-es5": "2.1.1",
-    "eslint": "^8.49.0",
+    "eslint": "8.49.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^9.0.0",
     "eslint-import-resolver-typescript": "^3.6.0",
