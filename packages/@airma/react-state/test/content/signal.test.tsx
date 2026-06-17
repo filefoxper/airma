@@ -16,6 +16,11 @@ const counter = function counter(count: number) {
   return {
     count: Math.abs(count),
     symbol,
+    info:model.createField(()=>{
+      return {
+        symbol
+      }
+    },[symbol]),
     increase: () => count + 1,
     decrease: () => count - 1,
   };
@@ -40,6 +45,19 @@ describe('useSignal 的用法', () => {
     expect(signal().count).toBe(1);
   });
 
+  test('useSignal 产生的 signal 函数是恒定不变的',()=>{
+    const { result,rerender } = renderHook(() => {
+      const s = useSignal(counter, 0);
+      const {count} = s();
+      return s;
+    });
+    const signal = result.current;
+    act(() => {
+      signal().increase();
+    });
+    expect(signal).toBe(result.current);
+  });
+
   test('当且仅当 useSignal 的 signal 回调产生的实例在 render 过程中被获取的字段发生变化，才会触发当前组件或hook重新渲染', () => {
     const { result } = renderHook(() => {
       const renderTimeRef = useRef(0);
@@ -47,6 +65,23 @@ describe('useSignal 的用法', () => {
       const signal = useSignal(counter, 1);
       const { symbol, increase } = signal();
       return { symbol, renderTime: renderTimeRef.current, increase };
+    });
+    act(() => {
+      result.current.increase();
+    });
+    act(() => {
+      result.current.increase();
+    });
+    expect(result.current.renderTime).toBe(1);
+  });
+
+  test('useSignal 的字段驱动渲染特性对模型字段也有效', () => {
+    const { result } = renderHook(() => {
+      const renderTimeRef = useRef(0);
+      renderTimeRef.current += 1;
+      const signal = useSignal(counter, 1);
+      const { info, increase } = signal();
+      return { info, renderTime: renderTimeRef.current, increase };
     });
     act(() => {
       result.current.increase();

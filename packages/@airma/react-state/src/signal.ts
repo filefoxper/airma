@@ -1,5 +1,6 @@
 import { createSignal, shallowEqual } from 'as-model';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { usePersistFn } from '@airma/react-hooks-core';
 import { useInitialize, useModelInitialize } from './initialize';
 import { useRenderProtectDispatch } from './enhance';
 import type { SignalGenerator } from './type';
@@ -174,16 +175,21 @@ export function useSignal<
     return signalStore.subscribe(subscription);
   }, []);
 
-  return useMemo(() => {
-    const handler = getSignalSubscribe(signal);
-    const signalCallback = function signalCallback(opts?: {
-      cutOff?: boolean;
-    }) {
-      return signal(opts);
-    };
-    signalCallback.useWatch = handler.useWatch;
-    signalCallback.useEffect = handler.useEffect;
-    signalCallback.store = signal.store;
-    return signalCallback;
+  const { useWatch: useWatchFn, useEffect: useEffectFn } = useMemo(() => {
+    return getSignalSubscribe(signal);
   }, [token]);
+
+  const signalCallback: {
+    (opts?: { cutOff?: boolean }): ReturnType<typeof signal>;
+    store?: Store<M, R>;
+    useWatch?: typeof useWatchFn;
+    useEffect?: typeof useEffectFn;
+  } = usePersistFn(function signalCallback(opts?: { cutOff?: boolean }) {
+    return signal(opts);
+  });
+  signalCallback.store = signal.store;
+  signalCallback.useWatch = useWatchFn;
+  signalCallback.useEffect = useEffectFn;
+
+  return signalCallback;
 }

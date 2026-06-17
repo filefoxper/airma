@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import type { RenderHookResult } from '@testing-library/react-hooks/src/types';
 import type { RenderHookOptions } from '@testing-library/react-hooks/src/types/react';
 
-export function renderEffectHook<TProps, TResult>(
+export function renderConfigHook<TProps, TResult>(
   callback: (props: TProps) => TResult,
   options?: RenderHookOptions<TProps> & { config?: GlobalConfig },
 ): RenderHookResult<TProps, TResult> {
