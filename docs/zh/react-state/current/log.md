@@ -176,3 +176,7 @@
 ## v18.6.14
 
 * 解决 GlobalConfig.batchUpdate 不起作用的问题
+
+## v18.6.15
+
+* 解决 useSignal 返回的 signal 回调函数在每次渲染中不恒定的问题。
