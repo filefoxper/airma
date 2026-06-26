@@ -106,7 +106,7 @@ const counting = (state: number) => {
 };
 
 const store = model((query: Query) => {
-  const handleQuery = () => {
+  const handleQuery = (): Query => {
     return { ...query, valid: { ...query.display } };
   };
   const queryData = model.createField(() => {
@@ -123,17 +123,17 @@ const store = model((query: Query) => {
     displayQuery: query.display,
     validQuery: query.valid,
     creating: query.creating,
-    getValidQuery: model.createMethod(() => query.valid),
-    create() {
+    getValidQuery: model.createMethod(() => query.valid.age),
+    create(): Query {
       return { ...query, creating: true };
     },
-    submit() {
+    submit(): Query {
       return { ...query, ...handleQuery(), creating: false };
     },
-    cancel() {
+    cancel(): Query {
       return { ...query, creating: false };
     },
-    changeDisplay(display: Partial<ConditionType>) {
+    changeDisplay(display: Partial<ConditionType>): Query {
       return { ...query, display: { ...query.display, ...display } };
     },
     query: handleQuery
@@ -285,11 +285,14 @@ const Condition = memo(function Condition({
     displayQueryData,
     create,
     changeDisplay,
-    submit
+    submit,
+    getValidQuery
   } = store.useModel();
 
   const isFetching = useIsFetching();
   const [, , execute] = fetchSession.useSession();
+
+  console.log('getValidQuery', getValidQuery());
 
   const handleTrigger = () => {
     parentTrigger();
