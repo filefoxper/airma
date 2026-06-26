@@ -13,6 +13,22 @@ import type {
 
 export declare type Model = AsModelLike;
 
+declare type ValidInstance<S, T extends ModelInstance> = {
+  [K in keyof T]: T[K] extends
+    | ((...args: any[]) => S)
+    | (((...args: any[]) => any) & { identifier: (d: any) => boolean })
+    ? T[K]
+    : T[K] extends (...args: any[]) => any
+      ? never
+      : T[K];
+};
+
+declare type ValidModel<R extends Model> = R extends (state: infer S) => infer T
+  ? T extends ValidInstance<S, T>
+    ? R
+    : (state: S) => ValidInstance<S, T> & T
+  : never;
+
 declare type InstanceOf<
   T extends ModelInstance,
   R extends undefined | ((instance: () => T) => any)
@@ -340,7 +356,7 @@ export declare const model: {
     D extends Model,
     R extends undefined | ((getInstance: () => Instance<D>) => any) = undefined
   >(
-    modelLike: D
+    modelLike: ValidModel<D>
   ): ModelUsageApi<D, R>;
   createField: <T extends () => any>(
     callback: T,
