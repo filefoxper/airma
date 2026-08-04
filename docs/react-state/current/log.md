@@ -225,3 +225,8 @@
 ## v18.6.16
 
 * fix problem about no instance type check about API `model`.
+
+## v18.6.17
+
+* fix problem about store or key may be initialized after subscription happens.
+
